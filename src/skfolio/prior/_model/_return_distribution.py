@@ -15,6 +15,7 @@ from skfolio.prior._model._covariance_sqrt import CovarianceSqrt
 from skfolio.prior._model._factor_model import FactorModel
 from skfolio.typing import BoolArray, FloatArray
 from skfolio.utils.stats import safe_cholesky
+from skfolio.utils.tools import _normalize_sample_weight, _validate_sample_weight
 
 __all__ = ["ReturnDistribution"]
 
@@ -54,7 +55,9 @@ class ReturnDistribution:
         Estimation of the assets returns.
 
     sample_weight : ndarray of shape (n_observations,), optional
-        Sample weights for each observation. If `None`, equal weights are assumed.
+        Finite, nonnegative scenario probabilities, summing to one within an
+        absolute tolerance of 1.001e-5. Totals within this tolerance are rescaled to one
+        without changing the caller's array. If `None`, equal weights are assumed.
 
     factor_model : FactorModel, optional
         Factor model decomposition and diagnostics. The default is `None`.
@@ -67,7 +70,7 @@ class ReturnDistribution:
     factor_model: FactorModel | None = None
 
     def __post_init__(self) -> None:
-        """Validate array shapes."""
+        """Validate array alignment and observation probabilities."""
         if self.mu.ndim != 1:
             raise ValueError("`mu` must be a 1D array of shape (n_assets,).")
 
@@ -86,12 +89,14 @@ class ReturnDistribution:
             )
 
         n_observations = self.returns.shape[0]
-        if self.sample_weight is not None and self.sample_weight.shape != (
-            n_observations,
-        ):
-            raise ValueError(
-                "`sample_weight` must be a 1D array of shape "
-                f"({n_observations},), got {self.sample_weight.shape}."
+        if self.sample_weight is not None:
+            sample_weight = _validate_sample_weight(
+                self.sample_weight,
+                n_observations=n_observations,
+                ensure_normalized=True,
+            )
+            object.__setattr__(
+                self, "sample_weight", _normalize_sample_weight(sample_weight)
             )
 
         if (
