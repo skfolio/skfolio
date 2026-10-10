@@ -1203,7 +1203,7 @@ class MeanRisk(ConvexOptimization):
             parameters_values.append((parameter, self.min_return))
 
         # risk and risk constraints
-        risk, risk_constraints, risk_parameters_values = self._build_risk(
+        risk, risk_constraints, risk_parameters_values, risk_returns = self._build_risk(
             X=X,
             y=y,
             method=method,
@@ -1252,6 +1252,7 @@ class MeanRisk(ConvexOptimization):
                 factor=factor,
                 parameters_values=parameters_values,
                 expressions=expressions,  # ty: ignore[invalid-argument-type]
+                risk_returns=risk_returns,
             )
 
         return self
@@ -1357,16 +1358,23 @@ class MeanRisk(ConvexOptimization):
         n_assets: int,
         w: cp.Variable,
         factor: skt.Factor,
-    ) -> tuple[cp.Expression | None, list[cpc.Constraint], skt.ParametersValues]:
+    ) -> tuple[
+        cp.Expression | None,
+        list[cpc.Constraint],
+        skt.ParametersValues,
+        cp.Expression | None,
+    ]:
         """Build the selected risk expression and configured risk limits.
 
         Return the selected expression, supporting constraints, and
-        `(parameter, values)` pairs for the risk limits.
+        `(parameter, values)` pairs for the risk limits, and the portfolio returns
+        used to report empirical GMD.
 
         When needed, fit or update the covariance uncertainty estimator using
         `method` (`fit` or `partial_fit`).
         """
         risk = None
+        risk_returns = None
         constraints = []
         parameters_values = []
         for r_m in _NON_ANNUALIZED_RISK_MEASURES:
@@ -1429,8 +1437,14 @@ class MeanRisk(ConvexOptimization):
                     parameters_values.append((parameter, risk_limit))
                 if self.risk_measure == r_m:
                     risk = risk_i
+                    if r_m == RiskMeasure.GINI_MEAN_DIFFERENCE:
+                        centered_returns = (
+                            return_distribution.returns
+                            - return_distribution.returns.mean(axis=0)
+                        )
+                        risk_returns = centered_returns @ args["w"]
 
-        return risk, constraints, parameters_values
+        return risk, constraints, parameters_values, risk_returns
 
     def _build_objective(
         self,
