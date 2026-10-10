@@ -94,6 +94,9 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
     ----------
     n_folds : int, default=10
         Number of folds. Must be at least 3.
+        Observations are divided into consecutive folds without shuffling. The first
+        `n_folds - 1` folds contain `n_samples // n_folds` observations each, and the
+        last fold contains all remaining observations.
 
     n_test_folds : int, default=8
         Number of test folds. Must be at least 2.
