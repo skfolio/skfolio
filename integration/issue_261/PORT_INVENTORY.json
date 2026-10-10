@@ -1,0 +1,377 @@
+{
+  "source_repository": "https://github.com/CarloNicolini/skfolio",
+  "source_ref": "c1bd1f168cf7d660c81f74710aadd9941e64a2c7",
+  "upstream_base": "33923e0",
+  "reference_branch": "online-integration-ci",
+  "scope": "Every source and test file in Carlo's online folders. Other repository files are outside this inventory.",
+  "files": [
+    {
+      "source_path": "src/skfolio/optimization/online/__init__.py",
+      "source_lines": 27,
+      "source_sha256": "09b7dfd7987b02cce232c280af5f84007c017dc594a0dd1950a72d9b6fbf19cc",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "src/skfolio/optimization/online/_autograd_objectives.py",
+      "source_lines": 2109,
+      "source_sha256": "7f31bdb26f5e06170dd7d63ecbc9f7356737f7d86db6f8a927c33195554ea3c8",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "src/skfolio/optimization/online/_base.py",
+      "source_lines": 576,
+      "source_sha256": "aa0b2dac700c3e9868a411332402abbe2872a9fc623b9395f5f7583dc28ae2ea",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "src/skfolio/optimization/online/_benchmark.py",
+      "source_lines": 558,
+      "source_sha256": "046bc3a66d242de0320ef06c9d8a69026e0dc0f81161c5d17c750701256a6281",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "src/skfolio/optimization/online/_cwmr.py",
+      "source_lines": 192,
+      "source_sha256": "7ac3a95fa9a042afab1855b3ef48e374a7b0d1796b63036294fe578b4cedcbe9",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "src/skfolio/optimization/online/_foco.py",
+      "source_lines": 310,
+      "source_sha256": "d04202c1a4df044c53b1f9f39e3b910a8b0d8d598c04b2ae4c7e6cb02d3fe21d",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "src/skfolio/optimization/online/_learning_rate.py",
+      "source_lines": 478,
+      "source_sha256": "a77803a1efe596dc6e8a34b4e5039de4a465eeab7c9443b0aaede579f91e529f",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "src/skfolio/optimization/online/_loser.py",
+      "source_lines": 763,
+      "source_sha256": "70e5d8fa089416cfba553b4a1c9c3a2ebd86f9dba3ef95fa970690d695189451",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "src/skfolio/optimization/online/_mirror_maps.py",
+      "source_lines": 1443,
+      "source_sha256": "939779844ce73e6023317f80a4ff84cc808d38e91fd08b336618cf3a44f80ce0",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "src/skfolio/optimization/online/_mixins.py",
+      "source_lines": 122,
+      "source_sha256": "34c47071e0040aec2f73ed9b01a1d51409ef7077439da76d472592278fcff618",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "src/skfolio/optimization/online/_prediction.py",
+      "source_lines": 302,
+      "source_sha256": "2f1bb922613050cdce7fa36723b065debecc122de63cbc659aa24a1d36db53ef",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "src/skfolio/optimization/online/_projection.py",
+      "source_lines": 453,
+      "source_sha256": "b4dfddb805393b0f148b27307dfb50da24306616445434378f9771db72436b83",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "src/skfolio/optimization/online/_regret.py",
+      "source_lines": 477,
+      "source_sha256": "ebf14548554c31523273c4b98849d9cbd732367f120e821d73770b088532ab23",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "src/skfolio/optimization/online/_strategies.py",
+      "source_lines": 532,
+      "source_sha256": "ac2da8c1090578dd8af9ca5edb0657879fe686367425a69a49eb9e331a32d0e5",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "src/skfolio/optimization/online/_utils.py",
+      "source_lines": 123,
+      "source_sha256": "6c10e150dc163a22ffe79c15d6ea8be61827c7595a6af4c5fa25f8d120b214f4",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "src/skfolio/optimization/online/_winner.py",
+      "source_lines": 904,
+      "source_sha256": "5f6408cba76b8e8d4bef2255135d70786c42753bb9ddd6b8cf3107c29d909c49",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/base.py",
+      "source_lines": 177,
+      "source_sha256": "efd7a0b5243e779f64603c08a077e4968596da8422e87d5b13b5f2ac0757d823",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/conftest.py",
+      "source_lines": 9,
+      "source_sha256": "8385bd2596a16219b9872b86bc53192db5df1c55bbea37285bec05c43b8227ee",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/loser/test_cwmr.py",
+      "source_lines": 189,
+      "source_sha256": "8dc12dccec2b549b3054fded81734c19e3caf3c7e2541471275b0a11b705c4f2",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/loser/test_cwmr_clip.py",
+      "source_lines": 21,
+      "source_sha256": "40dae57d222cb22307f8b2749826081000441ef7941e42fabe502819137897bd",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/loser/test_family_modes.py",
+      "source_lines": 47,
+      "source_sha256": "c812e8a48bf92b06b874246fa2d522f601e4f287886d30fa90a0d1d287bfb0af",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/loser/test_olmar.py",
+      "source_lines": 172,
+      "source_sha256": "dcc500546e03ac75932efda16d70eceb3b84f80159bda7f1062aa7e3e4e154ff",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/loser/test_olmar_pa_vs_md.py",
+      "source_lines": 491,
+      "source_sha256": "7c548208482353c8e7e08efb344d6158689716173907cef40bd44a781be2046f",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/loser/test_pamr.py",
+      "source_lines": 75,
+      "source_sha256": "871553594aac2e011b854d885d9c28986965a88f9b1e2064deb2f14c650477ff",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/loser/test_pamr_edgecases.py",
+      "source_lines": 14,
+      "source_sha256": "c3ee1595a9a121fd9448e3fdd51da48463d9bd7dbde79403ee26fab4817e1a42",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/loser/test_pamr_pa_vs_md.py",
+      "source_lines": 452,
+      "source_sha256": "3ee1a0bb4923e2e1fc704417fc60370703acf09bad0074c5763886263a86eca5",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/loser/test_rmr.py",
+      "source_lines": 182,
+      "source_sha256": "895be677cd6ee3d6d0e0d3dba7a4505364eec82e151a66fbcd5756f88f37c5e1",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/loser/test_transaction_costs.py",
+      "source_lines": 225,
+      "source_sha256": "dcfc398cfb70f316bd17b2e97a985bf9b6905099ea87762d8100ee4df12b1bf9",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/loser/test_turnover_modes_loser.py",
+      "source_lines": 43,
+      "source_sha256": "68f597c46af8b7233525943ab20f8395e65336db2a4e3f3cd93dda0f16eb9707",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/mirror_maps/test_mirror_maps.py",
+      "source_lines": 490,
+      "source_sha256": "0f725550df834307956150f804b1f42507925cb1cf07cc77cee1cb513113b34b",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/mirror_maps/test_mirror_maps_composite.py",
+      "source_lines": 1129,
+      "source_sha256": "25af574f64d8343b5074d67205724c49cedb537bcdec2f857b570b7f4a36981d",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/regret/test_regret.py",
+      "source_lines": 202,
+      "source_sha256": "82f3d1a8afdb915c8e83495145914b8222f0d6b5b477b3ad041ea6fae3ac54b2",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/regret/test_regret_curves.py",
+      "source_lines": 233,
+      "source_sha256": "84d461088bc53e3ee4966af0265abf32b6d2ecc2fcff30ca73071b01f1ce62e4",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/regret/test_regret_dynamic.py",
+      "source_lines": 108,
+      "source_sha256": "2512036da5149ea20600e6a65643e81a345ea68d135f95b1a08ea12dcad644ee",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/test_auto_learning_rate.py",
+      "source_lines": 277,
+      "source_sha256": "3a1c032307ba49e639d73ebdd8e9ab429659a0cab54f4fcbba76dbee8c1a9767",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/test_autograd_objectives.py",
+      "source_lines": 688,
+      "source_sha256": "a379e39b641e1af137d139daf796e478afc0ba29baf3d1836a4d6a10cbebf403",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/test_benchmark.py",
+      "source_lines": 179,
+      "source_sha256": "eea85754fafc92ba36c3903ce6e1f44b94ee638aeea927d4098e7e1989562da4",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/test_costs.py",
+      "source_lines": 253,
+      "source_sha256": "45e7c5dc47264721b9945e588648e1a08df52aa4699ef7af8dec0ba57c73aec3",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/test_estimator.py",
+      "source_lines": 249,
+      "source_sha256": "53a2793f1450844d5eed8f85c8cf3649f886065e94f939cc7f65cb8e6e96e7c9",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/test_initial_wealth.py",
+      "source_lines": 588,
+      "source_sha256": "5c70ca99c2f6ce736a44f5d4eb8c1b93c021a5ab47123ba20ed3195d13b659d7",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/test_metrics_correctness.py",
+      "source_lines": 423,
+      "source_sha256": "ec8a074294d192d4e61520bf94dc0551e02ee10554c0b73bc4482bb343c31453",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/test_projection.py",
+      "source_lines": 135,
+      "source_sha256": "c0ff901dbceabeedcfe9a7d1174ce36c5e4ef99dbe0323f2ff0764fb0688a239",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/test_robustness.py",
+      "source_lines": 123,
+      "source_sha256": "a695b7f42e9318b2ff32e69f0eb35aaecd54ab1f2df005737bc733bf8aeed21d",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/utils.py",
+      "source_lines": 36,
+      "source_sha256": "5b8ac4be30a5f5a38cb47b7289b329a47294e4dd77e63cfee13119787588c821",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/winner/test_foco_engine.py",
+      "source_lines": 588,
+      "source_sha256": "9d445f2cf8adebc36ca386a338d8a4ce09418e2ec2567b6345db3793f262ffc4",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    },
+    {
+      "source_path": "tests/test_optimization/test_online/winner/test_winner_estimator.py",
+      "source_lines": 276,
+      "source_sha256": "0b3b2151dc0115c05f5a7af079cfaade1f22f3abc626f665a711325558af4b73",
+      "status": "pending",
+      "destination": null,
+      "changes": []
+    }
+  ]
+}
