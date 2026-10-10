@@ -228,3 +228,20 @@ Dependency checks: 861 online-core and measure tests pass (including optional
 autograd gradient comparisons). OLMAR strategy readiness is aligned with the
 already corrected window-1 predictor history, for both the enum/string and integer
 source conventions.
+
+Iteration 3b: shared lifecycle and family adapters
+------------------------------------------------
+
+Adapted BaseOnlineOptimization and both Carlo families from the pre-extension
+reference 3fbc272. fit resets, partial_fit observes rows sequentially, and weights_
+is the next target. Invalid input is rejected before updates; numerical/prior
+failure requires a reset. Statistical hooks clone and update an optional prior per
+row. The estimator keeps no account holdings or wealth. Initial weights and target
+history are learning diagnostics. Complete source family factories remain internal.
+Net returns are validated and converted without legacy clipping. EG mixing uses
+the native entropy projector; the shared OCO engine is not replaced by reference
+code. Convenience evaluation methods are left to the next integration commit.
+
+Lifecycle validation: 354 online tests pass. Named data without named constraints
+uses the same fast path as arrays; asset labels alone no longer force a solver.
+The optional autograd verification backend is declared only in development extras.

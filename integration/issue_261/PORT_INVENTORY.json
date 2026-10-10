@@ -29,9 +29,13 @@
       "source_path": "src/skfolio/optimization/online/_base.py",
       "source_lines": 576,
       "source_sha256": "aa0b2dac700c3e9868a411332402abbe2872a9fc623b9395f5f7583dc28ae2ea",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "src/skfolio/optimization/online/_base.py",
+      "changes": [
+        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "c0267d8e565c882c6c3fd0674ab0d322e55047a3a6940b2efd9c33366c10eeab"
     },
     {
       "source_path": "src/skfolio/optimization/online/_benchmark.py",
@@ -84,9 +88,13 @@
       "source_path": "src/skfolio/optimization/online/_loser.py",
       "source_lines": 763,
       "source_sha256": "70e5d8fa089416cfba553b4a1c9c3a2ebd86f9dba3ef95fa970690d695189451",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "src/skfolio/optimization/online/_loser.py",
+      "changes": [
+        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "8395e505f163a51337ad417e6ebbb4b1bedb5cf5f207ab944edc04f7b5697d47"
     },
     {
       "source_path": "src/skfolio/optimization/online/_mirror_maps.py",
@@ -180,9 +188,13 @@
       "source_path": "src/skfolio/optimization/online/_winner.py",
       "source_lines": 904,
       "source_sha256": "5f6408cba76b8e8d4bef2255135d70786c42753bb9ddd6b8cf3107c29d909c49",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "src/skfolio/optimization/online/_winner.py",
+      "changes": [
+        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "b88a41ffdc08f4bb6248d126f68c084e5011d429a23608e9e9ee2ca14f1dcdb4"
     },
     {
       "source_path": "tests/test_optimization/test_online/base.py",
@@ -196,9 +208,13 @@
       "source_path": "tests/test_optimization/test_online/conftest.py",
       "source_lines": 9,
       "source_sha256": "8385bd2596a16219b9872b86bc53192db5df1c55bbea37285bec05c43b8227ee",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/conftest.py",
+      "changes": [
+        "Family lifecycle adapted from pre-extension reference; native engine preserved"
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "8385bd2596a16219b9872b86bc53192db5df1c55bbea37285bec05c43b8227ee"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_cwmr.py",
@@ -212,17 +228,25 @@
       "source_path": "tests/test_optimization/test_online/loser/test_cwmr_clip.py",
       "source_lines": 21,
       "source_sha256": "40dae57d222cb22307f8b2749826081000441ef7941e42fabe502819137897bd",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/loser/test_cwmr_clip.py",
+      "changes": [
+        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "40dae57d222cb22307f8b2749826081000441ef7941e42fabe502819137897bd"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_family_modes.py",
       "source_lines": 47,
       "source_sha256": "c812e8a48bf92b06b874246fa2d522f601e4f287886d30fa90a0d1d287bfb0af",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/loser/test_family_modes.py",
+      "changes": [
+        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "264194a0438fc27da9e3b312af56a3eca02675dfde54004d78e26b683ddab345"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_olmar.py",
@@ -252,9 +276,13 @@
       "source_path": "tests/test_optimization/test_online/loser/test_pamr_edgecases.py",
       "source_lines": 14,
       "source_sha256": "c3ee1595a9a121fd9448e3fdd51da48463d9bd7dbde79403ee26fab4817e1a42",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/loser/test_pamr_edgecases.py",
+      "changes": [
+        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "c3ee1595a9a121fd9448e3fdd51da48463d9bd7dbde79403ee26fab4817e1a42"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_pamr_pa_vs_md.py",
@@ -422,9 +450,13 @@
       "source_path": "tests/test_optimization/test_online/utils.py",
       "source_lines": 36,
       "source_sha256": "5b8ac4be30a5f5a38cb47b7289b329a47294e4dd77e63cfee13119787588c821",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/utils.py",
+      "changes": [
+        "Family lifecycle adapted from pre-extension reference; native engine preserved"
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "5b8ac4be30a5f5a38cb47b7289b329a47294e4dd77e63cfee13119787588c821"
     },
     {
       "source_path": "tests/test_optimization/test_online/winner/test_foco_engine.py",
@@ -442,9 +474,13 @@
       "source_path": "tests/test_optimization/test_online/winner/test_winner_estimator.py",
       "source_lines": 276,
       "source_sha256": "0b3b2151dc0115c05f5a7af079cfaade1f22f3abc626f665a711325558af4b73",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/winner/test_winner_estimator.py",
+      "changes": [
+        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "a12cc6d695fa2eec73e2c949f9a40a81ad7d81bd64dfa1bac75473f018b35c7b"
     }
   ],
   "added_tests": [
