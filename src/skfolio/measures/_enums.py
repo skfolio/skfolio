@@ -116,6 +116,9 @@ class PerfMeasure(BaseMeasure):
     # Annualized measures
     ANNUALIZED_MEAN = auto()
 
+    # Special measure for log-wealth
+    LOG_WEALTH = auto()
+
     @property
     def is_perf(self) -> bool:
         """Whether the measure is a performance measure."""

@@ -212,3 +212,19 @@ tolerances rather than depending on platform-default numerical precision.
 No additional source files were imported: the inventory remains 9 moved and 37
 pending. _geometry.py is new integration glue, not attributed as copied Carlo code.
 Shared skfolio constraint extraction and public estimator integration remain pending.
+
+Iteration 3a: family dependencies
+--------------------------------
+
+Moved Carlo's objective, learning-rate, enum/validation, strategy and CWMR modules
+with the reference branch compatibility fixes, plus objective and learning-rate
+tests. The objective catalogue remains internal; autograd is optional and is not
+a production dependency. Preserving this catalogue avoids rewriting the family
+factory while public wrappers will expose only the three representative methods.
+The log-wealth measure and its original tests are supporting dependencies outside
+the online inventory. Recovery and universe extensions remain excluded.
+
+Dependency checks: 861 online-core and measure tests pass (including optional
+autograd gradient comparisons). OLMAR strategy readiness is aligned with the
+already corrected window-1 predictor history, for both the enum/string and integer
+source conventions.

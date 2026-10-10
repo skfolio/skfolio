@@ -17,9 +17,13 @@
       "source_path": "src/skfolio/optimization/online/_autograd_objectives.py",
       "source_lines": 2109,
       "source_sha256": "7f31bdb26f5e06170dd7d63ecbc9f7356737f7d86db6f8a927c33195554ea3c8",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "src/skfolio/optimization/online/_autograd_objectives.py",
+      "changes": [
+        "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "46dfde7d21713e4d3162b9e8f0821802cf7d29e8f320e66e3d21fa82e7565005"
     },
     {
       "source_path": "src/skfolio/optimization/online/_base.py",
@@ -41,9 +45,13 @@
       "source_path": "src/skfolio/optimization/online/_cwmr.py",
       "source_lines": 192,
       "source_sha256": "7ac3a95fa9a042afab1855b3ef48e374a7b0d1796b63036294fe578b4cedcbe9",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "src/skfolio/optimization/online/_cwmr.py",
+      "changes": [
+        "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "7ac3a95fa9a042afab1855b3ef48e374a7b0d1796b63036294fe578b4cedcbe9"
     },
     {
       "source_path": "src/skfolio/optimization/online/_foco.py",
@@ -64,9 +72,13 @@
       "source_path": "src/skfolio/optimization/online/_learning_rate.py",
       "source_lines": 478,
       "source_sha256": "a77803a1efe596dc6e8a34b4e5039de4a465eeab7c9443b0aaede579f91e529f",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "src/skfolio/optimization/online/_learning_rate.py",
+      "changes": [
+        "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "2afedfa565e13cefd15a9fe2ee6a0228acf1590d8a9064b4422174f1ce1a80bd"
     },
     {
       "source_path": "src/skfolio/optimization/online/_loser.py",
@@ -95,9 +107,13 @@
       "source_path": "src/skfolio/optimization/online/_mixins.py",
       "source_lines": 122,
       "source_sha256": "34c47071e0040aec2f73ed9b01a1d51409ef7077439da76d472592278fcff618",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "src/skfolio/optimization/online/_mixins.py",
+      "changes": [
+        "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "0c77811160440a2dd9bccfacf1c942d7300ba6f8258cc0556818695ea18187bd"
     },
     {
       "source_path": "src/skfolio/optimization/online/_prediction.py",
@@ -140,9 +156,13 @@
       "source_path": "src/skfolio/optimization/online/_strategies.py",
       "source_lines": 532,
       "source_sha256": "ac2da8c1090578dd8af9ca5edb0657879fe686367425a69a49eb9e331a32d0e5",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "src/skfolio/optimization/online/_strategies.py",
+      "changes": [
+        "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "1b66f4df06d3f14ab8133085ee02db8a9d011d2458b98dc49da666d8aa17f3db"
     },
     {
       "source_path": "src/skfolio/optimization/online/_utils.py",
@@ -321,17 +341,25 @@
       "source_path": "tests/test_optimization/test_online/test_auto_learning_rate.py",
       "source_lines": 277,
       "source_sha256": "3a1c032307ba49e639d73ebdd8e9ab429659a0cab54f4fcbba76dbee8c1a9767",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/test_auto_learning_rate.py",
+      "changes": [
+        "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "024e91a36895d8f93119eecd75641283f2bf2c765f07ebcc363ffa3694fb0e91"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_autograd_objectives.py",
       "source_lines": 688,
       "source_sha256": "a379e39b641e1af137d139daf796e478afc0ba29baf3d1836a4d6a10cbebf403",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/test_autograd_objectives.py",
+      "changes": [
+        "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "588211d42b6e36b6389b12541b32b4af94535c378d2c7fbec182e3df7416254a"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_benchmark.py",

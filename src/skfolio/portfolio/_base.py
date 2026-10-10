@@ -212,6 +212,10 @@ class BasePortfolio:
     annualized_mean : float
         Mean annualized by :math:`mean \times annualization\_factor`
 
+    log_wealth : float
+        Logarithm of final wealth, computed as the sum of log returns:
+        :math:`\sum_{t=1}^T \log(1 + r_t)`. This is a fundamental measure in online portfolio selection and Kelly criterion theory
+
     mean_absolute_deviation : float
         Mean Absolute Deviation. The deviation is the difference between the
         return and a minimum acceptable return (`min_acceptable_return`).
@@ -455,6 +459,7 @@ class BasePortfolio:
         # measures
         # perf
         "mean",
+        "log_wealth",
         # annualized
         "annualized_mean",
         # risk measure
