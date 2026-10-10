@@ -910,6 +910,25 @@ def test_portfolio_contribution(portfolio):
     assert portfolio.plot_contribution(measure=RiskMeasure.STANDARD_DEVIATION)
 
 
+@pytest.mark.parametrize(
+    "measure",
+    [
+        RiskMeasure.MAX_DRAWDOWN,
+        RiskMeasure.AVERAGE_DRAWDOWN,
+        RiskMeasure.CDAR,
+        RiskMeasure.EDAR,
+        RiskMeasure.ULCER_INDEX,
+    ],
+)
+def test_portfolio_drawdown_contribution_sums_to_measure(portfolio, measure):
+    # Uncompounded drawdown measures are positively homogeneous in the weights, so
+    # the contributions sum to the measure (Euler).
+    contribution = portfolio.contribution(measure=measure)
+    np.testing.assert_allclose(
+        np.sum(contribution), getattr(portfolio, measure.value), rtol=1e-4
+    )
+
+
 def test_weights_per_observation(portfolio):
     df = portfolio.weights_per_observation
     np.testing.assert_array_equal(df.index.values, portfolio.observations)
