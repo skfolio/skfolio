@@ -25,7 +25,29 @@ Do not treat passing imports as evidence that an estimator is integrated.
 Progress
 --------
 
-No algorithm files have been moved yet. All inventory entries are pending.
+Iteration 1: mirror maps
+
+* Adapted: src/skfolio/optimization/online/_mirror_maps.py.
+* Adapted: tests/test_optimization/test_online/mirror_maps/test_mirror_maps_composite.py.
+* New scaffold: online/__init__.py contains only a module docstring. Carlo's family
+  exports have not been copied; that source inventory entry remains pending.
+* All other 44 inventoried files remain pending. In particular the OCO engine,
+  projector, remaining mirror-map tests and estimator families are not moved yet.
+
+The two files derive directly from Carlo's pinned source. Their compatibility
+edits reuse reference commit df64d34: annotations, missing docstrings, lint cleanup,
+the equivalent Tsallis entropy-map presence check, and corrected Burg doctests.
+No new update formula or estimator-specific implementation is introduced. The full
+set of mirror maps is retained to preserve composition and adaptive-state behavior.
+The inventory includes destination digests and the exact adaptation reference.
+
+For the exact source-to-port delta, when Carlo's commit is present locally, run::
+
+    git diff c1bd1f168cf7d660c81f74710aadd9941e64a2c7 -- src/skfolio/optimization/online/_mirror_maps.py tests/test_optimization/test_online/mirror_maps/test_mirror_maps_composite.py
+
+This branch does not yet expose a usable online portfolio estimator. The next
+functional commit should move the shared OCO engine with its projector/predictor
+dependencies and tests, not add a standalone EG implementation.
 
 Next iterations
 ---------------
@@ -75,7 +97,15 @@ Open design decisions
 Validation
 ----------
 
-This planning commit contains no executable implementation changes. Each subsequent
-iteration records its targeted tests and checks here. The known upstream type
-checker issue in AssetPanel.fields is a separate dependency, not a mirror-map bug.
+The initial planning commit contains no executable implementation changes.
+Iteration 1 validation is recorded below after its checks complete. The upstream AssetPanel.fields type-contract fix is carried in its own commit
+(cherry-picked from df64d34), separate from the Carlo port. It changes the shared
+readable type contract without altering runtime panel behavior. Its 503-test
+reference validation included the container suite; the new branch rechecks types.
 Do not bring the personal CI branch trigger into an upstream contribution.
+
+Iteration 1 checks: 44 tests passed, including the original standalone composite-map
+tests and source doctests. Two scipy line-search warnings occur in coupled-map
+tests; their numerical assertions pass. Ruff lint/format and numpydoc presence
+checks pass. Full-repository type checking passes with the separate upstream fix.
+These checks validate this slice; they do not validate an online portfolio estimator.

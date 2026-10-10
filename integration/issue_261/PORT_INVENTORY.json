@@ -73,9 +73,16 @@
       "source_path": "src/skfolio/optimization/online/_mirror_maps.py",
       "source_lines": 1443,
       "source_sha256": "939779844ce73e6023317f80a4ff84cc808d38e91fd08b336618cf3a44f80ce0",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "src/skfolio/optimization/online/_mirror_maps.py",
+      "changes": [
+        "Preserve Carlo's original mirror-map classes, adaptive state and composition solver.",
+        "Reuse reviewed type annotations and missing method docstrings from the reference integration.",
+        "Use the stored entropy-map presence check for the Tsallis entropic limit; no change to the numerical formula.",
+        "Make Burg examples self-contained and assert normalization, positivity and stationarity; describe the actual brentq solver."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "4cce08a58b1b40be713ce509e2b5750bdfbf73294533536fc874e46b38660108"
     },
     {
       "source_path": "src/skfolio/optimization/online/_mixins.py",
@@ -249,9 +256,14 @@
       "source_path": "tests/test_optimization/test_online/mirror_maps/test_mirror_maps_composite.py",
       "source_lines": 1129,
       "source_sha256": "25af574f64d8343b5074d67205724c49cedb537bcdec2f857b570b7f4a36981d",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/mirror_maps/test_mirror_maps_composite.py",
+      "changes": [
+        "Preserve Carlo's original standalone composite-map test cases.",
+        "Remove unused assignments and apply repository lint/format conventions from the reference integration."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "55a759b1711b53d4c0a4cb9ed9b0afb2ed2b5532954218ca87cbe418ecd21920"
     },
     {
       "source_path": "tests/test_optimization/test_online/regret/test_regret.py",
