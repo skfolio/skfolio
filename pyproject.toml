@@ -103,7 +103,9 @@ docs = [
     "jupyterlite-pyodide-kernel",
     "nbformat",
     "sphinx-last-updated-by-git",
-    "sphinx-llm>=0.4.1",
+    # Minor releases change the generated LLM files (1.1 stopped building
+    # `llms-full.txt` by default), so upgrade deliberately.
+    "sphinx-llm~=1.1.0",
 ]
 notebooks = [
     "jupyterlab",
