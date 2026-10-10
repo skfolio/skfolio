@@ -15,7 +15,7 @@ from skfolio.optimization.online._mirror_maps import (
     BaseMirrorMap,
     DynamicMirrorMap,
 )
-from skfolio.optimization.online._projection import BaseProjector
+from skfolio.optimization.online._projection import BaseProjector, IdentityProjector
 
 Predictor = Callable[[int, np.ndarray | None, np.ndarray | None], np.ndarray]
 EtaSchedule = float | np.ndarray | Callable[[int], float]
@@ -177,49 +177,76 @@ class FirstOrderOCO:
             self._G_sum *= self.discount
         self._G_sum += g
 
-        # Special handling for BurgMirrorMap (Prod/Soft-Bayes algorithm)
-        # The Burg regularizer requires solving for λ in the constrained OMD problem,
-        # which cannot be done through the standard grad_psi_star interface
-        from skfolio.optimization.online._mirror_maps import BurgMirrorMap
-
-        if isinstance(self.map, BurgMirrorMap):
-            # Compute effective gradient for optimistic updates
-            effective_grad = g.copy()
-            if self._prev_prediction is not None:
-                effective_grad -= self._prev_prediction
-            effective_grad += m_t
-            # Use specialized constrained_inverse method for Burg update
-            x_next, _ = self.map.constrained_inverse(self._x_t, eta_t, effective_grad)
-            # Apply external projector for additional constraints
-            x_next = self.projector.project(x_next)
-        elif self.mode == "omd":
-            # Compute effective gradient: g_t - tilde{g}_t + tilde{g}_{t+1}
-            # where tilde{g}_t is the prediction made at round t-1 (stored in _prev_prediction)
-            # and tilde{g}_{t+1} is the new prediction made at round t (m_t)
-            effective_grad = g.copy()
-            if self._prev_prediction is not None:
-                effective_grad -= self._prev_prediction
-            effective_grad += m_t
-            lin = eta_t * effective_grad
-            if isinstance(self.map, DynamicMirrorMap):
-                _ = self.map.grad_psi(self._x_t)  # preserves Spy test (pre-geometry)
-                center = self.map.grad_psi_after(
-                    self._x_t, g
-                )  # aggregated center (H_{t+1})
-                z = -lin + center
-                x_next = self.map.grad_psi_star_after(
-                    z, g
-                )  # aggregated inverse (H_{t+1})
-                x_next = self.map.project_geom(x_next)
-                x_next = self.projector.project(x_next)
+        if not isinstance(self.projector, IdentityProjector):
+            if self.mode == "omd":
+                effective = g + m_t
+                if self._prev_prediction is not None:
+                    effective = effective - self._prev_prediction
+                center = (
+                    self.map.grad_psi_after(self._x_t, g)
+                    if isinstance(self.map, DynamicMirrorMap)
+                    else self.map.grad_psi(self._x_t)
+                )
+                dual = center - eta_t * effective
+                pending = g
+            elif self.mode == "ftrl":
+                dual = -eta_t * (self._G_sum + m_t)
+                # Preserve the source FTRL convention: current regularizer,
+                # then update its state after the decision.
+                pending = None
             else:
-                x_next = self._composite_update(eta_grad_term=lin, reg_center=self._x_t)
-
-        elif self.mode == "ftrl":
-            lin = eta_t * (self._G_sum + m_t)
-            x_next = self._composite_update(eta_grad_term=lin, reg_center=None)
+                raise ValueError("mode must be 'omd' or 'ftrl'")
+            x_next = self.projector.solve_update(self.map, dual, pending)
         else:
-            raise ValueError("mode must be 'omd' or 'ftrl'")
+            # Special handling for BurgMirrorMap (Prod/Soft-Bayes algorithm)
+            # The Burg regularizer requires solving for λ in the constrained OMD problem,
+            # which cannot be done through the standard grad_psi_star interface
+            from skfolio.optimization.online._mirror_maps import BurgMirrorMap
+
+            if isinstance(self.map, BurgMirrorMap):
+                # Compute effective gradient for optimistic updates
+                effective_grad = g.copy()
+                if self._prev_prediction is not None:
+                    effective_grad -= self._prev_prediction
+                effective_grad += m_t
+                # Use specialized constrained_inverse method for Burg update
+                x_next, _ = self.map.constrained_inverse(
+                    self._x_t, eta_t, effective_grad
+                )
+                # Apply external projector for additional constraints
+                x_next = self.projector.project(x_next)
+            elif self.mode == "omd":
+                # Compute effective gradient: g_t - tilde{g}_t + tilde{g}_{t+1}
+                # where tilde{g}_t is the prediction made at round t-1 (stored in _prev_prediction)
+                # and tilde{g}_{t+1} is the new prediction made at round t (m_t)
+                effective_grad = g.copy()
+                if self._prev_prediction is not None:
+                    effective_grad -= self._prev_prediction
+                effective_grad += m_t
+                lin = eta_t * effective_grad
+                if isinstance(self.map, DynamicMirrorMap):
+                    _ = self.map.grad_psi(
+                        self._x_t
+                    )  # preserves Spy test (pre-geometry)
+                    center = self.map.grad_psi_after(
+                        self._x_t, g
+                    )  # aggregated center (H_{t+1})
+                    z = -lin + center
+                    x_next = self.map.grad_psi_star_after(
+                        z, g
+                    )  # aggregated inverse (H_{t+1})
+                    x_next = self.map.project_geom(x_next)
+                    x_next = self.projector.project(x_next)
+                else:
+                    x_next = self._composite_update(
+                        eta_grad_term=lin, reg_center=self._x_t
+                    )
+
+            elif self.mode == "ftrl":
+                lin = eta_t * (self._G_sum + m_t)
+                x_next = self._composite_update(eta_grad_term=lin, reg_center=None)
+            else:
+                raise ValueError("mode must be 'omd' or 'ftrl'")
 
         # Update mirror map state unless skip_auto_update is True
         # (used for Ada-BARRONS which needs manual component-specific updates)

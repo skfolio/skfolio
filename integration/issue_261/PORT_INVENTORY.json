@@ -54,9 +54,10 @@
       "changes": [
         "Retain Carlo's OMD/FTRL engine, adaptive state ordering, optimistic updates, schedules and SwordMeta machinery.",
         "Reuse type/docstring compatibility edits from df64d34, including scalar conversion through numpy.asarray.",
-        "Keep the original projector.project interface; do not port the reference branch's entropy-geometry dispatch before its dependencies and tests."
+        "Keep the original projector.project interface; do not port the reference branch's entropy-geometry dispatch before its dependencies and tests.",
+        "Resolve constrained geometry via projector.solve_update(map, dual, pending gradient). Preserve source OMD pending-state and FTRL current-state ordering; identity-projector path remains unchanged."
       ],
-      "destination_sha256": "8b7bf7587ef9a26ac7d9a41ab3efce60be1325a823d639f949bc39fe86878c3b",
+      "destination_sha256": "b6b3990106ecf3dc3d189a499145bb8df263c5fded91ea8af58a3691cb54ac5e",
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2"
     },
     {
@@ -122,9 +123,10 @@
         "Original AutoProjector fast/convex architecture retained; annotate constructors and document interfaces.",
         "Reject infeasible budget and preserve budget=None. Validate zero/negative turnover and solve positive turnover intersections instead of fixed alternating projection iterations.",
         "Correct convex max_short inequality and enforce variance even when tracking error is also configured.",
-        "Native KL/adaptive constrained geometry and shared skfolio constraint extraction remain pending."
+        "Native KL/adaptive constrained geometry and shared skfolio constraint extraction remain pending.",
+        "Solve native potential minus dual linear term over the existing constraint set. Keep Euclidean and default-simplex entropy fast paths; reject unsupported custom projector geometries rather than downgrade to Euclidean."
       ],
-      "destination_sha256": "2387252e3f0b099ad9208d26abc426bd598833dd06758ab64e2edbafed247874"
+      "destination_sha256": "63517e78268b02ab6a40a2e9febaa41f81f04a7e9e50ae28a23b14bb0c6d9ab8"
     },
     {
       "source_path": "src/skfolio/optimization/online/_regret.py",
@@ -419,6 +421,10 @@
   ],
   "added_tests": [
     "tests/test_optimization/test_online/test_projector_contract.py",
-    "tests/test_optimization/test_online/test_prediction.py"
+    "tests/test_optimization/test_online/test_prediction.py",
+    "tests/test_optimization/test_online/test_native_geometry.py"
+  ],
+  "added_implementation": [
+    "src/skfolio/optimization/online/_geometry.py"
   ]
 }

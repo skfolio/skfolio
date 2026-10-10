@@ -173,3 +173,42 @@ neutral extension. Nonpositive/nonfinite relatives and dimension changes raise.
 Tests compare against independently constructed price levels over multiple windows,
 including warmup and reset, and verify bounded history and caller-array isolation.
 RMR's historical storage is separate and remains for the estimator integration.
+
+Resolution 2: native constrained updates
+---------------------------------------
+
+The earlier iteration-2 Euclidean-only limitation is superseded for the supported
+maps. The shared projector now solves min_w psi(w) - z @ w over the configured
+constraints, directly from the engine's dual vector. It does not normalize the
+unconstrained candidate before solving. This matters for free budgets, barriers
+and composite maps as well as entropy and adaptive quadratics.
+
+Supported potentials are entropy, Euclidean, adaptive diagonal Mahalanobis and
+variation maps, diagonal and full quadratics, Burg, log barriers, adaptive log
+barriers, Ada-BARRONS barriers, and sums of supported components. The adapter uses
+the original map gradients to obtain curvature/barrier coefficients. Composite
+potentials are summed and solved jointly. Convexity checks reject invalid negative
+curvature or barrier coefficients. Tsallis and unrepresented custom maps raise
+NotImplementedError; no Euclidean substitution is made. Custom projectors must
+implement solve_update for non-Euclidean geometry.
+
+OMD uses the same pending-state geometry for the dual center and objective. FTRL
+retains Carlo's current-regularizer convention, then updates numerical state after
+the allocation. Composite pending-state behavior follows its existing hook (current
+component state). Component-specific external adaptation, such as Ada-BARRONS
+weight-based updates, remains the family adapter's responsibility. The legacy
+IdentityProjector path is unchanged and is not a claim of general constrained
+correctness. Default-simplex entropy and Euclidean projection retain fast paths;
+other supported geometries use the existing convex constraint builder.
+
+Validation: 145 tests/doctests pass. New tests compare entropy bounds/linear limits
+against analytical ratios, verify free-budget scale and turnover, check AdaGrad
+weighted projection with one state update per observation, test composite/Burg
+stationarity, and compare each supported potential's finite-difference derivative
+to the source map gradient, with and without pending state. Unsupported geometry
+has an explicit failure regression, including subclasses with unregistered potentials. Tight stationarity tests request tight solver
+tolerances rather than depending on platform-default numerical precision.
+
+No additional source files were imported: the inventory remains 9 moved and 37
+pending. _geometry.py is new integration glue, not attributed as copied Carlo code.
+Shared skfolio constraint extraction and public estimator integration remain pending.

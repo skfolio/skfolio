@@ -4,14 +4,22 @@
 # Author: Carlo Nicolini <nicolini.carlo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
 import cvxpy as cp
 import numpy as np
 from numpy.typing import ArrayLike
+from scipy.special import softmax
 
 import skfolio.typing as skt
+from skfolio.optimization.online._geometry import mirror_potential
+from skfolio.optimization.online._mirror_maps import (
+    BaseMirrorMap,
+    EntropyMirrorMap,
+    EuclideanMirrorMap,
+)
 from skfolio.utils.equations import equations_to_matrix
 from skfolio.utils.tools import input_to_array
 
@@ -68,6 +76,19 @@ class BaseProjector:
         """Project candidate weights onto the configured feasible set."""
         raise NotImplementedError
 
+    def solve_update(
+        self,
+        mirror: BaseMirrorMap,
+        dual: np.ndarray,
+        gradient: np.ndarray | None = None,
+    ) -> np.ndarray:
+        """Solve a native constrained update, or reject an unsupported projector."""
+        if type(mirror) is EuclideanMirrorMap:
+            return self.project(dual)
+        raise NotImplementedError(
+            "This projector does not implement native mirror updates"
+        )
+
 
 class IdentityProjector(BaseProjector):
     """Projector that returns the input unchanged. Useful to test pure mirror updates."""
@@ -82,6 +103,15 @@ class FastProjector(BaseProjector):
 
     def __init__(self, config: ProjectionConfig) -> None:
         self.config = config
+
+    def solve_update(
+        self,
+        mirror: BaseMirrorMap,
+        dual: np.ndarray,
+        gradient: np.ndarray | None = None,
+    ) -> np.ndarray:
+        """Dispatch the update through the common geometry-aware constraint path."""
+        return AutoProjector(self.config).solve_update(mirror, dual, gradient)
 
     def project(self, y: np.ndarray) -> np.ndarray:
         """Project candidate weights onto the configured feasible set."""
@@ -107,6 +137,15 @@ class ConvexProjector(BaseProjector):
 
     def __init__(self, config: ProjectionConfig) -> None:
         self.config = config
+
+    def solve_update(
+        self,
+        mirror: BaseMirrorMap,
+        dual: np.ndarray,
+        gradient: np.ndarray | None = None,
+    ) -> np.ndarray:
+        """Dispatch the update through the common geometry-aware constraint path."""
+        return AutoProjector(self.config).solve_update(mirror, dual, gradient)
 
     def project(self, y: np.ndarray) -> np.ndarray:
         """Project candidate weights onto the configured feasible set."""
@@ -165,6 +204,54 @@ class AutoProjector(BaseProjector):
                 self.config.max_short,
                 self.config.max_long,
             ]
+        )
+
+    def solve_update(
+        self,
+        mirror: BaseMirrorMap,
+        dual: np.ndarray,
+        gradient: np.ndarray | None = None,
+    ) -> np.ndarray:
+        """Minimize psi(w) - dual @ w over the configured constraint set.
+
+        Work with the dual vector directly: projecting a normalized inverse can
+        lose information for free budgets, barriers and adaptive/composite maps.
+        """
+        if type(mirror) is EuclideanMirrorMap:
+            return self.project(dual)
+        config = self.config
+        potential = mirror_potential(mirror, len(dual), gradient)
+        if (
+            isinstance(mirror, EntropyMirrorMap)
+            and not self._needs_cvx()
+            and config.budget == 1
+            and np.all(np.asarray(config.lower) == 0)
+            and np.all(np.asarray(config.upper) == 1)
+            and config.max_turnover is None
+        ):
+            return softmax(dual)
+        return project_convex(
+            dual,
+            budget=config.budget,
+            lower=config.lower,
+            upper=config.upper,
+            min_budget=config.min_budget,
+            max_budget=config.max_budget,
+            max_short=config.max_short,
+            max_long=config.max_long,
+            groups=config.groups,
+            linear_constraints=config.linear_constraints,
+            left_inequality=config.left_inequality,
+            right_inequality=config.right_inequality,
+            X=config.X_tracking,
+            tracking_error_benchmark=config.tracking_error_benchmark,
+            max_tracking_error=config.max_tracking_error,
+            covariance=config.covariance,
+            variance_bound=config.variance_bound,
+            previous_weights=config.previous_weights,
+            max_turnover=config.max_turnover,
+            solver_params=config.solver_params,
+            objective=lambda w: potential(w) - dual @ w,
         )
 
     def project(self, y: np.ndarray) -> np.ndarray:
@@ -358,6 +445,7 @@ def project_convex(
     previous_weights: ArrayLike | None = None,
     max_turnover: float | None = None,
     solver_params: dict[str, Any] | None = None,
+    objective: Callable[[cp.Variable], cp.Expression] | None = None,
 ) -> np.ndarray:
     r"""
     Convex projection with advanced constraints using cvxpy.
@@ -385,7 +473,9 @@ def project_convex(
         u = input_to_array(upper, n, 1.0, 1, None, "upper_bounds")
 
     w = cp.Variable(n)
-    objective = cp.Minimize(0.5 * cp.sum_squares(w - w0))
+    minimization = cp.Minimize(
+        0.5 * cp.sum_squares(w - w0) if objective is None else objective(w)
+    )
     constraints: list[Any] = [w >= lower_bounds, w <= u]
 
     if min_budget is not None:
@@ -461,7 +551,7 @@ def project_convex(
             raise ValueError("max_turnover must be nonnegative")
         constraints.append(cp.norm1(w - w_prev) <= float(max_turnover))
 
-    prob = cp.Problem(objective, constraints)
+    prob = cp.Problem(minimization, constraints)
     if solver_params is None:
         solver_params = dict(solver=cp.CLARABEL, verbose=False)
 
