@@ -123,7 +123,14 @@ With :math:`risk_{i}` a risk measure among:
     * Ulcer Index
     * Gini Mean Difference
 
-It supports the following parameters:
+Gini Mean Difference uses an exact sparse sorting-network formulation with
+:math:`O(T\log^2 T)` variables and constraints for :math:`T` observations.
+It is solved as part of the portfolio optimization problem in a single solver
+call, including for unrestricted weights and ratio objectives.
+Reported GMD is evaluated directly from the final portfolio returns, relative to
+target weights when specified, even when the risk constraint is nonbinding.
+
+Mean-Risk optimization supports the following parameters:
 
     * Weight Constraints
     * Budget Constraints

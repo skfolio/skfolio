@@ -702,6 +702,12 @@ class RiskBudgeting(ConvexOptimization):
                 args[arg_name] = getattr(self, arg_name)
         risk, constraints_i = risk_func(**args)
         constraints += constraints_i
+        risk_returns = None
+        if self.risk_measure == RiskMeasure.GINI_MEAN_DIFFERENCE:
+            centered_returns = (
+                return_distribution.returns - return_distribution.returns.mean(axis=0)
+            )
+            risk_returns = centered_returns @ w
 
         # custom objectives and constraints
         custom_objective = self._get_custom_objective(w=w)
@@ -725,6 +731,7 @@ class RiskBudgeting(ConvexOptimization):
                 "risk": risk,
                 "factor": factor,
             },
+            risk_returns=risk_returns,
         )
 
         return self

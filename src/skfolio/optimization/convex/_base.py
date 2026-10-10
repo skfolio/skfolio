@@ -27,8 +27,9 @@ from skfolio._constants import (
     _TRANSACTION_COSTS,
 )
 from skfolio.exceptions import ConvexOptimizationError, OptimizationError
-from skfolio.measures import RiskMeasure, owa_gmd_weights
+from skfolio.measures import RiskMeasure, gini_mean_difference
 from skfolio.optimization._base import BaseOptimization
+from skfolio.optimization.convex._gini_mean_difference import _gmd_sorting_network
 from skfolio.prior import BasePrior, ReturnDistribution
 from skfolio.typing import AnyArray, ArrayLike, BoolArray, FloatArray, StrArray
 from skfolio.uncertainty_set import (
@@ -47,6 +48,9 @@ from skfolio.utils.tools import (
 )
 
 INSTALLED_SOLVERS = cp.installed_solvers()
+# Conic residuals can represent an equality-constrained zero as a tiny positive
+# value. Dividing homogeneous weights by such a value is unsafe.
+_MIN_HOMOGENIZATION_FACTOR = 1e-12
 
 _ResultT = TypeVar("_ResultT")
 
@@ -1277,6 +1281,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         factor: skt.Factor,
         parameters_values: skt.ParametersValues | None = None,
         expressions: dict[str, cp.Expression] | None = None,
+        risk_returns: cp.Expression | None = None,
     ) -> None:
         """Solve the CVXPY Problem and save the results in `weights_`, `problem_values_`
         and `problem_`.
@@ -1301,6 +1306,10 @@ class ConvexOptimization(BaseOptimization, ABC):
             Dictionary of CVXPY Expressions from which values are retrieved and saved in
             `problem_values_`. It is used to save additional information about the
             problem.
+
+        risk_returns : cvxpy Expression | None, optional
+            Centered portfolio returns used to report empirical GMD, including
+            homogeneous target weights when applicable.
         """
         if self.solver not in INSTALLED_SOLVERS:
             raise ValueError(f"The solver {self.solver} is not installed.")
@@ -1334,6 +1343,9 @@ class ConvexOptimization(BaseOptimization, ABC):
         ]
 
         self.problem_values_ = None
+        last_successful_parameters = []
+        last_successful_solution = None
+        last_successful_solver_stats = None
         try:
             if n_optimizations == 1:
                 for parameter, values in values_by_parameter:
@@ -1348,6 +1360,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                     solver_params=self._solver_params,
                     risk_measure=self.risk_measure,
                     scale_objective=self._scale_objective,
+                    risk_returns=risk_returns,
                 )
                 self.weights_ = self._expand_weights_to_full_universe(weights=weights)
             else:
@@ -1370,7 +1383,15 @@ class ConvexOptimization(BaseOptimization, ABC):
                                 solver_params=self._solver_params,
                                 risk_measure=self.risk_measure,
                                 scale_objective=self._scale_objective,
+                                risk_returns=risk_returns,
                             )
+                            if self.save_problem:
+                                last_successful_parameters = [
+                                    (parameter, np.array(parameter.value, copy=True))
+                                    for parameter, _ in values_by_parameter
+                                ]
+                                last_successful_solution = problem.solution
+                                last_successful_solver_stats = problem.solver_stats
                             error = None
                         except OptimizationError as optimization_error:
                             if self.raise_on_failure:
@@ -1397,6 +1418,14 @@ class ConvexOptimization(BaseOptimization, ABC):
                 self.weights_[failed] = np.nan
                 self.problem_values_ = all_problem_values
                 self.error_ = all_errors
+
+            if self.save_problem and last_successful_solution is not None:
+                # Preserve the final successful target after a later failed solve.
+                for parameter, value in last_successful_parameters:
+                    parameter.value = value
+                problem.unpack(last_successful_solution)
+                # CVXPY's unpack restores values and status, but not solver stats.
+                problem._solver_stats = last_successful_solver_stats
         finally:
             if self.save_problem:
                 self.problem_ = problem
@@ -2423,60 +2452,37 @@ class ConvexOptimization(BaseOptimization, ABC):
     def _gini_mean_difference_risk(
         self,
         return_distribution: ReturnDistribution,
-        w: cp.Variable,
-        factor: skt.Factor,
+        w: cp.Expression,
     ) -> skt.RiskResult:
-        """Expression and Constraints of the Gini Mean Difference risk measure.
+        """Expression and constraints of the Gini mean difference risk measure.
 
-        The Gini mean difference (GMD) is a measure of dispersion introduced in the
-        context of portfolio optimization by Yitzhaki (1982).
-        The initial formulation was not used by practitioners because the number of
-        variables increases proportionally to T(T-1)/2.
-
-        Cajas (2021) proposed an alternative reformulation based on the ordered weighted
-        averaging (OWA) operator for monotonic weights proposed by Chassein and
-        Goerigk (2015). We implement this formulation which is more efficient for large
-        scale problems.
-
-        Parameters
-        ----------
-        return_distribution : ReturnDistribution
-           asset returns distribution DataModel.
-
-        w : cvxpy Variable
-           The CVXPY Variable representing assets weights.
-
-        factor : cvxpy Variable | cvxpy Constant
-           Additional variable used for the optimization of some objective function
-           like the ratio maximization.
-
-        Returns
-        -------
-        expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY expression and constraints of the Gini mean difference risk measure.
+        A sparse relaxed sorting network gives an exact linear representation
+        with O(T log^2 T) variables and constraints for T observations.
+        The weight expression includes the homogeneous target when applicable.
         """
-        ptf_returns = self._cvx_returns(return_distribution=return_distribution, w=w)
-        ptf_transaction_cost = self._cvx_transaction_cost(
-            return_distribution=return_distribution, w=w, factor=factor
+        returns = return_distribution.returns
+        n_observations = returns.shape[0]
+        equality, inequality, risk_coefficients = _gmd_sorting_network(n_observations)
+        portfolio_returns = cp.Variable(n_observations, name="gmd_returns")
+        comparator_outputs = cp.Variable(
+            inequality.shape[0], name="gmd_comparator_outputs"
         )
-        ptf_management_fee = self._cvx_management_fee(
-            return_distribution=return_distribution, w=w
-        )
-        observation_nb = return_distribution.returns.shape[0]
-        x = cp.Variable((observation_nb, 1))
-        y = cp.Variable((observation_nb, 1))
-        z = cp.Variable((observation_nb, 1))
-        ones = np.ones((observation_nb, 1))
-        risk = 2 * cp.sum(x + y)
-        gmd_w = np.array(owa_gmd_weights(observation_nb) / 2).reshape(-1, 1)
+        z = cp.hstack([portfolio_returns, comparator_outputs])
+        # GMD is translation invariant. Centering returns and omitting costs and
+        # fees remove observation-independent shifts without changing the risk.
+        centered_returns = returns - returns.mean(axis=0)
+        # Keep network coefficients near one, including when ratio optimization
+        # produces small homogeneous weights. Restore return units in the risk.
+        return_scale = np.max(np.abs(centered_returns))
+        if return_scale == 0:
+            return_scale = 1.0
         constraints = [
-            ptf_returns * self._scale_constraints
-            - ptf_transaction_cost * self._scale_constraints
-            - ptf_management_fee * self._scale_constraints
-            == cp.reshape(z, (observation_nb,), order="F") * self._scale_constraints,
-            z @ gmd_w.T <= ones @ x.T + y @ ones.T,
+            portfolio_returns * self._scale_constraints
+            == (centered_returns / return_scale) @ w * self._scale_constraints,
+            equality @ z * self._scale_constraints == 0,
+            inequality @ z * self._scale_constraints <= 0,
         ]
-        return risk, constraints
+        return return_scale * (risk_coefficients @ z), constraints
 
     def get_metadata_routing(self) -> skm.MetadataRouter:
         """Get metadata routing for this estimator.
@@ -2694,6 +2700,7 @@ def _solve(
     solver_params: dict,
     risk_measure: RiskMeasure,
     scale_objective: cp.Constant,
+    risk_returns: cp.Expression | None = None,
 ) -> tuple[FloatArray, dict[str, float]]:
     """Solve `problem` and return the weights and problem values.
 
@@ -2708,6 +2715,11 @@ def _solve(
             warnings.simplefilter("ignore")
             problem.solve(solver=solver, **solver_params)
 
+        if risk_measure == RiskMeasure.GINI_MEAN_DIFFERENCE:
+            if problem.status not in {cp.OPTIMAL, cp.OPTIMAL_INACCURATE}:
+                raise cp.SolverError(f"Unacceptable solver status '{problem.status}'")
+            _validated_factor_value(factor.value)
+
         if w.value is None:
             raise cp.SolverError("No solution found")
 
@@ -2720,6 +2732,8 @@ def _solve(
             " solver, or solve with solver_params=dict(verbose=True) for more"
             " information"
         )
+        if risk_measure == RiskMeasure.GINI_MEAN_DIFFERENCE:
+            error += f". {solver_error}"
         raise ConvexOptimizationError(error) from solver_error
 
     weights = w.value / factor.value
@@ -2732,6 +2746,18 @@ def _solve(
         for name, expression in expressions.items()
     }
     problem_values["objective"] = problem.value / scale_objective.value
+
+    if risk_measure == RiskMeasure.GINI_MEAN_DIFFERENCE and risk_returns is not None:
+        # The network epigraph can be slack when GMD is only upper bounded.
+        # Report the final portfolio's GMD without changing the saved solution.
+        with np.errstate(over="ignore", invalid="ignore"):
+            normalized_returns = np.asarray(
+                risk_returns.value, dtype=float
+            ) / np.asarray(factor.value, dtype=float)
+            empirical_risk = gini_mean_difference(normalized_returns)
+        if not np.isfinite(normalized_returns).all() or not np.isfinite(empirical_risk):
+            raise ConvexOptimizationError("The normalized empirical GMD is non-finite")
+        problem_values["risk"] = float(empirical_risk)
 
     if (
         risk_measure in [RiskMeasure.VARIANCE, RiskMeasure.SEMI_VARIANCE]
@@ -2747,6 +2773,20 @@ def _solve(
             stacklevel=2,
         )
     return weights, problem_values  # ty: ignore[invalid-return-type]
+
+
+def _validated_factor_value(value: object) -> float:
+    """Return a finite, numerically positive normalization factor."""
+    factor = np.asarray(value, dtype=float)
+    if (
+        factor.size != 1
+        or not np.isfinite(factor).all()
+        or factor.item() <= _MIN_HOMOGENIZATION_FACTOR
+    ):
+        raise cp.SolverError(
+            "The optimization returned an invalid homogeneous normalization factor"
+        )
+    return float(factor.item())
 
 
 def _cvx_worst_loss(
