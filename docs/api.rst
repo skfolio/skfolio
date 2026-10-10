@@ -265,6 +265,29 @@ Classes
     optimization.Random
 
 
+.. _optimization_online_ref:
+
+:mod:`skfolio.optimization.online`: Online Portfolio Optimization
+=================================================================
+
+.. automodule:: skfolio.optimization.online
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: skfolio.optimization.online
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    BaseOnlineOptimization
+    ExponentiatedGradient
+    AdaGrad
+    OnlineMovingAverageReversion
+
+.. currentmodule:: skfolio
+
 .. _optimization_convex_ref:
 
 :mod:`skfolio.optimization.convex`: Convex Optimization Estimators

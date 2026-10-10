@@ -48,7 +48,7 @@ def test_zero_turnover_does_not_project_actual_holdings_into_feasibility():
     from skfolio.optimization.online._projection import project_with_turnover
 
     anchor = np.array([0.9, 0.1])
-    with pytest.raises((ValueError, RuntimeError), match="holdings|projection failed"):
+    with pytest.raises((ValueError, RuntimeError), match=r"holdings|projection failed"):
         project_with_turnover(
             [0.5, 0.5],
             previous_weights=anchor,
@@ -63,7 +63,7 @@ def test_zero_turnover_does_not_project_actual_holdings_into_feasibility():
 def test_positive_turnover_cap_rejects_infeasible_funding():
     from skfolio.optimization.online._projection import project_with_turnover
 
-    with pytest.raises((ValueError, RuntimeError), match="holdings|projection failed"):
+    with pytest.raises((ValueError, RuntimeError), match=r"holdings|projection failed"):
         project_with_turnover(
             [0.5, 0.5],
             previous_weights=[0, 0],
@@ -103,7 +103,7 @@ def test_failure_requires_reset_before_continuing():
     model = FollowTheWinner(
         max_turnover=0, previous_weights=[0.9, 0.1], max_weights=0.6
     )
-    with pytest.raises((ValueError, RuntimeError), match="holdings|projection failed"):
+    with pytest.raises((ValueError, RuntimeError), match=r"holdings|projection failed"):
         model.partial_fit([0.1, -0.1])
     with pytest.raises(RuntimeError, match="reset"):
         model.partial_fit([0.0, 0.0])
@@ -238,7 +238,7 @@ def test_entry_override_is_not_applied_to_later_rebalances():
         portfolio_params={"weight_drift": True},
     )
     X = np.array([[0.2, -0.1], [-0.1, 0.2], [0.1, 0.2], [0.2, -0.1], [0.1, -0.1]])
-    with pytest.raises((ValueError, RuntimeError), match="holdings|projection failed"):
+    with pytest.raises((ValueError, RuntimeError), match=r"holdings|projection failed"):
         online_predict(model, X, warmup_size=2, test_size=1)
     path = online_predict(
         model,

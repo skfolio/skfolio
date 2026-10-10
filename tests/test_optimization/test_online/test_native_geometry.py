@@ -185,3 +185,11 @@ def test_custom_entropy_subclass_requires_explicit_potential_support():
 
     with pytest.raises(NotImplementedError, match="DifferentEntropy"):
         AutoProjector(ProjectionConfig()).solve_update(DifferentEntropy(), np.ones(2))
+
+
+def test_zero_turnover_rejects_barrier_domain_boundary():
+    projector = AutoProjector(
+        ProjectionConfig(previous_weights=[0.0, 1.0], max_turnover=0)
+    )
+    with pytest.raises(RuntimeError, match="mirror domain"):
+        projector.solve_update(BurgMirrorMap(), np.ones(2))

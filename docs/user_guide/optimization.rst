@@ -1189,3 +1189,59 @@ call as a whole.
 
 For a complete tutorial illustrating failure handling and fallbacks, see
 :ref:`sphx_glr_auto_examples_mean_risk_plot_17_failure_and_fallbacks.py`.
+
+
+.. _online_portfolio_selection:
+
+Online Portfolio Selection
+==========================
+
+The estimators in :mod:`skfolio.optimization.online` reuse Carlo Nicolini's shared
+online optimization framework. :class:`~skfolio.optimization.online.ExponentiatedGradient`
+and :class:`~skfolio.optimization.online.AdaGrad` use the same OCO engine with entropy
+and adaptive diagonal geometry respectively.
+:class:`~skfolio.optimization.online.OnlineMovingAverageReversion` uses the shared
+mean-reversion predictor and passive-aggressive strategy.
+
+``fit(X)`` resets all learned state. ``partial_fit(X)`` continues, processing one
+row or a block sequentially. After observing row t, ``weights_`` is the target for
+t+1. ``initial_weights`` specifies the learning reference before the first row;
+constraints may project this reference. EG defaults to Carlo's FTRL configuration;
+``update_mode="omd"`` selects local mirror descent. FTRL uses accumulated gradients
+and its regularizer, so a nonuniform initial reference is not a persistent center.
+AdaGrad defaults to OMD. OLMAR's window includes the current price and window-1
+past prices; its predictor is neutral until that history is available.
+
+Algorithm state, statistical estimates and account holdings have separate owners.
+An optional ``prior_estimator`` must implement ``partial_fit``. It is cloned and
+updated once per observed row, with metadata sliced to that row. No prior is
+created by default. ``max_variance`` uses either this prior's covariance or a fixed
+``covariance``; gradient curvature is never interpreted as return covariance.
+Warmup may have incomplete statistics, but entry decisions require finite estimates.
+
+Use the existing evaluation interface::
+
+    from skfolio.model_selection import online_predict
+    from skfolio.optimization.online import ExponentiatedGradient
+
+    estimator = ExponentiatedGradient(
+        update_mode="omd",
+        portfolio_params={"weight_drift": True},
+    )
+    portfolio = online_predict(estimator, X, warmup_size=20, test_size=1)
+
+Portfolio handles drift, trading costs, management fees and wealth. ``previous_weights``
+means actual holdings at rebalance time. A turnover limit requires explicit entry
+holdings; evaluation then supplies each period's ending holdings. Historical warmup
+is learning-only, and turnover applies to the final entry target. Outside warmup,
+execution-constrained calls must contain one row. Diagnostic ``all_weights_`` is
+available with ``store_weights=True`` and is not a record of executed trades.
+The default is False to avoid accumulating unbounded target history.
+
+Current scope is a fixed asset universe, finite returns strictly greater than -1,
+and contiguous one-period evaluation. Larger windows and purged gaps raise.
+A numerical or prior failure can leave partially advanced state and requires a
+fresh ``fit``; automatic rollback and recovery are not implemented. Shared box,
+budget and named group/asset constraints use the same expressions as batch convex
+optimization, while the update objective retains the algorithm's own geometry.
+Broader family factories remain private pending API and algorithm review.

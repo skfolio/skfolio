@@ -530,13 +530,15 @@ class FollowTheLoser(BaseOnlineOptimization):
                 raise ValueError(f"Unknown mirror: {self.mirror}")
 
         assert self._projector is not None
-        return FirstOrderOCO(
+        engine = FirstOrderOCO(
             mirror_map=mm,
             projector=self._projector,
             eta=self.learning_rate,
             predictor=LastGradPredictor(),
             mode="omd",
         )
+        engine._x_t = self.weights_.copy()
+        return engine
 
     def _create_strategy(self, d: int) -> BaseStrategy:
         """Factory method to create strategy implementation."""
@@ -641,7 +643,7 @@ class FollowTheLoser(BaseOnlineOptimization):
         assert self._strategy_impl is not None
         assert self._projector is not None
         if not self._strategy_impl.should_update(self._t):
-            return trade_w.copy()
+            return self._projector.project(trade_w)
 
         # For OLMAR/RMR, pass phi_eff; for PAMR/CWMR, pass x_t
         arr = phi_eff if self.strategy in (FTLStrategy.OLMAR, FTLStrategy.RMR) else x_t
@@ -655,7 +657,7 @@ class FollowTheLoser(BaseOnlineOptimization):
 
     def _compute_loss(self, trade_w: np.ndarray, x_t: np.ndarray) -> float:
         """Compute realized loss for the period."""
-        final_return = float(np.dot(trade_w, np.maximum(x_t, CLIP_EPSILON)))
+        final_return = 1.0 + float(np.dot(trade_w, x_t - 1.0))
         return -np.log(max(final_return, CLIP_EPSILON))
 
     @property

@@ -22,6 +22,29 @@ include its dependent tests and explain deviations from Carlo's source. Port onl
 a dependency-complete slice. Prefer original tests; add tests for changed semantics.
 Do not treat passing imports as evidence that an estimator is integrated.
 
+Latest status
+-------------
+
+Steps 1-4 now have an integrated, tested implementation on online-framework-port.
+28 of 46 inventoried source/test files are moved or adapted; 18 remain pending.
+This includes 14 of Carlo's 16 source modules. Benchmark/regret code and 16 original
+test files remain pending; these are explicit scope/review items, not silently
+removed. New integration tests are listed separately in PORT_INVENTORY.json.
+
+Public classes delegate to Carlo's families:
+
+* ExponentiatedGradient -> FollowTheWinner -> FirstOrderOCO + EntropyMirrorMap.
+* AdaGrad -> FollowTheWinner -> FirstOrderOCO + AdaptiveMahalanobisMap.
+* OnlineMovingAverageReversion -> FollowTheLoser -> OLMARStrategy + OLMAR1Predictor.
+
+Portfolio owns execution; optional priors own statistical estimates. The broad
+source objective catalogue and other family strategies remain internal. The public
+constructors expose explicit, cloneable parameters; these initial names/defaults
+remain reviewable API choices rather than a claim of maintainer agreement.
+
+The history below records successive slices; older pending statements are
+superseded by the latest iterations.
+
 Progress
 --------
 
@@ -276,3 +299,51 @@ Factor constraints and automatic recovery remain outside this slice.
 
 Constraint validation: 2,027 tests pass and one skips, covering the full convex
 optimizer suite and all online tests, including causal priors and native geometry.
+
+Iteration 6: concrete public estimators and review checks
+-------------------------------------------------------
+
+Added ExponentiatedGradient (FTRL default, OMD selectable), AdaGrad (OMD default,
+FTRL selectable) and OnlineMovingAverageReversion (SMA + PA). Constructors delegate
+to the existing families, without duplicated update equations. OLMAR's window
+parameter supports set_params, clone and online parameter search. Target history
+is opt-in. Added named initial allocations, API documentation and a runnable
+synthetic-data example; no production autograd dependency is needed.
+
+New independent references verify EG's log-wealth update in both modes, AdaGrad's
+weighted-simplex update and OLMAR's first complete price window. Boundary tests
+also found and fixed inactive reversion steps retaining a stale risk allocation,
+MD initialization losing an explicit target, and diagnostic loss omitting residual
+cash. Exact zero-turnover allocations now retain supplied holdings and reject
+infeasible mirror domains. Other native projection behavior is preserved.
+
+Validation
+~~~~~~~~~~
+
+* Dependency and measure checks: 861 passed.
+* Lifecycle and family checks: 354 passed.
+* Shared-constraint/online checks: 2,027 passed, one skipped.
+* Full repository tests and source doctests: 10,613 passed, one skipped; the only
+  failure was an upstream opinion-pooling doctest because SCS was absent locally.
+  SCS is already a declared development dependency and was installed in a temporary
+  test directory for the focused rerun, without modifying the user's environment.
+  The opinion-pooling doctest then passed (one test).
+* Final boundary checks: 91 passed, including the later exact-zero-turnover and
+  mirror-domain corrections. This includes 22 public-estimator tests.
+* Ruff lint/format, full-repository type checks and numpydoc presence checks pass.
+* Sphinx HTML builds successfully. The two new heading warnings were fixed; the
+  final incremental documentation build succeeds with one existing warning.
+* The example runs, and all three public estimators also run when imports of
+  autograd are deliberately blocked.
+
+Remaining work
+~~~~~~~~~~~~~~
+
+Review public names/defaults and the private objective catalogue; port or explicitly
+defer the remaining original tests and optional benchmark/regret utilities. RMR's
+history is still unbounded, and it is not a public estimator. Tsallis and custom
+unregistered constrained potentials remain unsupported. Dynamic universes,
+automatic recovery and larger evaluation windows remain separate follow-ups.
+Factor-based constraints are not exposed by these wrappers. The existing private
+families retain legacy experiment parameters; exposing those is not part of this
+public API slice. No branch has been pushed.

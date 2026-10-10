@@ -9,9 +9,13 @@
       "source_path": "src/skfolio/optimization/online/__init__.py",
       "source_lines": 27,
       "source_sha256": "09b7dfd7987b02cce232c280af5f84007c017dc594a0dd1950a72d9b6fbf19cc",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "src/skfolio/optimization/online/__init__.py",
+      "changes": [
+        "Exports concrete EG, AdaGrad and moving-average reversion estimators plus the base. Source family factories stay internal; benchmark and regret exports are deferred."
+      ],
+      "adaptation_reference": "new public exports over the ported Carlo families",
+      "destination_sha256": "318e3329ea075d5518efed59665fb1aaa95a56df56232ab2375a2dd87e92eb07"
     },
     {
       "source_path": "src/skfolio/optimization/online/_autograd_objectives.py",
@@ -32,10 +36,11 @@
       "status": "adapted",
       "destination": "src/skfolio/optimization/online/_base.py",
       "changes": [
-        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
+        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions.",
+        "Public initial allocations support named/scalar inputs. Statistical state and execution holdings remain separate; conversion no longer clips returns."
       ],
-      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "1aaab9e78a7309049754be8b94315d943dcb05431cf3ae47d474dda404510d0e"
+      "adaptation_reference": "3fbc2726c5145b61f75ae80d610690d64f28a745",
+      "destination_sha256": "33cb2cc15033542d8de81eedda62beabc6ed99b147aae5e485d4c9afc8dd6ce8"
     },
     {
       "source_path": "src/skfolio/optimization/online/_benchmark.py",
@@ -91,10 +96,11 @@
       "status": "adapted",
       "destination": "src/skfolio/optimization/online/_loser.py",
       "changes": [
-        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
+        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions.",
+        "Inactive predictors still enforce refreshed constraints. MD initializes from the explicit target; diagnostic loss accounts for residual cash."
       ],
-      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "2eeb8206c04524a79be285fc4fc730424d95e67939cf36842de933a6646e3284"
+      "adaptation_reference": "3fbc2726c5145b61f75ae80d610690d64f28a745",
+      "destination_sha256": "a4ae8026999299fc2b5465138a06be792337d4b8859f303b062c3813f0843b6a"
     },
     {
       "source_path": "src/skfolio/optimization/online/_mirror_maps.py",
@@ -118,10 +124,11 @@
       "status": "adapted",
       "destination": "src/skfolio/optimization/online/_mixins.py",
       "changes": [
-        "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded."
+        "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded.",
+        "Named initial and previous weights supported; no recovery or universe extension parameters."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "7e2a0687874b8e2955a788cdc41080f51c45ccc473facc86814103b00149a2f9"
+      "destination_sha256": "39a74233eb97086a641a1e887b8019751816c26c463d9c8621e5cdeb01c476aa"
     },
     {
       "source_path": "src/skfolio/optimization/online/_prediction.py",
@@ -148,9 +155,10 @@
         "Reject infeasible budget and preserve budget=None. Validate zero/negative turnover and solve positive turnover intersections instead of fixed alternating projection iterations.",
         "Correct convex max_short inequality and enforce variance even when tracking error is also configured.",
         "Native KL/adaptive constrained geometry and shared skfolio constraint extraction remain pending.",
-        "Solve native potential minus dual linear term over the existing constraint set. Keep Euclidean and default-simplex entropy fast paths; reject unsupported custom projector geometries rather than downgrade to Euclidean."
+        "Solve native potential minus dual linear term over the existing constraint set. Keep Euclidean and default-simplex entropy fast paths; reject unsupported custom projector geometries rather than downgrade to Euclidean.",
+        "Shared batch constraint builders are reused; zero-turnover holdings are exact and must lie in the mirror domain."
       ],
-      "destination_sha256": "29f8072209cfc0df6f8db8276574923a8091b20e1d32c8505a0f98f028798fba"
+      "destination_sha256": "da571cd4ef2ec63841deeac9d045e9de0e12315b05a213c13a437a52a0ce1e66"
     },
     {
       "source_path": "src/skfolio/optimization/online/_regret.py",
@@ -167,10 +175,11 @@
       "status": "adapted",
       "destination": "src/skfolio/optimization/online/_strategies.py",
       "changes": [
-        "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded."
+        "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded.",
+        "OLMAR readiness follows window-1 price relatives, and inactive PA steps still recheck refreshed constraints."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "1b66f4df06d3f14ab8133085ee02db8a9d011d2458b98dc49da666d8aa17f3db"
+      "destination_sha256": "420cb8e009a1c74221e786d55ce5c8f11c04d1d0980b71c397f7fc478487aa27"
     },
     {
       "source_path": "src/skfolio/optimization/online/_utils.py",
@@ -191,10 +200,11 @@
       "status": "adapted",
       "destination": "src/skfolio/optimization/online/_winner.py",
       "changes": [
-        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
+        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions.",
+        "Uses the native dual-vector projection path. Diagnostic loss accounts for residual cash."
       ],
-      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "cee9bd96e35a247720b37790cb06879b1f790b7720f3e37d4463c2fc88d32c26"
+      "adaptation_reference": "3fbc2726c5145b61f75ae80d610690d64f28a745",
+      "destination_sha256": "650e67b5dd36d94f98322f1be30dd30f7fc08c8b8fa8fabc42a99f8f731cd7d7"
     },
     {
       "source_path": "tests/test_optimization/test_online/base.py",
@@ -487,16 +497,33 @@
       "changes": [
         "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
       ],
-      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "adaptation_reference": "3fbc2726c5145b61f75ae80d610690d64f28a745",
       "destination_sha256": "c470010304cd27b01a8d48eb244ccd2d0e52e2ef44a3377be2012359dbf83266"
     }
   ],
   "added_tests": [
-    "tests/test_optimization/test_online/test_projector_contract.py",
+    "tests/test_optimization/test_online/test_causal_prior.py",
+    "tests/test_optimization/test_online/test_execution_contract.py",
+    "tests/test_optimization/test_online/test_input_policy.py",
+    "tests/test_optimization/test_online/test_native_geometry.py",
     "tests/test_optimization/test_online/test_prediction.py",
-    "tests/test_optimization/test_online/test_native_geometry.py"
+    "tests/test_optimization/test_online/test_projector_contract.py",
+    "tests/test_optimization/test_online/test_public_estimators.py",
+    "tests/test_optimization/test_online/test_v1_lifecycle.py"
   ],
   "added_implementation": [
-    "src/skfolio/optimization/online/_geometry.py"
+    "src/skfolio/optimization/online/_geometry.py",
+    "src/skfolio/optimization/online/_estimators.py",
+    "src/skfolio/optimization/_constraints.py"
+  ],
+  "supporting_changes": [
+    "src/skfolio/measures/__init__.py",
+    "src/skfolio/measures/_enums.py",
+    "src/skfolio/measures/_measures.py",
+    "src/skfolio/portfolio/_base.py",
+    "tests/test_measures/test_measures.py",
+    "src/skfolio/model_selection/_online/_validation.py",
+    "src/skfolio/optimization/convex/_base.py",
+    "pyproject.toml"
   ]
 }

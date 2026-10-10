@@ -112,7 +112,7 @@ class PAMRStrategy(BaseStrategy):
         loss = max(0.0, margin - self.epsilon)
 
         if loss <= 0.0:  # passive case, no update
-            return trade_w.copy()
+            return projector.project(trade_w)
 
         # PAMR gradient: +x_t when violated (want to reduce w^T x)
         # Objective returns -phi, so negate: -(-x_t) = x_t
@@ -133,7 +133,7 @@ class PAMRStrategy(BaseStrategy):
         c_norm_sq = float(np.dot(c, c))
 
         if c_norm_sq < 1e-16:
-            return trade_w.copy()
+            return projector.project(trade_w)
 
         # Compute tau based on PAMR variant
         # All variants use the loss value directly (design decision: option a)
@@ -298,7 +298,7 @@ class CWMRStrategy(BaseStrategy):
             self._Sdiag = _cwmr.clip_variances(
                 self._Sdiag, self.cwmr_min_var, self.cwmr_max_var
             )
-            return trade_w.copy()
+            return projector.project(trade_w)
 
         # Mean update: gradient of (mu^T x) is x_t
         mu_candidate = self._mu - self.cwmr_mean_lr * x_t
@@ -387,7 +387,7 @@ class OLMARStrategy(BaseStrategy):
         # Compute loss using objective
         loss = self.objective.loss(trade_w, phi_eff)
         if loss <= 0.0:
-            return trade_w.copy()
+            return projector.project(trade_w)
 
         # Compute gradient using objective
         # Objective grad = -phi (loss decrease direction)
@@ -411,7 +411,7 @@ class OLMARStrategy(BaseStrategy):
 
         c_norm_sq = float(np.dot(c, c))
         if c_norm_sq <= 1e-16:
-            return trade_w.copy()
+            return projector.project(trade_w)
 
         lam = loss / c_norm_sq
         return projector.project(trade_w + lam * c)

@@ -651,6 +651,7 @@ TUTORIAL_ORDER = {
         "plot_2_online_hyperparameter_tuning.py",
         "plot_3_online_portfolio_optimization_evaluation.py",
         "plot_online_schur_changing_universe.py",
+        "plot_online_portfolio_selection.py",
     ),
     "pre_selection": (
         "plot_1_drop_correlated.py",

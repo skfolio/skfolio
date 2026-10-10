@@ -169,7 +169,11 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
                 initial = wealth / wealth.sum()
         if initial is None:
             initial = np.full(num_assets, 1 / num_assets)
-        initial = np.asarray(initial, dtype=float)
+        initial = np.asarray(
+            self._clean_input(initial, num_assets, 0.0, "initial_weights"), dtype=float
+        )
+        if initial.ndim == 0:
+            initial = np.full(num_assets, float(initial))
         if initial.shape != (num_assets,) or not np.isfinite(initial).all():
             raise ValueError(
                 "initial_weights has incompatible shape or nonfinite values"

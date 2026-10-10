@@ -95,14 +95,14 @@ class OnlineParameterConstraintsMixin:
     _parameter_constraints: ClassVar[dict] = {
         "warm_start": ["boolean"],
         "store_weights": ["boolean"],
-        "initial_weights": ["array-like", None],
+        "initial_weights": [Real, dict, "array-like", None],
         # initial_wealth accepts: scalar float > 0, array of floats summing > 0, or None
         "initial_wealth": [
             Interval(Real, 0, None, closed="neither"),
             "array-like",
             None,
         ],
-        "previous_weights": ["array-like", None],
+        "previous_weights": [Real, dict, "array-like", None],
         "transaction_costs": [
             Interval(Real, 0, None, closed="left"),
             dict,

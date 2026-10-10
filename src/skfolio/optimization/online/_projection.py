@@ -533,6 +533,22 @@ def project_convex(
             raise ValueError("max_turnover must be nonnegative")
         constraints.append(cp.norm1(w - w_prev) <= float(max_turnover))
 
+    # Zero turnover leaves a singleton feasible set. Preserve the supplied
+    # holdings exactly instead of introducing solver-sized artificial trades.
+    if max_turnover == 0 and previous_weights is not None:
+        anchor = np.asarray(previous_weights, dtype=float)
+        w.value = anchor
+        if any(np.max(constraint.violation()) > 1e-10 for constraint in constraints):
+            raise RuntimeError(
+                "Convex projection failed: zero turnover holdings violate constraints."
+            )
+        with np.errstate(divide="ignore", invalid="ignore"):
+            if not np.isfinite(minimization.value):
+                raise RuntimeError(
+                    "Convex projection failed: holdings lie outside the mirror domain."
+                )
+        return anchor.copy()
+
     prob = cp.Problem(minimization, constraints)
     if solver_params is None:
         solver_params = dict(solver=cp.CLARABEL, verbose=False)
