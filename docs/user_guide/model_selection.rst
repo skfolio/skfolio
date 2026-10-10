@@ -177,6 +177,11 @@ Compared to `KFold`, which splits the data into k folds and generates one single
 path, the :class:`CombinatorialPurgedCV` uses the combination of multiple
 train/test sets to generate multiple testing paths.
 
+Observations are partitioned into consecutive folds without shuffling. The first
+`n_folds - 1` folds each contain `n_samples // n_folds` observations, and the
+last fold contains all remaining observations. Each reconstructed testing path
+covers every observation exactly once.
+
 To avoid data leakage, purging and embargoing can be performed.
 
 Purging consists of removing from the training set all observations
