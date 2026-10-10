@@ -103,7 +103,8 @@ docs = [
     "jupyterlite-pyodide-kernel",
     "nbformat",
     "sphinx-last-updated-by-git",
-    "sphinx-llm>=0.4.1",
+    # Review minor upgrades for LLM output changes.
+    "sphinx-llm~=1.1.0",
 ]
 notebooks = [
     "jupyterlab",

@@ -37,7 +37,6 @@ class _BaseAssetPanel(ABC):
     `AssetPanelView`.
     """
 
-    fields: Mapping[str, BaseField]
     observations: AnyArray
     asset_names: StrArray
     active_mask: BoolArray
@@ -50,6 +49,11 @@ class _BaseAssetPanel(ABC):
     @abstractmethod
     def __len__(self) -> int:
         """Return the number of observations."""
+
+    @property
+    @abstractmethod
+    def fields(self) -> Mapping[str, BaseField]:
+        """Field objects available in the panel."""
 
     @property
     @abstractmethod
