@@ -49,9 +49,15 @@
       "source_path": "src/skfolio/optimization/online/_foco.py",
       "source_lines": 310,
       "source_sha256": "d04202c1a4df044c53b1f9f39e3b910a8b0d8d598c04b2ae4c7e6cb02d3fe21d",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "src/skfolio/optimization/online/_foco.py",
+      "changes": [
+        "Retain Carlo's OMD/FTRL engine, adaptive state ordering, optimistic updates, schedules and SwordMeta machinery.",
+        "Reuse type/docstring compatibility edits from df64d34, including scalar conversion through numpy.asarray.",
+        "Keep the original projector.project interface; do not port the reference branch's entropy-geometry dispatch before its dependencies and tests."
+      ],
+      "destination_sha256": "8b7bf7587ef9a26ac7d9a41ab3efce60be1325a823d639f949bc39fe86878c3b",
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2"
     },
     {
       "source_path": "src/skfolio/optimization/online/_learning_rate.py",
@@ -263,9 +269,13 @@
       "source_path": "tests/test_optimization/test_online/mirror_maps/test_mirror_maps.py",
       "source_lines": 490,
       "source_sha256": "0f725550df834307956150f804b1f42507925cb1cf07cc77cee1cb513113b34b",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/mirror_maps/test_mirror_maps.py",
+      "changes": [
+        "Original mirror-map tests with reference-branch lint/format cleanup, now runnable with the engine present."
+      ],
+      "destination_sha256": "e32ca5866bcdabfd142463433758e09e045d7cf27518e658d0bcc59104338ab7",
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2"
     },
     {
       "source_path": "tests/test_optimization/test_online/mirror_maps/test_mirror_maps_composite.py",
@@ -389,9 +399,13 @@
       "source_path": "tests/test_optimization/test_online/winner/test_foco_engine.py",
       "source_lines": 588,
       "source_sha256": "9d445f2cf8adebc36ca386a338d8a4ce09418e2ec2567b6345db3793f262ffc4",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/winner/test_foco_engine.py",
+      "changes": [
+        "Original engine tests with reference-branch lint/format cleanup; no estimator family dependencies."
+      ],
+      "destination_sha256": "e81573e2a43e0199cec3699958a05a8a065d28128edb57633c575cc940b97db3",
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2"
     },
     {
       "source_path": "tests/test_optimization/test_online/winner/test_winner_estimator.py",

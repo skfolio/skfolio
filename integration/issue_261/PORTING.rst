@@ -67,14 +67,33 @@ New tests cover reset behavior, source OLMAR timing and corrected projection bou
 
 The branch still exposes no public portfolio estimator. Common constraint
 extraction, native constrained mirror geometry and estimator integration remain
-pending. The next commit moves the shared OCO engine and its dependent tests.
+pending. The shared OCO engine and dependent tests are moved in iteration 2b below.
+
+Iteration 2b: shared OCO engine
+
+Moved _foco.py, winner/test_foco_engine.py and mirror_maps/test_mirror_maps.py.
+Carlo's OMD/FTRL paths, adaptive state ordering, optimistic predictors, scheduled
+learning rates and SwordMeta remain shared. Compatibility edits add annotations,
+docstrings and scalar conversion; the tests retain Carlo's reference assertions.
+The original projector.project interface is retained deliberately. Native KL and
+adaptive/composite constrained geometry are not supplied by this commit.
+
+Current inventory: 9 of 46 source/test files moved (5 implementation modules and
+4 original test files); 37 remain pending. Two new regression test files cover
+projector corrections and predictor state/timing. No public estimator is exported.
+
+Next iteration: shared lifecycle and algorithm-family adapters, bringing their
+objective and learning-rate dependencies only as needed. Keep optional covariance
+estimates separate from gradient state and keep account execution in Portfolio.
+The current projector validates a mathematical candidate against supplied holdings;
+it does not decide when those holdings were executed or drift them itself.
 
 Next iterations
 ---------------
 
-1. Move mirror maps and their standalone composite-map tests. Preserve adaptive
+1. Completed: mirror maps and their standalone composite-map tests. Preserve adaptive
    and composite geometry rather than reducing the code to a standalone EG update.
-2. Move FirstOrderOCO, projector interfaces/implementations and gradient predictors
+2. Completed: FirstOrderOCO, projector interfaces/implementations and gradient predictors
    with Carlo's engine and remaining mirror-map tests. Record limitations of rich
    projections explicitly; passing a Euclidean projection through a generic API
    does not establish correctness for arbitrary adaptive geometry.
@@ -134,3 +153,9 @@ Iteration 2a checks: 65 tests and doctests pass. Ruff, formatting, numpydoc and
 full-repository type checking pass. The two known coupled-map line-search warnings
 remain. The imported fast/convex projector performs Euclidean projections; its
 interface alone does not establish native adaptive or entropy constrained updates.
+
+Iteration 2b checks: all 109 online-core tests and source doctests pass. Full
+repository Ruff lint/format and type checks pass; numpydoc presence checks pass.
+The source engine docstring has nonstandard section headings reported as warnings;
+these do not fail the presence checks. The two existing scipy line-search warnings
+remain. Source/destination inventory digests are verified before committing.
