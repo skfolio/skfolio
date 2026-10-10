@@ -96,17 +96,28 @@
       "source_path": "src/skfolio/optimization/online/_prediction.py",
       "source_lines": 302,
       "source_sha256": "2f1bb922613050cdce7fa36723b065debecc122de63cbc659aa24a1d36db53ef",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "src/skfolio/optimization/online/_prediction.py",
+      "changes": [
+        "Reuse annotation/docstring compatibility edits from df64d34; retain source predictor formulas and warmup.",
+        "OLMAR1 window/warmup convention and unbounded predictor histories require explicit review before estimator integration."
+      ],
+      "destination_sha256": "203055aa641179c32655af6fe03f025a7f5f7a2fb35700a3d40eecdbc6577d61",
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2"
     },
     {
       "source_path": "src/skfolio/optimization/online/_projection.py",
       "source_lines": 453,
       "source_sha256": "b4dfddb805393b0f148b27307dfb50da24306616445434378f9771db72436b83",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "src/skfolio/optimization/online/_projection.py",
+      "changes": [
+        "Original AutoProjector fast/convex architecture retained; annotate constructors and document interfaces.",
+        "Reject infeasible budget and preserve budget=None. Validate zero/negative turnover and solve positive turnover intersections instead of fixed alternating projection iterations.",
+        "Correct convex max_short inequality and enforce variance even when tracking error is also configured.",
+        "Native KL/adaptive constrained geometry and shared skfolio constraint extraction remain pending."
+      ],
+      "destination_sha256": "2387252e3f0b099ad9208d26abc426bd598833dd06758ab64e2edbafed247874"
     },
     {
       "source_path": "src/skfolio/optimization/online/_regret.py",
@@ -128,9 +139,13 @@
       "source_path": "src/skfolio/optimization/online/_utils.py",
       "source_lines": 123,
       "source_sha256": "6c10e150dc163a22ffe79c15d6ea8be61827c7595a6af4c5fa25f8d120b214f4",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "src/skfolio/optimization/online/_utils.py",
+      "changes": [
+        "Remove unused itertools import only. Legacy clipped net-to-relative conversion is not yet the public estimator validation policy."
+      ],
+      "destination_sha256": "1dc609e31da26f28b3bc183ab4f0593f1435b27bc415dc3914132a44cfcc3529",
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2"
     },
     {
       "source_path": "src/skfolio/optimization/online/_winner.py",
@@ -349,9 +364,10 @@
       "source_path": "tests/test_optimization/test_online/test_projection.py",
       "source_lines": 135,
       "source_sha256": "c0ff901dbceabeedcfe9a7d1174ce36c5e4ef99dbe0323f2ff0764fb0688a239",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "unchanged",
+      "destination": "tests/test_optimization/test_online/test_projection.py",
+      "changes": [],
+      "destination_sha256": "c0ff901dbceabeedcfe9a7d1174ce36c5e4ef99dbe0323f2ff0764fb0688a239"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_robustness.py",
@@ -385,5 +401,9 @@
       "destination": null,
       "changes": []
     }
+  ],
+  "added_tests": [
+    "tests/test_optimization/test_online/test_projector_contract.py",
+    "tests/test_optimization/test_online/test_prediction.py"
   ]
 }

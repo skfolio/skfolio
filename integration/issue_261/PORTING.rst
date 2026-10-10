@@ -31,7 +31,7 @@ Iteration 1: mirror maps
 * Adapted: tests/test_optimization/test_online/mirror_maps/test_mirror_maps_composite.py.
 * New scaffold: online/__init__.py contains only a module docstring. Carlo's family
   exports have not been copied; that source inventory entry remains pending.
-* All other 44 inventoried files remain pending. In particular the OCO engine,
+* At the end of iteration 1, the other 44 inventoried files were pending. In particular the OCO engine,
   projector, remaining mirror-map tests and estimator families are not moved yet.
 
 The two files derive directly from Carlo's pinned source. Their compatibility
@@ -45,9 +45,29 @@ For the exact source-to-port delta, when Carlo's commit is present locally, run:
 
     git diff c1bd1f168cf7d660c81f74710aadd9941e64a2c7 -- src/skfolio/optimization/online/_mirror_maps.py tests/test_optimization/test_online/mirror_maps/test_mirror_maps_composite.py
 
-This branch does not yet expose a usable online portfolio estimator. The next
-functional commit should move the shared OCO engine with its projector/predictor
-dependencies and tests, not add a standalone EG implementation.
+Iteration 2a: projector and predictor dependencies
+
+Moved _projection.py, _prediction.py, _utils.py and Carlo's test_projection.py.
+The projector retains Carlo's fast/convex selection. Corrections are deliberately
+recorded: infeasible budgets raise; budget=None means no sum constraint; zero
+turnover cannot change holdings; positive turnover solves the constraint
+intersection when needed; short exposure uses a convex upper bound; variance
+and tracking limits are both applied when both are supplied.
+
+Predictor formulas are preserved, with annotations/docstrings from the reference
+branch. OLMAR1 currently returns the last observation through W warmup rows, then
+averages inverse products over W relatives without a unit term for current price.
+The standalone regression records that source convention, not a claim of agreement
+with the literature. Review its indexing/window interpretation before exposing the
+OLMAR estimator. Predictor histories are also currently unbounded.
+
+The utility module is copied for CLIP_EPSILON; its legacy return clipping must not
+become an implicit policy for missing or bankrupt assets in the future estimator.
+New tests cover reset behavior, source OLMAR timing and corrected projection bounds.
+
+The branch still exposes no public portfolio estimator. Common constraint
+extraction, native constrained mirror geometry and estimator integration remain
+pending. The next commit moves the shared OCO engine and its dependent tests.
 
 Next iterations
 ---------------
@@ -109,3 +129,8 @@ tests and source doctests. Two scipy line-search warnings occur in coupled-map
 tests; their numerical assertions pass. Ruff lint/format and numpydoc presence
 checks pass. Full-repository type checking passes with the separate upstream fix.
 These checks validate this slice; they do not validate an online portfolio estimator.
+
+Iteration 2a checks: 65 tests and doctests pass. Ruff, formatting, numpydoc and
+full-repository type checking pass. The two known coupled-map line-search warnings
+remain. The imported fast/convex projector performs Euclidean projections; its
+interface alone does not establish native adaptive or entropy constrained updates.
