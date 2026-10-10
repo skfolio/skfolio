@@ -242,7 +242,7 @@ class FollowTheLoser(BaseOnlineOptimization):
     covariance : array-like of shape (n_assets, n_assets) | None, default=None
         Covariance matrix for variance constraint.
 
-    variance_bound : float | None, default=None
+    max_variance : float | None, default=None
         Maximum allowed portfolio variance.
 
     prior_estimator : BasePrior or None, default=None
@@ -351,7 +351,7 @@ class FollowTheLoser(BaseOnlineOptimization):
         tracking_error_benchmark: npt.ArrayLike | None = None,
         max_tracking_error: float | None = None,
         covariance: npt.ArrayLike | None = None,
-        variance_bound: float | None = None,
+        max_variance: float | None = None,
         prior_estimator: BasePrior | None = None,
         portfolio_params: dict | None = None,
     ) -> None:
@@ -375,7 +375,7 @@ class FollowTheLoser(BaseOnlineOptimization):
             tracking_error_benchmark=tracking_error_benchmark,
             max_tracking_error=max_tracking_error,
             covariance=covariance,
-            variance_bound=variance_bound,
+            max_variance=max_variance,
             prior_estimator=prior_estimator,
             portfolio_params=portfolio_params,
         )

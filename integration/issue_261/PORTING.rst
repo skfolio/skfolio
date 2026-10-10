@@ -260,3 +260,19 @@ Evaluation validation: 538 tests passed on the first combined model-selection an
 execution run; five imported assertions expected the older projector error wording
 or class. Adapted those assertions to the retained native projector contract, then
 all 30 execution-contract tests passed. Full-repository type checking passes.
+
+Iteration 5: shared constraints and causal statistical state
+-----------------------------------------------------------
+
+ConvexOptimization and AutoProjector now call the same weight, budget and named
+linear/group expression builders. Native mirror objectives remain unchanged.
+The public variance limit is named max_variance, matching skfolio. The private
+Carlo ProjectionConfig still calls this field variance_bound. Covariance is
+provided explicitly or by a cloned incremental prior, never by gradient matrices.
+Prior metadata and y are sliced per observed row; incomplete statistics are allowed
+only during historical warmup, and must be finite for the entry decision. The
+original prior object is not fitted. No prior is created for plain EG/AdaGrad/OLMAR.
+Factor constraints and automatic recovery remain outside this slice.
+
+Constraint validation: 2,027 tests pass and one skips, covering the full convex
+optimizer suite and all online tests, including causal priors and native geometry.

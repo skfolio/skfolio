@@ -71,7 +71,7 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         tracking_error_benchmark: npt.ArrayLike | None = None,
         max_tracking_error: float | None = None,
         covariance: npt.ArrayLike | None = None,
-        variance_bound: float | None = None,
+        max_variance: float | None = None,
         prior_estimator: BasePrior | None = None,
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
@@ -102,7 +102,7 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         self.max_tracking_error = max_tracking_error
         self.prior_estimator = prior_estimator
         self.covariance = covariance
-        self.variance_bound = variance_bound
+        self.max_variance = max_variance
 
         self._is_initialized: bool = False
         self._weights_initialized: bool = False
@@ -120,7 +120,7 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         elif names is not None and self.linear_constraints is not None:
             groups = np.asarray([names])
         covariance = self.covariance
-        if self.variance_bound is not None and hasattr(self, "prior_estimator_"):
+        if self.max_variance is not None and hasattr(self, "prior_estimator_"):
             distribution = self.prior_estimator_.return_distribution_
             covariance = np.asarray(distribution.covariance)
             if covariance.shape != (n_assets, n_assets):
@@ -146,7 +146,7 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
             tracking_error_benchmark=self.tracking_error_benchmark,
             max_tracking_error=self.max_tracking_error,
             covariance=covariance,
-            variance_bound=self.variance_bound if covariance is not None else None,
+            variance_bound=self.max_variance if covariance is not None else None,
             previous_weights=self._execution_anchor,
             max_turnover=self._decision_turnover,
         )
@@ -226,12 +226,12 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
                 "prior_estimator must implement partial_fit for causal updates"
             )
         if (
-            self.variance_bound is not None
+            self.max_variance is not None
             and self.prior_estimator is None
             and self.covariance is None
         ):
             raise ValueError(
-                "variance_bound requires covariance or a causal prior_estimator"
+                "max_variance requires covariance or a causal prior_estimator"
             )
         metadata_params = dict(fit_params)
         if self.prior_estimator is not None and sample_weight is not None:

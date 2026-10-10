@@ -127,5 +127,5 @@ class OnlineParameterConstraintsMixin:
         "max_tracking_error": [Interval(Real, 0, None, closed="neither"), None],
         "prior_estimator": [BasePrior, None],
         "covariance": ["array-like", None],
-        "variance_bound": [Interval(Real, 0, None, closed="neither"), None],
+        "max_variance": [Interval(Real, 0, None, closed="neither"), None],
     }

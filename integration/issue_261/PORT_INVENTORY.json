@@ -35,7 +35,7 @@
         "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "1728e68e8c7fa3ad608817faba36dfc9a61c9a54ee2146a3d34dfa50d16d962f"
+      "destination_sha256": "1aaab9e78a7309049754be8b94315d943dcb05431cf3ae47d474dda404510d0e"
     },
     {
       "source_path": "src/skfolio/optimization/online/_benchmark.py",
@@ -94,7 +94,7 @@
         "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "8395e505f163a51337ad417e6ebbb4b1bedb5cf5f207ab944edc04f7b5697d47"
+      "destination_sha256": "2eeb8206c04524a79be285fc4fc730424d95e67939cf36842de933a6646e3284"
     },
     {
       "source_path": "src/skfolio/optimization/online/_mirror_maps.py",
@@ -121,7 +121,7 @@
         "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "0c77811160440a2dd9bccfacf1c942d7300ba6f8258cc0556818695ea18187bd"
+      "destination_sha256": "7e2a0687874b8e2955a788cdc41080f51c45ccc473facc86814103b00149a2f9"
     },
     {
       "source_path": "src/skfolio/optimization/online/_prediction.py",
@@ -150,7 +150,7 @@
         "Native KL/adaptive constrained geometry and shared skfolio constraint extraction remain pending.",
         "Solve native potential minus dual linear term over the existing constraint set. Keep Euclidean and default-simplex entropy fast paths; reject unsupported custom projector geometries rather than downgrade to Euclidean."
       ],
-      "destination_sha256": "63517e78268b02ab6a40a2e9febaa41f81f04a7e9e50ae28a23b14bb0c6d9ab8"
+      "destination_sha256": "29f8072209cfc0df6f8db8276574923a8091b20e1d32c8505a0f98f028798fba"
     },
     {
       "source_path": "src/skfolio/optimization/online/_regret.py",
@@ -194,7 +194,7 @@
         "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "b88a41ffdc08f4bb6248d126f68c084e5011d429a23608e9e9ee2ca14f1dcdb4"
+      "destination_sha256": "cee9bd96e35a247720b37790cb06879b1f790b7720f3e37d4463c2fc88d32c26"
     },
     {
       "source_path": "tests/test_optimization/test_online/base.py",
@@ -488,7 +488,7 @@
         "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "a12cc6d695fa2eec73e2c949f9a40a81ad7d81bd64dfa1bac75473f018b35c7b"
+      "destination_sha256": "c470010304cd27b01a8d48eb244ccd2d0e52e2ef44a3377be2012359dbf83266"
     }
   ],
   "added_tests": [

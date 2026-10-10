@@ -14,13 +14,19 @@ from numpy.typing import ArrayLike
 from scipy.special import softmax
 
 import skfolio.typing as skt
+from skfolio.optimization._constraints import (
+    budget_constraints,
+    weight_constraints,
+)
+from skfolio.optimization._constraints import (
+    linear_constraints as build_linear_constraints,
+)
 from skfolio.optimization.online._geometry import mirror_potential
 from skfolio.optimization.online._mirror_maps import (
     BaseMirrorMap,
     EntropyMirrorMap,
     EuclideanMirrorMap,
 )
-from skfolio.utils.equations import equations_to_matrix
 from skfolio.utils.tools import input_to_array
 
 
@@ -476,40 +482,16 @@ def project_convex(
     minimization = cp.Minimize(
         0.5 * cp.sum_squares(w - w0) if objective is None else objective(w)
     )
-    constraints: list[Any] = [w >= lower_bounds, w <= u]
-
-    if min_budget is not None:
-        constraints.append(cp.sum(w) >= float(min_budget))
-    if max_budget is not None:
-        constraints.append(cp.sum(w) <= float(max_budget))
-    if budget is not None:
-        if min_budget is not None or max_budget is not None:
-            raise ValueError("Cannot use budget with min_budget/max_budget.")
-        constraints.append(cp.sum(w) == float(budget))
-
-    if max_long is not None:
-        if max_long <= 0:
-            raise ValueError("max_long must be > 0")
-        constraints.append(cp.sum(cp.pos(w)) <= float(max_long))
-    if max_short is not None:
-        if max_short <= 0:
-            raise ValueError("max_short must be > 0")
-        constraints.append(cp.sum(cp.neg(w)) <= float(max_short))
-
-    if linear_constraints is not None and len(linear_constraints) > 0:
-        if groups is None:
-            raise ValueError(
-                "groups must be provided (as matrix) to parse linear_constraints."
-            )
-        a_eq, b_eq, a_ineq, b_ineq = equations_to_matrix(
-            groups=groups,
-            equations=linear_constraints,
-            raise_if_group_missing=False,
-        )
-        if len(a_eq) != 0:
-            constraints.append(a_eq @ w - b_eq == 0)
-        if len(a_ineq) != 0:
-            constraints.append(a_ineq @ w - b_ineq <= 0)
+    constraints = weight_constraints(
+        w, 1.0, lower_bounds, u, True, max_long=max_long, max_short=max_short
+    )
+    constraints += budget_constraints(w, 1.0, budget, min_budget, max_budget)
+    constraints += build_linear_constraints(
+        w,
+        1.0,
+        linear_constraints,
+        None if groups is None else np.asarray(groups),
+    )
 
     if left_inequality is not None and right_inequality is not None:
         A = np.asarray(left_inequality)

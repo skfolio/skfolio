@@ -263,7 +263,7 @@ class TestFollowTheWinnerConstraints:
         est = FollowTheWinner(
             strategy=FTWStrategy.EG,
             covariance=Sigma,
-            variance_bound=var_bound * 2.0,
+            max_variance=var_bound * 2.0,
             min_weights=0.0,
             max_weights=0.5,
             budget=0.9,
