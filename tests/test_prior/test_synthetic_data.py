@@ -134,3 +134,29 @@ def test_metadata_routing(X):
         model.distribution_estimator_.sample_weight_, sample_weight
     )
     assert model.return_distribution_.returns.shape == (1000, 20)
+
+
+def _conditioned_returns(X, conditioning, random_state):
+    model = SyntheticData(
+        distribution_estimator=VineCopula(random_state=random_state),
+        n_samples=300,
+        sample_args=dict(conditioning=conditioning),
+    )
+    return model.fit(X).return_distribution_.returns
+
+
+def test_conditioning_noise_is_reproducible(X):
+    X = X.iloc[-300:, :4]
+    a, b = X.columns[:2]
+    conditioning = {a: -0.02, b: 0.01}
+    returns_1 = _conditioned_returns(X, conditioning, random_state=0)
+    returns_2 = _conditioned_returns(X, conditioning, random_state=0)
+    np.testing.assert_array_equal(returns_1, returns_2)
+
+
+def test_conditioning_noise_is_independent_across_assets(X):
+    X = X.iloc[-300:, :4]
+    a, b = X.columns[:2]
+    returns = _conditioned_returns(X, {a: -0.02, b: 0.01}, random_state=0)
+    corr = np.corrcoef(returns[:, 0], returns[:, 1])[0, 1]
+    assert abs(corr) < 0.5
