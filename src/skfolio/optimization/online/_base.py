@@ -9,13 +9,14 @@ from __future__ import annotations
 import warnings
 from collections.abc import Generator
 from contextlib import contextmanager
+from copy import deepcopy
 from dataclasses import replace
 from typing import Any
 
 import numpy as np
 import numpy.typing as npt
 import sklearn.utils.metadata_routing as skm
-from sklearn.base import clone
+from sklearn.base import check_is_fitted, clone
 from sklearn.utils.validation import _check_sample_weight, validate_data
 
 import skfolio.typing as skt
@@ -27,7 +28,7 @@ from skfolio.optimization.online._projection import (
     AutoProjector,
     ProjectionConfig,
 )
-from skfolio.portfolio import Portfolio
+from skfolio.portfolio import MultiPeriodPortfolio, Portfolio
 from skfolio.prior import BasePrior
 from skfolio.utils.tools import (
     _call_estimator,
@@ -441,6 +442,66 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         portfolio = super().predict(X)
         assert isinstance(portfolio, Portfolio)
         return portfolio
+
+    def _initialize_for_evaluation(self, X: npt.ArrayLike) -> None:
+        """Initialize before the first return without consuming that observation."""
+        self._validate_params()
+        data = validate_data(self, X, reset=True, dtype=float)
+        self._decision_turnover = self.max_turnover
+        self._execution_anchor = (
+            None
+            if self.previous_weights is None
+            else self._clean_previous_weights(data.shape[1]).copy()
+        )
+        if self.max_turnover is not None and self._execution_anchor is None:
+            raise ValueError("max_turnover requires explicit previous_weights holdings")
+        self._initialize_algorithm(data.shape[1])
+        assert self._projector is not None
+        if self.max_turnover is not None:
+            self.weights_ = self._projector.project(self.weights_)
+        self._synchronize_target()
+        self.initial_weights_ = self.weights_.copy()
+        self.n_observations_ = 0
+
+    def fit_predict(
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params: Any
+    ) -> MultiPeriodPortfolio:
+        """Evaluate from the initial allocation, with no warmup, using Portfolio.
+
+        For a historical learning window followed by evaluation, use online_predict.
+        Initial wealth, if supplied, configures the algorithm reference only; the
+        returned portfolio uses skfolio's normalised return/wealth convention.
+        """
+        if fit_params:
+            raise TypeError(
+                "Use model_selection.online_predict for routed evaluation metadata"
+            )
+
+        from skfolio.model_selection._online._validation import _continue_online_predict
+
+        self._reset_state_for_fit()
+        previous = self.previous_weights
+        try:
+            self._initialize_for_evaluation(X)
+            return _continue_online_predict(self, X, y, refit_last=True)
+        except Exception:
+            self._needs_reset = True
+            raise
+        finally:
+            self.previous_weights = previous
+
+    def predict_online(
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
+    ) -> MultiPeriodPortfolio:
+        """Continue evaluation on a fitted copy through common model selection."""
+        from skfolio.model_selection._online._validation import _continue_online_predict
+
+        check_is_fitted(self, "weights_")
+        if getattr(self, "_needs_reset", False):
+            raise RuntimeError(
+                "A previous update failed; call fit to reset before reuse"
+            )
+        return _continue_online_predict(deepcopy(self), X, y, refit_last=False)
 
 
 # Temporary compatibility alias for Carlo's imports and downstream experiments.

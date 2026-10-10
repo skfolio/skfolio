@@ -245,3 +245,18 @@ code. Convenience evaluation methods are left to the next integration commit.
 Lifecycle validation: 354 online tests pass. Named data without named constraints
 uses the same fast path as arrays; asset labels alone no longer force a solver.
 The optional autograd verification backend is declared only in development extras.
+
+Iteration 4: portfolio and evaluation integration
+------------------------------------------------
+
+Reused the existing online walk-forward loop, with explicit historical warmup and
+one-period execution. Portfolio computes drifted holdings and charges fees once;
+those holdings are supplied to the next decision. Historical intermediate targets
+are not trades and do not consume turnover. fit_predict starts at the explicit
+initial allocation; predict_online evaluates a copy. Gaps and larger windows are
+rejected for these estimators. No separate account simulator was introduced.
+
+Evaluation validation: 538 tests passed on the first combined model-selection and
+execution run; five imported assertions expected the older projector error wording
+or class. Adapted those assertions to the retained native projector contract, then
+all 30 execution-contract tests passed. Full-repository type checking passes.

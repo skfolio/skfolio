@@ -35,7 +35,7 @@
         "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "c0267d8e565c882c6c3fd0674ab0d322e55047a3a6940b2efd9c33366c10eeab"
+      "destination_sha256": "1728e68e8c7fa3ad608817faba36dfc9a61c9a54ee2146a3d34dfa50d16d962f"
     },
     {
       "source_path": "src/skfolio/optimization/online/_benchmark.py",
@@ -401,9 +401,13 @@
       "source_path": "tests/test_optimization/test_online/test_costs.py",
       "source_lines": 253,
       "source_sha256": "45e7c5dc47264721b9945e588648e1a08df52aa4699ef7af8dec0ba57c73aec3",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/test_costs.py",
+      "changes": [
+        "Adapted to existing Portfolio accounting and one-period model-selection evaluation; larger windows deferred."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "be398c4a0adb1a4f2b59b9011ea1bdc0d2b2a770a98dedf33ded228c39c9f4da"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_estimator.py",
@@ -417,9 +421,13 @@
       "source_path": "tests/test_optimization/test_online/test_initial_wealth.py",
       "source_lines": 588,
       "source_sha256": "5c70ca99c2f6ce736a44f5d4eb8c1b93c021a5ab47123ba20ed3195d13b659d7",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/test_initial_wealth.py",
+      "changes": [
+        "Adapted to existing Portfolio accounting and one-period model-selection evaluation; larger windows deferred."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "0b5fde3af448cc847d14774d04f63efeeced96f4f460ab17323d1df86f4aa3cf"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_metrics_correctness.py",

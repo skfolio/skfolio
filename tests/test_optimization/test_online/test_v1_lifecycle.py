@@ -7,6 +7,7 @@ from numpy.testing import assert_allclose
 from sklearn.base import clone
 
 from skfolio.measures import PerfMeasure
+from skfolio.model_selection import online_predict
 from skfolio.optimization.online._base import BaseOnlineOptimization
 from skfolio.optimization.online._loser import FollowTheLoser
 from skfolio.optimization.online._winner import FollowTheWinner
@@ -98,3 +99,29 @@ def test_reset_recreates_objective(returns):
     model = FollowTheWinner(learning_rate=0.1).fit(returns)
     model.set_params(objective=PerfMeasure.MEAN).fit(returns)
     assert_allclose(model.weights_, clone(model).fit(returns).weights_)
+
+
+def test_online_predict_uses_targets_before_observations(estimator, returns):
+    prediction = online_predict(estimator, returns, warmup_size=5, test_size=1)
+    manual = clone(estimator).partial_fit(returns[:5])
+    expected = []
+    for row in returns[5:]:
+        expected.append(row @ manual.weights_)
+        manual.partial_fit(row)
+    assert_allclose(prediction.returns, expected, atol=1e-12)
+    with pytest.raises(ValueError, match="test_size=1"):
+        online_predict(estimator, returns, warmup_size=5, test_size=2)
+
+
+def test_legacy_prediction_continues_without_mutating_source(returns):
+    model = FollowTheWinner(learning_rate=0.1).fit(returns[:5])
+    previous = model.weights_.copy()
+    prediction = model.predict_online(returns[5:])
+    manual = clone(model).fit(returns[:5])
+    expected = []
+    for row in returns[5:]:
+        expected.append(row @ manual.weights_)
+        manual.partial_fit(row)
+    assert_allclose(prediction.returns, expected)
+    assert_allclose(model.weights_, previous)
+    assert model.n_observations_ == 5
