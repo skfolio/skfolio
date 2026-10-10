@@ -106,9 +106,10 @@
       "destination": "src/skfolio/optimization/online/_prediction.py",
       "changes": [
         "Reuse annotation/docstring compatibility edits from df64d34; retain source predictor formulas and warmup.",
-        "OLMAR1 window/warmup convention and unbounded predictor histories require explicit review before estimator integration."
+        "OLMAR1 window/warmup convention and unbounded predictor histories require explicit review before estimator integration.",
+        "Resolve OLMAR1: window includes current price; retain window-1 copied relatives; neutral warmup until a full window; reject invalid relatives before changing history. Paper: https://icml.cc/2012/papers/168.pdf Eq. (1). RMR history is a separate pending item."
       ],
-      "destination_sha256": "203055aa641179c32655af6fe03f025a7f5f7a2fb35700a3d40eecdbc6577d61",
+      "destination_sha256": "d5ad701e1a3bd0f9b27674559927a99046b1e2ca15955dd30f484102d5b22a8e",
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2"
     },
     {

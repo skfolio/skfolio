@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 from abc import ABC, abstractmethod
+from collections import deque
 from typing import Any
 
 import numpy as np
@@ -97,35 +98,43 @@ class BaseReversionPredictor:
 
 
 class OLMAR1Predictor(BaseReversionPredictor):
-    """OLMAR-SMA moving-average reversion predictor."""
+    """Predict MA_t(window) / p_t using only prices observed through t.
+
+    The window includes the current price (the unit term) and window-1 past
+    prices. Return a neutral vector until window-1 relatives are available.
+    A one-price window is always neutral. See Li and Hoi (ICML 2012), Eq. (1).
+    """
 
     def __init__(self, window: int = 5) -> None:
-        if window < 1:
-            raise ValueError("window must be >= 1.")
+        if window < 1 or int(window) != window:
+            raise ValueError("window must be a positive integer.")
         self.window = int(window)
-        self._history: list[np.ndarray] = []
+        self._history: deque[np.ndarray] = deque(maxlen=self.window - 1)
 
     def reset(self, d: int) -> None:
-        """Clear the prediction history for a new asset universe."""
+        """Clear the bounded observation history for a new asset universe."""
         super().reset(d)
-        self._history = []
+        self._history.clear()
 
     def update_and_predict(self, x_t: np.ndarray) -> np.ndarray:
-        """Consume one price-relative vector and predict the next one."""
+        """Observe x_t and predict the relative return for period t+1."""
         x_t = np.asarray(x_t, dtype=float)
-        self._history.append(x_t)
-        T = len(self._history)
-        W = self.window
-
-        if T < W + 1:
-            return self._history[-1].copy()
-
-        recent = np.stack(self._history[-W:], axis=0)
-        # Reverse order and compute cumulative products in one step
-        recent = recent[::-1, :]
-        # Vectorized computation: clip, cumprod, invert, and mean
-        cumprods = np.cumprod(np.maximum(recent, CLIP_EPSILON), axis=0)
-        return np.mean(1.0 / cumprods, axis=0)
+        if (
+            x_t.ndim != 1
+            or not x_t.size
+            or not np.isfinite(x_t).all()
+            or np.any(x_t <= 0)
+        ):
+            raise ValueError("Price relatives must be a finite, positive vector")
+        if hasattr(self, "_d") and x_t.size != self._d:
+            raise ValueError("Asset dimension changed; reset the predictor first")
+        self._d = x_t.size
+        self._history.append(x_t.copy())
+        if self.window == 1 or len(self._history) < self.window - 1:
+            return np.ones_like(x_t)
+        recent = np.stack(list(self._history)[::-1])
+        past_prices_relative_to_current = 1.0 / np.cumprod(recent, axis=0)
+        return (1.0 + past_prices_relative_to_current.sum(axis=0)) / self.window
 
 
 class OLMAR2Predictor(BaseReversionPredictor):

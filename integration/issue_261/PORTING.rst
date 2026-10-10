@@ -159,3 +159,17 @@ repository Ruff lint/format and type checks pass; numpydoc presence checks pass.
 The source engine docstring has nonstandard section headings reported as warnings;
 these do not fail the presence checks. The two existing scipy line-search warnings
 remain. Source/destination inventory digests are verified before committing.
+
+Resolution 1: OLMAR window timing
+--------------------------------
+
+The iteration 2a source convention is superseded. Li and Hoi (ICML 2012), Eq. (1),
+https://icml.cc/2012/papers/168.pdf defines the prediction as MA_t(window)/p_t.
+This includes the current-price unit term and window-1 inverse products. The
+predictor now stores only window-1 copied relatives. After window-1 observations
+there is a full price window (including the initial price level); until then it
+returns ones. Neutral warmup is our explicit integration policy. Window=1 is a
+neutral extension. Nonpositive/nonfinite relatives and dimension changes raise.
+Tests compare against independently constructed price levels over multiple windows,
+including warmup and reset, and verify bounded history and caller-array isolation.
+RMR's historical storage is separate and remains for the estimator integration.
