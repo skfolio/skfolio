@@ -60,6 +60,48 @@ def test_return_distribution_requires_an_investable_asset():
         _ = distribution.investable_mask
 
 
+@pytest.mark.parametrize(
+    "weights",
+    [
+        [-0.1, 0.3, 0.8],
+        [np.nan, 0.5, 0.5],
+        [np.inf, 0, 0],
+        [1, 1, 1],
+        [0, 0, 0],
+        [0.2j, 0.3, 0.5],
+    ],
+)
+def test_return_distribution_rejects_invalid_probabilities(weights):
+    with pytest.raises(ValueError, match="sample_weight"):
+        _make_return_distribution(sample_weight=np.array(weights))
+
+
+def test_return_distribution_unnormalized_weight_error():
+    with pytest.raises(ValueError) as error:
+        _make_return_distribution(sample_weight=np.array([1, 2, 3]))
+    assert str(error.value) == (
+        "sample_weight must sum to one, got 6.0. Normalize the weights "
+        "before constructing the portfolio or return distribution."
+    )
+
+
+def test_return_distribution_normalizes_within_tolerance_without_mutation():
+    weights = np.array([0.2, 0.3, 0.5]) * (1 + 1e-6)
+    original = weights.copy()
+    weights.setflags(write=False)
+    distribution = _make_return_distribution(sample_weight=weights)
+    np.testing.assert_allclose(distribution.sample_weight.sum(), 1, rtol=0, atol=1e-15)
+    np.testing.assert_array_equal(weights, original)
+    np.testing.assert_array_equal(distribution.mu, [0.01, 0.02])
+
+
+def test_return_distribution_allows_empty_probability_vector():
+    distribution = _make_return_distribution(
+        returns=np.empty((0, 2)), sample_weight=np.array([])
+    )
+    assert distribution.sample_weight.shape == (0,)
+
+
 def _make_factor_model(n_assets: int) -> FactorModel:
     return FactorModel(
         observations=np.arange(3),

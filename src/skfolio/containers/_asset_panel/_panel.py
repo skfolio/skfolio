@@ -11,6 +11,7 @@ import shutil
 from collections.abc import Collection, Generator, Iterable, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from pathlib import Path
 from typing import Any, Literal, overload
 
@@ -272,7 +273,7 @@ class AssetPanel(_BaseAssetPanel):
     >>> loaded = AssetPanel.load("asset_panel", mmap_mode="r")
     """
 
-    fields: dict[str, BaseField]
+    fields: dict[str, BaseField] = dataclass_field()
     observations: AnyArray
     asset_names: StrArray
     # `None` is replaced by a mask of ones in `__post_init__`.

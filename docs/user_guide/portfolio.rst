@@ -241,6 +241,34 @@ It also provides methods for analyzing portfolio weights:
 
 
 
+Observation Weights
+*******************
+
+`sample_weight` assigns probabilities to historical or synthetic observations.
+On portfolios, these weights must be finite, nonnegative and sum to one within
+an absolute tolerance of 1.001e-5. Functions in :mod:`skfolio.measures` also accept
+relative weights and normalize them.
+
+Weighted portfolio measures exclude NaNs and normalize the remaining weights.
+They return NaN if no positive weight remains.
+
+Drawdowns depend on the sequence of returns. Removing a zero-weight return could
+change portfolio value and later drawdowns, so the full path is kept. Average
+drawdown is the weighted average of the resulting drawdowns at each date. CDaR
+and EDaR use the same observation probabilities to measure tail risk.
+
+`worst_realization` and `max_drawdown` report the worst event in the supplied
+sample, regardless of its weight. Calmar uses the weighted mean return minus the
+risk-free rate, divided by this maximum drawdown.
+At `beta=1`, VaR, CVaR, EVaR, DaR, CDaR and EDaR use the worst observation with
+positive weight.
+
+Rolling measures apply these rules independently within each window.
+
+`predict(X)` does not reuse training probabilities. Use
+`predict(return_distribution)` to evaluate a supplied weighted distribution.
+
+
 Multi Period Portfolio
 **********************
 :class:`MultiPeriodPortfolio` inherits from :class:`BasePortfolio` and is composed of a
@@ -268,5 +296,5 @@ composed of multiple test `Portfolio`, each corresponding to a train/test fold.
 
 Sample weights control each observation's contribution to measures such as mean
 and variance. By default, they are inherited from the children, with periods
-weighted by their observation counts. Set ``sample_weight`` on the parent to
+weighted by their observation counts. Set `sample_weight` on the parent to
 override them.

@@ -938,11 +938,22 @@ def test_sample_weight_error(portfolio, sample_weight):
     with pytest.raises(ValueError, match="sample_weight must have the same length as"):
         portfolio.sample_weight = np.ones(5)
 
-    with pytest.raises(ValueError, match="sample_weight must sum to one"):
+    with pytest.raises(
+        ValueError,
+        match=rf"sample_weight must sum to one, got {len(sample_weight)}\.0\. Normalize",
+    ):
         portfolio.sample_weight = np.ones(len(sample_weight))
 
     with pytest.raises(ValueError, match="sample_weight must be a 1D array"):
         portfolio.sample_weight = [[1]]
+
+
+@pytest.mark.parametrize(
+    "weights", [[-0.1, 0.3, 0.8], [np.nan, 0.5, 0.5], [np.inf, 0, 0], [0.2j, 0.3, 0.5]]
+)
+def test_portfolio_rejects_invalid_probabilities(weights):
+    with pytest.raises(ValueError, match="sample_weight"):
+        BasePortfolio([0.1, -0.2, 0.3], [0, 1, 2], sample_weight=weights)
 
 
 @pytest.mark.parametrize(

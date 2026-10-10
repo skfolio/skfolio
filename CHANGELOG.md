@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.8.0 (2026-10-09)
+
+### Features
+
+- Extend sample-weight support across risk measures
+  ([#412](https://github.com/skfolio/skfolio/pull/412),
+  [`a75fb77`](https://github.com/skfolio/skfolio/commit/a75fb772b57ec1fc2034c75d38d0af1ae5a348b4))
+
+
 ## v1.7.1 (2026-10-08)
 
 ### Bug Fixes
