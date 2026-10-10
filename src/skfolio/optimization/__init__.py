@@ -20,6 +20,7 @@ from skfolio.optimization.hierarchical import (
     SchurComplementary,
 )
 from skfolio.optimization.naive import EqualWeighted, InverseVolatility, Random
+from skfolio.optimization.online import BaseOnlineOptimization, ExponentiatedGradient
 
 if TYPE_CHECKING:
     from skfolio.optimization.cluster.hierarchical._base import (
@@ -28,11 +29,13 @@ if TYPE_CHECKING:
 
 __all__ = [
     "BaseHierarchicalOptimization",
+    "BaseOnlineOptimization",
     "BaseOptimization",
     "BenchmarkTracker",
     "ConvexOptimization",
     "DistributionallyRobustCVaR",
     "EqualWeighted",
+    "ExponentiatedGradient",
     "HierarchicalEqualRiskContribution",
     "HierarchicalRiskParity",
     "InverseVolatility",

@@ -583,6 +583,13 @@ def _online_walk_forward(
 
     splits = list(cv.split(X))
 
+    if getattr(_get_last_step(estimator), "_requires_single_period_evaluation", False):
+        if any(len(test_idx) != 1 for _, test_idx in splits):
+            raise ValueError(
+                "This online optimizer requires one observation per test window "
+                "(test_size=1) so every learned target is evaluated."
+            )
+
     if len(splits) == 0:
         raise ValueError(
             f"Not enough observations for at least one test window with "

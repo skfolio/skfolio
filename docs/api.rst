@@ -242,6 +242,25 @@ Classes
 
     optimization.BaseOptimization
 
+.. _optimization_online_ref:
+
+:mod:`skfolio.optimization.online`: Online Portfolio Optimization
+================================================================
+
+.. automodule:: skfolio.optimization.online
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    optimization.BaseOnlineOptimization
+    optimization.ExponentiatedGradient
+
 .. _optimization_naive_ref:
 
 :mod:`skfolio.optimization.naive`: Naive Optimization Estimators
