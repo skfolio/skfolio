@@ -1,7 +1,7 @@
 Issue #262: supervised-policy starting point
 ===========================================
 
-Branch: ``supervised-portfolio-policy`` (local only).
+Branch: ``supervised-portfolio-policy``.
 
 Based on Cashubski's open PR #341, commit
 ``45a69384948836f0624dcd2dc9cdd6378829e5d0``. This branch is stacked on that
