@@ -62,6 +62,19 @@ class ExponentiatedGradient(FollowTheWinner):
     Use model_selection.online_predict with test_size=1 for evaluation.
     Missing returns, bankrupt assets, changing universes and automatic recovery
     are not supported. A failed numerical update requires a fresh fit.
+
+    Examples
+    --------
+    >>> from skfolio.optimization.online import ExponentiatedGradient
+    >>> model = ExponentiatedGradient()
+    >>> _ = model.partial_fit([[0.01, -0.02], [0.02, 0.01]])
+    >>> model.n_observations_
+    2
+    >>> model.weights_.shape
+    (2,)
+    >>> portfolio = model.predict([[0.01, 0.0]])
+    >>> portfolio.returns.shape
+    (1,)
     """
 
     def __init__(
@@ -164,6 +177,19 @@ class AdaGrad(FollowTheWinner):
     Use model_selection.online_predict with test_size=1 for evaluation.
     Missing returns, bankrupt assets, changing universes and automatic recovery
     are not supported. A failed numerical update requires a fresh fit.
+
+    Examples
+    --------
+    >>> from skfolio.optimization.online import AdaGrad
+    >>> model = AdaGrad()
+    >>> _ = model.partial_fit([[0.01, -0.02], [0.02, 0.01]])
+    >>> model.n_observations_
+    2
+    >>> model.weights_.shape
+    (2,)
+    >>> portfolio = model.predict([[0.01, 0.0]])
+    >>> portfolio.returns.shape
+    (1,)
     """
 
     def __init__(
@@ -266,6 +292,19 @@ class OnlineMovingAverageReversion(FollowTheLoser):
     Use model_selection.online_predict with test_size=1 for evaluation.
     Missing returns, bankrupt assets, changing universes and automatic recovery
     are not supported. A failed numerical update requires a fresh fit.
+
+    Examples
+    --------
+    >>> from skfolio.optimization.online import OnlineMovingAverageReversion
+    >>> model = OnlineMovingAverageReversion()
+    >>> _ = model.partial_fit([[0.01, -0.02], [0.02, 0.01]])
+    >>> model.n_observations_
+    2
+    >>> model.weights_.shape
+    (2,)
+    >>> portfolio = model.predict([[0.01, 0.0]])
+    >>> portfolio.returns.shape
+    (1,)
     """
 
     _parameter_constraints: ClassVar[dict] = {

@@ -370,3 +370,19 @@ because _regret.py remains outside this algorithm PR. The inventory now has 40
 moved/adapted files and six pending benchmark/regret files; the partial test-file
 exception is recorded as pending_tests, not hidden. Numerical solver and inherited
 source warnings remain, but all numerical assertions pass.
+
+PR preparation against upstream v1.8.1
+-------------------------------------
+
+The branch now includes upstream 120880d7fd1cf525a43c46e0c180c45c9b21e4b0. The
+source snapshot and original integration base remain recorded for provenance.
+Upstream's AssetPanel property supersedes the early local type-only workaround,
+so the algorithm PR has no AssetPanel diff against its current upstream base.
+All remaining algorithm tests are ported; only benchmark/regret files and the one
+explicit regret test remain deferred. PR_DESCRIPTION.txt and PR_PREPARATION.rst
+provide a reviewable local draft and the user's optional publication commands.
+
+Final validation: 10,756 repository tests/source doctests pass, with the single
+regret case skipped. The three new public estimator examples pass separately.
+Lint, formatting, types and docstring checks pass. Documentation builds with 12
+warnings. No push or PR publication has been performed.

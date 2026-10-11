@@ -582,5 +582,6 @@
     "src/skfolio/model_selection/_online/_validation.py",
     "src/skfolio/optimization/convex/_base.py",
     "pyproject.toml"
-  ]
+  ],
+  "integration_base": "120880d7fd1cf525a43c46e0c180c45c9b21e4b0"
 }
