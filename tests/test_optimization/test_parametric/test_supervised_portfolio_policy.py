@@ -519,3 +519,37 @@ def test_default_rolling_prior_works_without_external_covariance():
         returns, future, initial_holdings=[1 / 3] * 3
     )
     assert np.isfinite(result.returns).all()
+
+
+def test_multi_observation_holding_intervals_charge_only_rebalances():
+    X, panel = data()
+    estimator = model(max_turnover=0.5).fit(X, characteristics=panel)
+    _, future = data(n=5, offset=11)
+    returns = pd.DataFrame(
+        [[0.1, 0, -0.1]] * 5,
+        index=pd.date_range("2020-01-13", periods=5),
+        columns=X.columns,
+    )
+    result = estimator.evaluate_sequential(
+        returns,
+        future,
+        initial_holdings=[0.5, 0.3, 0.2],
+        transaction_costs=0.01,
+        rebalance_every=2,
+    )
+    assert len(result.portfolios) == 5
+    for i, period in enumerate(result.portfolios):
+        if i % 2:
+            assert period.turnover == 0
+            assert period.total_cost == 0
+            np.testing.assert_array_equal(
+                period.weights, result.portfolios[i - 1].ending_weights
+            )
+        else:
+            assert period.turnover <= 0.5 + 1e-6
+            np.testing.assert_allclose(period.total_cost, 0.01 * period.turnover)
+    assert result.portfolios[2].total_cost > 0
+    with pytest.raises(ValueError, match="rebalance_every"):
+        estimator.evaluate_sequential(
+            returns, future, initial_holdings=[1 / 3] * 3, rebalance_every=0
+        )

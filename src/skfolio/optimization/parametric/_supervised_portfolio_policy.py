@@ -426,8 +426,9 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         transaction_costs=None,
         prior_estimator: BasePrior | None = None,
         covariance_window: int = 60,
+        rebalance_every: int = 1,
     ) -> MultiPeriodPortfolio:
-        """Evaluate one rebalance per subsequent return observation.
+        """Evaluate scheduled rebalances over successive return observations.
 
         Parameters
         ----------
@@ -455,6 +456,12 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         covariance_window : int, default=60
             Maximum number of past return rows supplied to each prior fit; at
             least two. No return from the following holding period is included.
+
+        rebalance_every : int, default=1
+            Number of return observations between rebalances (for example, 5 or
+            21 for trading-week/month approximations on daily data). The first
+            decision always rebalances. Holdings drift between decisions; limits
+            apply at rebalance time, not continuously during the holding period.
 
         Returns
         -------
@@ -502,6 +509,9 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         cov, _ = projection_context(
             self.feature_names_in_, dates, covariance=covariance
         )
+        _validate_non_negative_integer(rebalance_every, "rebalance_every")
+        if rebalance_every < 1:
+            raise ValueError("`rebalance_every` must be at least one.")
         _validate_non_negative_integer(covariance_window, "covariance_window")
         if covariance_window < 2:
             raise ValueError("`covariance_window` must be at least two.")
@@ -562,23 +572,38 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         holdings = held[0]
         portfolios = []
         for t in range(len(X)):
-            decision_covariance = None if cov is None else cov[t]
-            if self.max_variance is not None and cov is None:
-                history = pd.concat([self.training_returns_, X.iloc[:t]]).tail(
-                    covariance_window
+            if t % rebalance_every == 0:
+                decision_covariance = None if cov is None else cov[t]
+                if self.max_variance is not None and cov is None:
+                    history = pd.concat([self.training_returns_, X.iloc[:t]]).tail(
+                        covariance_window
+                    )
+                    fitted_prior = clone(risk_prior).fit(history)
+                    decision_covariance = fitted_prior.return_distribution_.covariance
+                targets = (
+                    runner.predict_weights(
+                        characteristics.isel(observations=slice(t, t + 1)),
+                        covariance=decision_covariance,
+                        holdings=holdings,
+                        update_state=True,
+                    )
+                    .iloc[0]
+                    .to_numpy()
                 )
-                fitted_prior = clone(risk_prior).fit(history)
-                decision_covariance = fitted_prior.return_distribution_.covariance
-            targets = (
-                runner.predict_weights(
-                    characteristics.isel(observations=slice(t, t + 1)),
-                    covariance=decision_covariance,
-                    holdings=holdings,
-                    update_state=True,
-                )
-                .iloc[0]
-                .to_numpy()
-            )
+            else:
+                # Advance descriptors even when no trade is scheduled, so rolling
+                # characteristics keep the full observation stream.
+                observation = characteristics.isel(observations=slice(t, t + 1))
+                if isinstance(observation, AssetPanelView):
+                    observation = observation.to_panel(deep=False)
+                observation = runner._validate_characteristics(observation, X=None)
+                if not observation.active_mask[:, runner._investment_idx_].all():
+                    raise ValueError(
+                        "Sequential evaluation requires a fixed active universe."
+                    )
+                runner._compute_exposures(observation, method="partial_fit")
+                runner.last_prediction_observation_ = dates[t]
+                targets = holdings.copy()
             if not np.isfinite(targets).all():
                 raise ValueError(
                     "All characteristics must be available at each rebalance."
