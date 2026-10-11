@@ -1,4 +1,4 @@
-"""Supervised linear portfolio policies learned from subperiod allocations."""
+"""Supervised portfolio policies learned from subperiod allocations."""
 
 # Copyright (c) 2023-2026
 # SPDX-License-Identifier: BSD-3-Clause
@@ -36,6 +36,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
     Only complete windows inside the training sample produce labels. Labels use
     future returns *within that sample*, so ``weights_history_`` is an in-sample
     diagnostic, not a backtest. Evaluate on a later, untouched sample.
+    Predictions are projected onto a static feasible portfolio set using the
+    existing CLARABEL solver dependency.
 
     Parameters
     ----------
@@ -86,8 +88,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
     weights_ : ndarray of shape (n_assets,)
         Allocation obtained from the final training characteristics.
     weights_history_ : ndarray of shape (n_observations, n_assets)
-        In-sample allocations under the final coefficients. Unavailable rows are
-        NaN. These allocations use coefficients fitted on the whole sample.
+        In-sample allocations under the final regressor. Unavailable rows are
+        NaN. The regressor is fitted on the whole training sample.
 
     Notes
     -----
@@ -136,7 +138,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         y=None,
         characteristics: AssetPanel | None = None,
     ) -> SupervisedPortfolioPolicy:
-        """Fit subperiod targets and the shared linear weight policy.
+        """Fit subperiod targets and the shared regression weight policy.
 
         Parameters
         ----------

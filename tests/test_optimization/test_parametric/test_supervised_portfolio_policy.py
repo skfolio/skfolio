@@ -232,3 +232,36 @@ def test_projection_is_euclidean_not_clip_and_normalize():
     projection = _WeightProjection(["a", "b", "c"], True, None, None, None, None)
     actual = projection.project(np.array([[0.8, 0.4, -0.2]]))
     np.testing.assert_allclose(actual, [[0.7, 0.3, 0]], atol=1e-6)
+
+
+@pytest.mark.parametrize("value", [np.nan, np.inf])
+def test_reject_nonfinite_regressor_predictions(value):
+    from sklearn.base import BaseEstimator, RegressorMixin
+
+    class InvalidRegressor(RegressorMixin, BaseEstimator):
+        def fit(self, X, y):
+            return self
+
+        def predict(self, X):
+            return np.full(len(X), value)
+
+    X, panel = data()
+    with pytest.raises(ValueError, match="one finite value"):
+        model(regressor=InvalidRegressor()).fit(X, characteristics=panel)
+
+
+def test_nonlinear_prediction_uses_fitted_regressor():
+    from sklearn.linear_model import Ridge
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import PolynomialFeatures
+
+    X, panel = data()
+    estimator = model(
+        regressor=make_pipeline(PolynomialFeatures(2), Ridge(alpha=0.1))
+    ).fit(X, characteristics=panel)
+    _, future = data(n=4, offset=11)
+    signal = future["signal"]
+    features = (signal - signal.mean(axis=1, keepdims=True)) / 3
+    raw = estimator.regressor_.predict(features.reshape(-1, 1)).reshape(4, 3)
+    expected = 1 / 3 + raw - raw.mean(axis=1, keepdims=True)
+    np.testing.assert_allclose(estimator.predict_weights(future), expected, atol=1e-7)

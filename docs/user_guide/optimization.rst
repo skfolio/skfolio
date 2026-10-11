@@ -1076,9 +1076,9 @@ For a complete tutorial illustrating failure handling and fallbacks, see
 Supervised characteristic policies (experimental)
 -------------------------------------------------
 
-:class:`SupervisedPortfolioPolicy` provides a first linear implementation of the
+:class:`SupervisedPortfolioPolicy` provides a first supervised implementation of the
 supervised alternative discussed in issue #262. It clones an optimizer over
-non-overlapping training subperiods, then uses ridge regression to learn the
+non-overlapping training subperiods, then uses a configurable regressor to learn the
 relationship between characteristics and those target allocations.
 
 For a decision at observation ``t`` and ``window_size=20``, the input is the
@@ -1091,14 +1091,16 @@ and must not be interpreted as an out-of-sample backtest.
 
 .. code-block:: python
 
+    from sklearn.ensemble import RandomForestRegressor
     from skfolio.optimization import InverseVolatility, SupervisedPortfolioPolicy
 
     model = SupervisedPortfolioPolicy(
         characteristics_exposures=exposures,
         optimizer=InverseVolatility(),
         window_size=20,
-        alpha=1.0,
+        regressor=RandomForestRegressor(n_estimators=100, random_state=0),
         long_only=True,
+        max_weights=0.4,
     )
     model.fit(X_train, characteristics=characteristics_train)
     targets = model.predict_weights(characteristics_test)
@@ -1113,7 +1115,20 @@ using the standard optimizer interface; it does not rebalance from ``targets``.
 This prototype supports a fixed active universe and complete returns. It skips
 training decisions with unavailable characteristics and requires all final
 characteristics to be available. Constraints on the label optimizer are not
-inherited by the regression policy; ``long_only=True`` only clips and normalizes
-its output. Arbitrary regressors, turnover-aware execution, metadata routing to
+inherited by the regression policy. A separate Euclidean projection enforces
+full investment, ``long_only``, ``min_weights``, ``max_weights`` and static
+``linear_constraints`` on every predicted allocation. Group equations use the
+existing skfolio syntax and a ``groups`` array in investment asset order.
+Infeasible constraints raise an error before any label optimizers are fitted.
+
+Regressors (including pipelines) must support cloning, fitting on a 2D matrix
+and predicting a single finite value for each asset/date. The shared model fits
+benchmark-relative deviations from demeaned characteristics divided by asset
+count. Predictions are centered across assets before projection. Model-specific
+constraints, such as positive regression coefficients, are configured on the
+regressor and do not replace portfolio constraints. If no regressor is supplied,
+Ridge without an intercept is used and ``alpha`` sets its penalty.
+
+Joint whole-portfolio regression, turnover-aware execution, metadata routing to
 the label optimizer and a full reproduction of Interpretable Supervised
 Portfolios remain future work.
