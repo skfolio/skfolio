@@ -713,6 +713,42 @@ class TestAlphaForecastEvaluation:
         assert "target_end_offset" not in decay.columns
         assert decay.loc[1, "spearman_mean_ic"] == pytest.approx(1.0)
 
+    def test_decay_keeps_dates_outside_common_sample_as_gaps(self, monkeypatch):
+        """Dates dropped from the common sample stay in the series as NaN gaps."""
+        import skfolio.alpha._evaluation as evaluation_module
+
+        panel = _decay_common_sample_panel()
+        idio_returns = panel[_IDIO_RETURNS].copy()
+        idio_returns[4, :] = np.nan
+        panel = AssetPanel(
+            fields={_IDIO_RETURNS: idio_returns, "signal": panel["signal"]},
+            observations=panel.observations,
+            asset_names=panel.asset_names,
+        )
+
+        original = evaluation_module._compute_diagnostics
+        calls = []
+
+        def spy(**kwargs):
+            out = original(**kwargs)
+            calls.append((kwargs["alpha"].shape[0], out["spearman_ic"].copy()))
+            return out
+
+        monkeypatch.setattr(evaluation_module, "_compute_diagnostics", spy)
+        alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            panel,
+            holding_period=1,
+            signal_lag=1,
+            n_forward_periods=2,
+        ).decay_summary()
+
+        # every window sees all evaluation dates, with the excluded ones as NaN gaps
+        n_dates = {n for n, _ in calls}
+        assert len(n_dates) == 1
+        assert all(ic.shape[0] == next(iter(n_dates)) for _, ic in calls)
+        assert any(np.isnan(ic).any() for _, ic in calls)
+
     def test_missing_target_field_raises(self, alpha_deterministic_panel):
         """target must be a field in the AssetPanel."""
         with pytest.raises(ValueError, match="Required fields are missing"):
