@@ -1167,11 +1167,24 @@ portfolios expose targets, previous holdings, ending holdings and turnover.
         characteristics_at_decisions,
         initial_holdings=initial_weights,
         covariance=covariances_at_decisions,
+        transaction_costs=0.001,  # 10 basis points per unit of absolute traded weight
     )
 
 Evaluation uses a separate copy of fitted model state and fresh solver objects.
 It leaves the estimator unchanged on success or failure. Infeasible combinations
-raise rather than relaxing a limit. This first helper supports gross returns,
-fully invested portfolios and finite asset returns strictly above -100 percent.
-Cash, transaction costs, management fees, automatic causal prior updates and
-larger holding windows are not handled by this helper.
+raise rather than relaxing a limit. The helper supports fully invested portfolios
+and finite asset returns strictly above -100 percent. Cash, management fees,
+automatic causal prior updates and larger holding windows remain unsupported.
+
+Transaction costs can be a scalar, an asset-aligned vector or a dictionary keyed
+by fitted asset names (omitted names default to zero). An explicit argument
+overrides ``portfolio_params["transaction_costs"]``; otherwise that setting is
+used. Rates must be finite and nonnegative. Costs use exactly the same pre-trade
+holdings as the turnover constraint, including the initial trade. Each period
+charges ``sum(cost_rate * abs(target - drifted_holdings))`` once.
+
+This reuses Portfolio accounting: costs reduce period returns, while ending
+weights follow asset-return drift. It does not introduce a cash ledger or solve
+for exact self-financing trades after fees. Costs affect evaluation only; they
+are not a penalty in supervised regressor fitting. Net returns are compounded
+by the resulting MultiPeriodPortfolio. Nonpositive net wealth raises an error.

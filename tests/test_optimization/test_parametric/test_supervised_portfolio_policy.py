@@ -379,3 +379,76 @@ def test_failed_sequential_evaluation_leaves_fitted_state_unchanged():
         returns, future, initial_holdings=[1 / 3] * 3, covariance=np.eye(3)
     )
     assert len(result.portfolios) == 2
+
+
+@pytest.mark.parametrize("rates", [0.01, [0.01, 0.02, 0.03], {"c": 0.03, "a": 0.01}])
+def test_sequential_costs_use_drifted_holdings(rates):
+    X, panel = data()
+    estimator = model(max_turnover=0.5).fit(X, characteristics=panel)
+    _, future = data(n=3, offset=11)
+    returns = pd.DataFrame(
+        [[0.1, 0, -0.1], [0, 0.1, 0], [0, 0, 0]],
+        index=pd.date_range("2020-01-13", periods=3),
+        columns=X.columns,
+    )
+    initial = np.array([0.5, 0.3, 0.2])
+    result = estimator.evaluate_sequential(
+        returns, future, initial_holdings=initial, transaction_costs=rates
+    )
+    vector = (
+        np.array([rates.get(name, 0) for name in X.columns])
+        if isinstance(rates, dict)
+        else np.broadcast_to(rates, (3,))
+    )
+    anchor = initial
+    for i, period in enumerate(result.portfolios):
+        trades = np.abs(period.weights - anchor)
+        expected_cost = vector @ trades
+        np.testing.assert_allclose(period.total_cost, expected_cost)
+        np.testing.assert_allclose(period.turnover, trades.sum())
+        np.testing.assert_allclose(
+            period.returns[0],
+            period.weights @ returns.iloc[i].to_numpy() - expected_cost,
+        )
+        assert period.turnover <= 0.5 + 1e-6
+        anchor = period.ending_weights
+    assert result.portfolios[0].total_cost > 0
+    gross = estimator.evaluate_sequential(returns, future, initial_holdings=initial)
+    np.testing.assert_allclose(
+        result.returns,
+        gross.returns - np.array([p.total_cost for p in result.portfolios]),
+    )
+
+
+def test_cost_defaults_override_and_no_trade():
+    X, panel = data()
+    estimator = model(max_turnover=0, portfolio_params={"transaction_costs": 0.02}).fit(
+        X, characteristics=panel
+    )
+    _, future = data(n=1, offset=11)
+    returns = pd.DataFrame(
+        [[0, 0, 0]], index=pd.date_range("2020-01-13", periods=1), columns=X.columns
+    )
+    result = estimator.evaluate_sequential(
+        returns, future, initial_holdings=[1 / 3] * 3
+    )
+    assert result.portfolios[0].total_cost < 1e-8
+    np.testing.assert_allclose(result.portfolios[0].transaction_costs, 0.02)
+    override = estimator.evaluate_sequential(
+        returns, future, initial_holdings=[1 / 3] * 3, transaction_costs=0
+    )
+    assert override.portfolios[0].total_cost == 0
+
+
+@pytest.mark.parametrize("rates", [-0.1, np.nan, {"unknown": 0.1}, [0.1, 0.2]])
+def test_invalid_transaction_costs(rates):
+    X, panel = data()
+    estimator = model().fit(X, characteristics=panel)
+    _, future = data(n=1, offset=11)
+    returns = pd.DataFrame(
+        [[0, 0, 0]], index=pd.date_range("2020-01-13", periods=1), columns=X.columns
+    )
+    with pytest.raises(ValueError):
+        estimator.evaluate_sequential(
+            returns, future, initial_holdings=[1 / 3] * 3, transaction_costs=rates
+        )

@@ -25,6 +25,7 @@ from skfolio.portfolio import MultiPeriodPortfolio, Portfolio
 from skfolio.utils.tools import (
     _validate_non_negative_integer,
     _validate_non_negative_real,
+    input_to_array,
 )
 
 
@@ -397,6 +398,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         *,
         initial_holdings,
         covariance=None,
+        transaction_costs=None,
     ) -> MultiPeriodPortfolio:
         """Evaluate one rebalance per subsequent return observation.
 
@@ -413,6 +415,10 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             order. No initial allocation or initial trade is silently assumed.
         covariance : array-like or DataFrame, optional
             Point-in-time covariance input, as in predict_weights.
+        transaction_costs : float, array-like or dict, optional
+            Nonnegative proportional costs per asset, charged on absolute traded
+            weights. Named rates align to fitted assets; omitted names cost zero.
+            Overrides portfolio_params["transaction_costs"] when supplied.
 
         Returns
         -------
@@ -423,8 +429,10 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         Notes
         -----
         Runs on a deep copy of fitted state, so evaluation is repeatable and a
-        partial failure cannot advance the original estimator. Gross returns only:
-        transaction costs and management fees are not supported in this helper.
+        partial failure cannot advance the original estimator. Costs follow
+        Portfolio accounting: deducted from period returns, while ending weights
+        follow asset-return drift. No separate cash account is modeled. Management
+        fees are not supported. Costs affect evaluation, not regressor fitting.
         """
         check_is_fitted(self, "regressor_")
         if not isinstance(X, pd.DataFrame) or list(X.columns) != list(
@@ -461,18 +469,38 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         if self.max_variance is not None and cov is None:
             raise ValueError("`covariance` is required for a risk limit.")
         params = dict(self.portfolio_params or {})
+        costs = params.pop("transaction_costs", None)
+        if transaction_costs is not None:
+            costs = transaction_costs
+        if costs is None:
+            costs = 0.0
+        if isinstance(costs, dict) and set(costs) - set(self.feature_names_in_):
+            raise ValueError("Transaction cost names must belong to fitted assets.")
+        cost_rates = (
+            np.full(len(self.feature_names_in_), costs, dtype=float)
+            if np.isscalar(costs)
+            else input_to_array(
+                costs,
+                len(self.feature_names_in_),
+                0,
+                1,
+                self.feature_names_in_,
+                "transaction_costs",
+            )
+        )
+        if not np.isfinite(cost_rates).all() or (cost_rates < 0).any():
+            raise ValueError("Transaction costs must be finite and nonnegative.")
         forbidden = {
             "weights",
             "previous_weights",
             "weight_drift",
             "X",
-            "transaction_costs",
             "management_fees",
             "sample_weight",
         }
         if forbidden.intersection(params):
             raise ValueError(
-                "Sequential evaluation controls holdings/drift and supports gross returns only."
+                "Sequential evaluation controls holdings/drift; management fees and sample weights are unsupported."
             )
         # Rebuild CVXPY objects: copied native solver/canonicalization caches are
         # not safe to reuse. Only fitted statistical/model state is deep-copied.
@@ -506,6 +534,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
                 weights=targets,
                 previous_weights=holdings,
                 weight_drift=True,
+                transaction_costs=cost_rates,
                 **params,
             )
             holdings = period.ending_weights.copy()

@@ -47,7 +47,7 @@ Deferred
 --------
 
 Dynamic universes, missing-return policies, joint whole-portfolio regression,
-transaction costs, cash, automatic causal priors, repeated/idempotent inference for
+cost-aware supervised training, cash, automatic causal priors, repeated/idempotent inference for
 stateful exposure estimators, larger evaluation windows,
 and full Chevalier--Coqueret--Raffinot methodology.
 
@@ -75,3 +75,12 @@ not to static training diagnostics. Covariance must be causal and PSD; holdings
 must be fully invested. Turnover is total absolute traded weight. Evaluation is
 isolated from fitted state and rebuilds solver objects instead of copying native
 solver caches. See the user guide for timing and remaining execution limitations.
+
+Transaction-cost evaluation
+---------------------------
+
+Sequential evaluation now accepts scalar, per-asset or named transaction costs,
+using Portfolio accounting with the same drifted-holdings anchor as turnover.
+The explicit argument overrides portfolio_params; zero disables costs. Costs
+reduce returns but do not alter Portfolio ending-weight drift or train the
+regressor to avoid trading. Exact self-financing cash/fee accounting is deferred.
