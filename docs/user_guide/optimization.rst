@@ -1129,6 +1129,49 @@ constraints, such as positive regression coefficients, are configured on the
 regressor and do not replace portfolio constraints. If no regressor is supplied,
 Ridge without an intercept is used and ``alpha`` sets its penalty.
 
-Joint whole-portfolio regression, turnover-aware execution, metadata routing to
+Joint whole-portfolio regression, automatic prior updates, metadata routing to
 the label optimizer and a full reproduction of Interpretable Supervised
 Portfolios remain future work.
+
+Risk, turnover and sequential evaluation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``max_variance`` and ``max_turnover`` add dynamic projection constraints.
+Pass ``covariance`` and ``holdings`` to ``predict_weights`` explicitly. Covariance
+may be a single matrix shared across decisions, or one matrix per decision.
+Named matrices are aligned to fitted assets. Holdings must contain one fully
+invested pre-trade vector per decision; they are not broadcast across dates.
+Turnover means ``sum(abs(target - holdings))``, without a one-half factor.
+Variance units follow the supplied covariance horizon; there is no implicit
+annualization. Estimates must use only information available at the decision.
+
+Training ``weights_`` and ``weights_history_`` remain static diagnostics. Standard
+``predict`` is disabled when a dynamic limit is enabled, so those allocations
+cannot silently bypass risk or turnover constraints during evaluation.
+
+``evaluate_sequential`` evaluates one rebalance per holding period using the
+existing ``Portfolio(weight_drift=True)`` infrastructure. Supply initial holdings
+and characteristic decision dates strictly preceding their corresponding return
+end dates. Each subsequent decision date must equal the preceding return end
+date. Every decision must follow the training sample. The first trade counts
+against the supplied initial holdings; subsequent trades use actual drifted
+ending holdings. The result is a ``MultiPeriodPortfolio`` whose constituent
+portfolios expose targets, previous holdings, ending holdings and turnover.
+
+.. code-block:: python
+
+    model.set_params(max_variance=0.0002, max_turnover=0.1)
+    model.fit(X_train, characteristics=characteristics_train)
+    evaluation = model.evaluate_sequential(
+        X_forward_returns,
+        characteristics_at_decisions,
+        initial_holdings=initial_weights,
+        covariance=covariances_at_decisions,
+    )
+
+Evaluation uses a separate copy of fitted model state and fresh solver objects.
+It leaves the estimator unchanged on success or failure. Infeasible combinations
+raise rather than relaxing a limit. This first helper supports gross returns,
+fully invested portfolios and finite asset returns strictly above -100 percent.
+Cash, transaction costs, management fees, automatic causal prior updates and
+larger holding windows are not handled by this helper.

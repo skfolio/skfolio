@@ -36,10 +36,10 @@ Next design decisions
    Forward labels belong entirely inside each training fold. Characteristic
    estimators must themselves be causal; this class cannot enforce that for
    arbitrary user-supplied estimators.
-4. Add metadata routing and time-varying risk/turnover constraint semantics.
-   Static portfolio constraints are now enforced after prediction using CVXPY
-   and the existing skfolio equation parser. Label constraints alone are still
-   insufficient. Risk and turnover constraints need explicit causal state.
+4. Add metadata routing and automatic causal prior updates. Explicit covariance
+   and pre-trade holdings now support risk/turnover limits. Sequential evaluation
+   uses existing Portfolio drift, explicit initial holdings and one subsequent
+   return observation per decision. Label constraints alone remain insufficient.
 5. Add a worked empirical comparison after those API choices. This starting
    implementation has correctness tests, not evidence of investment performance.
 
@@ -47,8 +47,8 @@ Deferred
 --------
 
 Dynamic universes, missing-return policies, joint whole-portfolio regression,
-transaction costs and turnover constraints, repeated/idempotent inference for
-stateful exposure estimators, automatic evaluation of changing target weights,
+transaction costs, cash, automatic causal priors, repeated/idempotent inference for
+stateful exposure estimators, larger evaluation windows,
 and full Chevalier--Coqueret--Raffinot methodology.
 
 References
@@ -65,3 +65,13 @@ Validation example
 Run ``PYTHONPATH=src python integration/issue_262/example.py`` from this worktree.
 The example fits a random forest to subperiod portfolios and checks bounds on
 subsequent predictions. It illustrates API behavior, not investment performance.
+
+Risk and turnover implementation
+-------------------------------
+
+Four incremental commits add validated external inputs, variance limits,
+turnover limits, and sequential evaluation. Limits apply at prediction/evaluation,
+not to static training diagnostics. Covariance must be causal and PSD; holdings
+must be fully invested. Turnover is total absolute traded weight. Evaluation is
+isolated from fitted state and rebuilds solver objects instead of copying native
+solver caches. See the user guide for timing and remaining execution limitations.

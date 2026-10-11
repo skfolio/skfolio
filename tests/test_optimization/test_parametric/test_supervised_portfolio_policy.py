@@ -1,5 +1,6 @@
 """Timing, coefficient recovery and inference tests for supervised policies."""
 
+from itertools import pairwise
 from typing import ClassVar
 
 import numpy as np
@@ -298,3 +299,83 @@ def test_conflicting_risk_and_turnover_raise():
     _, future = data(n=1, offset=11)
     with pytest.raises(ValueError, match="infeasible"):
         estimator.predict_weights(future, covariance=np.eye(3), holdings=[1, 0, 0])
+
+
+def test_sequential_evaluation_uses_drift_and_is_repeatable():
+    X, panel = data()
+    estimator = model(max_turnover=0).fit(X, characteristics=panel)
+    _, future = data(n=3, offset=11)
+    returns = pd.DataFrame(
+        [[0.1, 0, -0.1], [0, 0.1, 0], [0, 0, 0]],
+        index=pd.date_range("2020-01-13", periods=3),
+        columns=X.columns,
+    )
+    first = estimator.evaluate_sequential(returns, future, initial_holdings=[1 / 3] * 3)
+    second = estimator.evaluate_sequential(
+        returns, future, initial_holdings=[1 / 3] * 3
+    )
+    np.testing.assert_allclose(first.returns, second.returns)
+    periods = first.portfolios
+    np.testing.assert_allclose(periods[1].weights, [1.1 / 3, 1 / 3, 0.9 / 3], atol=1e-6)
+    for previous, current in pairwise(periods):
+        np.testing.assert_allclose(current.previous_weights, previous.ending_weights)
+    assert all(p.turnover < 1e-6 for p in periods)
+    assert estimator.last_observation_ == X.index[-1]
+
+
+def test_sequential_evaluation_rejects_same_period_characteristics():
+    X, panel = data()
+    estimator = model().fit(X, characteristics=panel)
+    returns, future = data(n=3, offset=11)
+    with pytest.raises(ValueError, match="Decision dates"):
+        estimator.evaluate_sequential(returns, future, initial_holdings=[1 / 3] * 3)
+
+
+def test_sequential_limits_and_no_future_return_leakage():
+    X, panel = data()
+    estimator = model(max_turnover=0.1, max_variance=0.34).fit(X, characteristics=panel)
+    _, future = data(n=3, offset=11)
+    returns = pd.DataFrame(
+        np.zeros((3, 3)),
+        index=pd.date_range("2020-01-13", periods=3),
+        columns=X.columns,
+    )
+    covariance = np.array([np.eye(3), 0.9 * np.eye(3), np.eye(3)])
+    first = estimator.evaluate_sequential(
+        returns, future, initial_holdings=[1 / 3] * 3, covariance=covariance
+    )
+    for i, period in enumerate(first.portfolios):
+        assert period.turnover <= 0.1 + 1e-6
+        assert period.weights @ covariance[i] @ period.weights <= 0.34 + 1e-6
+    changed = returns.copy()
+    changed.iloc[-1, 0] = 0.5
+    second = estimator.evaluate_sequential(
+        changed, future, initial_holdings=[1 / 3] * 3, covariance=covariance
+    )
+    for left, right in zip(first.portfolios, second.portfolios, strict=True):
+        np.testing.assert_allclose(left.weights, right.weights)
+
+
+def test_failed_sequential_evaluation_leaves_fitted_state_unchanged():
+    X, panel = data()
+    estimator = model(max_variance=0.34).fit(X, characteristics=panel)
+    original_coef = estimator.coef_.copy()
+    _, future = data(n=2, offset=11)
+    returns = pd.DataFrame(
+        np.zeros((2, 3)),
+        index=pd.date_range("2020-01-13", periods=2),
+        columns=X.columns,
+    )
+    with pytest.raises(ValueError, match="infeasible"):
+        estimator.evaluate_sequential(
+            returns,
+            future,
+            initial_holdings=[1 / 3] * 3,
+            covariance=np.array([np.eye(3), 10 * np.eye(3)]),
+        )
+    np.testing.assert_array_equal(estimator.coef_, original_coef)
+    assert estimator.last_observation_ == X.index[-1]
+    result = estimator.evaluate_sequential(
+        returns, future, initial_holdings=[1 / 3] * 3, covariance=np.eye(3)
+    )
+    assert len(result.portfolios) == 2

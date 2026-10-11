@@ -5,13 +5,15 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+
 import numpy as np
 import pandas as pd
 from sklearn.base import clone, is_regressor
 from sklearn.linear_model import Ridge
 from sklearn.utils.validation import check_is_fitted, validate_data
 
-from skfolio.containers import AssetPanel
+from skfolio.containers import AssetPanel, AssetPanelView
 from skfolio.factor_exposure import BaseFactorExposure
 from skfolio.optimization._base import BaseOptimization
 from skfolio.optimization.parametric._parametric_portfolio_policy import (
@@ -19,6 +21,7 @@ from skfolio.optimization.parametric._parametric_portfolio_policy import (
 )
 from skfolio.optimization.parametric._projection_context import projection_context
 from skfolio.optimization.parametric._weight_projection import _WeightProjection
+from skfolio.portfolio import MultiPeriodPortfolio, Portfolio
 from skfolio.utils.tools import (
     _validate_non_negative_integer,
     _validate_non_negative_real,
@@ -265,6 +268,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         )
         self.weights_history_ = weights_history
         self.weights_ = weights_history[-1].copy()
+        self.last_observation_ = X.index[-1]
         return self
 
     def _predict_policy(
@@ -304,7 +308,11 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         return weights
 
     def predict_weights(
-        self, characteristics: AssetPanel, *, covariance=None, holdings=None
+        self,
+        characteristics: AssetPanel | AssetPanelView,
+        *,
+        covariance=None,
+        holdings=None,
     ) -> pd.DataFrame:
         """Predict allocations from a subsequent characteristic panel.
 
@@ -339,6 +347,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             raise ValueError("`covariance` is required for a risk limit.")
         if self.max_turnover is not None and holdings is None:
             raise ValueError("`holdings` is required for a turnover limit.")
+        if isinstance(characteristics, AssetPanelView):
+            characteristics = characteristics.to_panel(deep=False)
         panel = self._validate_characteristics(characteristics, X=None)
         investment_idx = self._investment_index(panel, self.feature_names_in_)
         if not panel.active_mask[:, investment_idx].all():
@@ -379,3 +389,129 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
                 "Use predict_weights with explicit risk and holdings inputs."
             )
         return super().predict(X)
+
+    def evaluate_sequential(
+        self,
+        X: pd.DataFrame,
+        characteristics: AssetPanel,
+        *,
+        initial_holdings,
+        covariance=None,
+    ) -> MultiPeriodPortfolio:
+        """Evaluate one rebalance per subsequent return observation.
+
+        Parameters
+        ----------
+        X : DataFrame
+            Realized returns for successive holding periods. Each row ends AFTER
+            its corresponding characteristic decision date. From row two onward,
+            the decision date must equal the preceding return's end date.
+        characteristics : AssetPanel
+            One causal characteristic row per decision, strictly after training.
+        initial_holdings : array-like
+            Fully invested pre-trade weights at the first decision in fitted asset
+            order. No initial allocation or initial trade is silently assumed.
+        covariance : array-like or DataFrame, optional
+            Point-in-time covariance input, as in predict_weights.
+
+        Returns
+        -------
+        portfolio : MultiPeriodPortfolio
+            One Portfolio per holding period. Its previous_weights, weights,
+            ending_weights and turnover expose the execution sequence.
+
+        Notes
+        -----
+        Runs on a deep copy of fitted state, so evaluation is repeatable and a
+        partial failure cannot advance the original estimator. Gross returns only:
+        transaction costs and management fees are not supported in this helper.
+        """
+        check_is_fitted(self, "regressor_")
+        if not isinstance(X, pd.DataFrame) or list(X.columns) != list(
+            self.feature_names_in_
+        ):
+            raise ValueError(
+                "Evaluation returns must have fitted asset columns in order."
+            )
+        dates = pd.Index(characteristics.observations)
+        if (
+            len(X) == 0
+            or len(X) != len(dates)
+            or not X.index.is_unique
+            or not X.index.is_monotonic_increasing
+            or not dates.is_unique
+            or not dates.is_monotonic_increasing
+            or dates[0] <= self.last_observation_
+            or not (dates < X.index).all()
+            or not dates[1:].equals(X.index[:-1])
+        ):
+            raise ValueError(
+                "Decision dates must precede returns and form consecutive out-of-sample periods."
+            )
+        if not np.isfinite(X.to_numpy()).all() or (X.to_numpy() <= -1).any():
+            raise ValueError(
+                "Evaluation requires finite returns strictly greater than -1."
+            )
+        cov, held = projection_context(
+            self.feature_names_in_, dates[:1], holdings=initial_holdings
+        )
+        cov, _ = projection_context(
+            self.feature_names_in_, dates, covariance=covariance
+        )
+        if self.max_variance is not None and cov is None:
+            raise ValueError("`covariance` is required for a risk limit.")
+        params = dict(self.portfolio_params or {})
+        forbidden = {
+            "weights",
+            "previous_weights",
+            "weight_drift",
+            "X",
+            "transaction_costs",
+            "management_fees",
+            "sample_weight",
+        }
+        if forbidden.intersection(params):
+            raise ValueError(
+                "Sequential evaluation controls holdings/drift and supports gross returns only."
+            )
+        # Rebuild CVXPY objects: copied native solver/canonicalization caches are
+        # not safe to reuse. Only fitted statistical/model state is deep-copied.
+        runner = deepcopy(self, {id(self.weight_projection_): None})
+        runner.weight_projection_ = _WeightProjection(
+            self.feature_names_in_,
+            self.long_only,
+            self.min_weights,
+            self.max_weights,
+            self.groups,
+            self.linear_constraints,
+        )
+        holdings = held[0]
+        portfolios = []
+        for t in range(len(X)):
+            targets = (
+                runner.predict_weights(
+                    characteristics.isel(observations=slice(t, t + 1)),
+                    covariance=None if cov is None else cov[t],
+                    holdings=holdings,
+                )
+                .iloc[0]
+                .to_numpy()
+            )
+            if not np.isfinite(targets).all():
+                raise ValueError(
+                    "All characteristics must be available at each rebalance."
+                )
+            period = Portfolio(
+                X.iloc[t : t + 1],
+                weights=targets,
+                previous_weights=holdings,
+                weight_drift=True,
+                **params,
+            )
+            holdings = period.ending_weights.copy()
+            if not np.isfinite(holdings).all() or 1 + float(period.returns[0]) <= 0:
+                raise ValueError("Nonpositive wealth prevents continued evaluation.")
+            portfolios.append(period)
+        return MultiPeriodPortfolio(
+            portfolios=portfolios, check_observations_order=True, compounded=True
+        )
