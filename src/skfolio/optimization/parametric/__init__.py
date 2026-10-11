@@ -7,5 +7,8 @@
 from skfolio.optimization.parametric._parametric_portfolio_policy import (
     ParametricPortfolioPolicy,
 )
+from skfolio.optimization.parametric._supervised_portfolio_policy import (
+    SupervisedPortfolioPolicy,
+)
 
-__all__ = ["ParametricPortfolioPolicy"]
+__all__ = ["ParametricPortfolioPolicy", "SupervisedPortfolioPolicy"]

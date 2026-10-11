@@ -19,7 +19,10 @@ from skfolio.optimization.convex import (
 )
 from skfolio.optimization.ensemble import StackingOptimization
 from skfolio.optimization.naive import EqualWeighted, InverseVolatility, Random
-from skfolio.optimization.parametric import ParametricPortfolioPolicy
+from skfolio.optimization.parametric import (
+    ParametricPortfolioPolicy,
+    SupervisedPortfolioPolicy,
+)
 
 __all__ = [
     "BaseHierarchicalOptimization",
@@ -40,4 +43,5 @@ __all__ = [
     "RiskBudgeting",
     "SchurComplementary",
     "StackingOptimization",
+    "SupervisedPortfolioPolicy",
 ]
