@@ -236,6 +236,17 @@ class AutoProjector(BaseProjector):
             and config.max_turnover is None
         ):
             return softmax(dual)
+        if (
+            type(mirror) is EntropyMirrorMap
+            and not self._needs_cvx()
+            and config.budget is None
+            and np.all(np.asarray(config.lower) == 0)
+            and np.all(np.asarray(config.upper) == 1)
+            and config.max_turnover is None
+        ):
+            # The separable objective has derivative log(w) + 1 - dual.
+            # Clip in log space at the upper bound to avoid exponential overflow.
+            return np.exp(np.minimum(np.asarray(dual) - 1.0, 0.0))
         return project_convex(
             dual,
             budget=config.budget,

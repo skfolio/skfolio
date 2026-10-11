@@ -425,3 +425,10 @@ invalid inputs and solver errors.
 Validation for the completed regret slice: 672 online tests pass; the full
 repository and source-doctest run passes 10,845 tests with no skips. Lint,
 formatting, types and docstring checks pass. Documentation builds with warnings.
+
+CI portability: free-budget entropy
+-----------------------------------
+The unconstrained-budget entropy objective with default [0, 1] bounds is
+separable. Compute exp(min(dual - 1, 0)) exactly instead of using a conic solver.
+The original regression now checks machine precision; an extreme-dual test checks
+upper-bound clipping without overflow. Coupled constraints retain the convex path.

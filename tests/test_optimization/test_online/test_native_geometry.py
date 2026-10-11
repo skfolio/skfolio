@@ -38,7 +38,7 @@ def test_entropy_free_budget_does_not_normalize_away_dual_scale():
         EntropyMirrorMap(),
         np.log([0.1, 0.2]) + 1,
     )
-    assert_allclose(result, [0.1, 0.2], atol=1e-5)
+    assert_allclose(result, [0.1, 0.2], atol=1e-15, rtol=0)
 
 
 def test_entropy_engine_enforces_turnover_in_native_update():
@@ -193,3 +193,10 @@ def test_zero_turnover_rejects_barrier_domain_boundary():
     )
     with pytest.raises(RuntimeError, match="mirror domain"):
         projector.solve_update(BurgMirrorMap(), np.ones(2))
+
+
+def test_entropy_free_budget_clips_in_log_space():
+    result = AutoProjector(ProjectionConfig(budget=None)).solve_update(
+        EntropyMirrorMap(), np.array([1000.0, 1.0, -1000.0])
+    )
+    assert_allclose(result, [1.0, 1.0, 0.0], atol=0, rtol=0)

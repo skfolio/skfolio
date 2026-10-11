@@ -163,9 +163,10 @@
         "Correct convex max_short inequality and enforce variance even when tracking error is also configured.",
         "Native KL/adaptive constrained geometry and shared skfolio constraint extraction remain pending.",
         "Solve native potential minus dual linear term over the existing constraint set. Keep Euclidean and default-simplex entropy fast paths; reject unsupported custom projector geometries rather than downgrade to Euclidean.",
-        "Shared batch constraint builders are reused; zero-turnover holdings are exact and must lie in the mirror domain."
+        "Shared batch constraint builders are reused; zero-turnover holdings are exact and must lie in the mirror domain.",
+        "Use the exact separable entropy solution for free budgets with default box bounds; avoid solver-dependent precision and exponential overflow."
       ],
-      "destination_sha256": "da571cd4ef2ec63841deeac9d045e9de0e12315b05a213c13a437a52a0ce1e66"
+      "destination_sha256": "4c02d069eaa6a86af4899b87ce2ce71cc831fe00cb4a65dabe0ea2cb405a1a69"
     },
     {
       "source_path": "src/skfolio/optimization/online/_regret.py",
