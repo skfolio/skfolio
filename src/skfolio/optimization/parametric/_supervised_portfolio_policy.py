@@ -20,6 +20,7 @@ from skfolio.optimization._base import BaseOptimization
 from skfolio.optimization.parametric._parametric_portfolio_policy import (
     ParametricPortfolioPolicy,
 )
+from skfolio.optimization.parametric._prior_metadata import slice_prior_metadata
 from skfolio.optimization.parametric._projection_context import projection_context
 from skfolio.optimization.parametric._weight_projection import _WeightProjection
 from skfolio.portfolio import MultiPeriodPortfolio, Portfolio
@@ -425,6 +426,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         covariance=None,
         transaction_costs=None,
         prior_estimator: BasePrior | None = None,
+        prior_fit_params: dict | None = None,
         covariance_window: int = 60,
         rebalance_every: int = 1,
     ) -> MultiPeriodPortfolio:
@@ -452,7 +454,11 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             Covariance prior cloned and refitted on trailing observed returns at
             each rebalance when a risk limit is enabled without explicit covariance.
             Defaults to EmpiricalPrior with LedoitWolf covariance shrinkage.
-            Priors requiring additional metadata are not supported here.
+        prior_fit_params : dict, optional
+            Dated prior fit inputs, e.g. {"factors": factor_returns}. Series,
+            DataFrames and AssetPanels are sliced to the exact history window.
+            Missing dates, duplicate dates and undated arrays raise an error.
+            Configure child metadata requests on the supplied prior as usual.
         covariance_window : int, default=60
             Maximum number of past return rows supplied to each prior fit; at
             least two. No return from the following holding period is included.
@@ -521,6 +527,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             raise ValueError("`prior_estimator` must be a BasePrior estimator.")
         if prior_estimator is not None and cov is not None:
             raise ValueError("Supply either covariance or prior_estimator, not both.")
+        if prior_fit_params and (cov is not None or self.max_variance is None):
+            raise ValueError("Prior metadata requires automatic risk estimation.")
         risk_prior = (
             EmpiricalPrior(covariance_estimator=LedoitWolf())
             if prior_estimator is None
@@ -580,7 +588,9 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
                     history = pd.concat([self.training_returns_, X.iloc[:t]]).tail(
                         covariance_window
                     )
-                    fitted_prior = clone(risk_prior).fit(history)
+                    fitted_prior = clone(risk_prior).fit(
+                        history, **slice_prior_metadata(prior_fit_params, history.index)
+                    )
                     decision_covariance = fitted_prior.return_distribution_.covariance
                 targets = (
                     runner.predict_weights(

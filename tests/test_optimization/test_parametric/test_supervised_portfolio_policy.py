@@ -597,3 +597,45 @@ def test_rolling_characteristics_advance_on_nontrading_dates():
         future.isel(observations=slice(2, 5)), update_state=True
     )
     pd.testing.assert_frame_equal(pd.concat([first, second]), batch)
+
+
+def test_prior_metadata_is_sliced_to_causal_history():
+    from skfolio.moments import LedoitWolf
+    from skfolio.prior import EmpiricalPrior
+
+    class MetadataPrior(EmpiricalPrior):
+        seen: ClassVar[list] = []
+
+        def fit(self, X, y=None, factors=None, **kwargs):
+            pd.testing.assert_index_equal(factors.index, X.index)
+            type(self).seen.append(factors.copy())
+            return super().fit(X, y, **kwargs)
+
+    X, panel = data()
+    estimator = model(max_variance=10).fit(X, characteristics=panel)
+    _, future = data(n=2, offset=11)
+    returns = pd.DataFrame(
+        [[0, 0, 0]] * 2, index=pd.date_range("2020-01-13", periods=2), columns=X.columns
+    )
+    factors = pd.DataFrame(
+        {"factor": np.arange(30)}, index=pd.date_range("2020-01-01", periods=30)
+    )
+    estimator.evaluate_sequential(
+        returns,
+        future,
+        initial_holdings=[1 / 3] * 3,
+        covariance_window=5,
+        prior_estimator=MetadataPrior(covariance_estimator=LedoitWolf()),
+        prior_fit_params={"factors": factors},
+    )
+    for t, received in enumerate(MetadataPrior.seen):
+        pd.testing.assert_frame_equal(
+            received, factors.loc[pd.concat([X, returns.iloc[:t]]).tail(5).index]
+        )
+    with pytest.raises(ValueError, match="cover each history"):
+        estimator.evaluate_sequential(
+            returns,
+            future,
+            initial_holdings=[1 / 3] * 3,
+            prior_fit_params={"factors": factors.iloc[20:]},
+        )
