@@ -1462,17 +1462,21 @@ def _compute_forward_window_diagnostics(
         _forward_mean_return(X[target], horizon=horizon, lag=lag)
         for _, horizon, lag in windows
     ]
-    common_eval_idx = eval_idx
+    # Dates outside the common sample are kept as gaps (all assets masked out) rather
+    # than dropped, so the spacing between observations used for the overlap
+    # correction is preserved.
+    common_dates = np.ones(eval_idx.size, dtype=bool)
     for target_forward in targets:
         valid = (
-            np.isfinite(alpha[common_eval_idx])
-            & np.isfinite(target_forward[common_eval_idx])
-            & X.estimation_mask[common_eval_idx]
+            np.isfinite(alpha[eval_idx])
+            & np.isfinite(target_forward[eval_idx])
+            & X.estimation_mask[eval_idx]
         )
-        common_eval_idx = common_eval_idx[np.sum(valid, axis=1) >= min_count]
+        common_dates &= np.sum(valid, axis=1) >= min_count
+    eligible_mask = X.estimation_mask[eval_idx] & common_dates[:, None]
 
     records = []
-    if common_eval_idx.size == 0:
+    if not common_dates.any():
         records = [
             _forward_window_record(index_name=index_name, index_value=index_value)
             for index_value, _, _ in windows
@@ -1481,10 +1485,10 @@ def _compute_forward_window_diagnostics(
 
     for (index_value, horizon, _), target_forward in zip(windows, targets, strict=True):
         diagnostics = _compute_diagnostics(
-            alpha=alpha[common_eval_idx],
-            target=target_forward[common_eval_idx],
-            eligible_mask=X.estimation_mask[common_eval_idx],
-            cs_weights=None if cs_weights is None else cs_weights[common_eval_idx],
+            alpha=alpha[eval_idx],
+            target=target_forward[eval_idx],
+            eligible_mask=eligible_mask,
+            cs_weights=None if cs_weights is None else cs_weights[eval_idx],
             quantiles=quantiles,
             min_count=min_count,
         )
