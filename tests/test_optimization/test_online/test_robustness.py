@@ -63,8 +63,7 @@ def test_rmr_outlier_resistance():
     assert rmr_wealth > olmar_wealth
 
 
-@pytest.mark.skip(reason="Pending separate port of Carlo's regret utilities")
-def test_universal_regret_bound():
+def test_universal_regret_is_finite():
     """
     Verify that the computed universal regret is finite and behaves reasonably.
     """
@@ -73,13 +72,6 @@ def test_universal_regret_bound():
     model = FollowTheWinner(strategy=FTWStrategy.EG)
     model.fit(X)
 
-    # Calculate universal regret
-    # We need a comparator that supports universal regret or just use the function
-    # The regret function with RegretType.DYNAMIC_UNIVERSAL computes it against
-    # a theoretical bound or a specific universal portfolio implementation.
-    # In skfolio, it might be implemented as comparing to a specific baseline.
-
-    # Let's check the regret values
     from skfolio.optimization.online._regret import regret
 
     regrets = regret(
@@ -91,9 +83,6 @@ def test_universal_regret_bound():
 
     assert len(regrets) == len(X)
     assert not np.any(np.isnan(regrets))
-    # Universal regret should generally be positive as it compares to a strong baseline
-    # but it depends on the exact definition in skfolio.
-    # We just ensure it runs and returns valid numbers.
 
 
 def test_zero_liquidity_handling():

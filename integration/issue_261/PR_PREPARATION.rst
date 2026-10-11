@@ -15,11 +15,12 @@ Expose EG, AdaGrad and moving-average reversion through shared Carlo kernels.
 Keep family factories internal. Include the common lifecycle, causal priors,
 native geometry, shared constraints and one-period Portfolio evaluation required
 to make these usable estimators. Preserve original source and test attribution.
-Broader benchmark/regret utilities and execution extensions remain separate.
+Regret utilities and internal hindsight benchmark helpers are included. Broader
+execution extensions remain separate.
 
 Carlo's remaining algorithm tests are now ported. The base test file was renamed
-so pytest collects it. Six files remain pending, all benchmark/regret-related,
-and one regret-dependent robustness case is explicitly skipped. Mathematical
+so pytest collects it. All 46 inventoried source/test files are ported, and the
+regret-dependent robustness case is enabled. Mathematical
 reference changes are recorded in PORTING.rst and the inventory.
 
 Upstream compatibility
@@ -44,12 +45,11 @@ Review checkpoints before marking ready
 Final refreshed-branch validation
 --------------------------------
 
-The complete source-doctest and repository test run passes: 10,756 tests, one
-explicit skip for the deferred regret utility. The three newly added public
-estimator docstring examples were verified separately and pass. Ruff lint and
-formatting, full-repository type checks, and numpydoc presence checks pass. Sphinx
-HTML builds successfully with 12 warnings. Source and destination provenance
-hashes are verified. These are local checks, not the GitHub platform/version matrix.
+The complete source-doctest and repository test run passes: 10,845 tests, no
+skips (including 672 online tests). Ruff lint and formatting, repository type
+checks, and numpydoc presence checks pass. Sphinx HTML builds successfully with
+warnings. Source and destination provenance hashes are verified. These are local
+checks, not the GitHub platform/version matrix.
 
 Publication commands for the user
 --------------------------------

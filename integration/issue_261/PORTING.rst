@@ -26,10 +26,9 @@ Latest status
 -------------
 
 Steps 1-4 now have an integrated, tested implementation on online-framework-port.
-40 of 46 inventoried source/test files are moved or adapted; 6 remain pending.
-This includes 14 of Carlo's 16 source modules. Only benchmark/regret code and
-four related test files remain pending. One regret-dependent case in the ported
-robustness tests is explicitly skipped and recorded in the inventory. New integration tests are listed separately in PORT_INVENTORY.json.
+All 46 inventoried source/test files are now moved or adapted, including all
+16 source modules. Regret and its benchmark dependencies are ported; the deferred
+robustness case is enabled. New integration tests are recorded separately.
 
 Public classes delegate to Carlo's families:
 
@@ -386,3 +385,43 @@ Final validation: 10,756 repository tests/source doctests pass, with the single
 regret case skipped. The three new public estimator examples pass separately.
 Lint, formatting, types and docstring checks pass. Documentation builds with 12
 warnings. No push or PR publication has been performed.
+
+
+Iteration: regret and hindsight benchmarks
+------------------------------------------
+
+Ported the remaining two modules and four test files from Carlo's implementation,
+using df64d34 for compatibility edits. Public additions are regret, RegretType and
+plot_regret_curve. CRP, UCRP, BestStock and BCRP remain internal comparator helpers.
+
+Online losses come from a copied estimator's fit_predict execution, beginning with
+its explicit initial allocation. Costs, drift and turnover constraints use the
+same Portfolio path as normal evaluation. Supplied comparators are also copied.
+Their weights are evaluated gross of fees with residual cash earning zero; they
+do not inherit the online model's constraints. Internal benchmark wealth histories
+remain gross hindsight diagnostics, not simulated execution accounts.
+
+Preserved static, prefix/legacy dynamic, path-limited/penalized dynamic and per-round
+best-asset comparators, cumulative/running/final averages, windows and Plotly curves.
+Windowed regret aggregates the existing losses without refitting the comparator.
+Path penalties select comparators; reported losses exclude that optimization penalty.
+No theoretical regret-bound claim is made.
+
+Corrected source behavior: strict finite returns above -1 instead of clipping;
+no repeated-final-weight fallback; cash-aware loss; invalid aggregation/path
+settings rejected; explicit solver failures propagate. The static comparator uses
+a convex log-wealth solve instead of the source multiplicative routine that often
+stopped unconverged after 2,000 iterations. BCRP forwards max_turnover, retains named
+assets in prefix fitting and enforces first-period bounds. The first prefix uses a direct shared-constraint return solve, avoiding an
+undefined covariance estimate. Legacy dynamic benchmarks explicitly reject risk
+objectives and custom callbacks on that first row.
+
+All substantive original test cases are retained. Removed a vacuous parametrized
+test with an unconditional return and the blanket dynamic-solver xfail. The former
+skipped robustness case is now named for its actual finite-output assertion.
+Independent tests cover execution costs, input-state preservation, residual cash,
+invalid inputs and solver errors.
+
+Validation for the completed regret slice: 672 online tests pass; the full
+repository and source-doctest run passes 10,845 tests with no skips. Lint,
+formatting, types and docstring checks pass. Documentation builds with warnings.

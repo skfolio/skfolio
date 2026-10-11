@@ -286,6 +286,18 @@ Classes
     AdaGrad
     OnlineMovingAverageReversion
 
+.. autoclass:: RegretType
+    :members: STATIC, DYNAMIC, DYNAMIC_LEGACY, DYNAMIC_UNIVERSAL, DYNAMIC_WORST_CASE
+    :no-inherited-members:
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: function.rst
+
+    regret
+    plot_regret_curve
+
 .. currentmodule:: skfolio
 
 .. _optimization_convex_ref:

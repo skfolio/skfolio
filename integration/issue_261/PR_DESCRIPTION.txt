@@ -12,6 +12,7 @@ Implemented:
 - Portfolio handles holdings drift, execution costs and wealth. Turnover uses actual supplied holdings; warmup intermediate targets are not trades.
 - Shared weight, budget and group/asset constraint expressions; optional causal priors with row-aligned metadata and `max_variance`.
 - Explicit public constructors, cloning and online parameter search, one-period evaluation, documentation and a runnable example.
+- Static and dynamic regret, averaging/windowed curves and plotting; hindsight benchmark helpers remain internal. Online losses use Portfolio execution on a copy, while comparators are gross of costs.
 - Carlo's algorithm tests, adapted where execution ownership or update semantics changed. Independent references check EG, AdaGrad, the adaptive composite potential, and interior OLMAR/PAMR updates.
 
 Source: [Carlo's pinned implementation](https://github.com/CarloNicolini/skfolio/tree/c1bd1f168cf7d660c81f74710aadd9941e64a2c7). Source headers and commit attribution are retained. `integration/issue_261/PORT_INVENTORY.json` records source hashes, destinations and adaptations. This is a substantial framework port; much of the diff is source machinery and its tests.
@@ -31,16 +32,16 @@ Suggested review order: mirror maps/projector/OCO engine; shared lifecycle and f
 
 #### Any other comments?
 
-The branch is refreshed against upstream v1.8.1. Local validation: 10,756 tests passed, with only the regret-dependent case skipped; the three newly added public docstring examples also pass. Ruff lint/format, type checking and docstring checks pass. The Sphinx build succeeds with warnings. GitHub CI is still required after publication.
+The branch is refreshed against upstream v1.8.1. Local validation: 10,845 tests and source doctests passed with no skips, including 672 online tests. Ruff lint/format, type checking and docstring checks pass. The Sphinx build succeeds with warnings. GitHub CI is still required after publication.
 
-Deferred: benchmark/regret utilities, dynamic universes, automatic recovery, larger evaluation windows, factor constraints and unregistered/Tsallis constrained geometries. RMR remains internal with unbounded history. The one regret-dependent robustness test is explicitly skipped until that utility is ported. Numerical or prior failures require a fresh fit.
+Deferred: dynamic universes, automatic recovery, larger evaluation windows, factor constraints and unregistered/Tsallis constrained geometries. RMR remains internal with unbounded history. Numerical or prior failures require a fresh fit.
 
 #### PR checklist
 
 ##### For all contributions
 - [x] The proposed PR title follows Conventional Commits.
 - [x] New behavior and bug fixes are covered by tests.
-- [x] Refreshed-branch tests and code quality checks pass locally; the deferred regret case is explicitly skipped.
+- [x] Refreshed-branch tests and code quality checks pass locally; the regret case is enabled.
 - [x] Documentation is updated for behavior and public APIs.
 
 ##### For new estimators

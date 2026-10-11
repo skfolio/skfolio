@@ -12,10 +12,11 @@
       "status": "adapted",
       "destination": "src/skfolio/optimization/online/__init__.py",
       "changes": [
-        "Exports concrete EG, AdaGrad and moving-average reversion estimators plus the base. Source family factories stay internal; benchmark and regret exports are deferred."
+        "Exports concrete EG, AdaGrad and moving-average reversion estimators plus the base. Source family factories stay internal; benchmark and regret exports are deferred.",
+        "Expose regret, RegretType and plot_regret_curve; benchmark estimators remain internal."
       ],
       "adaptation_reference": "new public exports over the ported Carlo families",
-      "destination_sha256": "318e3329ea075d5518efed59665fb1aaa95a56df56232ab2375a2dd87e92eb07"
+      "destination_sha256": "3f47b70600f175e9279b8e2410064199d2cef2d2be998d2d89f864173d77f13d"
     },
     {
       "source_path": "src/skfolio/optimization/online/_autograd_objectives.py",
@@ -46,9 +47,15 @@
       "source_path": "src/skfolio/optimization/online/_benchmark.py",
       "source_lines": 558,
       "source_sha256": "046bc3a66d242de0320ef06c9d8a69026e0dc0f81161c5d17c750701256a6281",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "src/skfolio/optimization/online/_benchmark.py",
+      "changes": [
+        "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics.",
+        "Benchmark classes remain internal. Gross hindsight wealth diagnostics exclude fees. First prefix retains constraints and named assets; max_turnover is forwarded to MeanRisk.",
+        "First-period legacy dynamic comparator solves return objectives directly with shared constraints. Risk objectives and custom callbacks are rejected for that one-row prefix."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "586aaa2afdbf2366e72da8b3fdc6bfd0bcbdfafa091bb93190f6bf33532b186c"
     },
     {
       "source_path": "src/skfolio/optimization/online/_cwmr.py",
@@ -164,9 +171,14 @@
       "source_path": "src/skfolio/optimization/online/_regret.py",
       "source_lines": 477,
       "source_sha256": "ebf14548554c31523273c4b98849d9cbd732367f120e821d73770b088532ab23",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "src/skfolio/optimization/online/_regret.py",
+      "changes": [
+        "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics.",
+        "Constant comparator uses CLARABEL instead of the often-unconverged multiplicative iteration. Dynamic solver errors propagate. Cash is included; aggregation and path parameters are validated."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "8cc9219fc30e138a6908a5083a8abec6fe55fc14e75c2c849c8b8fdb66e7d19a"
     },
     {
       "source_path": "src/skfolio/optimization/online/_strategies.py",
@@ -396,25 +408,38 @@
       "source_path": "tests/test_optimization/test_online/regret/test_regret.py",
       "source_lines": 202,
       "source_sha256": "82f3d1a8afdb915c8e83495145914b8222f0d6b5b477b3ad041ea6fae3ac54b2",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/regret/test_regret.py",
+      "changes": [
+        "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics.",
+        "Constant comparator uses CLARABEL instead of the often-unconverged multiplicative iteration. Dynamic solver errors propagate. Cash is included; aggregation and path parameters are validated."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "18ccfc841ba4c54741719a88f1ec04e839ce6a0150e52f42ecd89acd0c27d178"
     },
     {
       "source_path": "tests/test_optimization/test_online/regret/test_regret_curves.py",
       "source_lines": 233,
       "source_sha256": "84d461088bc53e3ee4966af0265abf32b6d2ecc2fcff30ca73071b01f1ce62e4",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/regret/test_regret_curves.py",
+      "changes": [
+        "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "5909b157233561342e310180c3deb7fbcbf7b44295a546c7febc3da080e8fe9d"
     },
     {
       "source_path": "tests/test_optimization/test_online/regret/test_regret_dynamic.py",
       "source_lines": 108,
       "source_sha256": "2512036da5149ea20600e6a65643e81a345ea68d135f95b1a08ea12dcad644ee",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/regret/test_regret_dynamic.py",
+      "changes": [
+        "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "a3fbdeb923a4971b2d47e43a16f53b5c8acb9035d488a4aa7d66f6274473fb0f"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_auto_learning_rate.py",
@@ -444,9 +469,16 @@
       "source_path": "tests/test_optimization/test_online/test_benchmark.py",
       "source_lines": 179,
       "source_sha256": "eea85754fafc92ba36c3903ce6e1f44b94ee638aeea927d4098e7e1989562da4",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/test_benchmark.py",
+      "changes": [
+        "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics.",
+        "Benchmark classes remain internal. Gross hindsight wealth diagnostics exclude fees. First prefix retains constraints and named assets; max_turnover is forwarded to MeanRisk.",
+        "Removed vacuous objective-pair tests whose bodies returned immediately and broad solver xfail; dynamic comparator is tested normally, including first-period bounds.",
+        "First-period legacy dynamic comparator solves return objectives directly with shared constraints. Risk objectives and custom callbacks are rejected for that one-row prefix."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "36c40e5664acb45a2aa43925308bb63c7c96acb3cafef7ecdac058fb4aba501b"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_costs.py",
@@ -513,13 +545,11 @@
       "status": "adapted",
       "destination": "tests/test_optimization/test_online/test_robustness.py",
       "changes": [
-        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance."
+        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance.",
+        "Enable and rename the former regret-bound smoke test to test_universal_regret_is_finite. It does not prove a theoretical bound."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "db521a8afbe163e70a49a59afa4d74f85d24d53e253911e226f568e4d25be60f",
-      "pending_tests": {
-        "test_universal_regret_bound": "Explicitly skipped until the separate regret module is ported."
-      }
+      "destination_sha256": "c68106d2906da00701c0ffeefadd6059c68ed69e0698549b2e30384487e8bb9d"
     },
     {
       "source_path": "tests/test_optimization/test_online/utils.py",
@@ -566,7 +596,8 @@
     "tests/test_optimization/test_online/test_prediction.py",
     "tests/test_optimization/test_online/test_projector_contract.py",
     "tests/test_optimization/test_online/test_public_estimators.py",
-    "tests/test_optimization/test_online/test_v1_lifecycle.py"
+    "tests/test_optimization/test_online/test_v1_lifecycle.py",
+    "tests/test_optimization/test_online/regret/test_execution_regret.py"
   ],
   "added_implementation": [
     "src/skfolio/optimization/online/_geometry.py",
