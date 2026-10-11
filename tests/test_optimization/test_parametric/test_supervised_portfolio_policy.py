@@ -639,3 +639,45 @@ def test_prior_metadata_is_sliced_to_causal_history():
             initial_holdings=[1 / 3] * 3,
             prior_fit_params={"factors": factors.iloc[20:]},
         )
+
+
+def test_dynamic_eligibility_excludes_assets_and_charges_exit_turnover():
+    X, panel = data()
+    estimator = model(allow_universe_changes=True, long_only=True).fit(
+        X, characteristics=panel
+    )
+    _, future = data(n=2, offset=11)
+    dynamic = AssetPanel(
+        fields={
+            "signal": np.where(
+                [[True, True, False], [False, True, True]], future["signal"], np.nan
+            )
+        },
+        asset_names=future.asset_names,
+        observations=future.observations,
+        active_mask=np.array([[True, True, False], [False, True, True]]),
+    )
+    weights = estimator.predict_weights(dynamic).to_numpy()
+    np.testing.assert_allclose(weights.sum(axis=1), 1)
+    assert abs(weights[0, 2]) < 1e-6
+    assert abs(weights[1, 0]) < 1e-6
+    estimator.set_params(max_turnover=0)
+    with pytest.raises(ValueError, match="infeasible"):
+        estimator.predict_weights(dynamic, holdings=np.full((2, 3), 1 / 3))
+
+
+def test_dynamic_training_uses_decision_eligible_label_assets():
+    X, panel = data()
+    active = np.ones(X.shape, dtype=bool)
+    active[:4, 2] = False
+    dynamic = AssetPanel(
+        fields={"signal": np.where(active, panel["signal"], np.nan)},
+        asset_names=panel.asset_names,
+        observations=panel.observations,
+        active_mask=active,
+    )
+    estimator = model(allow_universe_changes=True, optimizer=EqualWeighted()).fit(
+        X, characteristics=dynamic
+    )
+    assert (estimator.target_weights_.iloc[:2, 2] == 0).all()
+    np.testing.assert_allclose(estimator.target_weights_.sum(axis=1), 1)

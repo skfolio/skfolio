@@ -22,7 +22,8 @@ class _WeightProjection:
         n = len(asset_names)
         self.target = cp.Parameter(n)
         self.weights = cp.Variable(n)
-        self.constraints = [cp.sum(self.weights) == 1]
+        self.budget = cp.Parameter(nonneg=True, value=1.0)
+        self.constraints = [cp.sum(self.weights) == self.budget]
         if long_only:
             self.constraints.append(self.weights >= 0)
         for name, bound, fill in (
@@ -70,12 +71,17 @@ class _WeightProjection:
         max_variance=None,
         holdings=None,
         max_turnover=None,
+        eligible=None,
+        budget=1.0,
     ):
         """Return feasible weights or fail explicitly; never clip after solving."""
+        self.budget.value = budget
         result = np.empty_like(proposed)
         for i, row in enumerate(proposed):
             self.target.value = row
             constraints = list(self.constraints)
+            if eligible is not None and not eligible[i].all():
+                constraints.append(self.weights[~eligible[i]] == 0)
             if max_variance is not None:
                 if covariance is None:
                     raise ValueError("`covariance` is required for a risk limit.")

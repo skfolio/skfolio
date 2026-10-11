@@ -92,6 +92,11 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         Limit on sum(abs(target - pre-trade holdings)), without a one-half factor.
         Requires actual fully invested holdings for each prediction date.
 
+    allow_universe_changes : bool, default=False
+        Allow eligibility changes within the registered asset columns. Excluded
+        assets receive zero target weight; constraints are never silently relaxed.
+        Newly named assets require refitting with an expanded registry.
+
     Attributes
     ----------
     coef_ : ndarray of shape (n_characteristics,)
@@ -135,6 +140,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         linear_constraints=None,
         max_variance: float | None = None,
         max_turnover: float | None = None,
+        allow_universe_changes: bool = False,
     ):
         super().__init__(
             characteristics_exposures=characteristics_exposures,
@@ -152,6 +158,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         self.linear_constraints = linear_constraints
         self.max_variance = max_variance
         self.max_turnover = max_turnover
+        self.allow_universe_changes = allow_universe_changes
 
     def fit(
         self,
@@ -195,16 +202,21 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             raise ValueError("`X.index` must be unique and increasing.")
         if characteristics is None:
             raise ValueError("`characteristics` must be provided.")
-        validate_data(self, X)
+        validate_data(self, X, ensure_all_finite=not self.allow_universe_changes)
         panel = self._validate_characteristics(characteristics, X)
         investment_idx = self._investment_index(panel, X.columns)
-        if not panel.active_mask[:, investment_idx].all():
+        if (
+            not self.allow_universe_changes
+            and not panel.active_mask[:, investment_idx].all()
+        ):
             raise ValueError(
                 "The supervised prototype requires a fixed active universe."
             )
         exposures, names = self._compute_exposures(panel, method="fit")
         inputs = self._policy_inputs(panel, exposures, investment_idx)
-        if not inputs.holdable[-1].all():
+        if not inputs.holdable[-1].any() or (
+            not self.allow_universe_changes and not inputs.holdable[-1].all()
+        ):
             raise ValueError("Final characteristics must be available for every asset.")
 
         projection = _WeightProjection(
@@ -216,17 +228,25 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             self.linear_constraints,
         )
         # Check feasibility before fitting label optimizers.
-        projection.project(inputs.benchmark[-1:])
+        projection.project(inputs.benchmark[-1:], eligible=inputs.holdable[-1:])
 
         decisions, targets = [], []
         for t in range(0, len(X) - self.window_size, self.window_size):
-            if not inputs.holdable[t].all():
+            if not inputs.holdable[t].any() or (
+                not self.allow_universe_changes and not inputs.holdable[t].all()
+            ):
                 continue
             estimator = clone(self.optimizer)
-            estimator.fit(X.iloc[t + 1 : t + 1 + self.window_size])
+            eligible = inputs.holdable[t]
+            label_returns = X.iloc[t + 1 : t + 1 + self.window_size, eligible]
+            if not np.isfinite(label_returns.to_numpy()).all():
+                raise ValueError(
+                    "Label windows require observed returns for every decision-eligible asset."
+                )
+            estimator.fit(label_returns)
             weights = np.asarray(estimator.weights_, dtype=float)
             if (
-                weights.shape != (X.shape[1],)
+                weights.shape != (int(eligible.sum()),)
                 or not np.isfinite(weights).all()
                 or not np.isclose(weights.sum(), 1.0)
             ):
@@ -234,15 +254,18 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
                     "Target optimizer must produce finite, fully invested weights."
                 )
             decisions.append(t)
-            targets.append(weights.copy())
+            target = np.zeros(X.shape[1])
+            target[eligible] = weights
+            targets.append(target)
         if not decisions:
             raise ValueError(
                 "No complete training windows with available characteristics."
             )
 
         target_weights = np.asarray(targets)
-        design = inputs.tilt[decisions].reshape(-1, len(names))
-        response = (target_weights - inputs.benchmark[decisions]).ravel()
+        sample_mask = inputs.holdable[decisions]
+        design = inputs.tilt[decisions][sample_mask]
+        response = (target_weights - inputs.benchmark[decisions])[sample_mask]
         regressor = (
             Ridge(alpha=self.alpha, fit_intercept=False, solver="svd")
             if self.regressor is None
@@ -288,21 +311,27 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         max_turnover=None,
     ):
         """Predict asset-level deviations and restore the portfolio budget."""
-        valid = inputs.holdable.all(axis=1)
+        valid = (
+            inputs.holdable.any(axis=1)
+            if self.allow_universe_changes
+            else inputs.holdable.all(axis=1)
+        )
         weights = np.full(inputs.benchmark.shape, np.nan)
         if not valid.any():
             return weights
-        n_rows, n_assets, n_features = inputs.tilt[valid].shape
-        deviations = np.asarray(
-            regressor.predict(inputs.tilt[valid].reshape(-1, n_features)), dtype=float
+        eligible = inputs.holdable[valid]
+        predicted = np.asarray(
+            regressor.predict(inputs.tilt[valid][eligible]), dtype=float
         )
         if (
-            deviations.shape != (n_rows * n_assets,)
-            or not np.isfinite(deviations).all()
+            predicted.shape != (int(eligible.sum()),)
+            or not np.isfinite(predicted).all()
         ):
             raise ValueError("Regressor must predict one finite value per asset/date.")
-        deviations = deviations.reshape(n_rows, n_assets)
-        deviations -= deviations.mean(axis=1, keepdims=True)
+        deviations = np.zeros(eligible.shape)
+        deviations[eligible] = predicted
+        means = deviations.sum(axis=1) / eligible.sum(axis=1)
+        deviations = np.where(eligible, deviations - means[:, None], 0)
         proposed = inputs.benchmark[valid] + deviations
         weights[valid] = projection.project(
             proposed,
@@ -310,6 +339,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             max_variance=max_variance,
             holdings=None if holdings is None else holdings[valid],
             max_turnover=max_turnover,
+            eligible=eligible,
         )
         return weights
 
@@ -373,7 +403,10 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             characteristics = characteristics.to_panel(deep=False)
         panel = worker._validate_characteristics(characteristics, X=None)
         investment_idx = self._investment_index(panel, self.feature_names_in_)
-        if not panel.active_mask[:, investment_idx].all():
+        if (
+            not self.allow_universe_changes
+            and not panel.active_mask[:, investment_idx].all()
+        ):
             raise ValueError(
                 "The supervised prototype requires a fixed active universe."
             )
@@ -484,6 +517,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         fees are not supported. Costs affect evaluation, not regressor fitting.
         """
         check_is_fitted(self, "regressor_")
+        if self.allow_universe_changes:
+            raise ValueError("Use evaluate_execution for changing universes.")
         if not isinstance(X, pd.DataFrame) or list(X.columns) != list(
             self.feature_names_in_
         ):
