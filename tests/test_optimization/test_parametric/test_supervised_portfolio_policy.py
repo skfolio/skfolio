@@ -9,6 +9,7 @@ from sklearn import clone
 
 from skfolio.containers import AssetPanel
 from skfolio.descriptor import Passthrough
+from skfolio.exceptions import GroupNotFoundError
 from skfolio.factor_exposure import FixedWeightedFactor
 from skfolio.optimization import (
     BaseOptimization,
@@ -190,3 +191,44 @@ def test_regressor_intercept_is_removed_from_portfolio_budget():
         X, characteristics=panel
     )
     np.testing.assert_allclose(estimator.weights_, 1 / 3)
+
+
+def test_projection_enforces_bounds_and_groups_for_future_predictions():
+    X, panel = data()
+    estimator = model(
+        long_only=True,
+        min_weights={"a": 0.2},
+        max_weights=0.5,
+        groups=[["equity", "equity", "bond"]],
+        linear_constraints=["equity <= 0.6"],
+    ).fit(X, characteristics=panel)
+    _, future = data(n=4, offset=11)
+    weights = estimator.predict_weights(future).to_numpy()
+    np.testing.assert_allclose(weights.sum(axis=1), 1, atol=1e-7)
+    assert (weights >= -1e-7).all()
+    assert (weights <= 0.5 + 1e-7).all()
+    assert (weights[:, 0] >= 0.2 - 1e-7).all()
+    assert (weights[:, :2].sum(axis=1) <= 0.6 + 1e-7).all()
+
+
+@pytest.mark.parametrize(
+    "constraints, message",
+    [
+        ({"max_weights": 0.2}, "infeasible"),
+        ({"linear_constraints": ["unknown <= 0.2"]}, "unknown"),
+    ],
+)
+def test_invalid_constraints_fail_before_label_fit(constraints, message):
+    X, panel = data()
+    RecordingOptimizer.windows = []
+    with pytest.raises((ValueError, GroupNotFoundError), match=message):
+        model(**constraints).fit(X, characteristics=panel)
+    assert not RecordingOptimizer.windows
+
+
+def test_projection_is_euclidean_not_clip_and_normalize():
+    from skfolio.optimization.parametric._weight_projection import _WeightProjection
+
+    projection = _WeightProjection(["a", "b", "c"], True, None, None, None, None)
+    actual = projection.project(np.array([[0.8, 0.4, -0.2]]))
+    np.testing.assert_allclose(actual, [[0.7, 0.3, 0]], atol=1e-6)

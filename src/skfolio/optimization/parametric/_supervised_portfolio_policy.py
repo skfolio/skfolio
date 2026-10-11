@@ -17,6 +17,7 @@ from skfolio.optimization._base import BaseOptimization
 from skfolio.optimization.parametric._parametric_portfolio_policy import (
     ParametricPortfolioPolicy,
 )
+from skfolio.optimization.parametric._weight_projection import _WeightProjection
 from skfolio.utils.tools import (
     _validate_non_negative_integer,
     _validate_non_negative_real,
@@ -58,10 +59,19 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
     benchmark_mcap_power : float, default=1.0
         Market-cap power used to construct the benchmark; zero gives equal weights.
     long_only : bool, default=False
-        Clip negative predicted weights and renormalize after regression.
+        Enforce nonnegative weights through Euclidean projection after regression.
         Regression itself fits the unprojected benchmark-relative targets.
     portfolio_params : dict, optional
         Parameters forwarded to Portfolio by the inherited predict method.
+
+    min_weights, max_weights : float, array-like or dict, optional
+        Static per-asset limits enforced after prediction. Dictionary keys are
+        fitted asset names; omitted entries default to zero and one respectively.
+    groups : array-like of shape (n_groups, n_assets), optional
+        Group labels in the fitted investment asset order.
+    linear_constraints : list of str, optional
+        Asset/group equations such as ``["Equity <= 0.6", "a >= 0.1"]``.
+        Unknown group names and infeasible constraints raise an error.
 
     Attributes
     ----------
@@ -100,6 +110,10 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         benchmark_mcap_power: float = 1.0,
         long_only: bool = False,
         portfolio_params: dict | None = None,
+        min_weights=None,
+        max_weights=None,
+        groups=None,
+        linear_constraints=None,
     ):
         super().__init__(
             characteristics_exposures=characteristics_exposures,
@@ -111,6 +125,10 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         self.window_size = window_size
         self.alpha = alpha
         self.regressor = regressor
+        self.min_weights = min_weights
+        self.max_weights = max_weights
+        self.groups = groups
+        self.linear_constraints = linear_constraints
 
     def fit(
         self,
@@ -162,6 +180,17 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         if not inputs.holdable[-1].all():
             raise ValueError("Final characteristics must be available for every asset.")
 
+        projection = _WeightProjection(
+            X.columns,
+            self.long_only,
+            self.min_weights,
+            self.max_weights,
+            self.groups,
+            self.linear_constraints,
+        )
+        # Check feasibility before fitting label optimizers.
+        projection.project(inputs.benchmark[-1:])
+
         decisions, targets = [], []
         for t in range(0, len(X) - self.window_size, self.window_size):
             if not inputs.holdable[t].all():
@@ -195,7 +224,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         if not is_regressor(regressor):
             raise ValueError("`regressor` must be a scikit-learn compatible regressor.")
         regressor.fit(design, response)
-        weights_history = self._predict_policy(regressor, inputs)
+        weights_history = self._predict_policy(regressor, inputs, projection)
+        self.weight_projection_ = projection
 
         self.regressor_ = regressor
         if hasattr(regressor, "coef_"):
@@ -217,7 +247,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         self.weights_ = weights_history[-1].copy()
         return self
 
-    def _predict_policy(self, regressor, inputs):
+    def _predict_policy(self, regressor, inputs, projection):
         """Predict asset-level deviations and restore the portfolio budget."""
         valid = inputs.holdable.all(axis=1)
         weights = np.full(inputs.benchmark.shape, np.nan)
@@ -235,10 +265,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         deviations = deviations.reshape(n_rows, n_assets)
         deviations -= deviations.mean(axis=1, keepdims=True)
         proposed = inputs.benchmark[valid] + deviations
-        if self.long_only:
-            proposed = np.maximum(proposed, 0)
-            proposed /= proposed.sum(axis=1, keepdims=True)
-        weights[valid] = proposed
+        weights[valid] = projection.project(proposed)
         return weights
 
     def predict_weights(self, characteristics: AssetPanel) -> pd.DataFrame:
@@ -266,7 +293,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         exposures, _ = self._compute_exposures(panel, method="partial_fit")
         inputs = self._policy_inputs(panel, exposures, investment_idx)
         return pd.DataFrame(
-            self._predict_policy(self.regressor_, inputs),
+            self._predict_policy(self.regressor_, inputs, self.weight_projection_),
             index=panel.observations,
             columns=self.feature_names_in_,
         )
