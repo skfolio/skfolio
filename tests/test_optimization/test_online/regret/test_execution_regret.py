@@ -120,3 +120,58 @@ def test_plot_preserves_supplied_values_and_figure():
     assert len(fig.data) == 2
     np.testing.assert_array_equal(fig.data[0].y, values)
     assert fig.data[0].name == "Regret"
+
+
+@pytest.mark.parametrize("norm", ["l1", "l2"])
+def test_dynamic_penalty_interpolates_between_hindsight_comparators(norm):
+    X = np.array([[0.2, -0.1], [-0.1, 0.2], [0.15, -0.05], [-0.03, 0.08]])
+    model = ExponentiatedGradient()
+    unrestricted = regret(
+        model,
+        X,
+        regret_type="dynamic_universal",
+        dynamic_config={"path_penalty": 0.0, "norm": norm},
+    )
+    worst_case = regret(model, X, regret_type="dynamic_worst_case")
+    np.testing.assert_allclose(unrestricted, worst_case, atol=1e-7)
+    penalized = regret(
+        model,
+        X,
+        regret_type="dynamic_universal",
+        dynamic_config={"path_penalty": 100.0, "norm": norm},
+    )
+    static = regret(model, X, regret_type="static")
+    # Compare optimized total log wealth; near-equal optimizers can have
+    # different prefix curves at solver precision.
+    np.testing.assert_allclose(penalized[-1], static[-1], atol=1e-7)
+
+
+def test_explicit_legacy_comparator_matches_manual_prefix_losses():
+    from skfolio.optimization.online._benchmark import BCRP
+
+    X = np.array([[0.1, -0.05], [-0.02, 0.08], [0.04, -0.01]])
+    comparator = BCRP(max_weights=0.7)
+    model = ExponentiatedGradient()
+    curve = regret(model, X, comparator=comparator, regret_type="dynamic_legacy")
+    weights = deepcopy(comparator).fit_dynamic(X).all_weights_
+    online = deepcopy(model).fit_predict(X).returns
+    expected = np.cumsum(-np.log1p(online) + np.log1p(np.sum(X * weights, axis=1)))
+    np.testing.assert_allclose(curve, expected, atol=1e-10)
+    assert not hasattr(comparator, "all_weights_")
+
+
+@pytest.mark.parametrize("regret_type", ["unknown", 123])
+def test_invalid_regret_type_rejected(regret_type):
+    with pytest.raises(ValueError):
+        regret(ExponentiatedGradient(), [[0.1, 0.2]], regret_type=regret_type)
+
+
+def test_weight_shape_validation_prevents_broadcasted_loss():
+    with pytest.raises(ValueError, match="weights must have shape"):
+        _losses_from_weights(np.ones((3, 2)), np.ones((1, 2)))
+
+
+def test_bankrupt_online_execution_rejected():
+    model = ExponentiatedGradient(management_fees=0.8)
+    with pytest.raises(ValueError, match="strictly positive"):
+        regret(model, [[-0.5, -0.6]])

@@ -201,9 +201,10 @@
       "status": "adapted",
       "destination": "src/skfolio/optimization/online/_utils.py",
       "changes": [
-        "Remove unused itertools import only. Legacy clipped net-to-relative conversion is not yet the public estimator validation policy."
+        "Remove unused itertools import only. Legacy clipped net-to-relative conversion is not yet the public estimator validation policy.",
+        "Remove unused validate_weights helper: no source or test callers; execution constraints are already checked through shared builders and projector tests."
       ],
-      "destination_sha256": "1dc609e31da26f28b3bc183ab4f0593f1435b27bc415dc3914132a44cfcc3529",
+      "destination_sha256": "ea9472e59f6015e7f8ddf6c87704c4317374a72afeb693a5bacaa50774f3e874",
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2"
     },
     {
@@ -599,7 +600,8 @@
     "tests/test_optimization/test_online/test_projector_contract.py",
     "tests/test_optimization/test_online/test_public_estimators.py",
     "tests/test_optimization/test_online/test_v1_lifecycle.py",
-    "tests/test_optimization/test_online/regret/test_execution_regret.py"
+    "tests/test_optimization/test_online/regret/test_execution_regret.py",
+    "tests/test_optimization/test_online/test_objective_derivatives.py"
   ],
   "added_implementation": [
     "src/skfolio/optimization/online/_geometry.py",

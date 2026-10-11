@@ -439,3 +439,16 @@ Use an independent scalar root solve at each step from the accepted trajectory.
 Check simplex feasibility and relative objective gap (1e-7), then verify adaptive
 barrier and quadratic states at every step. This tests ordering and optimality
 without accumulating solver coordinate errors along a separate reference path.
+
+CI coverage follow-up
+---------------------
+Remove the unused validate_weights duplicate from the imported utility module;
+all retained utilities and original provenance remain tracked. Add independent
+finite-difference checks for wealth/drawdown derivatives and all reversion loss
+variants, including inactive margins. Test regret path penalties under both norms,
+custom prefix comparators, malformed inputs and nonpositive execution wealth.
+
+Validation: 692 online tests pass. The online suite alone covers 91.39% of changed
+executable lines against the PR base (2,962 / 3,241), and 91.75% of the online
+package. This is a local estimate; Codecov recomputes its own patch report in CI.
+Ruff lint/format and repository type checks pass. The coverage threshold stays 90%.
