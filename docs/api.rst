@@ -345,6 +345,7 @@ Classes
     :template: class.rst
 
     optimization.ParametricPortfolioPolicy
+    optimization.SupervisedPortfolioPolicy
 
 .. _optimization_ensemble_ref:
 

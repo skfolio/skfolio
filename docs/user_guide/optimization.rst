@@ -1072,3 +1072,48 @@ Example: proceed without raising and retrieve failure diagnostics
 
 For a complete tutorial illustrating failure handling and fallbacks, see
 :ref:`sphx_glr_auto_examples_mean_risk_plot_17_failure_and_fallbacks.py`.
+
+Supervised characteristic policies (experimental)
+-------------------------------------------------
+
+:class:`SupervisedPortfolioPolicy` provides a first linear implementation of the
+supervised alternative discussed in issue #262. It clones an optimizer over
+non-overlapping training subperiods, then uses ridge regression to learn the
+relationship between characteristics and those target allocations.
+
+For a decision at observation ``t`` and ``window_size=20``, the input is the
+characteristics available at ``t`` and the label is the portfolio fitted on
+returns ``t+1`` through ``t+20``. Incomplete trailing windows are discarded.
+``training_windows_`` and ``target_weights_`` make this timing inspectable.
+Only training returns may be passed to ``fit``. The fitted
+``weights_history_`` uses coefficients learned over the entire training sample
+and must not be interpreted as an out-of-sample backtest.
+
+.. code-block:: python
+
+    from skfolio.optimization import InverseVolatility, SupervisedPortfolioPolicy
+
+    model = SupervisedPortfolioPolicy(
+        characteristics_exposures=exposures,
+        optimizer=InverseVolatility(),
+        window_size=20,
+        alpha=1.0,
+        long_only=True,
+    )
+    model.fit(X_train, characteristics=characteristics_train)
+    targets = model.predict_weights(characteristics_test)
+
+Here ``exposures`` is a list of named causal factor-exposure estimators, as for
+``ParametricPortfolioPolicy``. The test panel must follow the training panel.
+Prediction advances the exposure estimators, so successive calls should use
+non-overlapping panels with the same coverage asset names and ordering.
+``predict(X_test)`` instead evaluates the last allocation
+using the standard optimizer interface; it does not rebalance from ``targets``.
+
+This prototype supports a fixed active universe and complete returns. It skips
+training decisions with unavailable characteristics and requires all final
+characteristics to be available. Constraints on the label optimizer are not
+inherited by the regression policy; ``long_only=True`` only clips and normalizes
+its output. Arbitrary regressors, turnover-aware execution, metadata routing to
+the label optimizer and a full reproduction of Interpretable Supervised
+Portfolios remain future work.
