@@ -111,9 +111,9 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
     -----
     This initial implementation requires a fixed, active investment universe and
     finite returns. Characteristic warmup windows are skipped. Prediction on new
-    characteristics uses ``predict_weights``, which advances
-    the fitted exposure estimators; pass successive, non-overlapping panels with
-    the same coverage asset names and order as the training panel.
+    characteristics uses repeatable ``predict_weights``. Streaming callers can
+    opt into state advancement with ``update_state=True`` and must pass successive,
+    non-overlapping panels with the fitted coverage asset names and order.
     This is a supervised prototype, not a reproduction of the full
     Chevalier, Coqueret and Raffinot method.
     """
@@ -503,6 +503,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             raise ValueError(
                 "Evaluation requires finite returns strictly greater than -1."
             )
+        if initial_holdings is None:
+            raise ValueError("`initial_holdings` must be supplied explicitly.")
         cov, held = projection_context(
             self.feature_names_in_, dates[:1], holdings=initial_holdings
         )

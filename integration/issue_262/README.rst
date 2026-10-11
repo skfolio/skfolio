@@ -36,19 +36,22 @@ Next design decisions
    Forward labels belong entirely inside each training fold. Characteristic
    estimators must themselves be causal; this class cannot enforce that for
    arbitrary user-supplied estimators.
-4. Add metadata routing and automatic causal prior updates. Explicit covariance
+4. Add metadata routing for priors needing auxiliary inputs. Rolling causal
+   covariance priors are available in sequential evaluation. Explicit covariance
    and pre-trade holdings now support risk/turnover limits. Sequential evaluation
-   uses existing Portfolio drift, explicit initial holdings and one subsequent
-   return observation per decision. Label constraints alone remain insufficient.
-5. Add a worked empirical comparison after those API choices. This starting
-   implementation has correctness tests, not evidence of investment performance.
+   uses existing Portfolio drift, explicit initial holdings and configurable
+   observation-count rebalance intervals. Label constraints alone remain insufficient.
+5. Expand the historical validation with point-in-time data and independently
+   chosen evaluation periods. A reproducible 2019-2021 example now compares a
+   learned policy with a constrained equal-weight baseline; it is not evidence
+   of investment performance.
 
 Deferred
 --------
 
 Dynamic universes, missing-return policies, joint whole-portfolio regression,
-cost-aware supervised training, cash, automatic causal priors, repeated/idempotent inference for
-stateful exposure estimators, larger evaluation windows,
+cost-aware supervised training, cash, metadata-dependent priors, calendar-based
+rebalance schedules,
 and full Chevalier--Coqueret--Raffinot methodology.
 
 References
@@ -84,3 +87,14 @@ using Portfolio accounting with the same drifted-holdings anchor as turnover.
 The explicit argument overrides portfolio_params; zero disables costs. Costs
 reduce returns but do not alter Portfolio ending-weight drift or train the
 regressor to avoid trading. Exact self-financing cash/fee accounting is deferred.
+
+
+Practical workflow follow-up
+----------------------------
+
+Prediction is now repeatable by default. Streaming callers explicitly opt into
+atomic exposure-state updates. Sequential evaluation supports causal rolling
+prior fits and rebalance intervals such as 5 or 21 observations, while advancing
+characteristics and drifting holdings every observation. Costs are charged only
+on actual trades. The historical example and validation report describe a tested
+fixed-universe workflow and its remaining modeling limitations.

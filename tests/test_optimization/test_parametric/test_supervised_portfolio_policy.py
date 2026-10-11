@@ -553,3 +553,47 @@ def test_multi_observation_holding_intervals_charge_only_rebalances():
         estimator.evaluate_sequential(
             returns, future, initial_holdings=[1 / 3] * 3, rebalance_every=0
         )
+
+
+def test_rolling_characteristics_advance_on_nontrading_dates():
+    from skfolio.descriptor import RollingMomentum
+
+    X, panel = data()
+    estimator = (
+        model()
+        .set_params(
+            characteristics_exposures=[
+                (
+                    "momentum",
+                    FixedWeightedFactor(
+                        descriptors=[("momentum", RollingMomentum(window=3, skip=0))],
+                        outlier_transformer="passthrough",
+                        scoring_transformer="passthrough",
+                    ),
+                )
+            ]
+        )
+        .fit(X, characteristics=panel)
+    )
+    _, future = data(n=5, offset=11)
+    batch = estimator.predict_weights(future)
+    pd.testing.assert_frame_equal(batch, estimator.predict_weights(future))
+    returns = pd.DataFrame(
+        np.zeros((5, 3)),
+        index=pd.date_range("2020-01-13", periods=5),
+        columns=X.columns,
+    )
+    result = estimator.evaluate_sequential(
+        returns, future, initial_holdings=[1 / 3] * 3, rebalance_every=2
+    )
+    for t in (0, 2, 4):
+        np.testing.assert_allclose(
+            result.portfolios[t].weights, batch.iloc[t], atol=1e-7
+        )
+    first = estimator.predict_weights(
+        future.isel(observations=slice(0, 2)), update_state=True
+    )
+    second = estimator.predict_weights(
+        future.isel(observations=slice(2, 5)), update_state=True
+    )
+    pd.testing.assert_frame_equal(pd.concat([first, second]), batch)

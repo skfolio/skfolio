@@ -1107,7 +1107,8 @@ and must not be interpreted as an out-of-sample backtest.
 
 Here ``exposures`` is a list of named causal factor-exposure estimators, as for
 ``ParametricPortfolioPolicy``. The test panel must follow the training panel.
-Prediction advances the exposure estimators, so successive calls should use
+Prediction is repeatable by default. Use ``update_state=True`` to commit
+exposure state after successful streaming predictions, then pass strictly later
 non-overlapping panels with the same coverage asset names and ordering.
 ``predict(X_test)`` instead evaluates the last allocation
 using the standard optimizer interface; it does not rebalance from ``targets``.
@@ -1129,7 +1130,7 @@ constraints, such as positive regression coefficients, are configured on the
 regressor and do not replace portfolio constraints. If no regressor is supplied,
 Ridge without an intercept is used and ``alpha`` sets its penalty.
 
-Joint whole-portfolio regression, automatic prior updates, metadata routing to
+Joint whole-portfolio regression, metadata routing to
 the label optimizer and a full reproduction of Interpretable Supervised
 Portfolios remain future work.
 
@@ -1149,11 +1150,16 @@ Training ``weights_`` and ``weights_history_`` remain static diagnostics. Standa
 ``predict`` is disabled when a dynamic limit is enabled, so those allocations
 cannot silently bypass risk or turnover constraints during evaluation.
 
-``evaluate_sequential`` evaluates one rebalance per holding period using the
+``evaluate_sequential`` evaluates scheduled rebalances using the
 existing ``Portfolio(weight_drift=True)`` infrastructure. Supply initial holdings
 and characteristic decision dates strictly preceding their corresponding return
 end dates. Each subsequent decision date must equal the preceding return end
-date. Every decision must follow the training sample. The first trade counts
+date. Every decision must follow the training sample. ``rebalance_every=21``
+trades on the first observation and every 21 observations thereafter; this is a
+trading-month approximation, not a calendar-month schedule. Daily characteristic
+updates and asset drift continue between trades, with zero transaction costs on
+non-trading dates. Risk, weight bounds and turnover limits apply at rebalance
+time; drift may move holdings outside them between rebalances. The first trade counts
 against the supplied initial holdings; subsequent trades use actual drifted
 ending holdings. The result is a ``MultiPeriodPortfolio`` whose constituent
 portfolios expose targets, previous holdings, ending holdings and turnover.
@@ -1166,7 +1172,8 @@ portfolios expose targets, previous holdings, ending holdings and turnover.
         X_forward_returns,
         characteristics_at_decisions,
         initial_holdings=initial_weights,
-        covariance=covariances_at_decisions,
+        covariance_window=60,  # rolling past-return covariance estimation
+        rebalance_every=21,
         transaction_costs=0.001,  # 10 basis points per unit of absolute traded weight
     )
 
@@ -1174,7 +1181,7 @@ Evaluation uses a separate copy of fitted model state and fresh solver objects.
 It leaves the estimator unchanged on success or failure. Infeasible combinations
 raise rather than relaxing a limit. The helper supports fully invested portfolios
 and finite asset returns strictly above -100 percent. Cash, management fees,
-automatic causal prior updates and larger holding windows remain unsupported.
+priors requiring additional metadata and dynamic asset universes remain unsupported.
 
 Transaction costs can be a scalar, an asset-aligned vector or a dictionary keyed
 by fitted asset names (omitted names default to zero). An explicit argument
@@ -1188,3 +1195,19 @@ weights follow asset-return drift. It does not introduce a cash ledger or solve
 for exact self-financing trades after fees. Costs affect evaluation only; they
 are not a penalty in supervised regressor fitting. Net returns are compounded
 by the resulting MultiPeriodPortfolio. Nonpositive net wealth raises an error.
+
+
+Automatic risk estimation uses a fresh clone of ``prior_estimator`` on trailing
+observed returns at each rebalance, with ``covariance_window`` limiting history.
+The default is ``EmpiricalPrior(covariance_estimator=LedoitWolf())``. The history
+contains training returns and already-realized evaluation returns, never the
+next holding-period return. Only the supplied return history is used; omitted
+observations are not inferred from characteristic fields. Explicit covariance
+and a custom prior cannot both be supplied. Direct ``predict_weights`` still
+requires covariance when risk-constrained because it receives no return stream.
+
+The reproducible ``integration/issue_262/historical_walk_forward.py`` example
+uses bundled equity prices, three yearly model refits, a constrained equal-weight
+baseline and an execution CSV. Its fixed historical universe is not a
+point-in-time constituent universe, and the example is not evidence of investment
+performance. See ``integration/issue_262/HISTORICAL_VALIDATION.rst`` for the run.
