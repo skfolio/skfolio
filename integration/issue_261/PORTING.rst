@@ -26,10 +26,10 @@ Latest status
 -------------
 
 Steps 1-4 now have an integrated, tested implementation on online-framework-port.
-28 of 46 inventoried source/test files are moved or adapted; 18 remain pending.
-This includes 14 of Carlo's 16 source modules. Benchmark/regret code and 16 original
-test files remain pending; these are explicit scope/review items, not silently
-removed. New integration tests are listed separately in PORT_INVENTORY.json.
+40 of 46 inventoried source/test files are moved or adapted; 6 remain pending.
+This includes 14 of Carlo's 16 source modules. Only benchmark/regret code and
+four related test files remain pending. One regret-dependent case in the ported
+robustness tests is explicitly skipped and recorded in the inventory. New integration tests are listed separately in PORT_INVENTORY.json.
 
 Public classes delegate to Carlo's families:
 
@@ -347,3 +347,26 @@ automatic recovery and larger evaluation windows remain separate follow-ups.
 Factor-based constraints are not exposed by these wrappers. The existing private
 families retain legacy experiment parameters; exposing those is not part of this
 public API slice. No branch has been pushed.
+
+Iteration 7: remaining algorithm tests before PR preparation
+-----------------------------------------------------------
+
+Ported all twelve remaining algorithm/accounting test files using Carlo's source
+and the recorded df64d34 compatibility reference. The source base.py is now
+called test_base.py so pytest collects it. New imports target the private family
+adapters, preserving the limited public estimator API.
+
+Adaptations are substantive and explicit: optimizer wealth assertions now check
+learning-state immutability, OLMAR references use the corrected current-price
+window, and PA/MD equivalence checks use interior targets from the same state.
+PAMR references cover all three slack variants. Ada-BARRONS is checked against an
+independent scalar root solve of its complete evolving constrained potential over
+250 observations. Its old 85% final-weight threshold described the superseded
+projection path and is not a valid requirement for this potential. Other stationary
+concentration assertions are retained. No production algorithms changed here.
+
+Validation: 587 online tests pass. One regret-specific case is explicitly skipped
+because _regret.py remains outside this algorithm PR. The inventory now has 40
+moved/adapted files and six pending benchmark/regret files; the partial test-file
+exception is recorded as pending_tests, not hidden. Numerical solver and inherited
+source warnings remain, but all numerical assertions pass.

@@ -210,9 +210,15 @@
       "source_path": "tests/test_optimization/test_online/base.py",
       "source_lines": 177,
       "source_sha256": "efd7a0b5243e779f64603c08a077e4968596da8422e87d5b13b5f2ac0757d823",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/test_base.py",
+      "changes": [
+        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance.",
+        "Renamed base.py to test_base.py so pytest collects the original base-estimator tests.",
+        "Prediction-copy tests inspect optimizer targets, history and gradient state rather than removed account wealth."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "fc227bb1dcfcbc5c3b378aa1d8d979f410504921fc953011f68dab8fc7571ad6"
     },
     {
       "source_path": "tests/test_optimization/test_online/conftest.py",
@@ -230,9 +236,13 @@
       "source_path": "tests/test_optimization/test_online/loser/test_cwmr.py",
       "source_lines": 189,
       "source_sha256": "8dc12dccec2b549b3054fded81734c19e3caf3c7e2541471275b0a11b705c4f2",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/loser/test_cwmr.py",
+      "changes": [
+        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "40f2a4a85e586d6344e091a453bbd84ffeb027f66926982646a0846ca7b83fd7"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_cwmr_clip.py",
@@ -262,25 +272,39 @@
       "source_path": "tests/test_optimization/test_online/loser/test_olmar.py",
       "source_lines": 172,
       "source_sha256": "dcc500546e03ac75932efda16d70eceb3b84f80159bda7f1062aa7e3e4e154ff",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/loser/test_olmar.py",
+      "changes": [
+        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance.",
+        "The two-price PA reference includes the current-price unit term and one observed relative."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "4b1f836538df63b181ae26e7c564907066a798738b6009290721b6c0a5ba74f9"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_olmar_pa_vs_md.py",
       "source_lines": 491,
       "source_sha256": "7c548208482353c8e7e08efb344d6158689716173907cef40bd44a781be2046f",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/loser/test_olmar_pa_vs_md.py",
+      "changes": [
+        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance.",
+        "First-active-step PA/MD comparisons now use independent price-level forecasts and interior targets so clipping cannot mask stale indices."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "3c6a9f45789da31807347d08d8c60f92c2d9a570855af6a180ab03699c85be7d"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_pamr.py",
       "source_lines": 75,
       "source_sha256": "871553594aac2e011b854d885d9c28986965a88f9b1e2064deb2f14c650477ff",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/loser/test_pamr.py",
+      "changes": [
+        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "fa89f3a58e4bc98066a343b68d78bee6a4b04d255775e2aba9feadeb7933f271"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_pamr_edgecases.py",
@@ -298,33 +322,50 @@
       "source_path": "tests/test_optimization/test_online/loser/test_pamr_pa_vs_md.py",
       "source_lines": 452,
       "source_sha256": "3ee1a0bb4923e2e1fc704417fc60370703acf09bad0074c5763886263a86eca5",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/loser/test_pamr_pa_vs_md.py",
+      "changes": [
+        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance.",
+        "PA/MD comparisons cover all three slack variants with nonuniform initial targets and interior expected allocations."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "d10be4129410865448801c51017936ad6f8321322e2b75b69ba4651f6d61a8c3"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_rmr.py",
       "source_lines": 182,
       "source_sha256": "895be677cd6ee3d6d0e0d3dba7a4505364eec82e151a66fbcd5756f88f37c5e1",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/loser/test_rmr.py",
+      "changes": [
+        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "778d799537845e6c92db97eb374bf582abca53216f25c0b8b1ef9e62280a2e77"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_transaction_costs.py",
       "source_lines": 225,
       "source_sha256": "dcfc398cfb70f316bd17b2e97a985bf9b6905099ea87762d8100ee4df12b1bf9",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/loser/test_transaction_costs.py",
+      "changes": [
+        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "c0499fafae0ba849ded7b1d7cd58c42e399746a7682450c8f9d90d1ecdf43d7b"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_turnover_modes_loser.py",
       "source_lines": 43,
       "source_sha256": "68f597c46af8b7233525943ab20f8395e65336db2a4e3f3cd93dda0f16eb9707",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/loser/test_turnover_modes_loser.py",
+      "changes": [
+        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "f80c03ff6b728aa5765cd2f8b6062b64ab49cce32a6c90f091b22bb184dbd088"
     },
     {
       "source_path": "tests/test_optimization/test_online/mirror_maps/test_mirror_maps.py",
@@ -423,9 +464,14 @@
       "source_path": "tests/test_optimization/test_online/test_estimator.py",
       "source_lines": 249,
       "source_sha256": "53a2793f1450844d5eed8f85c8cf3649f886065e94f939cc7f65cb8e6e96e7c9",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/test_estimator.py",
+      "changes": [
+        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance.",
+        "The old Ada-BARRONS 85% concentration assertion is replaced by an independent 250-step root solve of the full adaptive constrained potential. Convex feasibility is checked at 1e-7."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "72f076b8226c5d261903c86ade156b832b372628206f35743874d2d618504f2f"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_initial_wealth.py",
@@ -443,9 +489,13 @@
       "source_path": "tests/test_optimization/test_online/test_metrics_correctness.py",
       "source_lines": 423,
       "source_sha256": "ec8a074294d192d4e61520bf94dc0551e02ee10554c0b73bc4482bb343c31453",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/test_metrics_correctness.py",
+      "changes": [
+        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "c90bd69fe6fd8bea5d96e08c7275504486cd6b87d46af89c02f89a81c18114ec"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_projection.py",
@@ -460,9 +510,16 @@
       "source_path": "tests/test_optimization/test_online/test_robustness.py",
       "source_lines": 123,
       "source_sha256": "a695b7f42e9318b2ff32e69f0eb35aaecd54ab1f2df005737bc733bf8aeed21d",
-      "status": "pending",
-      "destination": null,
-      "changes": []
+      "status": "adapted",
+      "destination": "tests/test_optimization/test_online/test_robustness.py",
+      "changes": [
+        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance."
+      ],
+      "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
+      "destination_sha256": "db521a8afbe163e70a49a59afa4d74f85d24d53e253911e226f568e4d25be60f",
+      "pending_tests": {
+        "test_universal_regret_bound": "Explicitly skipped until the separate regret module is ported."
+      }
     },
     {
       "source_path": "tests/test_optimization/test_online/utils.py",
