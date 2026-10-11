@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
+from copy import copy, deepcopy
 
 import numpy as np
 import pandas as pd
@@ -270,6 +270,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         self.weights_history_ = weights_history
         self.weights_ = weights_history[-1].copy()
         self.last_observation_ = X.index[-1]
+        self.last_prediction_observation_ = X.index[-1]
         return self
 
     def _predict_policy(
@@ -314,6 +315,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         *,
         covariance=None,
         holdings=None,
+        update_state: bool = False,
     ) -> pd.DataFrame:
         """Predict allocations from a subsequent characteristic panel.
 
@@ -321,7 +323,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         ----------
         characteristics : AssetPanel
             Subsequent, non-overlapping panel with the fitted coverage asset order.
-            Exposure estimators advance their state; the regressor is not refitted.
+            The regressor is not refitted.
         covariance : array-like or DataFrame, optional
             Covariance available at each decision. Shape (t,n,n), or (n,n) to
             explicitly share one estimate. Named matrices are aligned to assets.
@@ -331,6 +333,11 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             is accepted for a single date only; holdings are never broadcast.
             Named columns are aligned; DataFrame dates must match the panel.
 
+        update_state : bool, default=False
+            Commit exposure state only after a successful prediction. The default
+            leaves fitted state unchanged and permits repeatable predictions.
+            Streaming callers must explicitly opt in and pass increasing dates.
+
         Returns
         -------
         weights : DataFrame
@@ -338,6 +345,16 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             characteristics are NaN.
         """
         check_is_fitted(self, "regressor_")
+        dates = pd.Index(characteristics.observations)
+        if (
+            len(dates) == 0
+            or not dates.is_unique
+            or not dates.is_monotonic_increasing
+            or dates[0] <= self.last_prediction_observation_
+        ):
+            raise ValueError("Prediction dates must follow the fitted exposure state.")
+        worker = copy(self)
+        worker.characteristics_exposures_ = deepcopy(self.characteristics_exposures_)
         covariance, holdings = projection_context(
             self.feature_names_in_,
             characteristics.observations,
@@ -350,15 +367,15 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             raise ValueError("`holdings` is required for a turnover limit.")
         if isinstance(characteristics, AssetPanelView):
             characteristics = characteristics.to_panel(deep=False)
-        panel = self._validate_characteristics(characteristics, X=None)
+        panel = worker._validate_characteristics(characteristics, X=None)
         investment_idx = self._investment_index(panel, self.feature_names_in_)
         if not panel.active_mask[:, investment_idx].all():
             raise ValueError(
                 "The supervised prototype requires a fixed active universe."
             )
-        exposures, _ = self._compute_exposures(panel, method="partial_fit")
+        exposures, _ = worker._compute_exposures(panel, method="partial_fit")
         inputs = self._policy_inputs(panel, exposures, investment_idx)
-        return pd.DataFrame(
+        result = pd.DataFrame(
             self._predict_policy(
                 self.regressor_,
                 inputs,
@@ -371,6 +388,11 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             index=panel.observations,
             columns=self.feature_names_in_,
         )
+
+        if update_state:
+            self.characteristics_exposures_ = worker.characteristics_exposures_
+            self.last_prediction_observation_ = dates[-1]
+        return result
 
     def predict(self, X):
         """Evaluate the final static allocation when no dynamic limits are enabled.
@@ -521,6 +543,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
                     characteristics.isel(observations=slice(t, t + 1)),
                     covariance=None if cov is None else cov[t],
                     holdings=holdings,
+                    update_state=True,
                 )
                 .iloc[0]
                 .to_numpy()

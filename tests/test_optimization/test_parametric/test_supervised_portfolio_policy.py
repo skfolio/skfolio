@@ -452,3 +452,22 @@ def test_invalid_transaction_costs(rates):
         estimator.evaluate_sequential(
             returns, future, initial_holdings=[1 / 3] * 3, transaction_costs=rates
         )
+
+
+def test_prediction_state_is_explicit_and_committed_only_on_success():
+    X, panel = data()
+    estimator = model(max_variance=0.34).fit(X, characteristics=panel)
+    _, future = data(n=2, offset=11)
+    old_exposures = estimator.characteristics_exposures_
+    first = estimator.predict_weights(future, covariance=np.eye(3))
+    second = estimator.predict_weights(future, covariance=np.eye(3))
+    pd.testing.assert_frame_equal(first, second)
+    assert estimator.characteristics_exposures_ is old_exposures
+    with pytest.raises(ValueError, match="infeasible"):
+        estimator.predict_weights(future, covariance=10 * np.eye(3), update_state=True)
+    assert estimator.characteristics_exposures_ is old_exposures
+    assert estimator.last_prediction_observation_ == X.index[-1]
+    estimator.predict_weights(future, covariance=np.eye(3), update_state=True)
+    assert estimator.last_prediction_observation_ == future.observations[-1]
+    with pytest.raises(ValueError, match="Prediction dates"):
+        estimator.predict_weights(future, covariance=np.eye(3), update_state=True)
