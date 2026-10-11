@@ -889,3 +889,47 @@ def test_label_optimizer_receives_routed_factor_metadata():
             characteristics=panel,
             optimizer_fit_params={"factors": factors.iloc[20:]},
         )
+
+
+@pytest.mark.parametrize("cost", [0.0, 0.001])
+def test_cash_short_positions_reconcile_without_borrow_fees(cost):
+    X, panel = data()
+    estimator = model().fit(X, characteristics=panel)
+    estimator.regressor_.coef_[:] = 4
+    returns, future = data(n=3, offset=11)
+    returns.index = future.observations + pd.Timedelta(days=1)
+    returns.iloc[:] = [0.1, -0.02, -0.1]
+    result = estimator.evaluate_execution(
+        returns,
+        future,
+        initial_holdings=[-0.5, 0.5, 0.9],
+        initial_cash=0.1,
+        cash_weight=0.1,
+        transaction_costs=cost,
+        rebalance_every=2,
+    )
+    assert (result.targets["a"] < 0).all()
+    np.testing.assert_allclose(
+        result.ending_weights.sum(axis=1) + result.ledger.ending_cash, 1
+    )
+    np.testing.assert_allclose(
+        result.ledger.cost, cost * result.trades.abs().sum(axis=1)
+    )
+    expected = (1 - result.ledger.cost) * (
+        1 + (result.targets * returns).sum(axis=1)
+    ) - 1
+    np.testing.assert_allclose(result.ledger["return"], expected, atol=1e-10)
+    assert not result.ledger.rebalanced.iloc[1]
+
+
+def test_missing_short_return_rejected():
+    X, panel = data()
+    estimator = model().fit(X, characteristics=panel)
+    estimator.regressor_.coef_[:] = 4
+    returns, future = data(n=1, offset=11)
+    returns.index = future.observations + pd.Timedelta(days=1)
+    returns.iloc[0, 0] = np.nan
+    with pytest.raises(ValueError, match="held asset"):
+        estimator.evaluate_execution(
+            returns, future, initial_holdings=0, initial_cash=1
+        )

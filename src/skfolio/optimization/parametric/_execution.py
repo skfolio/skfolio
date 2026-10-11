@@ -1,4 +1,4 @@
-"""Cash-funded, long-only execution with an auditable wealth ledger."""
+"""Cash-funded portfolio accounting with an auditable wealth ledger."""
 
 from copy import deepcopy
 from dataclasses import dataclass
@@ -72,10 +72,6 @@ def _funded_projection(
             holdings=(holdings / capital)[None, :],
             max_turnover=None if max_turnover is None else max_turnover / capital,
         )[0]
-        # Eliminate solver-level signed dust before cash/return accounting.
-        if weights.min() < -1e-7:
-            raise ValueError("Execution requires nonnegative allocations.")
-        weights = np.maximum(weights, 0)
         weights[~eligible] = 0
         trades = capital * weights - holdings
         cost = float(rates @ np.abs(trades))
@@ -116,8 +112,6 @@ def evaluate_execution(
 ):
     """Run explicit cash accounting without mutating the fitted estimator."""
     check_is_fitted(model, "regressor_")
-    if not model.long_only:
-        raise ValueError("Cash execution currently requires long_only=True.")
     names = list(model.feature_names_in_)
     if (
         not isinstance(X, pd.DataFrame)
@@ -169,7 +163,7 @@ def evaluate_execution(
         if value < (2 if name == "covariance_window" else 1):
             raise ValueError(f"Invalid {name}.")
 
-    def asset_vector(value, name):
+    def asset_vector(value, name, nonnegative=True):
         if isinstance(value, dict) and set(value) - set(names):
             raise ValueError(f"Unknown asset in {name}.")
         array = (
@@ -177,11 +171,15 @@ def evaluate_execution(
             if np.isscalar(value)
             else input_to_array(value, len(names), 0, 1, np.asarray(names), name)
         )
-        if not np.isfinite(array).all() or (array < 0).any():
+        if not np.isfinite(array).all():
+            raise ValueError(f"{name} must be finite.")
+        if nonnegative and (array < 0).any():
             raise ValueError(f"{name} must be finite and nonnegative.")
         return array
 
-    holdings = asset_vector(initial_holdings, "initial_holdings")
+    holdings = asset_vector(
+        initial_holdings, "initial_holdings", nonnegative=model.long_only
+    )
     if not np.isclose(holdings.sum() + initial_cash, 1, atol=1e-9, rtol=0):
         raise ValueError("Initial risky holdings plus cash must sum to one.")
     params = dict(model.portfolio_params or {})
@@ -219,7 +217,7 @@ def evaluate_execution(
     runner = deepcopy(model, {id(model.weight_projection_): None})
     projection = _WeightProjection(
         names,
-        True,
+        model.long_only,
         model.min_weights,
         model.max_weights,
         model.groups,
@@ -297,7 +295,7 @@ def evaluate_execution(
             dollars, cash_dollars = holdings.copy(), cash
             trades, cost = np.zeros(len(names)), 0.0
         observed = X.iloc[t].to_numpy()
-        if np.isnan(observed[dollars > 1e-10]).any():
+        if np.isnan(observed[np.abs(dollars) > 1e-10]).any():
             raise ValueError(
                 "A held asset has an unobserved return; supply an explicit valuation or exit."
             )
