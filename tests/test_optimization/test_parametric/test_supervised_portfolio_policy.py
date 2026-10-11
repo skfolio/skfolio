@@ -471,3 +471,51 @@ def test_prediction_state_is_explicit_and_committed_only_on_success():
     assert estimator.last_prediction_observation_ == future.observations[-1]
     with pytest.raises(ValueError, match="Prediction dates"):
         estimator.predict_weights(future, covariance=np.eye(3), update_state=True)
+
+
+def test_rolling_prior_only_sees_returns_available_at_decision():
+    from skfolio.prior import EmpiricalPrior
+
+    class RecordingPrior(EmpiricalPrior):
+        windows: ClassVar[list[pd.DataFrame]] = []
+
+        def fit(self, X, y=None, **fit_params):
+            type(self).windows.append(X.copy())
+            return super().fit(X, y, **fit_params)
+
+    X, panel = data()
+    estimator = model(max_variance=10).fit(X, characteristics=panel)
+    _, future = data(n=3, offset=11)
+    returns = pd.DataFrame(
+        [[0.01, 0, 0], [0, 0.01, 0], [0, 0, 0.01]],
+        index=pd.date_range("2020-01-13", periods=3),
+        columns=X.columns,
+    )
+    from skfolio.moments import LedoitWolf
+
+    prior = RecordingPrior(covariance_estimator=LedoitWolf())
+    estimator.evaluate_sequential(
+        returns,
+        future,
+        initial_holdings=[1 / 3] * 3,
+        prior_estimator=prior,
+        covariance_window=5,
+    )
+    assert not hasattr(prior, "return_distribution_")
+    for t, window in enumerate(RecordingPrior.windows):
+        pd.testing.assert_frame_equal(window, pd.concat([X, returns.iloc[:t]]).tail(5))
+        assert window.index[-1] <= future.observations[t]
+    assert len(RecordingPrior.windows) == 3
+
+
+def test_default_rolling_prior_works_without_external_covariance():
+    X, panel = data()
+    estimator = model(max_variance=10).fit(X, characteristics=panel)
+    _, future = data(n=1, offset=11)
+    returns = pd.DataFrame(
+        [[0.01, 0, 0]], index=pd.date_range("2020-01-13", periods=1), columns=X.columns
+    )
+    result = estimator.evaluate_sequential(
+        returns, future, initial_holdings=[1 / 3] * 3
+    )
+    assert np.isfinite(result.returns).all()

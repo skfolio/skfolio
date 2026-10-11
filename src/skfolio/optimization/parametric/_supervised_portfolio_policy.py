@@ -15,6 +15,7 @@ from sklearn.utils.validation import check_is_fitted, validate_data
 
 from skfolio.containers import AssetPanel, AssetPanelView
 from skfolio.factor_exposure import BaseFactorExposure
+from skfolio.moments import LedoitWolf
 from skfolio.optimization._base import BaseOptimization
 from skfolio.optimization.parametric._parametric_portfolio_policy import (
     ParametricPortfolioPolicy,
@@ -22,6 +23,7 @@ from skfolio.optimization.parametric._parametric_portfolio_policy import (
 from skfolio.optimization.parametric._projection_context import projection_context
 from skfolio.optimization.parametric._weight_projection import _WeightProjection
 from skfolio.portfolio import MultiPeriodPortfolio, Portfolio
+from skfolio.prior import BasePrior, EmpiricalPrior
 from skfolio.utils.tools import (
     _validate_non_negative_integer,
     _validate_non_negative_real,
@@ -269,6 +271,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         )
         self.weights_history_ = weights_history
         self.weights_ = weights_history[-1].copy()
+        self.training_returns_ = X.copy()
         self.last_observation_ = X.index[-1]
         self.last_prediction_observation_ = X.index[-1]
         return self
@@ -421,6 +424,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         initial_holdings,
         covariance=None,
         transaction_costs=None,
+        prior_estimator: BasePrior | None = None,
+        covariance_window: int = 60,
     ) -> MultiPeriodPortfolio:
         """Evaluate one rebalance per subsequent return observation.
 
@@ -441,6 +446,15 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             Nonnegative proportional costs per asset, charged on absolute traded
             weights. Named rates align to fitted assets; omitted names cost zero.
             Overrides portfolio_params["transaction_costs"] when supplied.
+
+        prior_estimator : BasePrior, optional
+            Covariance prior cloned and refitted on trailing observed returns at
+            each rebalance when a risk limit is enabled without explicit covariance.
+            Defaults to EmpiricalPrior with LedoitWolf covariance shrinkage.
+            Priors requiring additional metadata are not supported here.
+        covariance_window : int, default=60
+            Maximum number of past return rows supplied to each prior fit; at
+            least two. No return from the following holding period is included.
 
         Returns
         -------
@@ -488,8 +502,18 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         cov, _ = projection_context(
             self.feature_names_in_, dates, covariance=covariance
         )
-        if self.max_variance is not None and cov is None:
-            raise ValueError("`covariance` is required for a risk limit.")
+        _validate_non_negative_integer(covariance_window, "covariance_window")
+        if covariance_window < 2:
+            raise ValueError("`covariance_window` must be at least two.")
+        if prior_estimator is not None and not isinstance(prior_estimator, BasePrior):
+            raise ValueError("`prior_estimator` must be a BasePrior estimator.")
+        if prior_estimator is not None and cov is not None:
+            raise ValueError("Supply either covariance or prior_estimator, not both.")
+        risk_prior = (
+            EmpiricalPrior(covariance_estimator=LedoitWolf())
+            if prior_estimator is None
+            else prior_estimator
+        )
         params = dict(self.portfolio_params or {})
         costs = params.pop("transaction_costs", None)
         if transaction_costs is not None:
@@ -538,10 +562,17 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         holdings = held[0]
         portfolios = []
         for t in range(len(X)):
+            decision_covariance = None if cov is None else cov[t]
+            if self.max_variance is not None and cov is None:
+                history = pd.concat([self.training_returns_, X.iloc[:t]]).tail(
+                    covariance_window
+                )
+                fitted_prior = clone(risk_prior).fit(history)
+                decision_covariance = fitted_prior.return_distribution_.covariance
             targets = (
                 runner.predict_weights(
                     characteristics.isel(observations=slice(t, t + 1)),
-                    covariance=None if cov is None else cov[t],
+                    covariance=decision_covariance,
                     holdings=holdings,
                     update_state=True,
                 )
