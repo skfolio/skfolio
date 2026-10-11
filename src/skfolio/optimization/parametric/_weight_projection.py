@@ -1,7 +1,11 @@
 """Project regression predictions onto static convex portfolio constraints."""
 
+from __future__ import annotations
+
 import cvxpy as cp
 import numpy as np
+import pandas as pd
+from numpy.typing import ArrayLike
 
 from skfolio.utils.equations import equations_to_matrix
 from skfolio.utils.tools import input_to_array
@@ -12,13 +16,13 @@ class _WeightProjection:
 
     def __init__(
         self,
-        asset_names,
-        long_only,
-        min_weights,
-        max_weights,
-        groups,
-        linear_constraints,
-    ):
+        asset_names: list[str] | np.ndarray | pd.Index,
+        long_only: bool,
+        min_weights: float | ArrayLike | dict[str, float] | None,
+        max_weights: float | ArrayLike | dict[str, float] | None,
+        groups: ArrayLike | None,
+        linear_constraints: list[str] | None,
+    ) -> None:
         n = len(asset_names)
         self.target = cp.Parameter(n)
         self.weights = cp.Variable(n)
@@ -66,14 +70,14 @@ class _WeightProjection:
 
     def project(
         self,
-        proposed,
-        covariance=None,
-        max_variance=None,
-        holdings=None,
-        max_turnover=None,
-        eligible=None,
-        budget=1.0,
-    ):
+        proposed: np.ndarray,
+        covariance: np.ndarray | None = None,
+        max_variance: float | None = None,
+        holdings: np.ndarray | None = None,
+        max_turnover: float | None = None,
+        eligible: np.ndarray | None = None,
+        budget: float = 1.0,
+    ) -> np.ndarray:
         """Return feasible weights or fail explicitly; never clip after solving."""
         self.budget.value = budget
         result = np.empty_like(proposed)

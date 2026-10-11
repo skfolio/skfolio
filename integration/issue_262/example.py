@@ -1,5 +1,7 @@
 """Fit a nonlinear supervised policy and constrain subsequent allocations."""
 
+from __future__ import annotations
+
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
@@ -17,7 +19,7 @@ returns = rng.normal(scale=0.01, size=(100, 4))
 returns[1:] += 0.002 * signal[:-1]
 
 
-def panel(start, end):
+def panel(start: int, end: int) -> AssetPanel:
     """Create one chronological slice of the synthetic data."""
     return AssetPanel(
         fields={"signal": signal[start:end], "returns": returns[start:end]},

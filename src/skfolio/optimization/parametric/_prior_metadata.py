@@ -1,11 +1,13 @@
 """Align prior metadata to the exact causal covariance training window."""
 
+from __future__ import annotations
+
 import pandas as pd
 
 from skfolio.containers import AssetPanel, AssetPanelView
 
 
-def slice_prior_metadata(metadata, index):
+def slice_prior_metadata(metadata: dict | None, index: pd.Index) -> dict:
     """Slice dated metadata; reject positional arrays and implicit filling."""
     result = {}
     for name, value in (metadata or {}).items():

@@ -5,6 +5,8 @@ universe. Results illustrate software behavior and are not investment evidence.
 Run from the repository root with PYTHONPATH=src.
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 from pathlib import Path
@@ -23,7 +25,9 @@ from skfolio.optimization import InverseVolatility, SupervisedPortfolioPolicy
 ASSETS = ["AAPL", "CVX", "GE", "JNJ", "JPM", "KO", "MSFT", "WMT"]
 
 
-def make_panel(index, returns, features):
+def make_panel(
+    index: pd.Index, returns: pd.DataFrame, features: dict[str, pd.DataFrame]
+) -> AssetPanel:
     """Select only characteristics available on each decision date."""
     return AssetPanel(
         fields={
@@ -35,7 +39,7 @@ def make_panel(index, returns, features):
     )
 
 
-def run(output_dir):
+def run(output_dir: Path) -> None:
     """Refit each year, hold for 21 observations, and export execution diagnostics."""
     prices = load_sp500_dataset()[ASSETS]
     returns = prices.pct_change(fill_method=None).dropna()

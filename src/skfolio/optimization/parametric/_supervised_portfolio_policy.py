@@ -6,10 +6,12 @@
 from __future__ import annotations
 
 from copy import copy, deepcopy
+from typing import Protocol
 
 import numpy as np
 import pandas as pd
-from sklearn.base import clone, is_regressor
+from numpy.typing import ArrayLike
+from sklearn.base import BaseEstimator, clone, is_regressor
 from sklearn.linear_model import Ridge
 from sklearn.utils.validation import check_is_fitted, validate_data
 
@@ -17,7 +19,10 @@ from skfolio.containers import AssetPanel, AssetPanelView
 from skfolio.factor_exposure import BaseFactorExposure
 from skfolio.moments import LedoitWolf
 from skfolio.optimization._base import BaseOptimization
-from skfolio.optimization.parametric._execution import PortfolioExecution
+from skfolio.optimization.parametric._execution import (
+    PortfolioExecution,
+    _UnconstrainedProposal,
+)
 from skfolio.optimization.parametric._parametric_portfolio_policy import (
     ParametricPortfolioPolicy,
     _PolicyInputs,
@@ -25,6 +30,7 @@ from skfolio.optimization.parametric._parametric_portfolio_policy import (
 from skfolio.optimization.parametric._prior_metadata import slice_prior_metadata
 from skfolio.optimization.parametric._projection_context import projection_context
 from skfolio.optimization.parametric._weight_projection import _WeightProjection
+from skfolio.population import Population
 from skfolio.portfolio import MultiPeriodPortfolio, Portfolio
 from skfolio.prior import BasePrior, EmpiricalPrior
 from skfolio.utils.tools import (
@@ -32,6 +38,14 @@ from skfolio.utils.tools import (
     _validate_non_negative_real,
     input_to_array,
 )
+
+
+class _PolicyRegressor(Protocol):
+    """Prediction interface shared by regressors and regression pipelines."""
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """Predict one benchmark-relative weight per feature row."""
+        ...
 
 
 class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
@@ -133,18 +147,18 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         optimizer: BaseOptimization,
         window_size: int = 20,
         alpha: float = 1.0,
-        regressor=None,
+        regressor: BaseEstimator | None = None,
         benchmark_mcap_power: float = 1.0,
         long_only: bool = False,
         portfolio_params: dict | None = None,
-        min_weights=None,
-        max_weights=None,
-        groups=None,
-        linear_constraints=None,
+        min_weights: float | ArrayLike | dict[str, float] | None = None,
+        max_weights: float | ArrayLike | dict[str, float] | None = None,
+        groups: ArrayLike | None = None,
+        linear_constraints: list[str] | None = None,
         max_variance: float | None = None,
         max_turnover: float | None = None,
         allow_universe_changes: bool = False,
-    ):
+    ) -> None:
         super().__init__(
             characteristics_exposures=characteristics_exposures,
             benchmark_mcap_power=benchmark_mcap_power,
@@ -166,7 +180,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
     def fit(
         self,
         X: pd.DataFrame,
-        y=None,
+        y: None = None,
         characteristics: AssetPanel | None = None,
         optimizer_fit_params: dict | None = None,
     ) -> SupervisedPortfolioPolicy:
@@ -318,9 +332,9 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         X: pd.DataFrame,
         characteristics: AssetPanel,
         *,
-        min_weights=None,
-        max_weights=None,
-        groups=None,
+        min_weights: float | ArrayLike | dict[str, float] | None = None,
+        max_weights: float | ArrayLike | dict[str, float] | None = None,
+        groups: ArrayLike | None = None,
     ) -> SupervisedPortfolioPolicy:
         """Return an expanded policy without retraining its regressor.
 
@@ -437,14 +451,14 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
 
     def _predict_policy(
         self,
-        regressor,
-        inputs,
-        projection,
-        covariance=None,
-        max_variance=None,
-        holdings=None,
-        max_turnover=None,
-    ):
+        regressor: _PolicyRegressor,
+        inputs: _PolicyInputs,
+        projection: _WeightProjection | _UnconstrainedProposal,
+        covariance: np.ndarray | None = None,
+        max_variance: float | None = None,
+        holdings: np.ndarray | None = None,
+        max_turnover: float | None = None,
+    ) -> np.ndarray:
         """Predict asset-level deviations and restore the portfolio budget."""
         valid = (
             inputs.holdable.any(axis=1)
@@ -482,8 +496,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         self,
         characteristics: AssetPanel | AssetPanelView,
         *,
-        covariance=None,
-        holdings=None,
+        covariance: ArrayLike | pd.DataFrame | None = None,
+        holdings: ArrayLike | pd.DataFrame | None = None,
         update_state: bool = False,
     ) -> pd.DataFrame:
         """Predict allocations from a subsequent characteristic panel.
@@ -566,7 +580,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             self.last_prediction_observation_ = dates[-1]
         return result
 
-    def predict(self, X):
+    def predict(self, X: pd.DataFrame) -> Portfolio | Population:
         """Evaluate the final static allocation when no dynamic limits are enabled.
 
         Parameters
@@ -590,9 +604,9 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         X: pd.DataFrame,
         characteristics: AssetPanel,
         *,
-        initial_holdings,
-        covariance=None,
-        transaction_costs=None,
+        initial_holdings: float | ArrayLike | dict[str, float],
+        covariance: ArrayLike | pd.DataFrame | None = None,
+        transaction_costs: float | ArrayLike | dict[str, float] | None = None,
         prior_estimator: BasePrior | None = None,
         prior_fit_params: dict | None = None,
         covariance_window: int = 60,
@@ -749,6 +763,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             self.groups,
             self.linear_constraints,
         )
+        assert held is not None
         holdings = held[0]
         portfolios = []
         for t in range(len(X)):
@@ -811,17 +826,17 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         X: pd.DataFrame,
         characteristics: AssetPanel,
         *,
-        initial_holdings,
-        initial_cash,
-        cash_weight=0.05,
-        cash_returns=0.0,
-        transaction_costs=None,
-        covariance=None,
-        prior_estimator=None,
-        prior_fit_params=None,
-        covariance_window=60,
-        rebalance_every=1,
-        eligibility=None,
+        initial_holdings: float | ArrayLike | dict[str, float],
+        initial_cash: float,
+        cash_weight: float = 0.05,
+        cash_returns: float | ArrayLike | pd.Series = 0.0,
+        transaction_costs: float | ArrayLike | dict[str, float] | None = None,
+        covariance: ArrayLike | pd.DataFrame | None = None,
+        prior_estimator: BasePrior | None = None,
+        prior_fit_params: dict | None = None,
+        covariance_window: int = 60,
+        rebalance_every: int = 1,
+        eligibility: pd.DataFrame | None = None,
     ) -> PortfolioExecution:
         """Evaluate a strategy with explicit cash and funded transaction fees.
 

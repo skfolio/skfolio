@@ -1,21 +1,30 @@
 """Cash-funded portfolio accounting with an auditable wealth ledger."""
 
+from __future__ import annotations
+
 from copy import deepcopy
 from dataclasses import dataclass
 from numbers import Real
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
+from numpy.typing import ArrayLike
 from sklearn.base import clone
 from sklearn.utils.validation import check_is_fitted
 
-from skfolio.containers import AssetPanelView
+from skfolio.containers import AssetPanel, AssetPanelView
 from skfolio.moments import LedoitWolf
 from skfolio.optimization.parametric._prior_metadata import slice_prior_metadata
 from skfolio.optimization.parametric._projection_context import projection_context
 from skfolio.optimization.parametric._weight_projection import _WeightProjection
 from skfolio.prior import BasePrior, EmpiricalPrior
 from skfolio.utils.tools import _validate_non_negative_integer, input_to_array
+
+if TYPE_CHECKING:
+    from skfolio.optimization.parametric._supervised_portfolio_policy import (
+        SupervisedPortfolioPolicy,
+    )
 
 
 @dataclass(frozen=True)
@@ -44,21 +53,22 @@ class PortfolioExecution:
 class _UnconstrainedProposal:
     """Extract model predictions before the execution constraint stage."""
 
-    def project(self, proposed, **kwargs):
+    def project(self, proposed: np.ndarray, **kwargs: object) -> np.ndarray:
+        """Return raw policy weights before the accounting projection."""
         return proposed
 
 
 def _funded_projection(
-    projection,
-    proposed,
-    holdings,
-    rates,
-    eligible,
-    cash_weight,
-    covariance,
-    max_variance,
-    max_turnover,
-):
+    projection: _WeightProjection,
+    proposed: np.ndarray,
+    holdings: np.ndarray,
+    rates: np.ndarray,
+    eligible: np.ndarray,
+    cash_weight: float,
+    covariance: np.ndarray | None,
+    max_variance: float | None,
+    max_turnover: float | None,
+) -> tuple[np.ndarray, float, np.ndarray, float]:
     """Solve fee funding to a fixed point and verify actual traded amounts."""
     capital = 1.0
     budget = 1 - cash_weight if eligible.any() else 0.0
@@ -94,25 +104,25 @@ def _funded_projection(
 
 
 def evaluate_execution(
-    model,
-    X,
-    characteristics,
+    model: SupervisedPortfolioPolicy,
+    X: pd.DataFrame,
+    characteristics: AssetPanel,
     *,
-    initial_holdings,
-    initial_cash,
-    cash_weight=0.05,
-    cash_returns=0.0,
-    transaction_costs=None,
-    covariance=None,
-    prior_estimator=None,
-    prior_fit_params=None,
-    covariance_window=60,
-    rebalance_every=1,
-    eligibility=None,
-):
+    initial_holdings: float | ArrayLike | dict[str, float],
+    initial_cash: float,
+    cash_weight: float = 0.05,
+    cash_returns: float | ArrayLike | pd.Series = 0.0,
+    transaction_costs: float | ArrayLike | dict[str, float] | None = None,
+    covariance: ArrayLike | pd.DataFrame | None = None,
+    prior_estimator: BasePrior | None = None,
+    prior_fit_params: dict | None = None,
+    covariance_window: int = 60,
+    rebalance_every: int = 1,
+    eligibility: pd.DataFrame | None = None,
+) -> PortfolioExecution:
     """Run explicit cash accounting without mutating the fitted estimator."""
     check_is_fitted(model, "regressor_")
-    names = list(model.feature_names_in_)
+    names = [str(name) for name in model.feature_names_in_]
     if (
         not isinstance(X, pd.DataFrame)
         or not X.columns.is_unique
@@ -163,7 +173,10 @@ def evaluate_execution(
         if value < (2 if name == "covariance_window" else 1):
             raise ValueError(f"Invalid {name}.")
 
-    def asset_vector(value, name, nonnegative=True):
+    def asset_vector(
+        value: float | ArrayLike | dict[str, float], name: str, nonnegative: bool = True
+    ) -> np.ndarray:
+        """Align named or positional holdings and costs to registered assets."""
         if isinstance(value, dict) and set(value) - set(names):
             raise ValueError(f"Unknown asset in {name}.")
         array = (
@@ -277,9 +290,11 @@ def evaluate_execution(
                     decision_cov[np.ix_(eligible, eligible)] = (
                         fitted.return_distribution_.covariance
                     )
-                    decision_cov = projection_context(
+                    validated_cov, _ = projection_context(
                         names, dates[t : t + 1], covariance=decision_cov
-                    )[0][0]
+                    )
+                    assert validated_cov is not None
+                    decision_cov = validated_cov[0]
             dollars, cash_dollars, trades, cost = _funded_projection(
                 projection,
                 proposal,

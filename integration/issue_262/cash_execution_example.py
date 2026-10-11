@@ -4,6 +4,8 @@ Eligibility exclusions below are deliberately synthetic test scenarios, not
 historical claims about the companies. The example is a software validation.
 """
 
+from __future__ import annotations
+
 import argparse
 from pathlib import Path
 
@@ -19,7 +21,7 @@ from skfolio.optimization import InverseVolatility, SupervisedPortfolioPolicy
 from skfolio.prior import TimeSeriesFactorModel
 
 
-def run(output_dir):
+def run(output_dir: Path) -> None:
     """Run a funded cash ledger through exclusions, an all-cash phase and reentry."""
     prices = load_sp500_dataset()[ASSETS]
     returns = prices.pct_change(fill_method=None).dropna()

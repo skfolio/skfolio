@@ -1,10 +1,18 @@
 """Validate external, point-in-time inputs for portfolio projection."""
 
+from __future__ import annotations
+
 import numpy as np
 import pandas as pd
+from numpy.typing import ArrayLike
 
 
-def projection_context(asset_names, observations, covariance=None, holdings=None):
+def projection_context(
+    asset_names: list[str] | np.ndarray | pd.Index,
+    observations: pd.Index | np.ndarray,
+    covariance: ArrayLike | pd.DataFrame | None = None,
+    holdings: ArrayLike | pd.DataFrame | None = None,
+) -> tuple[np.ndarray | None, np.ndarray | None]:
     """Align named inputs and validate positional covariance/holding batches.
 
     A single covariance matrix is explicitly shared by all decisions. Holdings
