@@ -197,6 +197,7 @@ Available models
     * Ledoit-Wolf
     * Oracle Approximating Shrinkage
     * Shrunk Covariance
+    * Geodesic Shrinkage Covariance
     * Graphical Lasso CV
     * Implied Covariance
 
@@ -212,6 +213,10 @@ Available models
     * Covariance Distance (based on any of the above covariance estimators)
     * Distance Correlation
     * Variation of Information
+
+* Seriation Estimator:
+    * Hierarchical Seriation
+    * Spectral Seriation
 
 * Distribution Estimator:
     * Univariate:
@@ -874,23 +879,6 @@ Opinion Pooling
     )
 
     opinion_pooling.fit(X)
-
-Docker
-~~~~~~
-
-You can also spin up a reproducible JupyterLab environment using Docker:
-
-Build the image::
-
-    docker build -t skfolio-jupyterlab .
-
-Run the container::
-
-    docker run -p 8888:8888 -v <path-to-your-folder-containing-data>:/app/data -it skfolio-jupyterlab
-
-Browse:
-
-Open `localhost:8888/lab` and start using `skfolio`
 
 Recognition
 ~~~~~~~~~~~

@@ -122,7 +122,7 @@ class CSStandardScaler(BaseCSTransformer):
            [-1.33736075,  0.20821245,         nan,  0.41001683]])
     """
 
-    def __init__(self, *, min_group_size: int = 8, atol: float = 1e-12):
+    def __init__(self, *, min_group_size: int = 8, atol: float = 1e-12) -> None:
         self.min_group_size = min_group_size
         self.atol = atol
 

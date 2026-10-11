@@ -102,7 +102,7 @@ class CSPercentileRankScaler(BaseCSTransformer):
            [0.25      , 0.75      ,        nan, 0.83333333]])
     """
 
-    def __init__(self, *, min_group_size: int = 8):
+    def __init__(self, *, min_group_size: int = 8) -> None:
         self.min_group_size = min_group_size
 
     def _validate_params(self) -> None:

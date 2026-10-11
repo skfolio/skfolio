@@ -580,12 +580,11 @@ class TestEquilibriumMu:
                 )
             )
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
                 model.fit(X)
 
             model.fit(X, implied_vol=implied_vol)
 
-        # noinspection PyUnresolvedReferences
         assert model.covariance_estimator_.r2_scores_.shape == (20,)
         assert model.mu_.shape == (20,)
 
@@ -728,12 +727,11 @@ class TestShrunkMu:
                 )
             )
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
                 model.fit(X)
 
             model.fit(X, implied_vol=implied_vol)
 
-        # noinspection PyUnresolvedReferences
         assert model.covariance_estimator_.r2_scores_.shape == (20,)
         assert model.mu_.shape == (20,)
 

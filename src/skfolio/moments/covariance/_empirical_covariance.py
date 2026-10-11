@@ -87,7 +87,7 @@ class EmpiricalCovariance(BaseCovariance):
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
-    ):
+    ) -> None:
         super().__init__(
             assume_centered=assume_centered,
             nearest=nearest,
@@ -97,7 +97,7 @@ class EmpiricalCovariance(BaseCovariance):
         self.window_size = window_size
         self.ddof = ddof
 
-    def fit(self, X: ArrayLike, y=None) -> EmpiricalCovariance:
+    def fit(self, X: ArrayLike, y: None = None) -> EmpiricalCovariance:
         """Fit the empirical covariance estimator.
 
         Parameters

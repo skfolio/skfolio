@@ -188,12 +188,10 @@ def test_metadata_routing_for_stacking_estimators(X_medium, implied_vol_medium):
         model.predict(X_medium)
 
     for i in range(2):
-        # noinspection PyUnresolvedReferences
         assert model.estimators_[
             i
         ].prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
 
-    # noinspection PyUnresolvedReferences
     assert not hasattr(
         model.estimators_[2].prior_estimator_.covariance_estimator_, "r2_scores_"
     )
@@ -238,7 +236,9 @@ def test_stacking_prefit(X_tiny):
 
 def test_stacking_prefit_requires_fitted_estimators(X_tiny):
     model = StackingOptimization(estimators=[("ew", EqualWeighted())], cv="prefit")
-    with pytest.raises(NotFittedError):
+    with pytest.raises(
+        NotFittedError, match="This EqualWeighted instance is not fitted yet"
+    ):
         model.fit(X_tiny)
 
 

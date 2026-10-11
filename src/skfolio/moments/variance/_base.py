@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 
 import sklearn.base as skb
 
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 
 
 class BaseVariance(skb.BaseEstimator, ABC):
@@ -60,13 +60,31 @@ class BaseVariance(skb.BaseEstimator, ABC):
 
     variance_: FloatArray
     location_: FloatArray
+    n_features_in_: int
+    feature_names_in_: StrArray
 
-    def __init__(self, assume_centered: bool = False):
+    def __init__(self, assume_centered: bool = False) -> None:
         self.assume_centered = assume_centered
 
     @abstractmethod
     def fit(
         self,
         X: ArrayLike,
-        y: ArrayLike | None = None,
-    ): ...
+        y: None = None,
+    ) -> BaseVariance:
+        """Fit the variance estimator.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : Ignored
+            Not used, present for API consistency by convention.
+
+        Returns
+        -------
+        self : BaseVariance
+            Fitted estimator.
+        """
+        ...

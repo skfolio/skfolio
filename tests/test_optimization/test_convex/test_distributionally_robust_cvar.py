@@ -36,7 +36,6 @@ def test_distributionally_robust_cvar(X_small):
     model2.fit(X_small)
     w2 = model.weights_
     np.testing.assert_almost_equal(w1, w2, 5)
-    # noinspection PyTypeChecker
     model.set_params(wasserstein_ball_radius=1e-2)
     p3 = model.fit_predict(X_small)
     assert p1.mean > p3.mean
@@ -53,12 +52,11 @@ def test_metadata_routing(X_small, implied_vol_small):
             )
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             model.fit(X_small)
 
         model.fit(X_small, implied_vol=implied_vol_small)
 
-    # noinspection PyUnresolvedReferences
     assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
 
 

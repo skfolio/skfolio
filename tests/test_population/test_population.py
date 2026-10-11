@@ -235,6 +235,29 @@ def test_population_plot_measures(population, to_surface):
     )
 
 
+@pytest.mark.parametrize("to_surface", [False, True])
+def test_population_plot_measures_with_a_ratio_measure(population, to_surface):
+    """A ratio is dimensionless, so it carries no percentage format anywhere.
+
+    Regression test for the surface hovertemplate, which concatenated the `None` that
+    means "unset" for a plotly format key and raised `TypeError`. The surface was the
+    only place the format reached a string rather than a dict.
+    """
+    fig = population.plot_measures(
+        x=RiskMeasure.SEMI_DEVIATION,
+        y=PerfMeasure.MEAN,
+        z=RatioMeasure.SHARPE_RATIO,
+        to_surface=to_surface,
+    )
+    assert fig
+
+    if to_surface:
+        hovertemplate = fig.data[0].hovertemplate
+        assert "Sharpe Ratio: %{z}" in hovertemplate
+        assert "Semi-Deviation: %{x:,.3%}" in hovertemplate
+        assert fig.data[0].colorbar.tickformat is None
+
+
 def test_population_multi_period_portfolio(population, multi_period_portfolio):
     population.append(multi_period_portfolio)
     assert len(population) == 101
@@ -288,7 +311,10 @@ def test_population_cumulative_returns(population):
     )
     assert population[:2].plot_cumulative_returns()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="Plotting with logarithm scaling must be done on cumulative returns",
+    ):
         population[:2].plot_cumulative_returns(log_scale=True)
 
     population.set_portfolio_params(compounded=True)
@@ -314,6 +340,22 @@ def test_population_rolling_measure(small_population):
     assert small_population.plot_rolling_measure(
         measure=RiskMeasure.STANDARD_DEVIATION, window=50
     )
+
+
+def test_rolling_measure_min_periods_forwarding():
+    children = [
+        Portfolio([[0.01]], weights=[1.0]),
+        FailedPortfolio([[0.0]]),
+        Portfolio([[0.03]], weights=[1.0]),
+    ]
+    portfolio = MultiPeriodPortfolio(children, check_observations_order=False, name="p")
+    population = Population([portfolio])
+    kwargs = {"measure": PerfMeasure.MEAN, "window": 3, "min_periods": 2}
+    expected = [np.nan, np.nan, 0.02]
+    np.testing.assert_allclose(population.rolling_measure(**kwargs)["p"], expected)
+    for owner in [portfolio, population]:
+        figure = owner.plot_rolling_measure(**kwargs)
+        np.testing.assert_allclose(figure.data[0].y, expected)
 
 
 def test_population_filter_chaining(population):

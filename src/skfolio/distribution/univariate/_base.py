@@ -32,7 +32,7 @@ class BaseUnivariateDist(BaseDistribution, ABC):
 
     _scipy_model: st.rv_continuous
 
-    def __init__(self, random_state: int | None = None):
+    def __init__(self, random_state: int | None = None) -> None:
         super().__init__(random_state=random_state)
 
     @property
@@ -54,7 +54,7 @@ class BaseUnivariateDist(BaseDistribution, ABC):
         return f"{self.__class__.__name__}({params})"
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None) -> BaseUnivariateDist:
+    def fit(self, X: ArrayLike, y: None = None) -> BaseUnivariateDist:
         """Fit the univariate distribution model.
 
         Parameters
@@ -116,7 +116,7 @@ class BaseUnivariateDist(BaseDistribution, ABC):
         log_density = self._scipy_model.logpdf(X, **self._scipy_params).ravel()
         return log_density
 
-    def sample(self, n_samples: int = 1):
+    def sample(self, n_samples: int = 1) -> FloatArray:
         """Generate random samples from the fitted distribution.
 
         Currently, this is implemented only for gaussian and tophat kernels.

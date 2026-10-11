@@ -203,7 +203,7 @@ def test_route_params_partial_fit_error_message(X):
             match="online_score",
         ) as exc_info:
             _route_params(
-                EWCovariance(),
+                EWCovariance().set_partial_fit_request(active_mask=None),
                 params={"active_mask": active_mask},
                 owner="online_score",
                 callee="partial_fit",
@@ -240,7 +240,7 @@ def test_route_params_picklable_with_metadata(X):
 
     with config_context(enable_metadata_routing=True):
         routed_params = _route_params(
-            EWCovariance().set_partial_fit_request(active_mask=True),
+            EWCovariance(),
             params={"active_mask": active_mask},
             owner="online_score",
             callee="partial_fit",
@@ -687,6 +687,22 @@ def test_annualized_factor_alias_resolution(
     assert pred.annualization_factor == expected
     assert all(portfolio.annualization_factor == expected for portfolio in pred)
     assert model.portfolio_params == estimator_params
+
+
+def test_explicit_none_annualized_factor_resets_to_default(X):
+    # An explicit deprecated `None` overrides the estimator's value and resolves to
+    # the constructor default instead of being dropped.
+    model = InverseVolatility(portfolio_params={"annualization_factor": 12})
+
+    pred = cross_val_predict(
+        model,
+        X.iloc[:60, :3],
+        cv=KFold(n_splits=3),
+        portfolio_params={"annualized_factor": None},
+    )
+
+    assert pred.annualization_factor == 252
+    assert all(portfolio.annualization_factor == 252 for portfolio in pred)
 
 
 @pytest.mark.parametrize(

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import numpy as np
 import pandas as pd
 import pytest
+import scipy.optimize as sco
 from sklearn import config_context
 from sklearn.covariance import OAS as SklearnOAS
 from sklearn.covariance import EmpiricalCovariance as SklearnEmpiricalCovariance
@@ -26,6 +29,7 @@ from skfolio.moments import (
     LedoitWolf,
     ShrunkCovariance,
 )
+from skfolio.moments.covariance import _denoise_covariance
 from skfolio.moments.covariance._base import _reduce_to_finite_active_block
 from skfolio.moments.covariance._geodesic_shrinkage_covariance import (
     _geodesic_interpolation,
@@ -151,6 +155,33 @@ class TestBaseCovarianceMethods:
         assert np.all(distances >= 0)
         assert np.all(np.isfinite(distances))
 
+    @pytest.mark.parametrize(
+        "estimator_class",
+        [EmpiricalCovariance, LedoitWolf, OAS, ShrunkCovariance, GraphicalLassoCV],
+    )
+    @pytest.mark.parametrize("single_observation", [False, True])
+    def test_mahalanobis_input_keywords(self, estimator_class, single_observation):
+        X = np.random.default_rng(0).normal(size=(100, 3))
+        model = estimator_class().fit(X)
+        X_test = X[0] if single_observation else X[:5]
+        expected = model.mahalanobis(X_test)
+
+        np.testing.assert_array_equal(model.mahalanobis(X=X_test), expected)
+        with pytest.warns(FutureWarning, match="`X_test` is deprecated"):
+            distances = model.mahalanobis(X_test=X_test)
+        np.testing.assert_array_equal(distances, expected)
+
+    def test_mahalanobis_conflicting_input_keywords(self):
+        X = np.random.default_rng(0).normal(size=(30, 3))
+        model = EmpiricalCovariance().fit(X)
+        with pytest.raises(ValueError, match="pass only `X`"):
+            model.mahalanobis(X=X, X_test=X)
+
+    def test_mahalanobis_missing_input(self):
+        model = EmpiricalCovariance().fit(np.random.default_rng(0).normal(size=(30, 3)))
+        with pytest.raises(TypeError, match="`X`"):
+            model.mahalanobis()
+
     def test_mahalanobis_single_observation(self, X):
         """Test mahalanobis with a single observation returns scalar."""
         model = EmpiricalCovariance()
@@ -170,7 +201,7 @@ class TestBaseCovarianceMethods:
 
         reordered = X[X.columns[::-1]]
         with pytest.raises(ValueError, match="feature names"):
-            model.mahalanobis(reordered)
+            model.mahalanobis(X=reordered)
 
     def test_mahalanobis_chi_squared_distribution(self, X):
         """Test that mahalanobis distances follow chi-squared distribution."""
@@ -1165,14 +1196,37 @@ class TestDenoiseCovariance:
                 )
             )
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
                 model.fit(X)
 
             model.fit(X, implied_vol=implied_vol)
 
-        # noinspection PyUnresolvedReferences
         assert model.covariance_estimator_.r2_scores_.shape == (20,)
         assert model.covariance_.shape == (20, 20)
+
+    def test_marchenko_pastur_variance(self, monkeypatch):
+        # Each asset has factor variance 0.5 and noise variance 1, so the noise
+        # carries 2/3 of the variance of every asset.
+        rng = np.random.default_rng(0)
+        n_observations, n_assets, n_factors = 2000, 200, 10
+        loadings = rng.normal(size=(n_assets, n_factors))
+        loadings *= np.sqrt(0.5) / np.linalg.norm(loadings, axis=1, keepdims=True)
+        X = rng.normal(size=(n_observations, n_factors)) @ loadings.T + rng.normal(
+            size=(n_observations, n_assets)
+        )
+
+        fitted_variances = []
+
+        def minimize(*args, **kwargs):
+            res = sco.minimize(*args, **kwargs)
+            fitted_variances.append(res["x"][0])
+            return res
+
+        monkeypatch.setattr(
+            _denoise_covariance, "sco", SimpleNamespace(minimize=minimize)
+        )
+        DenoiseCovariance().fit(X)
+        np.testing.assert_allclose(fitted_variances, [2 / 3], atol=0.02)
 
 
 class TestDetoneCovariance:
@@ -1638,12 +1692,11 @@ class TestDetoneCovariance:
                 )
             )
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
                 model.fit(X)
 
             model.fit(X, implied_vol=implied_vol)
 
-        # noinspection PyUnresolvedReferences
         assert model.covariance_estimator_.r2_scores_.shape == (20,)
         assert model.covariance_.shape == (20, 20)
 
@@ -2810,7 +2863,7 @@ class TestGeodesicShrinkageCovariance:
                     implied_vol=True
                 )
             )
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
                 model.fit(X)
             model.fit(X, implied_vol=implied_vol)
         assert model.covariance_estimator_.r2_scores_.shape == (20,)
@@ -2926,7 +2979,7 @@ class TestBaseCovarianceEdgeCases:
         X_test = np.full((2, X_small.shape[1]), np.nan)
         with pytest.raises(
             ValueError,
-            match="X_test has no row with any finite retained observation",
+            match="X has no row with any finite retained observation",
         ):
             model.mahalanobis(X_test)
 

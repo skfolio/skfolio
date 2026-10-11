@@ -9,7 +9,10 @@ classes used across skfolio.
 
 from __future__ import annotations
 
+import cvxpy as cp
+
 __all__ = [
+    "ConvexOptimizationError",
     "DuplicateGroupsError",
     "EquationToMatrixError",
     "FactorNotFoundError",
@@ -26,11 +29,27 @@ class SkfolioError(Exception):
 
 
 class OptimizationError(SkfolioError):
-    """Optimization Did not converge."""
+    """An optimizer could not compute a valid portfolio allocation.
+
+    See :ref:`optimization_failure_handling` for fallback behavior and
+    :ref:`online_failure_handling` for online continuation and restart rules.
+    """
+
+
+class ConvexOptimizationError(OptimizationError, cp.SolverError):
+    """A convex optimization step could not produce valid portfolio weights.
+
+    This includes infeasible problems and unusable numerical results. It can be caught
+    as `OptimizationError` or `cvxpy.SolverError`. See
+    :ref:`optimization_failure_handling`.
+    """
 
 
 class SolverError(SkfolioError):
-    """Solver error."""
+    """A solver failed during model estimation, such as entropy pooling.
+
+    Portfolio optimization failures use `OptimizationError` instead.
+    """
 
 
 class EquationToMatrixError(SkfolioError):

@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cached_property
 from typing import Literal, NamedTuple
@@ -276,9 +277,9 @@ class FactorModel:
         t_stat_threshold : float, default=2.0
             Absolute t-statistic threshold for the exceedance rate.
         """
-        self._require("factor_returns", "summary")
+        (factor_returns,) = self._require(fields=["factor_returns"], caller="summary")
         factor_indices, factor_names = self._resolve_factor_subset(factors, families)
-        factor_returns = self.factor_returns[:, factor_indices]
+        factor_returns = factor_returns[:, factor_indices]
         n_observations = factor_returns.shape[0]
         n_selected = len(factor_names)
 
@@ -319,6 +320,7 @@ class FactorModel:
             reduced_idx = {name: i for i, name in enumerate(reduced_names)}
 
             def _map_to_selected(values: FloatArray) -> FloatArray:
+                """Map reduced-regression values to the selected factors."""
                 mapped = np.full(n_selected, np.nan)
                 for i, name in enumerate(factor_names):
                     j = reduced_idx.get(name)
@@ -369,17 +371,21 @@ class FactorModel:
     @property
     def factor_returns_df(self) -> pd.DataFrame:
         """Factor returns DataFrame of shape (n_observations, n_factors)."""
-        self._require("factor_returns", "factor_returns_df")
+        (factor_returns,) = self._require(
+            fields=["factor_returns"], caller="factor_returns_df"
+        )
         return pd.DataFrame(
-            self.factor_returns, index=self.observations, columns=self.factor_names
+            factor_returns, index=self.observations, columns=self.factor_names
         )
 
     @property
     def idio_returns_df(self) -> pd.DataFrame:
         """Idiosyncratic returns DataFrame of shape (n_observations, n_assets)."""
-        self._require("idio_returns", "idio_returns_df")
+        (idio_returns,) = self._require(
+            fields=["idio_returns"], caller="idio_returns_df"
+        )
         return pd.DataFrame(
-            self.idio_returns, index=self.observations, columns=self.asset_names
+            idio_returns, index=self.observations, columns=self.asset_names
         )
 
     @property
@@ -387,13 +393,11 @@ class FactorModel:
         """Exposures as a MultiIndex DataFrame of shape
         (n_observations, n_factors * n_assets).
         """
-        self._require("exposures", "exposures_df")
+        (exposures,) = self._require(fields=["exposures"], caller="exposures_df")
         cols = pd.MultiIndex.from_product(
             (self.factor_names, self.asset_names), names=["factor", "asset"]
         )
-        exposures = self.exposures.transpose(0, 2, 1).reshape(
-            len(self.observations), -1
-        )
+        exposures = exposures.transpose(0, 2, 1).reshape(len(self.observations), -1)
         return pd.DataFrame(exposures, index=self.observations, columns=cols)
 
     def factor_forecast_correlation(
@@ -419,7 +423,7 @@ class FactorModel:
             fixed to 1.
         """
         factor_indices, _ = self._resolve_factor_subset(factors, families)
-        if factor_indices == slice(None):
+        if isinstance(factor_indices, slice):
             cov = self.factor_covariance
         else:
             cov = self.factor_covariance[np.ix_(factor_indices, factor_indices)]
@@ -465,10 +469,10 @@ class FactorModel:
         exposures : ndarray of shape (n_observations, n_assets, n_reduced_factors)
             Historical full-rank exposure tensor.
         """
-        self._require("exposures", "effective_exposures")
+        (exposures,) = self._require(fields=["exposures"], caller="effective_exposures")
         if self.family_constraint_basis is None:
-            return self.exposures
-        return self.family_constraint_basis.reduce_exposures(self.exposures)
+            return exposures
+        return self.family_constraint_basis.reduce_exposures(exposures)
 
     @property
     def effective_factor_names(self) -> StrArray:
@@ -619,9 +623,14 @@ class FactorModel:
                 "FactorModel asset names must match AssetPanel asset names exactly."
             )
 
-        self._require(
-            ("idio_returns", "idio_variances", "regression_weights", "exposures"),
-            "enrich_asset_panel",
+        idio_returns, idio_variances, regression_weights, _ = self._require(
+            fields=[
+                "idio_returns",
+                "idio_variances",
+                "regression_weights",
+                "exposures",
+            ],
+            caller="enrich_asset_panel",
         )
 
         if copy:
@@ -633,6 +642,7 @@ class FactorModel:
             enriched_panel = panel
 
         def align_2d(values: FloatArray, fill_value: float) -> FloatArray:
+            """Align a 2D model array to the panel, filling gaps with `fill_value`."""
             out = np.full(
                 (panel.n_observations, panel.n_assets), fill_value, dtype=float
             )
@@ -642,6 +652,7 @@ class FactorModel:
             return out
 
         def align_3d(values: FloatArray) -> FloatArray:
+            """Align a 3D model array to the panel, filling gaps with NaN."""
             values = np.asarray(values, dtype=float)
             out = np.full(
                 (panel.n_observations, panel.n_assets, values.shape[2]),
@@ -651,11 +662,11 @@ class FactorModel:
             out[valid_obs] = values[obs_idx[valid_obs]][:, asset_idx]
             return out
 
-        enriched_panel[_IDIO_RETURNS] = align_2d(self.idio_returns, np.nan)
-        enriched_panel[_IDIO_VARIANCES] = align_2d(self.idio_variances, np.nan)
+        enriched_panel[_IDIO_RETURNS] = align_2d(idio_returns, np.nan)
+        enriched_panel[_IDIO_VARIANCES] = align_2d(idio_variances, np.nan)
         enriched_panel.add_2d_field(
             name=_REGRESSION_WEIGHTS,
-            values=align_2d(self.regression_weights, 0.0),
+            values=align_2d(regression_weights, 0.0),
             inactive_policy=InactivePolicy.ZERO,
         )
         enriched_panel.add_3d_field(
@@ -720,12 +731,13 @@ class FactorModel:
                 asset_indexer = _positions_to_indexer(positions)
 
         def _subset(arr: AnyArray | None, axis: int = 0) -> AnyArray | None:
+            """Select the requested assets along `axis`, passing `None` through."""
             if arr is None:
                 return None
             if asset_indexer is None:
                 return arr
             indexer = [slice(None)] * arr.ndim
-            indexer[axis] = asset_indexer
+            indexer[axis] = asset_indexer  # ty: ignore[invalid-assignment]
             return arr[tuple(indexer)]
 
         idio_cov = self.idio_covariance
@@ -733,7 +745,7 @@ class FactorModel:
             if idio_cov.ndim == 1:
                 idio_cov = idio_cov[asset_indexer]
             else:
-                idio_cov = idio_cov[np.ix_(positions, positions)]
+                idio_cov = idio_cov[np.ix_(positions, positions)]  # ty: ignore[no-matching-overload]
 
         if slim:
             exposures = None
@@ -748,10 +760,10 @@ class FactorModel:
 
         return FactorModel(
             observations=self.observations,
-            asset_names=_subset(self.asset_names),
+            asset_names=_subset(self.asset_names),  # ty: ignore[invalid-argument-type]
             factor_names=self.factor_names,
             factor_families=self.factor_families,
-            loading_matrix=_subset(self.loading_matrix),
+            loading_matrix=_subset(self.loading_matrix),  # ty: ignore[invalid-argument-type]
             exposures=exposures,
             factor_covariance=self.factor_covariance,
             factor_mu=self.factor_mu,
@@ -822,10 +834,11 @@ class FactorModel:
         observation_indexer = _positions_to_indexer(indices)
 
         def _slice(arr: AnyArray | None) -> AnyArray | None:
+            """Select the requested observations, passing `None` through."""
             return arr[observation_indexer] if arr is not None else None
 
         return FactorModel(
-            observations=_slice(self.observations),
+            observations=_slice(self.observations),  # ty: ignore[invalid-argument-type]
             asset_names=self.asset_names,
             factor_names=self.factor_names,
             factor_families=self.factor_families,
@@ -841,7 +854,7 @@ class FactorModel:
             exposure_lag=self.exposure_lag,
             regression_weights=_slice(self.regression_weights),
             benchmark_weights=_slice(self.benchmark_weights),
-            family_constraint_basis=_slice(self.family_constraint_basis),
+            family_constraint_basis=_slice(self.family_constraint_basis),  # ty: ignore[invalid-argument-type]
         )
 
     def plot_factor_forecast_correlation(
@@ -967,10 +980,12 @@ class FactorModel:
         -------
         fig : go.Figure
         """
-        self._require("factor_returns", "plot_factor_cumulative_returns")
+        (factor_returns,) = self._require(
+            fields=["factor_returns"], caller="plot_factor_cumulative_returns"
+        )
 
         factor_indices, factor_names = self._resolve_factor_subset(factors, families)
-        cum_ret = np.nancumsum(self.factor_returns[:, factor_indices], axis=0)
+        cum_ret = np.nancumsum(factor_returns[:, factor_indices], axis=0)
         df = pd.DataFrame(cum_ret, index=self.observations, columns=factor_names)
 
         fig = _multi_line_plot(
@@ -1042,9 +1057,11 @@ class FactorModel:
           idiosyncratic return magnitude :math:`|z_{i,t+1}|` still depends on the
           predicted volatility level.
         """
-        self._require(("idio_returns", "idio_variances"), "idio_vol_ic")
-        predicted_vol = np.sqrt(np.maximum(self.idio_variances[:-1], 0.0))
-        abs_idio_next = np.abs(self.idio_returns[1:])
+        idio_returns, idio_variances = self._require(
+            fields=["idio_returns", "idio_variances"], caller="idio_vol_ic"
+        )
+        predicted_vol = np.sqrt(np.maximum(idio_variances[:-1], 0.0))
+        abs_idio_next = np.abs(idio_returns[1:])
         corr = cs_spearman_correlation(
             predicted_vol, abs_idio_next, axis=1, min_count=5
         )
@@ -1069,11 +1086,12 @@ class FactorModel:
         power from calibration. A desirable pattern is a high :attr:`idio_vol_ic`
         combined with residual dependence near 0.
         """
-        self._require(
-            ("idio_returns", "idio_variances"), "idio_vol_residual_dependence"
+        idio_returns, idio_variances = self._require(
+            fields=["idio_returns", "idio_variances"],
+            caller="idio_vol_residual_dependence",
         )
-        predicted_vol = np.sqrt(np.maximum(self.idio_variances[:-1], 0.0))
-        abs_idio_next = np.abs(self.idio_returns[1:])
+        predicted_vol = np.sqrt(np.maximum(idio_variances[:-1], 0.0))
+        abs_idio_next = np.abs(idio_returns[1:])
         standardized_abs_idio_next = safe_divide(
             abs_idio_next, predicted_vol, fill_value=np.nan
         )
@@ -1446,7 +1464,8 @@ class FactorModel:
             Columns: `r2`, `adjusted_r2`, `aic`, `bic`.
         """
         self._require(
-            ["exposures", "factor_returns", "idio_returns"], "cs_regression_scores"
+            fields=["exposures", "factor_returns", "idio_returns"],
+            caller="cs_regression_scores",
         )
 
         regression_data = self._regression_data
@@ -1490,7 +1509,7 @@ class FactorModel:
 
         return pd.DataFrame(
             {"r2": r2, "adjusted_r2": adjusted_r2, "aic": aic, "bic": bic},
-            index=self._aligned("observations"),
+            index=regression_data.observations,
         )
 
     @property
@@ -1521,7 +1540,7 @@ class FactorModel:
         """
         return pd.DataFrame(
             self._gram_diagnostics.t_stats,
-            index=self._aligned("observations"),
+            index=self._regression_data.observations,
             columns=self._reduced_regression_factor_names,
         )
 
@@ -1643,7 +1662,7 @@ class FactorModel:
         )
         abs_t_stats = np.abs(self._gram_diagnostics.t_stats[:, factor_indices])
         df = pd.DataFrame(
-            abs_t_stats, index=self._aligned("observations"), columns=factor_names
+            abs_t_stats, index=self._regression_data.observations, columns=factor_names
         )
         if window is not None:
             df = df.rolling(window=window).mean()
@@ -1776,9 +1795,11 @@ class FactorModel:
         corr : ndarray of shape (n_selected_factors, n_selected_factors)
             Time-average correlation matrix.
         """
-        self._require("exposures", "exposure_correlation")
+        (exposures,) = self._require(
+            fields=["exposures"], caller="exposure_correlation"
+        )
         factor_indices, _ = self._resolve_factor_subset(factors, families)
-        exposures = self.exposures[:, :, factor_indices]
+        exposures = exposures[:, :, factor_indices]
         weights = self._resolve_cs_weighting(
             cs_weighting,
             latest=False,
@@ -1873,7 +1894,7 @@ class FactorModel:
         """
         return pd.DataFrame(
             self._gram_diagnostics.vif,
-            index=self._aligned("observations"),
+            index=self._regression_data.observations,
             columns=self._reduced_regression_factor_names,
         )
 
@@ -1894,7 +1915,7 @@ class FactorModel:
         """
         return pd.Series(
             self._gram_diagnostics.condition_number,
-            index=self._aligned("observations"),
+            index=self._regression_data.observations,
             name="exposure_condition_number",
         )
 
@@ -2004,7 +2025,7 @@ class FactorModel:
         )
         vif = self._gram_diagnostics.vif[:, factor_indices]
         df = pd.DataFrame(
-            vif, index=self._aligned("observations"), columns=factor_names
+            vif, index=self._regression_data.observations, columns=factor_names
         )
 
         if window is not None:
@@ -2162,20 +2183,22 @@ class FactorModel:
         -------
         fig : go.Figure
         """
-        self._require("exposures", "plot_exposure_distribution")
+        (exposures,) = self._require(
+            fields=["exposures"], caller="plot_exposure_distribution"
+        )
         factor_indices, _ = self._resolve_factor_subset(
             factor_names_to_keep=[factor], family_names_to_keep=None
         )
-        factor_idx = factor_indices[0]
+        factor_idx = factor_indices[0]  # ty: ignore[not-subscriptable]
 
         if observation_idx is not None:
             obs_label = str(self.observations[observation_idx])
-            values = self.exposures[observation_idx, :, factor_idx]
+            values = exposures[observation_idx, :, factor_idx]
             default_title = (
                 f"Exposure Distribution: {format_plot_label(factor)} ({obs_label})"
             )
         else:
-            values = self.exposures[:, :, factor_idx].ravel()
+            values = exposures[:, :, factor_idx].ravel()
             default_title = (
                 f"Exposure Distribution: {format_plot_label(factor)} (all observations)"
             )
@@ -2233,10 +2256,12 @@ class FactorModel:
         -------
         fig : go.Figure
         """
-        self._require("exposures", "plot_exposure_dispersion")
+        (exposures,) = self._require(
+            fields=["exposures"], caller="plot_exposure_dispersion"
+        )
 
         factor_indices, factor_names = self._resolve_factor_subset(factors, families)
-        selected_exposures = self.exposures[:, :, factor_indices]
+        selected_exposures = exposures[:, :, factor_indices]
         weights = self._resolve_cs_weighting(
             cs_weighting, latest=False, fallback_cs_weighting=CSWeighting.IDENTITY
         )
@@ -2316,10 +2341,12 @@ class FactorModel:
         -------
         fig : go.Figure
         """
-        self._require("exposures", "plot_exposure_stability")
+        (exposures,) = self._require(
+            fields=["exposures"], caller="plot_exposure_stability"
+        )
 
         factor_indices, factor_names = self._resolve_factor_subset(factors, families)
-        exposures = self.exposures[:, :, factor_indices]
+        exposures = exposures[:, :, factor_indices]
 
         if exposures.shape[0] <= step:
             raise ValueError(
@@ -2614,25 +2641,19 @@ class FactorModel:
     @cached_property
     def _regression_data(self) -> _RegressionData:
         """Lag-aligned data for cross-sectional regression diagnostics."""
-        self._require(
-            ("exposures", "factor_returns", "idio_returns"), "_regression_data"
+        lagged_exposures, factor_returns, idio_returns = self._require(
+            fields=["exposures", "factor_returns", "idio_returns"],
+            caller="_regression_data",
+            aligned=True,
         )
-        (
-            lagged_exposures,
-            factor_returns,
-            idio_returns,
-            regression_weights,
-        ) = self._aligned(
-            ["exposures", "factor_returns", "idio_returns", "regression_weights"]
-        )
+        lag = self.exposure_lag
+        regression_weights = self.regression_weights
+        if regression_weights is not None:
+            regression_weights = regression_weights[lag:]
 
         family_basis = self.family_constraint_basis
         if family_basis is not None:
-            exposure_basis = (
-                family_basis[: -self.exposure_lag]
-                if self.exposure_lag > 0
-                else family_basis
-            )
+            exposure_basis = family_basis[:-lag] if lag > 0 else family_basis
             lagged_exposures = exposure_basis.reduce_exposures(lagged_exposures)
             factor_returns = family_basis.reduce_factor_returns(factor_returns)
             factor_names = self._reduced_factor_names
@@ -2653,6 +2674,7 @@ class FactorModel:
             )
 
         return _RegressionData(
+            observations=self.observations[lag:],
             exposures=lagged_exposures,
             factor_returns=factor_returns,
             idio_returns=idio_returns,
@@ -2674,7 +2696,8 @@ class FactorModel:
         memoised together so any downstream property pays the cost only once.
         """
         self._require(
-            ("exposures", "factor_returns", "idio_returns"), "_gram_diagnostics"
+            fields=["exposures", "factor_returns", "idio_returns"],
+            caller="_gram_diagnostics",
         )
         regression_data = self._regression_data
         lagged_exposures = regression_data.exposures
@@ -2900,19 +2923,21 @@ class FactorModel:
             `ic[i]` corresponds to `observations[obs_offset + i]`.
         """
         _check_correlation_method(correlation_method)
-        self._require(("exposures", "factor_returns", "idio_returns"), "_ic")
+        lagged_exposures, factor_returns, idio_returns = self._require(
+            fields=["exposures", "factor_returns", "idio_returns"],
+            caller="_ic",
+            aligned=True,
+        )
 
         if horizon < 1:
             raise ValueError("`horizon` must be >= 1.")
 
-        lagged_exposures, factor_returns, idio_returns, _ = self._aligned(
-            ["exposures", "factor_returns", "idio_returns", "regression_weights"]
-        )
         systematic_returns = (
             lagged_exposures @ factor_returns[:, :, np.newaxis]
         ).squeeze(-1)
         asset_returns = systematic_returns + idio_returns
-        n_observations = self.exposures.shape[0]
+        (exposures,) = self._require(fields=["exposures"], caller="_ic")
+        n_observations = exposures.shape[0]
 
         start_t = max(0, self.exposure_lag - 1)
         n_pairs = n_observations - horizon - start_t
@@ -2926,7 +2951,6 @@ class FactorModel:
             asset_returns, horizon=horizon, lag=max(1 - self.exposure_lag, 0)
         )[:n_pairs]
 
-        exposures = self.exposures
         if reduced_basis and self.family_constraint_basis is not None:
             exposures = self.family_constraint_basis.reduce_exposures(exposures)
         exposure_window = exposures[start_t : start_t + n_pairs, :, factor_indices]
@@ -2947,7 +2971,7 @@ class FactorModel:
                 weights=regression_weights,
                 axis=1,
             )
-        return ic, start_t
+        return ic, start_t  # ty: ignore[invalid-return-type]
 
     def _exposure_stability(
         self,
@@ -2979,7 +3003,7 @@ class FactorModel:
         )
         if weights is not None:
             weights = weights[:-step]
-        return cs_pearson_correlation(
+        return cs_pearson_correlation(  # ty: ignore[invalid-return-type]
             exposures[:-step], exposures[step:], weights=weights, axis=1
         )
 
@@ -2987,7 +3011,9 @@ class FactorModel:
         self, name: str, compute_uncertainty: bool
     ) -> tuple[FloatArray | None, FloatArray | None]:
         """Validate inputs for realized/rolling attribution."""
-        self._require(("factor_returns", "exposures", "idio_returns"), name)
+        self._require(
+            fields=["factor_returns", "exposures", "idio_returns"], caller=name
+        )
         if not compute_uncertainty:
             return None, None
         if self.regression_weights is None or self.idio_variances is None:
@@ -2998,48 +3024,63 @@ class FactorModel:
             )
         return self.regression_weights, self.idio_variances
 
-    def _require(self, fields: str | list[str] | tuple[str, ...], name: str) -> None:
-        """Validate that one or more `FactorModel` attributes are populated."""
-        if isinstance(fields, str):
-            fields = (fields,)
-        missing = [f for f in fields if getattr(self, f) is None]
-        if not missing:
-            return
-        joined = ", ".join(f"`{f}`" for f in missing)
-        raise ValueError(
-            f"`{name}` requires {joined} which is not available in this "
-            f"FactorModel. The prior estimator used to fit this model does "
-            f"not populate {joined}. Check that your estimator supports "
-            f"these attributes."
-        )
+    def _require(
+        self,
+        *,
+        fields: list[
+            Literal[
+                "exposures",
+                "factor_returns",
+                "idio_returns",
+                "idio_variances",
+                "regression_weights",
+            ]
+        ],
+        caller: str,
+        aligned: bool = False,
+    ) -> tuple[FloatArray, ...]:
+        r"""Return the requested attributes, raising a `ValueError` if any is `None`.
 
-    def _aligned(
-        self, fields: str | list[str]
-    ) -> AnyArray | list[AnyArray | None] | None:
-        r"""Apply `exposure_lag` to one or several time-indexed fields.
+        Parameters
+        ----------
+        fields : list of str
+            Names of the attributes to return, in the order of the returned tuple.
 
-        The `exposures` field is the predictor side of the cross-sectional regression
-        and is trimmed at the tail. Return-like fields are trimmed at the head so that
-        predetermined exposures :math:`B_{t-\ell}` align row-wise with returns at
-        :math:`t`.
+        caller : str
+            Name of the method or property reported in the error message.
 
-        With `exposure_lag = 0` the underlying array is returned unchanged. Returns
-        `None` when the requested attribute is `None`. When a list of field names is
-        provided, the result is a tuple matching the requested order.
+        aligned : bool, default=False
+            If True, align the arrays for the cross-sectional regression, which pairs
+            `exposures[t]` with the returns at :math:`t + \ell`, where :math:`\ell` is
+            `exposure_lag`. The last :math:`\ell` observations of `exposures` and the
+            first :math:`\ell` observations of the other attributes are dropped, so
+            that row `i` of every returned array belongs to the same regression.
+            Slicing returns views, so no data is copied.
+
+        Returns
+        -------
+        values : tuple of ndarray
+            The requested attributes, in the order of `fields`.
         """
+        values = tuple(getattr(self, field) for field in fields)
+        missing = [
+            field for field, value in zip(fields, values, strict=True) if value is None
+        ]
+        if missing:
+            joined = ", ".join(f"`{field}`" for field in missing)
+            raise ValueError(
+                f"`{caller}` requires {joined} which is not available in this "
+                f"FactorModel. The prior estimator used to fit this model does "
+                f"not populate {joined}. Check that your estimator supports "
+                f"these attributes."
+            )
         lag = self.exposure_lag
-
-        def align(field: str) -> AnyArray | None:
-            arr = getattr(self, field)
-            if arr is None:
-                return None
-            if lag == 0:
-                return arr
-            return arr[:-lag] if field == "exposures" else arr[lag:]
-
-        if isinstance(fields, str):
-            return align(fields)
-        return tuple(align(field) for field in fields)
+        if not aligned or lag == 0:
+            return values
+        return tuple(
+            value[:-lag] if field == "exposures" else value[lag:]
+            for field, value in zip(fields, values, strict=True)
+        )
 
     @staticmethod
     def _estimation_mask_and_weights(
@@ -3115,9 +3156,12 @@ class FactorModel:
 
     def _standardized_idio_returns(self) -> FloatArray:
         r"""Compute :math:`z_{it} = \epsilon_{it} / \hat\sigma_{i,t}`."""
-        self._require(("idio_returns", "idio_variances"), "standardized_idio_returns")
-        idio_vol = np.sqrt(np.maximum(self.idio_variances, 0.0))
-        return safe_divide(self.idio_returns, idio_vol, fill_value=np.nan)
+        idio_returns, idio_variances = self._require(
+            fields=["idio_returns", "idio_variances"],
+            caller="standardized_idio_returns",
+        )
+        idio_vol = np.sqrt(np.maximum(idio_variances, 0.0))
+        return safe_divide(idio_returns, idio_vol, fill_value=np.nan)
 
     def _validate_weights(self, weights: FloatArray | None, name: str) -> None:
         """Return validated optional weights."""
@@ -3145,6 +3189,7 @@ class _GramDiagnostics(NamedTuple):
 class _RegressionData(NamedTuple):
     """Lag-aligned data used by cross-sectional regression diagnostics."""
 
+    observations: StrArray
     exposures: FloatArray
     factor_returns: FloatArray
     idio_returns: FloatArray
@@ -3379,7 +3424,7 @@ def _add_family_outlines(
     """Draw rectangles around contiguous family blocks on a heatmap."""
     if families is None:
         return
-    if idx == slice(None):
+    if isinstance(idx, slice):
         fam_labels = [str(family) for family in families]
     else:
         fam_labels = [str(families[i]) for i in idx]
@@ -3476,10 +3521,11 @@ def _check_correlation_method(correlation_method: CorrelationMethod) -> None:
         raise TypeError("correlation_method must be a `CorrelationMethod`.")
 
 
-def _exceedance_agg(threshold: float):
+def _exceedance_agg(threshold: float) -> Callable[[FloatArray], FloatArray]:
     """Return an aggregation function for t-stat exceedance rate."""
 
     def _agg(raw_t: FloatArray) -> FloatArray:
+        """Return the per-factor rate of absolute t-stats above `threshold`."""
         significant = np.abs(raw_t) > threshold
         n_valid = np.sum(np.isfinite(raw_t), axis=0)
         return safe_divide(np.nansum(significant, axis=0), n_valid, fill_value=0.0)

@@ -79,6 +79,9 @@ sequentially. A value passed to `cross_val_predict` overrides the optimizer's
 `Portfolio` objects. `name`, `tag`, `sample_weight` and `check_observations_order`
 apply to the resulting `MultiPeriodPortfolio` only.
 
+By default, the resulting portfolio inherits its children's sample weights.
+An explicit `sample_weight` overrides them (see :ref:`portfolio`).
+
 For example, to evaluate a drifted, compounded path with transaction costs:
 
 .. code-block:: python
@@ -173,6 +176,11 @@ Combinatorial Purged Cross-Validation
 Compared to `KFold`, which splits the data into k folds and generates one single testing
 path, the :class:`CombinatorialPurgedCV` uses the combination of multiple
 train/test sets to generate multiple testing paths.
+
+Observations are partitioned into consecutive folds without shuffling. The first
+`n_folds - 1` folds each contain `n_samples // n_folds` observations, and the
+last fold contains all remaining observations. Each reconstructed testing path
+covers every observation exactly once.
 
 To avoid data leakage, purging and embargoing can be performed.
 

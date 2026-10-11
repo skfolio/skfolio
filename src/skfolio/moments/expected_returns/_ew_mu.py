@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import numpy as np
 import sklearn.utils.validation as skv
 
@@ -80,6 +82,9 @@ class EWMu(BaseMu):
     The `min_observations` parameter controls a warm-up period: an asset's
     mean estimate remains NaN in the output until it has accumulated enough
     valid observations for a reliable estimate.
+
+    With metadata routing enabled, `active_mask` is requested by default for
+    `fit` and `partial_fit`. See :ref:`default_metadata_requests`.
 
     Parameters
     ----------
@@ -185,6 +190,10 @@ class EWMu(BaseMu):
     EWMu()
     """
 
+    # Route universe membership to this estimator by default.
+    __metadata_request__fit: ClassVar[dict[str, bool]] = {"active_mask": True}
+    __metadata_request__partial_fit: ClassVar[dict[str, bool]] = {"active_mask": True}
+
     def __init__(
         self,
         half_life: float = 40,
@@ -198,7 +207,7 @@ class EWMu(BaseMu):
     def fit(
         self,
         X: ArrayLike,
-        y=None,
+        y: None = None,
         *,
         active_mask: ArrayLike | None = None,
     ) -> EWMu:
@@ -232,7 +241,7 @@ class EWMu(BaseMu):
     def partial_fit(
         self,
         X: ArrayLike,
-        y=None,
+        y: None = None,
         *,
         active_mask: ArrayLike | None = None,
     ) -> EWMu:
@@ -281,7 +290,7 @@ class EWMu(BaseMu):
 
         if active_mask is not None:
             for returns, active_row in zip(X, active_mask, strict=True):
-                self._process_return_row(returns, active_row)
+                self._process_return_row(returns, active_row)  # ty: ignore[invalid-argument-type]
         elif not np.isnan(X).any():
             self._process_batch_no_nan(X)
         else:
