@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from sklearn import clone
+from sklearn.base import clone, is_regressor
 from sklearn.linear_model import Ridge
-from sklearn.utils.validation import validate_data
+from sklearn.utils.validation import check_is_fitted, validate_data
 
 from skfolio.containers import AssetPanel
 from skfolio.factor_exposure import BaseFactorExposure
@@ -24,12 +24,12 @@ from skfolio.utils.tools import (
 
 
 class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
-    """Learn a linear characteristic policy from optimal subperiod portfolios.
+    """Learn a characteristic policy from optimal subperiod portfolios.
 
     This experimental supervised alternative fits an independent clone of
     ``optimizer`` on each non-overlapping forward training window. Characteristics
-    at the preceding decision date explain those target allocations through ridge
-    regression, using the benchmark-relative, demeaned policy of
+    at the preceding decision date explain those target allocations through a shared
+    regressor, using the benchmark-relative, demeaned policy of
     :class:`ParametricPortfolioPolicy`.
 
     Only complete windows inside the training sample produce labels. Labels use
@@ -49,7 +49,12 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         Number of subsequent return observations used for each target portfolio.
         Must be at least two. Incomplete trailing windows are discarded.
     alpha : float, default=1.0
-        Non-negative ridge penalty on the shared characteristic coefficients.
+        Non-negative penalty for the default Ridge regressor. Ignored when
+        ``regressor`` is supplied.
+    regressor : regressor, optional
+        Cloned scikit-learn compatible regressor or pipeline accepting a 2D
+        feature matrix and predicting one value per asset/date. Defaults to Ridge
+        without an intercept. Model-specific constraints belong in this estimator.
     benchmark_mcap_power : float, default=1.0
         Market-cap power used to construct the benchmark; zero gives equal weights.
     long_only : bool, default=False
@@ -61,9 +66,9 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
     Attributes
     ----------
     coef_ : ndarray of shape (n_characteristics,)
-        Shared characteristic coefficients.
-    regressor_ : Ridge
-        Fitted regression without an intercept.
+        Characteristic coefficients, only when exposed by the fitted regressor.
+    regressor_ : regressor
+        Fitted clone predicting benchmark-relative deviations.
     target_weights_ : DataFrame
         Training target allocations indexed by their decision dates.
     training_windows_ : DataFrame
@@ -78,10 +83,10 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
     -----
     This initial implementation requires a fixed, active investment universe and
     finite returns. Characteristic warmup windows are skipped. Prediction on new
-    characteristics uses the parent's ``predict_weights`` method, which advances
+    characteristics uses ``predict_weights``, which advances
     the fitted exposure estimators; pass successive, non-overlapping panels with
     the same coverage asset names and order as the training panel.
-    This is a linear supervised prototype, not a reproduction of the full
+    This is a supervised prototype, not a reproduction of the full
     Chevalier, Coqueret and Raffinot method.
     """
 
@@ -91,6 +96,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         optimizer: BaseOptimization,
         window_size: int = 20,
         alpha: float = 1.0,
+        regressor=None,
         benchmark_mcap_power: float = 1.0,
         long_only: bool = False,
         portfolio_params: dict | None = None,
@@ -104,6 +110,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         self.optimizer = optimizer
         self.window_size = window_size
         self.alpha = alpha
+        self.regressor = regressor
 
     def fit(
         self,
@@ -180,13 +187,19 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         target_weights = np.asarray(targets)
         design = inputs.tilt[decisions].reshape(-1, len(names))
         response = (target_weights - inputs.benchmark[decisions]).ravel()
-        regressor = Ridge(alpha=self.alpha, fit_intercept=False, solver="svd")
+        regressor = (
+            Ridge(alpha=self.alpha, fit_intercept=False, solver="svd")
+            if self.regressor is None
+            else clone(self.regressor)
+        )
+        if not is_regressor(regressor):
+            raise ValueError("`regressor` must be a scikit-learn compatible regressor.")
         regressor.fit(design, response)
-        weights_history = self._policy_weights(regressor.coef_, inputs, self.long_only)
-        weights_history[~inputs.holdable.all(axis=1)] = np.nan
+        weights_history = self._predict_policy(regressor, inputs)
 
         self.regressor_ = regressor
-        self.coef_ = regressor.coef_.copy()
+        if hasattr(regressor, "coef_"):
+            self.coef_ = np.asarray(regressor.coef_).copy()
         self.characteristic_names_ = names
         self.n_characteristics_ = len(names)
         self._investment_idx_ = investment_idx
@@ -203,3 +216,57 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         self.weights_history_ = weights_history
         self.weights_ = weights_history[-1].copy()
         return self
+
+    def _predict_policy(self, regressor, inputs):
+        """Predict asset-level deviations and restore the portfolio budget."""
+        valid = inputs.holdable.all(axis=1)
+        weights = np.full(inputs.benchmark.shape, np.nan)
+        if not valid.any():
+            return weights
+        n_rows, n_assets, n_features = inputs.tilt[valid].shape
+        deviations = np.asarray(
+            regressor.predict(inputs.tilt[valid].reshape(-1, n_features)), dtype=float
+        )
+        if (
+            deviations.shape != (n_rows * n_assets,)
+            or not np.isfinite(deviations).all()
+        ):
+            raise ValueError("Regressor must predict one finite value per asset/date.")
+        deviations = deviations.reshape(n_rows, n_assets)
+        deviations -= deviations.mean(axis=1, keepdims=True)
+        proposed = inputs.benchmark[valid] + deviations
+        if self.long_only:
+            proposed = np.maximum(proposed, 0)
+            proposed /= proposed.sum(axis=1, keepdims=True)
+        weights[valid] = proposed
+        return weights
+
+    def predict_weights(self, characteristics: AssetPanel) -> pd.DataFrame:
+        """Predict allocations from a subsequent characteristic panel.
+
+        Parameters
+        ----------
+        characteristics : AssetPanel
+            Subsequent, non-overlapping panel with the fitted coverage asset order.
+            Exposure estimators advance their state; the regressor is not refitted.
+
+        Returns
+        -------
+        weights : DataFrame
+            Allocations in fitted investment asset order. Rows with incomplete
+            characteristics are NaN.
+        """
+        check_is_fitted(self, "regressor_")
+        panel = self._validate_characteristics(characteristics, X=None)
+        investment_idx = self._investment_index(panel, self.feature_names_in_)
+        if not panel.active_mask[:, investment_idx].all():
+            raise ValueError(
+                "The supervised prototype requires a fixed active universe."
+            )
+        exposures, _ = self._compute_exposures(panel, method="partial_fit")
+        inputs = self._policy_inputs(panel, exposures, investment_idx)
+        return pd.DataFrame(
+            self._predict_policy(self.regressor_, inputs),
+            index=panel.observations,
+            columns=self.feature_names_in_,
+        )

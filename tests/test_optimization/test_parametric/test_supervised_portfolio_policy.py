@@ -161,3 +161,32 @@ def test_real_optimizer_labels_and_asset_alignment():
     )
     with pytest.raises(ValueError, match=r"asset_names don.t match"):
         estimator.predict_weights(reordered)
+
+
+def test_nonlinear_pipeline_predictions_and_clone():
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    X, panel = data()
+    supplied = make_pipeline(
+        StandardScaler(), RandomForestRegressor(n_estimators=5, random_state=1)
+    )
+    estimator = model(regressor=supplied).fit(X, characteristics=panel)
+    assert not hasattr(supplied[-1], "estimators_")
+    assert not hasattr(estimator, "coef_")
+    _, future = data(n=4, offset=11)
+    weights = estimator.predict_weights(future)
+    np.testing.assert_allclose(weights.sum(axis=1), 1)
+    assert np.isfinite(weights).all().all()
+    assert not hasattr(clone(estimator), "regressor_")
+
+
+def test_regressor_intercept_is_removed_from_portfolio_budget():
+    from sklearn.dummy import DummyRegressor
+
+    X, panel = data()
+    estimator = model(regressor=DummyRegressor(strategy="constant", constant=2)).fit(
+        X, characteristics=panel
+    )
+    np.testing.assert_allclose(estimator.weights_, 1 / 3)
