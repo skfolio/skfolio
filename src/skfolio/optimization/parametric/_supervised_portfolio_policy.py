@@ -20,6 +20,7 @@ from skfolio.optimization._base import BaseOptimization
 from skfolio.optimization.parametric._execution import PortfolioExecution
 from skfolio.optimization.parametric._parametric_portfolio_policy import (
     ParametricPortfolioPolicy,
+    _PolicyInputs,
 )
 from skfolio.optimization.parametric._prior_metadata import slice_prior_metadata
 from skfolio.optimization.parametric._projection_context import projection_context
@@ -96,7 +97,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
     allow_universe_changes : bool, default=False
         Allow eligibility changes within the registered asset columns. Excluded
         assets receive zero target weight; constraints are never silently relaxed.
-        Newly named assets require refitting with an expanded registry.
+        Newly named assets require explicit admission through expand_universe.
 
     Attributes
     ----------
@@ -311,6 +312,128 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         self.last_observation_ = X.index[-1]
         self.last_prediction_observation_ = X.index[-1]
         return self
+
+    def expand_universe(
+        self,
+        X: pd.DataFrame,
+        characteristics: AssetPanel,
+        *,
+        min_weights=None,
+        max_weights=None,
+        groups=None,
+    ) -> SupervisedPortfolioPolicy:
+        """Return an expanded policy without retraining its regressor.
+
+        Parameters
+        ----------
+        X : DataFrame
+            Expanded return history, starting at the original training start and
+            ending at last_prediction_observation_. Include every registered asset
+            and at least one new asset. Missing pre-entry returns remain NaN.
+        characteristics : AssetPanel
+            Expanded characteristic history aligned with X. Exposure estimators
+            are rebuilt by replaying this history, so provide enough observations
+            to warm up rolling descriptors. Feature definitions must remain stable.
+        min_weights : float, dict or array-like, optional
+            Replacement lower bounds. Otherwise reuse scalar or named bounds;
+            positional bounds require an explicit expanded replacement.
+        max_weights : float, dict or array-like, optional
+            Replacement upper bounds, with the same rules as min_weights.
+        groups : array-like, optional
+            Expanded group labels. Required when the original policy has groups.
+
+        Returns
+        -------
+        policy : SupervisedPortfolioPolicy
+            Independent adapted policy. The original model is unchanged. Its
+            historical label and weight diagnostics retain their original universe.
+
+        Notes
+        -----
+        This is an explicit preprocessing reset, not an incremental update to
+        arbitrary learned factor models. Replaying a learned transformation can
+        change feature meaning even if names match; use fixed feature definitions
+        or refit the whole policy in that case. The regression mapping and its
+        fitted parameters are preserved. New assets still need finite descriptors
+        before admission, and observed past returns or explicit covariance before
+        risk-constrained allocation. No historical missing return is filled.
+        """
+        check_is_fitted(self, "regressor_")
+        if not self.allow_universe_changes:
+            raise ValueError("Enable allow_universe_changes before expanding assets.")
+        old_names = list(self.feature_names_in_)
+        if (
+            not isinstance(X, pd.DataFrame)
+            or not X.columns.is_unique
+            or not all(isinstance(name, str) for name in X.columns)
+            or not set(old_names) < set(X.columns)
+            or X.empty
+            or not X.index.is_unique
+            or not X.index.is_monotonic_increasing
+            or X.index[0] != self.training_returns_.index[0]
+            or X.index[-1] != self.last_prediction_observation_
+        ):
+            raise ValueError(
+                "Expanded history must retain all assets, add new names and span "
+                "the training start through the current prediction date."
+            )
+        original = self.training_returns_
+        if not original.index.isin(X.index).all() or not np.array_equal(
+            X.loc[original.index, old_names].to_numpy(),
+            original.loc[:, old_names].to_numpy(),
+            equal_nan=True,
+        ):
+            raise ValueError("Existing return history must be preserved exactly.")
+        if np.isinf(X.to_numpy()).any() or (X.to_numpy() < -1).any():
+            raise ValueError("Returns cannot be infinite or below -100 percent.")
+        worker = deepcopy(self, {id(self.weight_projection_): None})
+        for name, replacement in (
+            ("min_weights", min_weights),
+            ("max_weights", max_weights),
+        ):
+            bound = getattr(self, name) if replacement is None else replacement
+            if (
+                replacement is None
+                and bound is not None
+                and not (np.isscalar(bound) or isinstance(bound, dict))
+            ):
+                raise ValueError(f"Supply expanded positional {name}.")
+            if isinstance(bound, dict) and set(bound) - set(X.columns):
+                raise ValueError(f"Unknown asset in {name}.")
+            setattr(worker, name, deepcopy(bound))
+        if self.groups is not None and groups is None:
+            raise ValueError("Supply expanded groups for the new asset order.")
+        worker.groups = deepcopy(groups)
+        validate_data(worker, X, reset=True, ensure_all_finite=False)
+        panel = worker._validate_characteristics(characteristics, X)
+        positions = worker._investment_index(panel, X.columns)
+        exposures, names = worker._compute_exposures(panel, method="fit")
+        if list(names) != list(self.characteristic_names_):
+            raise ValueError("Expanded exposures must preserve fitted feature names.")
+        inputs = worker._policy_inputs(panel, exposures, positions)
+        new_positions = [i for i, name in enumerate(X.columns) if name not in old_names]
+        if not inputs.holdable[-1, new_positions].all():
+            raise ValueError("New assets need warmed-up finite characteristics.")
+        projection = _WeightProjection(
+            X.columns,
+            worker.long_only,
+            worker.min_weights,
+            worker.max_weights,
+            worker.groups,
+            worker.linear_constraints,
+        )
+        final_inputs = _PolicyInputs(
+            tilt=inputs.tilt[-1:],
+            benchmark=inputs.benchmark[-1:],
+            holdable=inputs.holdable[-1:],
+        )
+        worker.weights_ = worker._predict_policy(
+            worker.regressor_, final_inputs, projection
+        )[-1].copy()
+        worker.weight_projection_ = projection
+        worker._investment_idx_ = positions
+        worker.training_returns_ = X.copy()
+        return worker
 
     def _predict_policy(
         self,
@@ -700,7 +823,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         rebalance_every=1,
         eligibility=None,
     ) -> PortfolioExecution:
-        """Evaluate a long-only strategy with explicit cash and funded fees.
+        """Evaluate a strategy with explicit cash and funded transaction fees.
 
         Parameters
         ----------
@@ -711,12 +834,14 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         characteristics : AssetPanel
             Daily causal characteristics following the fitted exposure state.
         initial_holdings : array-like or dict
-            Nonnegative risky-asset fractions of initial wealth.
+            Signed risky-asset fractions of initial wealth. Negative positions
+            require long_only=False.
         initial_cash : float
             Initial cash fraction. Together with risky holdings it must sum to one.
         cash_weight : float, default=0.05
             Target cash fraction of post-fee wealth. When no assets are eligible,
-            execution holds all cash. Borrowing and short positions are unsupported.
+            execution holds all cash. Short positions are allowed when
+            long_only=False; cash borrowing is not modeled.
         cash_returns : float, array-like or Series, default=0.0
             Cash return per holding period, with no implicit annualization. Series
             dates must match X.
@@ -751,7 +876,9 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         failure raises without changing the original model. Exit trades assume
         execution at the known decision valuation. Suspended or untradeable exits
         must not be represented as ordinary eligibility changes. New named assets
-        require refitting the registry. This method does not use Portfolio's legacy
+        require explicit admission to the registry. Short positions carry no
+        borrowing fees; collateral, margin and tradability are outside this
+        accounting model. This method does not use Portfolio's legacy
         additive cost convention; fees are actually deducted from available cash.
         """
         from skfolio.optimization.parametric._execution import evaluate_execution

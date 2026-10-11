@@ -1219,7 +1219,7 @@ Cash-funded execution and eligibility changes
 
 ``evaluate_execution`` is the explicit cash-ledger alternative to
 ``evaluate_sequential``. It returns ``PortfolioExecution`` rather than a
-``MultiPeriodPortfolio``. It requires ``long_only=True`` and reconciles actual
+``MultiPeriodPortfolio``. It supports long/short positions and reconciles actual
 trades, cash, costs and ending wealth. Initial risky holdings plus initial cash
 must sum to one; all-cash initial conditions are supported.
 
@@ -1252,9 +1252,18 @@ the registered columns. The optional boolean ``eligibility`` DataFrame applies
 additional exclusions and can exclude all assets, unlike AssetPanel's market
 coverage mask. Membership changes force a rebalance even between scheduled dates.
 Costs and turnover limits still apply. When all assets are excluded, the portfolio
-holds cash. Registered assets may leave and re-enter. New names require a refit
-with an expanded registry, because fitted descriptor state and named constraints
-cannot be silently reassigned.
+holds cash. Registered assets may leave and re-enter. Admit new names explicitly using
+``expanded = fitted.expand_universe(history, characteristics_history)``.
+The returned model preserves the fitted regressor and rebuilds exposure state by
+replaying expanded history through the current prediction date. Supply unchanged
+past returns for existing assets, enough descriptor warmup for new ones, and
+expanded positional bounds or groups where applicable. Missing pre-entry returns
+remain missing. Use stable feature definitions: replaying arbitrary learned
+transformations is not guaranteed to preserve their meaning.
+
+With ``long_only=False``, the ledger accepts signed holdings and preserves short
+positions. There are no borrowing fees. Existing transaction costs are optional;
+negative cash, collateral, margin and trading availability are outside scope.
 
 An eligibility exit assumes an executable sale at the known decision valuation.
 It is not a substitute for modeling trading halts or unpriced delistings. Missing

@@ -50,7 +50,7 @@ Next design decisions
 Deferred
 --------
 
-Unregistered new assets without refitting, unpriced delistings and trading halts,
+Unpriced delistings and trading halts,
 joint whole-portfolio regression, cost-aware supervised training, cash borrowing, calendar-based
 rebalance schedules,
 and full Chevalier--Coqueret--Raffinot methodology.
@@ -104,12 +104,12 @@ fixed-universe workflow and its remaining modeling limitations.
 Cash and eligibility implementation
 ----------------------------------
 
-``evaluate_execution`` returns an explicit PortfolioExecution ledger for long-only
+``evaluate_execution`` returns an explicit PortfolioExecution ledger for long/short
 portfolios, with a post-fee cash target and optional cash returns. It funds fees,
 records actual trades, supports known-asset exits/reentry, and moves to all cash
 when a separate eligibility schedule excludes everything. Known tradable exits
 are assumed; suspended/unpriced positions cannot be silently liquidated. Unknown
-asset names still require registry refitting. Metadata-dependent covariance priors
+asset names require explicit admission with ``expand_universe``. Metadata-dependent covariance priors
 receive precisely aligned dated fit inputs.
 
 The combined example ran 100 historical-price periods, 9 rebalances and five
@@ -129,3 +129,22 @@ Dated ``optimizer_fit_params`` are now sliced independently for each forward
 training-label window. A real InverseVolatility / TimeSeriesFactorModel routing
 integration test verifies this path, in addition to factor-prior execution tests.
 No held-out evaluation metadata enter label fitting.
+
+
+Short positions and new assets
+------------------------------
+
+With ``long_only=False``, cash accounting preserves signed positions and charges
+no borrowing fees. Existing proportional transaction costs remain optional.
+Cash targets remain between zero and one; margin, collateral, borrow availability
+and execution realism are outside scope.
+
+``expanded = fitted.expand_universe(history, characteristics_history)`` returns
+an independent policy on the expanded asset registry, without retraining its
+regressor. Supply history through the current prediction date, including the old
+assets and their unchanged past returns. Descriptors are rebuilt by replaying the
+expanded history, so use stable feature definitions and enough warmup data. This
+is not a general adaptation protocol for learned factor transformations.
+Replace positional bounds and groups explicitly. Historical label diagnostics
+retain their original universe. Missing pre-entry returns stay missing; risk
+estimation still needs actual historical observations or explicit covariance.
