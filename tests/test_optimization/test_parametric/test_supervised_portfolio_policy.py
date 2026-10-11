@@ -265,3 +265,17 @@ def test_nonlinear_prediction_uses_fitted_regressor():
     raw = estimator.regressor_.predict(features.reshape(-1, 1)).reshape(4, 3)
     expected = 1 / 3 + raw - raw.mean(axis=1, keepdims=True)
     np.testing.assert_allclose(estimator.predict_weights(future), expected, atol=1e-7)
+
+
+def test_risk_limit_at_prediction():
+    X, panel = data()
+    estimator = model(max_variance=0.34).fit(X, characteristics=panel)
+    _, future = data(n=4, offset=11)
+    weights = estimator.predict_weights(future, covariance=np.eye(3)).to_numpy()
+    assert (np.sum(weights**2, axis=1) <= 0.34 + 1e-6).all()
+    with pytest.raises(ValueError, match="covariance"):
+        estimator.predict_weights(future)
+    with pytest.raises(ValueError, match="explicit risk"):
+        estimator.predict(X)
+    with pytest.raises(ValueError, match="infeasible"):
+        estimator.predict_weights(future, covariance=10 * np.eye(3))

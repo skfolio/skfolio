@@ -63,22 +63,31 @@ class _WeightProjection:
             cp.Minimize(cp.sum_squares(self.weights - self.target)), self.constraints
         )
 
-    def project(self, proposed):
+    def project(self, proposed, covariance=None, max_variance=None):
         """Return feasible weights or fail explicitly; never clip after solving."""
         result = np.empty_like(proposed)
         for i, row in enumerate(proposed):
             self.target.value = row
-            self.problem.solve(solver="CLARABEL")
-            if self.problem.status not in (cp.OPTIMAL, cp.OPTIMAL_INACCURATE):
+            constraints = list(self.constraints)
+            if max_variance is not None:
+                if covariance is None:
+                    raise ValueError("`covariance` is required for a risk limit.")
+                constraints.append(
+                    cp.quad_form(self.weights, cp.psd_wrap(covariance[i]))
+                    <= max_variance
+                )
+            problem = cp.Problem(self.problem.objective, constraints)
+            problem.solve(solver="CLARABEL")
+            if problem.status not in (cp.OPTIMAL, cp.OPTIMAL_INACCURATE):
                 raise ValueError(
-                    f"Portfolio weight projection failed: {self.problem.status}."
+                    f"Portfolio weight projection failed: {problem.status}."
                 )
             weights = self.weights.value
             if weights is None or not np.isfinite(weights).all():
                 raise ValueError(
                     "Portfolio weight projection returned invalid weights."
                 )
-            if any(np.max(c.violation()) > 1e-6 for c in self.constraints):
+            if any(np.max(c.violation()) > 1e-6 for c in constraints):
                 raise ValueError(
                     "Portfolio weight projection violated its constraints."
                 )

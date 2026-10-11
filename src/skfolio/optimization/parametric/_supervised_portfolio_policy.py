@@ -17,6 +17,7 @@ from skfolio.optimization._base import BaseOptimization
 from skfolio.optimization.parametric._parametric_portfolio_policy import (
     ParametricPortfolioPolicy,
 )
+from skfolio.optimization.parametric._projection_context import projection_context
 from skfolio.optimization.parametric._weight_projection import _WeightProjection
 from skfolio.utils.tools import (
     _validate_non_negative_integer,
@@ -75,6 +76,11 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         Asset/group equations such as ``["Equity <= 0.6", "a >= 0.1"]``.
         Unknown group names and infeasible constraints raise an error.
 
+    max_variance : float, optional
+        Variance limit applied at prediction with explicitly supplied covariance.
+        Units must match the covariance horizon. Training weights/history enforce
+        static constraints only; standard predict is disabled with dynamic limits.
+
     Attributes
     ----------
     coef_ : ndarray of shape (n_characteristics,)
@@ -116,6 +122,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         max_weights=None,
         groups=None,
         linear_constraints=None,
+        max_variance: float | None = None,
     ):
         super().__init__(
             characteristics_exposures=characteristics_exposures,
@@ -131,6 +138,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         self.max_weights = max_weights
         self.groups = groups
         self.linear_constraints = linear_constraints
+        self.max_variance = max_variance
 
     def fit(
         self,
@@ -158,6 +166,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             if name.endswith("_") and not name.startswith("_"):
                 delattr(self, name)
         self._validate_params()
+        if self.max_variance is not None:
+            _validate_non_negative_real(self.max_variance, "max_variance")
         _validate_non_negative_integer(self.window_size, "window_size")
         if self.window_size < 2:
             raise ValueError("`window_size` must be at least 2.")
@@ -249,7 +259,9 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         self.weights_ = weights_history[-1].copy()
         return self
 
-    def _predict_policy(self, regressor, inputs, projection):
+    def _predict_policy(
+        self, regressor, inputs, projection, covariance=None, max_variance=None
+    ):
         """Predict asset-level deviations and restore the portfolio budget."""
         valid = inputs.holdable.all(axis=1)
         weights = np.full(inputs.benchmark.shape, np.nan)
@@ -267,10 +279,16 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         deviations = deviations.reshape(n_rows, n_assets)
         deviations -= deviations.mean(axis=1, keepdims=True)
         proposed = inputs.benchmark[valid] + deviations
-        weights[valid] = projection.project(proposed)
+        weights[valid] = projection.project(
+            proposed,
+            covariance=None if covariance is None else covariance[valid],
+            max_variance=max_variance,
+        )
         return weights
 
-    def predict_weights(self, characteristics: AssetPanel) -> pd.DataFrame:
+    def predict_weights(
+        self, characteristics: AssetPanel, *, covariance=None
+    ) -> pd.DataFrame:
         """Predict allocations from a subsequent characteristic panel.
 
         Parameters
@@ -278,6 +296,10 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         characteristics : AssetPanel
             Subsequent, non-overlapping panel with the fitted coverage asset order.
             Exposure estimators advance their state; the regressor is not refitted.
+        covariance : array-like or DataFrame, optional
+            Covariance available at each decision. Shape (t,n,n), or (n,n) to
+            explicitly share one estimate. Named matrices are aligned to assets.
+            The caller is responsible for using only then-available information.
 
         Returns
         -------
@@ -286,6 +308,11 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             characteristics are NaN.
         """
         check_is_fitted(self, "regressor_")
+        covariance, _ = projection_context(
+            self.feature_names_in_, characteristics.observations, covariance=covariance
+        )
+        if self.max_variance is not None and covariance is None:
+            raise ValueError("`covariance` is required for a risk limit.")
         panel = self._validate_characteristics(characteristics, X=None)
         investment_idx = self._investment_index(panel, self.feature_names_in_)
         if not panel.active_mask[:, investment_idx].all():
@@ -295,7 +322,30 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         exposures, _ = self._compute_exposures(panel, method="partial_fit")
         inputs = self._policy_inputs(panel, exposures, investment_idx)
         return pd.DataFrame(
-            self._predict_policy(self.regressor_, inputs, self.weight_projection_),
+            self._predict_policy(
+                self.regressor_,
+                inputs,
+                self.weight_projection_,
+                covariance=covariance,
+                max_variance=self.max_variance,
+            ),
             index=panel.observations,
             columns=self.feature_names_in_,
         )
+
+    def predict(self, X):
+        """Evaluate the final static allocation when no dynamic limits are enabled.
+
+        Parameters
+        ----------
+        X : array-like
+            Evaluation returns.
+
+        Returns
+        -------
+        portfolio : Portfolio
+            Portfolio using the final static training allocation.
+        """
+        if self.max_variance is not None:
+            raise ValueError("Use predict_weights with explicit risk inputs.")
+        return super().predict(X)
