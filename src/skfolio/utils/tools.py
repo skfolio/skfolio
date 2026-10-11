@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import math
 import warnings
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from enum import Enum
@@ -61,6 +62,8 @@ __all__ = [
 ]
 
 GenericAlias = type(list[int])
+
+_SAMPLE_WEIGHT_SUM_TOL = 1e-5 + 1e-8
 
 
 def call_asset_panel_transform(
@@ -464,6 +467,100 @@ def _validate_unit_interval(value: object, name: str) -> None:
         raise ValueError(
             f"{name} must be a finite number between 0 and 1, got {value!r}"
         )
+
+
+def _validate_sample_weight(
+    sample_weight: ArrayLike, *, n_observations: int, ensure_normalized: bool = False
+) -> FloatArray:
+    """Check observation weights and return a NumPy array of floats.
+
+    Parameters
+    ----------
+    sample_weight : array-like of shape (n_observations,)
+        Real, finite, nonnegative weights, one per observation.
+
+    n_observations : int
+        Expected number of weights.
+
+    ensure_normalized : bool, default=False
+        If True, require nonempty weights to sum to one within an absolute
+        tolerance of 1.001e-5. Raises ValueError otherwise. Empty weights are
+        accepted for zero observations. Does not rescale the weights.
+
+    Returns
+    -------
+    weights : ndarray of shape (n_observations,)
+        Validated weights as a NumPy array of floats. The input is not modified,
+        but the returned array may share its memory.
+
+    Raises
+    ------
+    ValueError
+        If the shape or values are invalid, or if `ensure_normalized=True` and the
+        weights do not sum to one within tolerance.
+    """
+    weights = np.asarray(sample_weight)
+    if weights.ndim != 1:
+        raise ValueError("sample_weight must be a 1D array.")
+    if weights.shape[0] != n_observations:
+        raise ValueError(
+            "sample_weight must have the same length as the number of observations; "
+            f"expected shape ({n_observations},), got {weights.shape}."
+        )
+    if np.iscomplexobj(weights):
+        raise ValueError("sample_weight must contain real numbers.")
+    try:
+        weights = weights.astype(float, copy=False)
+    except (TypeError, ValueError) as error:
+        raise ValueError("sample_weight must contain real numbers.") from error
+    minimum = weights.min(initial=0.0)
+    maximum = weights.max(initial=0.0)
+    if not math.isfinite(minimum) or not math.isfinite(maximum):
+        raise ValueError("sample_weight must contain only finite values.")
+    if minimum < 0:
+        raise ValueError("sample_weight must be nonnegative.")
+    if ensure_normalized and n_observations > 0:
+        with np.errstate(over="ignore"):
+            total = float(weights.sum())
+        if abs(total - 1) > _SAMPLE_WEIGHT_SUM_TOL:
+            raise ValueError(
+                f"sample_weight must sum to one, got {total}. Normalize the weights "
+                "before constructing the portfolio or return distribution."
+            )
+    return weights
+
+
+def _normalize_sample_weight(weights: FloatArray) -> FloatArray:
+    """Rescale observation weights to sum to one without modifying the input.
+
+    Parameters
+    ----------
+    weights : ndarray of shape (n_observations,) or (n_observations, n_assets)
+        NumPy array of floats already checked to be finite and nonnegative.
+        For a 2D array, each column is normalized separately.
+
+    Returns
+    -------
+    normalized_weights : ndarray
+        Weights with the same shape as the input. A vector or column containing
+        only zeros produces NaNs. Empty inputs remain empty. A 1D array whose
+        total is already one within summation rounding error is returned as is.
+
+    Notes
+    -----
+    If the sum overflows, divide the weights by their maximum before summing
+    again. This preserves their relative sizes while keeping the sum finite.
+    """
+    with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+        total = weights.sum(axis=0)
+        if weights.ndim == 1 and math.isfinite(total):
+            if abs(total - 1.0) <= 4 * len(weights) * np.finfo(float).eps:
+                return weights
+            return weights / total
+        if np.isinf(total).any():
+            weights = weights / weights.max(axis=0)
+            total = weights.sum(axis=0)
+        return weights / total
 
 
 def check_estimator(

@@ -41,7 +41,7 @@ def prior():
 
 
 class RecordingDistance(PearsonDistance):
-    def fit(self, X, y=None, sample_weight=None):
+    def fit(self, X, y=None, sample_weight=None, observation_ids=None):
         self.received_ = X.copy()
         self.target_ = y
         self.sample_weight_ = sample_weight
@@ -626,12 +626,14 @@ def test_online_scenario_metadata_is_rejected_before_learning(optimizer, returns
     with config_context(enable_metadata_routing=True):
         model = optimizer(
             prior_estimator=prior(),
-            distance_estimator=RecordingDistance().set_fit_request(sample_weight=True),
+            distance_estimator=RecordingDistance().set_fit_request(
+                observation_ids=True
+            ),
         )
         model.partial_fit(returns[:20])
         distribution = model.prior_estimator_.return_distribution_
         with pytest.raises(ValueError, match="Observation metadata"):
-            model.partial_fit(returns[20:30], sample_weight=np.ones(10))
+            model.partial_fit(returns[20:30], observation_ids=np.arange(10))
         assert model.prior_estimator_.return_distribution_ is distribution
 
 
@@ -781,26 +783,70 @@ def test_precomputed_masks_prior_exclusions_without_mutation(optimizer, returns)
     )
 
 
-def test_nested_scenario_weight_routing_and_conflict(optimizer, returns):
+@pytest.mark.parametrize("weight_name", ["sample_weight", "observation_weights"])
+@pytest.mark.parametrize("method", ["fit", "partial_fit"])
+@pytest.mark.parametrize("weighted_prior", [False, True])
+@pytest.mark.parametrize("nested", [False, True])
+def test_scenario_probabilities_replace_routed_weights(
+    optimizer, returns, weight_name, method, weighted_prior, nested
+):
     with config_context(enable_metadata_routing=True):
-        covariance = WeightedCovariance().set_fit_request(sample_weight=True)
-        model = optimizer(
-            prior_estimator=RebuiltPrior(**prior().get_params(deep=False)),
-            distance_estimator=CovarianceDistance(covariance),
+        consumer = WeightedCovariance() if nested else RecordingDistance()
+        consumer.set_fit_request(
+            sample_weight=True if weight_name == "sample_weight" else weight_name
         )
-        model.partial_fit(returns[:20])
+        model = optimizer(
+            prior_estimator=(
+                RebuiltPrior(**prior().get_params(deep=False))
+                if weighted_prior
+                else prior()
+            ),
+            distance_estimator=CovarianceDistance(consumer) if nested else consumer,
+        )
+        if method == "partial_fit":
+            model.partial_fit(returns[:20])
+        input_weights = np.arange(1, 21, dtype=float)
+        getattr(model, method)(returns[20:40], **{weight_name: input_weights})
         learned = model.prior_estimator_.return_distribution_
+        fitted = model.distance_estimator_
+        if nested:
+            fitted = fitted.covariance_estimator_
+        if learned.sample_weight is None:
+            assert fitted.sample_weight_ is None
+        else:
+            np.testing.assert_array_equal(fitted.sample_weight_, learned.sample_weight)
+        if nested:
+            expected = np.cov(learned.returns.T, aweights=learned.sample_weight)
+            np.testing.assert_allclose(fitted.covariance_, expected)
+        np.testing.assert_array_equal(input_weights, np.arange(1, 21, dtype=float))
+
+
+@pytest.mark.parametrize("method", ["fit", "partial_fit"])
+def test_scenario_weight_routing_preserves_prior_input(optimizer, returns, method):
+    with config_context(enable_metadata_routing=True):
+        covariance = (
+            OnlineWeightedCovariance()
+            .set_fit_request(sample_weight=True)
+            .set_partial_fit_request(sample_weight=True)
+        )
+        model = optimizer(
+            prior_estimator=RebuiltPrior(
+                mu_estimator=EWMu(half_life=5, min_observations=3),
+                covariance_estimator=covariance,
+            ),
+            distance_estimator=CovarianceDistance(
+                WeightedCovariance().set_fit_request(sample_weight=True)
+            ),
+        )
+        input_weights = np.arange(1, 21, dtype=float)
+        getattr(model, method)(returns[:20], sample_weight=input_weights)
+        np.testing.assert_array_equal(
+            model.prior_estimator_.covariance_estimator_.sample_weight_, input_weights
+        )
         np.testing.assert_array_equal(
             model.distance_estimator_.covariance_estimator_.sample_weight_,
-            learned.sample_weight,
+            model.prior_estimator_.return_distribution_.sample_weight,
         )
-        expected = np.cov(learned.returns.T, aweights=learned.sample_weight)
-        np.testing.assert_allclose(
-            model.distance_estimator_.covariance_estimator_.covariance_, expected
-        )
-        # Explicit distance weights must not override internally aligned scenarios.
-        with pytest.raises(ValueError, match="Conflicting parameters"):
-            model.fit(returns[:20], sample_weight=np.ones(20) / 20)
 
 
 @pytest.mark.parametrize("weight_name", ["sample_weight", "observation_weights"])
@@ -832,22 +878,26 @@ def test_raw_sample_weights_follow_partial_fit_request(optimizer, returns, weigh
 
 
 @pytest.mark.parametrize("weight_request", [False, None])
+@pytest.mark.parametrize("nested", [False, True])
 def test_scenario_weights_are_not_forwarded_when_unrequested(
-    optimizer, returns, weight_request
+    optimizer, returns, weight_request, nested
 ):
     with config_context(enable_metadata_routing=True):
+        consumer = WeightedCovariance() if nested else RecordingDistance()
+        consumer.set_fit_request(sample_weight=weight_request)
         model = optimizer(
             prior_estimator=RebuiltPrior(**prior().get_params(deep=False)),
-            distance_estimator=CovarianceDistance(
-                WeightedCovariance().set_fit_request(sample_weight=weight_request)
-            ),
+            distance_estimator=CovarianceDistance(consumer) if nested else consumer,
         ).partial_fit(returns[:20])
-        learned = model.distance_estimator_.covariance_estimator_
+        learned = model.distance_estimator_
+        if nested:
+            learned = learned.covariance_estimator_
         assert learned.sample_weight_ is None
-        np.testing.assert_allclose(
-            learned.covariance_,
-            np.cov(model.prior_estimator_.return_distribution_.returns.T),
-        )
+        if nested:
+            np.testing.assert_allclose(
+                learned.covariance_,
+                np.cov(model.prior_estimator_.return_distribution_.returns.T),
+            )
 
 
 def test_raw_nested_activity_metadata_updates_each_learner(optimizer, returns):

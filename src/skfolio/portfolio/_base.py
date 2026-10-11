@@ -64,6 +64,7 @@ from skfolio.typing import FloatArray, IntArray
 from skfolio.utils.sorting import dominate
 from skfolio.utils.tools import (
     _validate_positive_integer,
+    _validate_sample_weight,
     args_names,
     cached_property_slots,
     format_measure,
@@ -151,8 +152,8 @@ class BasePortfolio:
         The default is `False`.
 
     sample_weight : ndarray of shape (n_observations,), optional
-        Sample weights for each observation. The weights must sum to one.
-         If None, equal weights are assumed.
+        Finite, nonnegative observation probabilities. The weights must sum to
+        one within an absolute tolerance of 1.001e-5. If None, equal weights are assumed.
 
     min_acceptable_return : float, optional
         The minimum acceptable return used to distinguish "downside" and "upside"
@@ -178,9 +179,9 @@ class BasePortfolio:
         The default value is `0.95`.
 
     cvar_beta : float, default=0.95
-        The confidence level of the Portfolio CVaR (Conditional Value at Risk) which
-        represents the expected VaR on the worst (1-beta)% observations.
-        The default value is `0.95`.
+        Confidence level of CVaR (Conditional Value at Risk), between 0 and 1,
+        inclusive. CVaR averages the worst `1 - beta` probability mass.
+        At 1, CVaR equals the largest loss with positive sample weight.
 
     evar_beta : float, default=0.95
         The confidence level of the Portfolio EVaR (Entropic Value at Risk).
@@ -192,9 +193,9 @@ class BasePortfolio:
         The default value is `0.95`.
 
     cdar_beta : float, default=0.95
-        The confidence level of the Portfolio CDaR (Conditional Drawdown at Risk) which
-        represents the expected drawdown on the worst (1-beta)% observations.
-        The default value is `0.95`.
+        Confidence level of CDaR (Conditional Drawdown at Risk), between 0 and 1,
+        inclusive. CDaR averages the worst drawdowns over probability `1 - beta`.
+        At 1, CDaR equals the largest drawdown magnitude with positive sample weight.
 
     edar_beta : float, default=0.95
         The confidence level of the Portfolio EDaR (Entropic Drawdown at Risk).
@@ -725,15 +726,9 @@ class BasePortfolio:
     def sample_weight(self, value: FloatArray | None) -> None:
         """Validate and set the observations sample weights."""
         if value is not None:
-            value = np.asarray(value)
-            if value.ndim != 1:
-                raise ValueError("sample_weight must be a 1D array.")
-            if len(value) != self.n_observations:
-                raise ValueError(
-                    "sample_weight must have the same length as the number of observations."
-                )
-            if not np.isclose(value.sum(), 1):
-                raise ValueError("sample_weight must sum to one.")
+            value = _validate_sample_weight(
+                value, n_observations=self.n_observations, ensure_normalized=True
+            )
         self._sample_weight = value
 
     # Custom attribute getter (read-only and cached)

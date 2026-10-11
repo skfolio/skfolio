@@ -306,20 +306,20 @@ class RiskBudgeting(ConvexOptimization):
         The default (`None`) is to use the mean.
 
     cvar_beta : float, default=0.95
-        CVaR (Conditional Value at Risk) confidence level.
-        The default value is `0.95`.
+        CVaR (Conditional Value at Risk) confidence level in [0, 1].
+        At 1, CVaR equals the largest loss with positive sample weight.
 
     evar_beta : float, default=0.95
-        EVaR (Entropic Value at Risk) confidence level.
-        The default value is `0.95`.
+        EVaR (Entropic Value at Risk) confidence level in [0, 1].
+        At 1, EVaR equals the largest loss with positive sample weight.
 
     cdar_beta : float, default=0.95
-        CDaR (Conditional Drawdown at Risk) confidence level.
-        The default value is `0.95`.
+        CDaR (Conditional Drawdown at Risk) confidence level in [0, 1].
+        At 1, CDaR equals the largest drawdown magnitude with positive sample weight.
 
     edar_beta : float, default=0.95
-        EDaR (Entropic Drawdown at Risk) confidence level.
-        The default value is `0.95`.
+        EDaR (Entropic Drawdown at Risk) confidence level in [0, 1].
+        At 1, EDaR equals the largest drawdown magnitude with positive sample weight.
 
     add_objective : Callable[[cp.Variable], cp.Expression], optional
         Add a custom objective to the existing objective expression.

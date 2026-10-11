@@ -2,6 +2,30 @@
 
 <!-- version list -->
 
+## v1.8.1 (2026-10-10)
+
+### Bug Fixes
+
+- **model-selection**: Assign trailing observations to the last CombinatorialPurgedCV fold
+  ([#414](https://github.com/skfolio/skfolio/pull/414),
+  [`a479a42`](https://github.com/skfolio/skfolio/commit/a479a42addbb7face6df026d377113a9ccb4ae55))
+
+### Documentation
+
+- Restore llms-full.txt and use actual example titles in llms.txt
+  ([#418](https://github.com/skfolio/skfolio/pull/418),
+  [`4fe0c76`](https://github.com/skfolio/skfolio/commit/4fe0c769822e228517189ad020c35bd723f8ed47))
+
+
+## v1.8.0 (2026-10-09)
+
+### Features
+
+- Extend sample-weight support across risk measures
+  ([#412](https://github.com/skfolio/skfolio/pull/412),
+  [`a75fb77`](https://github.com/skfolio/skfolio/commit/a75fb772b57ec1fc2034c75d38d0af1ae5a348b4))
+
+
 ## v1.7.1 (2026-10-08)
 
 ### Bug Fixes

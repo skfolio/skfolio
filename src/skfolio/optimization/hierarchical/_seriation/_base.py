@@ -15,6 +15,7 @@ import pandas as pd
 import sklearn.utils as sku
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
+from sklearn import get_config
 
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
@@ -355,9 +356,10 @@ class _BaseSeriatedOptimization(BaseOptimization):
             Metadata routed to the underlying estimators. Requires metadata
             routing to be enabled. During batch fitting, metadata for a distance
             fitted on prior return scenarios must align with those scenarios.
-            Observation metadata cannot be routed to distances using the prior's
-            covariance, or to distances fitted from prior output during online
-            updates.
+            Sample weights for scenario distances always come from the prior,
+            replacing routed weights. Other observation metadata cannot be routed
+            to distances fitted from prior output during online updates.
+            Distances using the prior's covariance receive no observation metadata.
 
         Returns
         -------
@@ -415,6 +417,16 @@ class _BaseSeriatedOptimization(BaseOptimization):
         routed = skm.process_routing(self, method, **fit_params)
         distance_method = "fit" if self.distance_from_prior else method
         distance_params = getattr(routed.distance_estimator, distance_method)
+
+        if self.distance_from_prior and not covariance_input and distance_params:
+            # Scenario probabilities replace weights describing the original X.
+            weight_names = _sample_weight_names(distance.get_metadata_routing())
+            distance_params = {
+                name: value
+                for name, value in distance_params.items()
+                if name not in weight_names
+            }
+            routed.distance_estimator.fit = distance_params
 
         # Covariance rows represent assets. Online prior scenarios may cover
         # a different history from the observations in the current batch.
@@ -663,20 +675,18 @@ class _BaseSeriatedOptimization(BaseOptimization):
                 extra_params = {}
                 if scenario_input:
                     distance_input = return_distribution.returns[:, investable_mask]
-                    extra_params = _filter_supported_params(
-                        distance_estimator,
-                        "fit",
-                        sample_weight=return_distribution.sample_weight,
-                    )
-                    # Composite estimators can route weights through **fit_params.
-                    if (
-                        return_distribution.sample_weight is not None
-                        and distance_estimator.get_metadata_routing().consumes(
-                            "fit", ["sample_weight"]
+                    if get_config()["enable_metadata_routing"]:
+                        extra_params = dict.fromkeys(
+                            _sample_weight_names(
+                                distance_estimator.get_metadata_routing()
+                            ),
+                            return_distribution.sample_weight,
                         )
-                    ):
-                        extra_params["sample_weight"] = (
-                            return_distribution.sample_weight
+                    else:
+                        extra_params = _filter_supported_params(
+                            distance_estimator,
+                            "fit",
+                            sample_weight=return_distribution.sample_weight,
                         )
                 else:
                     distance_input = return_distribution.covariance.copy()
@@ -772,3 +782,54 @@ class _BaseSeriatedOptimization(BaseOptimization):
             If the algorithm cannot produce a valid allocation.
         """
         ...
+
+
+def _sample_weight_names(
+    routing: skm.MetadataRequest | skm.MetadataRouter,
+    *,
+    method: str = "fit",
+    use_alias: bool = False,
+) -> set[str]:
+    """Find the keyword names that deliver sample weights to an estimator.
+
+    Parameters
+    ----------
+    routing : MetadataRequest or MetadataRouter
+        Routing description of the distance estimator or one of its children.
+
+    method : str, default="fit"
+        Method receiving the weights. Recursive calls follow the router's method
+        mappings.
+
+    use_alias : bool, default=False
+        Use the name requested from the parent. A direct call to a consumer uses
+        `sample_weight`, while a router receives the aliases requested by its
+        children.
+
+    Returns
+    -------
+    names : set of str
+        Keywords requested for sample weights. Unrequested weights are excluded.
+    """
+    if isinstance(routing, skm.MetadataRequest):
+        request = getattr(routing, method).requests.get("sample_weight")
+        if request in (None, False, skm.WARN):
+            return set()
+        if request is True or not use_alias:
+            return {"sample_weight"}
+        return {request}
+
+    names = set()
+    for name, route in routing:
+        for caller, callee in route.mapping:
+            if caller == method:
+                # A router's own consumer keeps the current naming rule.
+                # Descendants request their weights from a parent using aliases.
+                names.update(
+                    _sample_weight_names(
+                        route.router,
+                        method=callee,
+                        use_alias=use_alias or name != "$self_request",
+                    )
+                )
+    return names

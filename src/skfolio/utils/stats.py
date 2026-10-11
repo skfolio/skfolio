@@ -163,7 +163,7 @@ def safe_divide(
     out = np.full(np.broadcast(numerator, denominator).shape, fill_value, dtype=float)
     valid = np.abs(denominator) > atol
     np.divide(numerator, denominator, out=out, where=valid)
-    np.nan_to_num(out, copy=False, nan=fill_value, posinf=fill_value, neginf=fill_value)
+    np.copyto(out, fill_value, where=~np.isfinite(out))
     return float(out) if out.ndim == 0 else out
 
 

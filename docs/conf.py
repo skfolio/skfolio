@@ -742,6 +742,9 @@ llms_txt_description = (
     "and stress-test portfolio models."
 )
 
+# sphinx-llm >= 1.1 no longer builds `llms-full.txt` by default.
+llms_txt_full_build = True
+
 # make the links in llms.txt absolute
 markdown_http_base = "https://skfolio.org"
 
@@ -1032,6 +1035,10 @@ def patch_markdown_builder(app):
     does not support. Register visitors that preserve their content or intentionally
     omit metadata.
 
+    Sphinx-Gallery opens every example with a "Go to the end" download note. Skip it so
+    that the example title is the first heading of the page, which sphinx-llm uses as
+    the title of its `llms.txt` entry.
+
     The generic Markdown builder also treats HTML static and extra paths as source
     documents. Excluding those asset trees matches the HTML builder and prevents
     static reStructuredText fragments from entering the LLM artifacts.
@@ -1074,6 +1081,13 @@ def patch_markdown_builder(app):
     def depart_imgsgnode(self, _node):
         return
 
+    visit_note = MarkdownTranslator.visit_note
+
+    def visit_note_without_gallery_download_link(self, node):
+        if "sphx-glr-download-link-note" in node["classes"]:
+            raise nodes.SkipNode
+        visit_note(self, node)
+
     def make_admonition_visitor(title):
         def visit_admonition(self, _node):
             self._push_box(title)
@@ -1092,6 +1106,8 @@ def patch_markdown_builder(app):
     MarkdownTranslator.depart_citation = depart_citation
     MarkdownTranslator.visit_imgsgnode = visit_imgsgnode
     MarkdownTranslator.depart_imgsgnode = depart_imgsgnode
+    MarkdownTranslator.visit_note = visit_note_without_gallery_download_link
+    MarkdownTranslator.depart_note = depart_admonition
     for node_name, title in {
         "caution": "CAUTION",
         "danger": "DANGER",

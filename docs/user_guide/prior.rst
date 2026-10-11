@@ -38,8 +38,13 @@ The :class:`ReturnDistribution` is a dataclass containing:
     * `mu`: Estimated expected returns of shape (n_assets,)
     * `covariance`: Estimated covariance matrix of shape (n_assets, n_assets)
     * `returns`: (Estimated) asset returns of shape (n_observations, n_assets)
-    * `sample_weight` : Sample weight for each observation of shape (n_observations,) (optional)
+    * `sample_weight` : Optional finite, nonnegative scenario probabilities of shape
+      (n_observations,), summing to one within an absolute tolerance of 1.001e-5.
     * `cholesky` : Lower-triangular Cholesky factor of the covariance (optional)
+
+Custom priors must normalize relative weights before constructing a
+:class:`ReturnDistribution`. Unnormalized weights raise `ValueError`.
+Totals within this tolerance are rescaled to one without modifying the input array.
 
 When native NaN-aware moment estimators are used, a prior can keep the full asset
 universe in `return_distribution_` while non-investable assets are represented by NaNs

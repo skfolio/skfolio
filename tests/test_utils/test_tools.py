@@ -22,6 +22,7 @@ from skfolio.utils.tools import (
     _validate_non_negative_real,
     _validate_positive_integer,
     _validate_positive_real,
+    _validate_sample_weight,
     _validate_unit_interval,
     apply_window_size,
     args_names,
@@ -39,6 +40,19 @@ from skfolio.utils.tools import (
     safe_split,
     validate_input_list,
 )
+
+
+@pytest.mark.parametrize("offset", [-1.002e-5, -1e-5, 0, 1e-5, 1.002e-5])
+def test_sample_weight_normalization_tolerance(offset):
+    weights = np.array([0.25, 0.75 + offset])
+    if abs(offset) > 1.001e-5:
+        with pytest.raises(ValueError, match="must sum to one"):
+            _validate_sample_weight(weights, n_observations=2, ensure_normalized=True)
+    else:
+        result = _validate_sample_weight(
+            weights, n_observations=2, ensure_normalized=True
+        )
+        np.testing.assert_array_equal(result, weights)
 
 
 class _RecordingEstimator:
