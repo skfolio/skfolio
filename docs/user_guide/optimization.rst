@@ -1132,9 +1132,8 @@ constraints, such as positive regression coefficients, are configured on the
 regressor and do not replace portfolio constraints. If no regressor is supplied,
 Ridge without an intercept is used and ``alpha`` sets its penalty.
 
-Joint whole-portfolio regression, metadata routing to
-the label optimizer and a full reproduction of Interpretable Supervised
-Portfolios remain future work.
+Joint whole-portfolio regression and a full reproduction of Interpretable
+Supervised Portfolios remain future work.
 
 Risk, turnover and sequential evaluation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1279,3 +1278,12 @@ the supplied table but are never passed to an earlier fit.
 factor metadata, transaction costs, exits, re-entry and five all-cash periods.
 Its eligibility exclusions are synthetic validation scenarios, not claims about
 actual historical tradability.
+
+
+Label-generating optimizers can receive their own dated inputs through
+``fit(..., optimizer_fit_params={"factors": factor_returns})``. These are sliced
+to each forward label window, entirely inside the supplied training sample.
+Configure requests on nested estimators with sklearn metadata routing enabled;
+for example ``TimeSeriesFactorModel().set_fit_request(factors=True)`` inside
+``InverseVolatility``. Label metadata use the label window; evaluation prior
+metadata use only past observations. These two timings intentionally differ.

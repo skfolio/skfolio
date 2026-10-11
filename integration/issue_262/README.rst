@@ -120,3 +120,12 @@ validate execution and are not evidence of investment performance.
 Run from this worktree::
 
     PYTHONPATH=src python integration/issue_262/cash_execution_example.py --output-dir /tmp/skfolio-cash-execution
+
+
+Label optimizer metadata
+------------------------
+
+Dated ``optimizer_fit_params`` are now sliced independently for each forward
+training-label window. A real InverseVolatility / TimeSeriesFactorModel routing
+integration test verifies this path, in addition to factor-prior execution tests.
+No held-out evaluation metadata enter label fitting.

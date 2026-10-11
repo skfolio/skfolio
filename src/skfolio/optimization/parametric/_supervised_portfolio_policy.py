@@ -167,6 +167,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         X: pd.DataFrame,
         y=None,
         characteristics: AssetPanel | None = None,
+        optimizer_fit_params: dict | None = None,
     ) -> SupervisedPortfolioPolicy:
         """Fit subperiod targets and the shared regression weight policy.
 
@@ -178,6 +179,10 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             Not used, present for API consistency.
         characteristics : AssetPanel
             Point-in-time characteristics aligned with X.
+        optimizer_fit_params : dict, optional
+            Dated metadata passed to each cloned label optimizer, sliced to its
+            exact forward training window. Configure nested sklearn metadata
+            requests on the supplied optimizer and prior as usual.
 
         Returns
         -------
@@ -247,7 +252,10 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
                 raise ValueError(
                     "Label windows require observed returns for every decision-eligible asset."
                 )
-            estimator.fit(label_returns)
+            estimator.fit(
+                label_returns,
+                **slice_prior_metadata(optimizer_fit_params, label_returns.index),
+            )
             weights = np.asarray(estimator.weights_, dtype=float)
             if (
                 weights.shape != (int(eligible.sum()),)

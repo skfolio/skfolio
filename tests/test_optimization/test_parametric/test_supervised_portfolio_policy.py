@@ -857,3 +857,35 @@ def test_universe_exit_does_not_silently_relax_turnover_limit():
             ),
         )
     assert estimator.last_prediction_observation_ == X.index[-1]
+
+
+def test_label_optimizer_receives_routed_factor_metadata():
+    from sklearn import config_context
+
+    from skfolio.optimization import InverseVolatility
+    from skfolio.prior import TimeSeriesFactorModel
+
+    X, panel = data(n=31)
+    rng = np.random.default_rng(31)
+    X = X + rng.normal(0, 0.01, X.shape)
+    factors = pd.DataFrame(
+        rng.normal(size=(40, 1)),
+        index=pd.date_range("2020-01-01", periods=40),
+        columns=["factor"],
+    )
+    with config_context(enable_metadata_routing=True):
+        optimizer = InverseVolatility(
+            prior_estimator=TimeSeriesFactorModel().set_fit_request(factors=True)
+        )
+        estimator = model(optimizer=optimizer, window_size=5).fit(
+            X, characteristics=panel, optimizer_fit_params={"factors": factors}
+        )
+        reference = clone(optimizer).fit(X.iloc[1:6], factors=factors.loc[X.index[1:6]])
+    np.testing.assert_allclose(estimator.target_weights_.iloc[0], reference.weights_)
+    assert not hasattr(optimizer, "weights_")
+    with pytest.raises(ValueError, match="cover each history"):
+        model(window_size=5).fit(
+            X,
+            characteristics=panel,
+            optimizer_fit_params={"factors": factors.iloc[20:]},
+        )
