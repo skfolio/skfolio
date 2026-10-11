@@ -63,7 +63,14 @@ class _WeightProjection:
             cp.Minimize(cp.sum_squares(self.weights - self.target)), self.constraints
         )
 
-    def project(self, proposed, covariance=None, max_variance=None):
+    def project(
+        self,
+        proposed,
+        covariance=None,
+        max_variance=None,
+        holdings=None,
+        max_turnover=None,
+    ):
         """Return feasible weights or fail explicitly; never clip after solving."""
         result = np.empty_like(proposed)
         for i, row in enumerate(proposed):
@@ -76,6 +83,10 @@ class _WeightProjection:
                     cp.quad_form(self.weights, cp.psd_wrap(covariance[i]))
                     <= max_variance
                 )
+            if max_turnover is not None:
+                if holdings is None:
+                    raise ValueError("`holdings` is required for a turnover limit.")
+                constraints.append(cp.norm1(self.weights - holdings[i]) <= max_turnover)
             problem = cp.Problem(self.problem.objective, constraints)
             problem.solve(solver="CLARABEL")
             if problem.status not in (cp.OPTIMAL, cp.OPTIMAL_INACCURATE):

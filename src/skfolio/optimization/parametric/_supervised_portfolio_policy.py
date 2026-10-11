@@ -81,6 +81,10 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         Units must match the covariance horizon. Training weights/history enforce
         static constraints only; standard predict is disabled with dynamic limits.
 
+    max_turnover : float, optional
+        Limit on sum(abs(target - pre-trade holdings)), without a one-half factor.
+        Requires actual fully invested holdings for each prediction date.
+
     Attributes
     ----------
     coef_ : ndarray of shape (n_characteristics,)
@@ -123,6 +127,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         groups=None,
         linear_constraints=None,
         max_variance: float | None = None,
+        max_turnover: float | None = None,
     ):
         super().__init__(
             characteristics_exposures=characteristics_exposures,
@@ -139,6 +144,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         self.groups = groups
         self.linear_constraints = linear_constraints
         self.max_variance = max_variance
+        self.max_turnover = max_turnover
 
     def fit(
         self,
@@ -168,6 +174,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         self._validate_params()
         if self.max_variance is not None:
             _validate_non_negative_real(self.max_variance, "max_variance")
+        if self.max_turnover is not None:
+            _validate_non_negative_real(self.max_turnover, "max_turnover")
         _validate_non_negative_integer(self.window_size, "window_size")
         if self.window_size < 2:
             raise ValueError("`window_size` must be at least 2.")
@@ -260,7 +268,14 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         return self
 
     def _predict_policy(
-        self, regressor, inputs, projection, covariance=None, max_variance=None
+        self,
+        regressor,
+        inputs,
+        projection,
+        covariance=None,
+        max_variance=None,
+        holdings=None,
+        max_turnover=None,
     ):
         """Predict asset-level deviations and restore the portfolio budget."""
         valid = inputs.holdable.all(axis=1)
@@ -283,11 +298,13 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             proposed,
             covariance=None if covariance is None else covariance[valid],
             max_variance=max_variance,
+            holdings=None if holdings is None else holdings[valid],
+            max_turnover=max_turnover,
         )
         return weights
 
     def predict_weights(
-        self, characteristics: AssetPanel, *, covariance=None
+        self, characteristics: AssetPanel, *, covariance=None, holdings=None
     ) -> pd.DataFrame:
         """Predict allocations from a subsequent characteristic panel.
 
@@ -300,6 +317,10 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             Covariance available at each decision. Shape (t,n,n), or (n,n) to
             explicitly share one estimate. Named matrices are aligned to assets.
             The caller is responsible for using only then-available information.
+        holdings : array-like or DataFrame, optional
+            Actual pre-trade holdings of shape (t,n), after weight drift. A vector
+            is accepted for a single date only; holdings are never broadcast.
+            Named columns are aligned; DataFrame dates must match the panel.
 
         Returns
         -------
@@ -308,11 +329,16 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             characteristics are NaN.
         """
         check_is_fitted(self, "regressor_")
-        covariance, _ = projection_context(
-            self.feature_names_in_, characteristics.observations, covariance=covariance
+        covariance, holdings = projection_context(
+            self.feature_names_in_,
+            characteristics.observations,
+            covariance=covariance,
+            holdings=holdings,
         )
         if self.max_variance is not None and covariance is None:
             raise ValueError("`covariance` is required for a risk limit.")
+        if self.max_turnover is not None and holdings is None:
+            raise ValueError("`holdings` is required for a turnover limit.")
         panel = self._validate_characteristics(characteristics, X=None)
         investment_idx = self._investment_index(panel, self.feature_names_in_)
         if not panel.active_mask[:, investment_idx].all():
@@ -328,6 +354,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
                 self.weight_projection_,
                 covariance=covariance,
                 max_variance=self.max_variance,
+                holdings=holdings,
+                max_turnover=self.max_turnover,
             ),
             index=panel.observations,
             columns=self.feature_names_in_,
@@ -346,6 +374,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         portfolio : Portfolio
             Portfolio using the final static training allocation.
         """
-        if self.max_variance is not None:
-            raise ValueError("Use predict_weights with explicit risk inputs.")
+        if self.max_variance is not None or self.max_turnover is not None:
+            raise ValueError(
+                "Use predict_weights with explicit risk and holdings inputs."
+            )
         return super().predict(X)

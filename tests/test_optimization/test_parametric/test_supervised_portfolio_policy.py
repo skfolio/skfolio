@@ -279,3 +279,22 @@ def test_risk_limit_at_prediction():
         estimator.predict(X)
     with pytest.raises(ValueError, match="infeasible"):
         estimator.predict_weights(future, covariance=10 * np.eye(3))
+
+
+def test_turnover_uses_each_supplied_holdings_vector():
+    X, panel = data()
+    estimator = model(max_turnover=0).fit(X, characteristics=panel)
+    _, future = data(n=4, offset=11)
+    holdings = np.array([[0.5, 0.3, 0.2], [0.2, 0.3, 0.5]] * 2)
+    actual = estimator.predict_weights(future, holdings=holdings)
+    np.testing.assert_allclose(actual, holdings, atol=1e-6)
+    with pytest.raises(ValueError, match="holdings"):
+        estimator.predict_weights(future)
+
+
+def test_conflicting_risk_and_turnover_raise():
+    X, panel = data()
+    estimator = model(max_turnover=0, max_variance=0.34).fit(X, characteristics=panel)
+    _, future = data(n=1, offset=11)
+    with pytest.raises(ValueError, match="infeasible"):
+        estimator.predict_weights(future, covariance=np.eye(3), holdings=[1, 0, 0])
