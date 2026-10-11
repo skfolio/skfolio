@@ -432,3 +432,10 @@ The unconstrained-budget entropy objective with default [0, 1] bounds is
 separable. Compute exp(min(dual - 1, 0)) exactly instead of using a conic solver.
 The original regression now checks machine precision; an extreme-dual test checks
 upper-bound clipping without overflow. Coupled constraints retain the convex path.
+
+CI portability: Ada-BARRONS reference
+-----------------------------------
+Use an independent scalar root solve at each step from the accepted trajectory.
+Check simplex feasibility and relative objective gap (1e-7), then verify adaptive
+barrier and quadratic states at every step. This tests ordering and optimality
+without accumulating solver coordinate errors along a separate reference path.

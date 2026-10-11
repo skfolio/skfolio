@@ -285,12 +285,35 @@ def test_adabarrons_ftrl_matches_joint_constrained_potential(monkeypatch):
             return grad[0] - grad[1]
 
         first = brentq(derivative, 1e-10, 1 - 1e-10)
-        weights = np.array([first, 1 - first])
+        optimum = np.array([first, 1 - first])
         model.partial_fit(row)
-        np.testing.assert_allclose(model.weights_, weights, atol=2e-5, rtol=0)
+        weights = model.weights_.copy()
+        assert np.all(weights > 0)
+        np.testing.assert_allclose(weights.sum(), 1, atol=1e-8, rtol=0)
+
+        def potential(w, barrier=barrier, quadratic=quadratic, linear=linear):
+            return (
+                -barrier @ np.log(w)
+                + 0.1 * (w @ w)
+                + 0.5e-6 * (w @ quadratic @ w)
+                + linear @ w
+            )
+
+        # Conic tolerances bound the objective, not coordinate error. Compare
+        # against the independent scalar optimum for this actual input state.
+        # Updating the reference from the accepted target avoids compounding
+        # solver noise along a second, slightly different 250-step trajectory.
+        reference_value = potential(optimum)
+        gap = potential(weights) - reference_value
+        assert abs(gap) <= 1e-7 * max(1.0, abs(reference_value))
         proximity += 1 - weights
         quadratic += np.outer(gradient, gradient)
         last_gradient = gradient
+        components = model._foco_engine.map.components_
+        np.testing.assert_allclose(
+            components[0]._proximity_sum, proximity, atol=1e-10, rtol=1e-12
+        )
+        np.testing.assert_allclose(components[2]._A, quadratic, atol=1e-10, rtol=1e-12)
     # Convex solutions are checked at the same feasibility tolerance as constraints.
     assert_simplex_trajectory(model.all_weights_, atol=1e-7)
     components = model._foco_engine.map.components_

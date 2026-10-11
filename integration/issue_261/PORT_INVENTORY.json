@@ -501,10 +501,11 @@
       "destination": "tests/test_optimization/test_online/test_estimator.py",
       "changes": [
         "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance.",
-        "The old Ada-BARRONS 85% concentration assertion is replaced by an independent 250-step root solve of the full adaptive constrained potential. Convex feasibility is checked at 1e-7."
+        "The old Ada-BARRONS 85% concentration assertion is replaced by an independent 250-step root solve of the full adaptive constrained potential. Convex feasibility is checked at 1e-7.",
+        "Check Ada-BARRONS per-step objective gap against an independent root solve from the accepted input state, with tight per-step adaptive-state checks, avoiding cross-platform accumulated trajectory error."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "72f076b8226c5d261903c86ade156b832b372628206f35743874d2d618504f2f"
+      "destination_sha256": "383f8257cc58788999f0975ebc435c51ff2bab7694c2f95361e174f5eae14c92"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_initial_wealth.py",
