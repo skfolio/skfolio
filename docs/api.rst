@@ -346,6 +346,7 @@ Classes
 
     optimization.ParametricPortfolioPolicy
     optimization.SupervisedPortfolioPolicy
+    optimization.PortfolioExecution
 
 .. _optimization_ensemble_ref:
 

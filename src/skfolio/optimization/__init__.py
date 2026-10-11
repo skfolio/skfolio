@@ -21,6 +21,7 @@ from skfolio.optimization.ensemble import StackingOptimization
 from skfolio.optimization.naive import EqualWeighted, InverseVolatility, Random
 from skfolio.optimization.parametric import (
     ParametricPortfolioPolicy,
+    PortfolioExecution,
     SupervisedPortfolioPolicy,
 )
 
@@ -39,6 +40,7 @@ __all__ = [
     "NestedClustersOptimization",
     "ObjectiveFunction",
     "ParametricPortfolioPolicy",
+    "PortfolioExecution",
     "Random",
     "RiskBudgeting",
     "SchurComplementary",

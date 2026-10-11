@@ -36,7 +36,8 @@ Next design decisions
    Forward labels belong entirely inside each training fold. Characteristic
    estimators must themselves be causal; this class cannot enforce that for
    arbitrary user-supplied estimators.
-4. Add metadata routing for priors needing auxiliary inputs. Rolling causal
+4. Expand integration tests for additional metadata-dependent priors. Dated
+   metadata now reaches the exact rolling fit window. Rolling causal
    covariance priors are available in sequential evaluation. Explicit covariance
    and pre-trade holdings now support risk/turnover limits. Sequential evaluation
    uses existing Portfolio drift, explicit initial holdings and configurable
@@ -49,8 +50,8 @@ Next design decisions
 Deferred
 --------
 
-Dynamic universes, missing-return policies, joint whole-portfolio regression,
-cost-aware supervised training, cash, metadata-dependent priors, calendar-based
+Unregistered new assets without refitting, unpriced delistings and trading halts,
+joint whole-portfolio regression, cost-aware supervised training, cash borrowing, calendar-based
 rebalance schedules,
 and full Chevalier--Coqueret--Raffinot methodology.
 
@@ -86,7 +87,7 @@ Sequential evaluation now accepts scalar, per-asset or named transaction costs,
 using Portfolio accounting with the same drifted-holdings anchor as turnover.
 The explicit argument overrides portfolio_params; zero disables costs. Costs
 reduce returns but do not alter Portfolio ending-weight drift or train the
-regressor to avoid trading. Exact self-financing cash/fee accounting is deferred.
+regressor to avoid trading. The separate evaluate_execution method now provides explicitly funded cash/fee accounting.
 
 
 Practical workflow follow-up
@@ -98,3 +99,24 @@ prior fits and rebalance intervals such as 5 or 21 observations, while advancing
 characteristics and drifting holdings every observation. Costs are charged only
 on actual trades. The historical example and validation report describe a tested
 fixed-universe workflow and its remaining modeling limitations.
+
+
+Cash and eligibility implementation
+----------------------------------
+
+``evaluate_execution`` returns an explicit PortfolioExecution ledger for long-only
+portfolios, with a post-fee cash target and optional cash returns. It funds fees,
+records actual trades, supports known-asset exits/reentry, and moves to all cash
+when a separate eligibility schedule excludes everything. Known tradable exits
+are assumed; suspended/unpriced positions cannot be silently liquidated. Unknown
+asset names still require registry refitting. Metadata-dependent covariance priors
+receive precisely aligned dated fit inputs.
+
+The combined example ran 100 historical-price periods, 9 rebalances and five
+all-cash periods. Exclusion dates are synthetic test scenarios. Final wealth was
+0.901168 per initial unit and the sum of cost fractions was 0.003634. These numbers
+validate execution and are not evidence of investment performance.
+
+Run from this worktree::
+
+    PYTHONPATH=src python integration/issue_262/cash_execution_example.py --output-dir /tmp/skfolio-cash-execution

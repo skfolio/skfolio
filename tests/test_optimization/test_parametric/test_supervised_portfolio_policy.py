@@ -681,3 +681,179 @@ def test_dynamic_training_uses_decision_eligible_label_assets():
     )
     assert (estimator.target_weights_.iloc[:2, 2] == 0).all()
     np.testing.assert_allclose(estimator.target_weights_.sum(axis=1), 1)
+
+
+def test_cash_ledger_funds_costs_from_initial_cash_exactly():
+    X, panel = data()
+    estimator = model(long_only=True).fit(X, characteristics=panel)
+    _, future = data(n=1, offset=11)
+    returns = pd.DataFrame(
+        [[0, 0, 0]], index=pd.date_range("2020-01-13", periods=1), columns=X.columns
+    )
+    result = estimator.evaluate_execution(
+        returns,
+        future,
+        initial_holdings=[0, 0, 0],
+        initial_cash=1,
+        cash_weight=0.2,
+        transaction_costs=0.01,
+    )
+    capital = 1 / (1 + 0.01 * 0.8)
+    np.testing.assert_allclose(result.ledger.wealth, capital, atol=1e-8)
+    np.testing.assert_allclose(result.ledger.cost, 1 - capital, atol=1e-8)
+    np.testing.assert_allclose(result.targets.sum(axis=1), 0.8, atol=1e-7)
+    np.testing.assert_allclose(result.ledger.target_cash, 0.2, atol=1e-7)
+    np.testing.assert_allclose(
+        result.ending_weights.sum(axis=1) + result.ledger.ending_cash, 1
+    )
+    np.testing.assert_allclose(result.trades.sum(axis=1), 0.8 * capital, atol=1e-8)
+
+
+def test_cash_execution_handles_exits_all_cash_and_reentry():
+    X, panel = data()
+    estimator = model(long_only=True, allow_universe_changes=True, max_turnover=2).fit(
+        X, characteristics=panel
+    )
+    _, future = data(n=4, offset=11)
+    active = np.array(
+        [
+            [True, True, True],
+            [True, True, False],
+            [False, False, False],
+            [True, True, True],
+        ]
+    )
+    dynamic = future
+    returns = pd.DataFrame(
+        np.where(active, 0.01, np.nan),
+        index=pd.date_range("2020-01-13", periods=4),
+        columns=X.columns,
+    )
+    result = estimator.evaluate_execution(
+        returns,
+        dynamic,
+        initial_holdings=[0.3] * 3,
+        initial_cash=0.1,
+        cash_weight=0.1,
+        cash_returns=0.001,
+        transaction_costs=0.001,
+        rebalance_every=10,
+        eligibility=pd.DataFrame(active, index=future.observations, columns=X.columns),
+    )
+    assert result.ledger.rebalanced.all()
+    assert result.trades.iloc[1, 2] < 0
+    np.testing.assert_allclose(result.targets.iloc[2], 0, atol=1e-7)
+    np.testing.assert_allclose(result.ledger.ending_cash.iloc[2], 1)
+    assert result.trades.iloc[3].sum() > 0
+    np.testing.assert_allclose(
+        result.ending_weights.sum(axis=1) + result.ledger.ending_cash, 1
+    )
+    np.testing.assert_allclose(
+        result.ledger.cost, result.trades.abs().sum(axis=1) * 0.001
+    )
+
+
+def test_cash_execution_constraints_use_funded_trades_and_post_fee_weights():
+    X, panel = data()
+    estimator = model(long_only=True, max_variance=0.23, max_turnover=0.85).fit(
+        X, characteristics=panel
+    )
+    _, future = data(n=2, offset=11)
+    returns = pd.DataFrame(
+        [[0.01, 0, 0]] * 2,
+        index=pd.date_range("2020-01-13", periods=2),
+        columns=X.columns,
+    )
+    result = estimator.evaluate_execution(
+        returns,
+        future,
+        initial_holdings=[0, 0, 0],
+        initial_cash=1,
+        cash_weight=0.2,
+        covariance=np.eye(3),
+        transaction_costs=0.01,
+    )
+    assert (result.ledger.turnover <= 0.85 + 1e-6).all()
+    assert ((result.targets**2).sum(axis=1) <= 0.23 + 1e-6).all()
+    assert (result.ledger.cost > 0).all()
+
+
+def test_cash_execution_rejects_unvalued_held_asset_and_unknown_assets():
+    X, panel = data()
+    estimator = model(long_only=True).fit(X, characteristics=panel)
+    _, future = data(n=1, offset=11)
+    returns = pd.DataFrame(
+        [[np.nan, 0, 0]],
+        index=pd.date_range("2020-01-13", periods=1),
+        columns=X.columns,
+    )
+    with pytest.raises(ValueError, match="unobserved return"):
+        estimator.evaluate_execution(
+            returns, future, initial_holdings=[0.3] * 3, initial_cash=0.1
+        )
+    with pytest.raises(ValueError, match="registered asset"):
+        estimator.evaluate_execution(
+            returns.rename(columns={"a": "new"}),
+            future,
+            initial_holdings=[0.3] * 3,
+            initial_cash=0.1,
+        )
+
+
+def test_execution_with_real_factor_prior_and_dated_metadata():
+    from skfolio.prior import TimeSeriesFactorModel
+
+    X, panel = data(n=31)
+    rng = np.random.default_rng(19)
+    X = X + rng.normal(0, 0.01, X.shape)
+    estimator = model(long_only=True, optimizer=EqualWeighted(), max_variance=10).fit(
+        X, characteristics=panel
+    )
+    _, future = data(n=2, offset=31)
+    returns = pd.DataFrame(
+        rng.normal(0, 0.01, (2, 3)),
+        index=pd.date_range("2020-02-02", periods=2),
+        columns=X.columns,
+    )
+    factors = pd.DataFrame(
+        rng.normal(0, 0.01, (40, 1)),
+        index=pd.date_range("2020-01-01", periods=40),
+        columns=["market"],
+    )
+    result = estimator.evaluate_execution(
+        returns,
+        future,
+        initial_holdings=[0.3] * 3,
+        initial_cash=0.1,
+        cash_weight=0.1,
+        prior_estimator=TimeSeriesFactorModel(),
+        prior_fit_params={"factors": factors},
+        covariance_window=20,
+    )
+    assert np.isfinite(result.ledger.wealth).all()
+    np.testing.assert_allclose(
+        result.ending_weights.sum(axis=1) + result.ledger.ending_cash, 1
+    )
+
+
+def test_universe_exit_does_not_silently_relax_turnover_limit():
+    X, panel = data()
+    estimator = model(long_only=True, allow_universe_changes=True, max_turnover=0).fit(
+        X, characteristics=panel
+    )
+    _, future = data(n=1, offset=11)
+    returns = pd.DataFrame(
+        [[0, 0, 0]], index=pd.date_range("2020-01-13", periods=1), columns=X.columns
+    )
+    with pytest.raises(ValueError, match="infeasible"):
+        estimator.evaluate_execution(
+            returns,
+            future,
+            initial_holdings=[0.3] * 3,
+            initial_cash=0.1,
+            cash_weight=0.1,
+            eligibility=pd.DataFrame(
+                [[True, True, False]], index=future.observations, columns=X.columns
+            ),
+        )
+    assert estimator.last_prediction_observation_ == X.index[-1]

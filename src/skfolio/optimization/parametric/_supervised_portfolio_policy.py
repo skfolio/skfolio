@@ -17,6 +17,7 @@ from skfolio.containers import AssetPanel, AssetPanelView
 from skfolio.factor_exposure import BaseFactorExposure
 from skfolio.moments import LedoitWolf
 from skfolio.optimization._base import BaseOptimization
+from skfolio.optimization.parametric._execution import PortfolioExecution
 from skfolio.optimization.parametric._parametric_portfolio_policy import (
     ParametricPortfolioPolicy,
 )
@@ -115,8 +116,9 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
 
     Notes
     -----
-    This initial implementation requires a fixed, active investment universe and
-    finite returns. Characteristic warmup windows are skipped. Prediction on new
+    The registered asset columns are fixed per fit. Eligibility may change when
+    allow_universe_changes is enabled; label windows still require observed returns
+    for each decision-eligible asset. Characteristic warmup windows are skipped. Prediction on new
     characteristics uses repeatable ``predict_weights``. Streaming callers can
     opt into state advancement with ``update_state=True`` and must pass successive,
     non-overlapping panels with the fitted coverage asset names and order.
@@ -186,6 +188,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             if name.endswith("_") and not name.startswith("_"):
                 delattr(self, name)
         self._validate_params()
+        if not isinstance(self.allow_universe_changes, bool):
+            raise ValueError("allow_universe_changes must be a boolean.")
         if self.max_variance is not None:
             _validate_non_negative_real(self.max_variance, "max_variance")
         if self.max_turnover is not None:
@@ -669,4 +673,94 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             portfolios.append(period)
         return MultiPeriodPortfolio(
             portfolios=portfolios, check_observations_order=True, compounded=True
+        )
+
+    def evaluate_execution(
+        self,
+        X: pd.DataFrame,
+        characteristics: AssetPanel,
+        *,
+        initial_holdings,
+        initial_cash,
+        cash_weight=0.05,
+        cash_returns=0.0,
+        transaction_costs=None,
+        covariance=None,
+        prior_estimator=None,
+        prior_fit_params=None,
+        covariance_window=60,
+        rebalance_every=1,
+        eligibility=None,
+    ) -> PortfolioExecution:
+        """Evaluate a long-only strategy with explicit cash and funded fees.
+
+        Parameters
+        ----------
+        X : DataFrame
+            Holding-period returns with the registered asset columns. Decisions
+            precede return dates as in evaluate_sequential. A held asset must have
+            an observed return; unheld assets may have missing returns.
+        characteristics : AssetPanel
+            Daily causal characteristics following the fitted exposure state.
+        initial_holdings : array-like or dict
+            Nonnegative risky-asset fractions of initial wealth.
+        initial_cash : float
+            Initial cash fraction. Together with risky holdings it must sum to one.
+        cash_weight : float, default=0.05
+            Target cash fraction of post-fee wealth. When no assets are eligible,
+            execution holds all cash. Borrowing and short positions are unsupported.
+        cash_returns : float, array-like or Series, default=0.0
+            Cash return per holding period, with no implicit annualization. Series
+            dates must match X.
+        transaction_costs : float, array-like or dict, optional
+            Proportional rates below one, funded through actual trades. Defaults
+            to portfolio_params["transaction_costs"], or zero.
+        covariance : array-like or DataFrame, optional
+            Explicit decision-time covariance, as in predict_weights.
+        prior_estimator : BasePrior, optional
+            Causal risk prior. Defaults to an empirical LedoitWolf prior.
+        prior_fit_params : dict, optional
+            Dated metadata sliced to the covariance history window.
+        covariance_window : int, default=60
+            Maximum history length before dropping incomplete eligible-asset rows.
+            At least two complete historical rows are needed for risk estimation.
+        rebalance_every : int, default=1
+            Number of observations between scheduled trades. Eligibility changes
+            force an additional rebalance, without relaxing turnover limits.
+        eligibility : DataFrame, optional
+            Boolean decision-date/asset schedule, intersected with active_mask.
+            It can exclude all assets and move entirely to cash.
+
+        Returns
+        -------
+        execution : PortfolioExecution
+            Targets, actual trades, ending weights and cash/wealth/cost ledger.
+
+        Notes
+        -----
+        Targets and risk/weight constraints use post-fee wealth. Trades and turnover
+        use pre-trade wealth. Funding is solved iteratively and must reconcile;
+        failure raises without changing the original model. Exit trades assume
+        execution at the known decision valuation. Suspended or untradeable exits
+        must not be represented as ordinary eligibility changes. New named assets
+        require refitting the registry. This method does not use Portfolio's legacy
+        additive cost convention; fees are actually deducted from available cash.
+        """
+        from skfolio.optimization.parametric._execution import evaluate_execution
+
+        return evaluate_execution(
+            self,
+            X,
+            characteristics,
+            initial_holdings=initial_holdings,
+            initial_cash=initial_cash,
+            cash_weight=cash_weight,
+            cash_returns=cash_returns,
+            transaction_costs=transaction_costs,
+            covariance=covariance,
+            prior_estimator=prior_estimator,
+            prior_fit_params=prior_fit_params,
+            covariance_window=covariance_window,
+            rebalance_every=rebalance_every,
+            eligibility=eligibility,
         )

@@ -1113,7 +1113,9 @@ non-overlapping panels with the same coverage asset names and ordering.
 ``predict(X_test)`` instead evaluates the last allocation
 using the standard optimizer interface; it does not rebalance from ``targets``.
 
-This prototype supports a fixed active universe and complete returns. It skips
+By default this prototype uses a fixed active universe. Opt-in eligibility changes
+are supported within the registered columns. Label windows require complete
+returns for decision-eligible assets. The model skips
 training decisions with unavailable characteristics and requires all final
 characteristics to be available. Constraints on the label optimizer are not
 inherited by the regression policy. A separate Euclidean projection enforces
@@ -1181,7 +1183,8 @@ Evaluation uses a separate copy of fitted model state and fresh solver objects.
 It leaves the estimator unchanged on success or failure. Infeasible combinations
 raise rather than relaxing a limit. The helper supports fully invested portfolios
 and finite asset returns strictly above -100 percent. Cash, management fees,
-priors requiring additional metadata and dynamic asset universes remain unsupported.
+unpriced exits and cash borrowing remain unsupported. Use evaluate_execution
+for a funded cash ledger and changing eligibility.
 
 Transaction costs can be a scalar, an asset-aligned vector or a dictionary keyed
 by fitted asset names (omitted names default to zero). An explicit argument
@@ -1211,3 +1214,68 @@ uses bundled equity prices, three yearly model refits, a constrained equal-weigh
 baseline and an execution CSV. Its fixed historical universe is not a
 point-in-time constituent universe, and the example is not evidence of investment
 performance. See ``integration/issue_262/HISTORICAL_VALIDATION.rst`` for the run.
+
+Cash-funded execution and eligibility changes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``evaluate_execution`` is the explicit cash-ledger alternative to
+``evaluate_sequential``. It returns ``PortfolioExecution`` rather than a
+``MultiPeriodPortfolio``. It requires ``long_only=True`` and reconciles actual
+trades, cash, costs and ending wealth. Initial risky holdings plus initial cash
+must sum to one; all-cash initial conditions are supported.
+
+.. code-block:: python
+
+    model.set_params(long_only=True, allow_universe_changes=True)
+    model.fit(X_train, characteristics=characteristics_train)
+    execution = model.evaluate_execution(
+        X_forward_returns,
+        characteristics_at_decisions,
+        initial_holdings={asset: 0.0 for asset in X_train.columns},
+        initial_cash=1.0,
+        cash_weight=0.05,
+        cash_returns=0.00005,  # per observation, not annualized
+        transaction_costs=0.001,
+        rebalance_every=21,
+        eligibility=eligible_at_decisions,
+    )
+    print(execution.ledger)
+
+Target risky weights sum to one minus ``cash_weight`` after fees. Fees are funded
+from actual signed trades, including purchases from initial cash and forced exit
+sales. Risk/weight constraints refer to post-fee portfolio weights; turnover is
+the sum of absolute risky trades divided by pre-trade wealth. Cash transfers are
+not counted a second time. Funding iterates to reconciliation and raises if it
+cannot converge; it never silently borrows cash or relaxes a constraint.
+
+With ``allow_universe_changes=True``, ``active_mask`` controls investability within
+the registered columns. The optional boolean ``eligibility`` DataFrame applies
+additional exclusions and can exclude all assets, unlike AssetPanel's market
+coverage mask. Membership changes force a rebalance even between scheduled dates.
+Costs and turnover limits still apply. When all assets are excluded, the portfolio
+holds cash. Registered assets may leave and re-enter. New names require a refit
+with an expanded registry, because fitted descriptor state and named constraints
+cannot be silently reassigned.
+
+An eligibility exit assumes an executable sale at the known decision valuation.
+It is not a substitute for modeling trading halts or unpriced delistings. Missing
+returns are permitted only for assets with no position. Active assets need known
+characteristics; a held asset with an unknown return raises. Risk priors use only
+eligible assets and require at least two complete past observations; assets with
+insufficient history need explicit covariance or a later eligibility date.
+
+Metadata-dependent priors
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Both evaluation methods accept ``prior_fit_params`` containing dated Series,
+DataFrames or AssetPanels. Values are sliced to precisely the historical return
+rows supplied to each prior fit. Missing or duplicate dates raise; undated arrays
+are rejected. Configure nested sklearn metadata requests on the prior as usual.
+For example, a time-series factor prior receives
+``prior_fit_params={"factors": factor_returns}``. Future factor rows may exist in
+the supplied table but are never passed to an earlier fit.
+
+``integration/issue_262/cash_execution_example.py`` combines historical prices,
+factor metadata, transaction costs, exits, re-entry and five all-cash periods.
+Its eligibility exclusions are synthetic validation scenarios, not claims about
+actual historical tradability.
