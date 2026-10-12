@@ -678,10 +678,6 @@ class BurgMirrorMap(BaseMirrorMap):
         return w / s if s > self.eps else np.ones_like(w) / len(w)
 
 
-# Alias for backward compatibility
-ProdMirrorMap = BurgMirrorMap
-
-
 class LogBarrierMap(DynamicMirrorMap):
     r"""
     Log-barrier potential.
@@ -843,79 +839,6 @@ class AdaptiveMahalanobisMap(DynamicMirrorMap):
         """Update the adaptive potential with the newly observed vector."""
         self._ensure(g.shape[0])
         self._Gsq += g * g
-
-
-class AdaptiveLogBarrierMap(DynamicMirrorMap):
-    """
-    Adaptive log-barrier with gradient-magnitude adaptation.
-
-    .. deprecated::
-        This mirror map is no longer used by any FTRL strategy. For Ada-BARRONS,
-        use :class:`AdaBarronsBarrierMap` instead, which correctly adapts based
-        on weight proximity (1 - w) rather than gradient magnitude |g|.
-        This class is kept for backward compatibility with existing tests.
-
-    ψ(w) = -sum D_i log(w_i), where D accumulates gradient magnitudes |g|.
-    """
-
-    def __init__(self, d: int | None = None, eps: float = 1e-12) -> None:
-        self.eps = eps
-        self._D = np.array([], dtype=float)
-
-    def _ensure(self, d: int) -> None:
-        """Allocate numerical state when the asset dimension is first known."""
-        if self._D.size == 0:
-            self._D = np.zeros(d, dtype=float)
-
-    def ensure_dim(self, d: int) -> None:
-        """Initialize numerical state for the specified asset dimension."""
-        self._ensure(d)
-
-    def update_state(self, g: np.ndarray) -> None:
-        """Update the adaptive potential with the newly observed vector."""
-        self._ensure(g.shape[0])
-        self._D += np.abs(g)
-
-    def grad_psi(self, w: np.ndarray) -> np.ndarray:
-        """Map primal weights into dual coordinates using this potential."""
-        self._ensure(w.shape[0])
-        return -self._D / np.maximum(w, self.eps)
-
-    def grad_psi_star(self, z: np.ndarray) -> np.ndarray:
-        """Map dual coordinates back to primal weights."""
-        self._ensure(z.shape[0])
-        w = np.zeros_like(z)
-        mask = self._D > 0
-        # z should be negative coordinatewise for positive w
-        w[mask] = -self._D[mask] / np.minimum(z[mask], -1e-12)
-        # For D_i=0, assign tiny positive mass; project_geom will normalize
-        w[~mask] = 1e-16
-        return np.clip(w, self.eps, None)
-
-    def _D_after(self, g: np.ndarray) -> np.ndarray:
-        """Compute diagonal curvature including the pending gradient."""
-        self._ensure(g.shape[0])
-        return self._D + np.abs(g)
-
-    def grad_psi_after(self, w: np.ndarray, g: np.ndarray) -> np.ndarray:
-        """Evaluate the primal gradient with the pending adaptive update."""
-        self._ensure(w.shape[0])
-        D_after = self._D_after(g)
-        return -D_after / np.maximum(w, self.eps)
-
-    def grad_psi_star_after(self, z: np.ndarray, g: np.ndarray) -> np.ndarray:
-        """Invert dual coordinates with the pending adaptive update."""
-        self._ensure(z.shape[0])
-        D_after = self._D_after(g)
-        w = np.zeros_like(z)
-        mask = D_after > 0
-        w[mask] = -D_after[mask] / np.minimum(z[mask], -1e-12)
-        w[~mask] = 1e-16
-        return np.clip(w, self.eps, None)
-
-    def project_geom(self, w: np.ndarray) -> np.ndarray:
-        """Apply the domain restrictions of this mirror map."""
-        return w / np.sum(w)
 
 
 class AdaptiveVariationMap(DynamicMirrorMap):
@@ -1480,7 +1403,6 @@ def make_ada_barrons_mirror_map(
     magnitude. You must call the barrier component's `update_state(w)` with
     the weight vector (not gradient) to accumulate proximity statistics:
 
-    - AdaptiveLogBarrierMap: Accumulates gradient magnitude |g| (incorrect for Ada-BARRONS)
     - AdaBarronsBarrierMap: Accumulates weight proximity (1 - w) (specific for Ada-BARRONS)
 
     The full quadratic component's `update_state(g)` should be called with

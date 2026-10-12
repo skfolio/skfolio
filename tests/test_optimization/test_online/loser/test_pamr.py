@@ -17,7 +17,6 @@ def test_pamr_pa_closed_form_projection():
         epsilon=1.0,
         pamr_C=500,
         update_mode="pa",
-        warm_start=False,
     )
     model.fit(X[:1])  # day-1: uniform
     model.partial_fit(X[1:2])  # update with day-2
@@ -46,7 +45,6 @@ def test_pamr_md_gradient_direction_alignment():
         update_mode="md",
         mirror="euclidean",
         learning_rate=0.5,
-        warm_start=False,
     )
     base.fit(X[:1])  # day-1 uniform
     w_prev = base.weights_.copy()
@@ -64,9 +62,7 @@ def test_pamr_md_gradient_direction_alignment():
 
 def test_pamr_param_validation_raises_on_negative_epsilon():
     # epsilon must be >= 0 by parameter constraints
-    model = FollowTheLoser(
-        strategy="pamr", epsilon=-1.0, update_mode="pa", warm_start=False
-    )
+    model = FollowTheLoser(strategy="pamr", epsilon=-1.0, update_mode="pa")
     X = np.array([[0.0, 0.0]], dtype=float)
     with pytest.raises(ValueError):
         # validation should occur during fit

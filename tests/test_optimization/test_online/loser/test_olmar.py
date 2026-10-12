@@ -86,7 +86,6 @@ def test_trading_vs_postupdate_weights_semantics():
         olmar_window=2,
         epsilon=2.0,
         update_mode="pa",
-        warm_start=False,
     )
     model.fit(X_net)
     W = model.all_weights_
@@ -103,7 +102,6 @@ def test_olmar1_day3_is_non_uniform():
         olmar_window=2,
         epsilon=2.0,
         update_mode="pa",
-        warm_start=False,
     )
     model.fit(X)
     W = model.all_weights_
@@ -120,7 +118,6 @@ def test_day3_uniform_when_history_flat():
         olmar_window=2,
         epsilon=2.0,
         update_mode="pa",
-        warm_start=False,
     )
     model.fit(X)
     W = model.all_weights_
@@ -137,7 +134,6 @@ def test_day3_nonuniform_with_nonflat_day2():
         olmar_window=2,
         epsilon=2.0,
         update_mode="pa",
-        warm_start=False,
     )
     model.fit(X)
     W = model.all_weights_
@@ -152,7 +148,6 @@ def test_md_zero_move_when_margin_satisfied():
         olmar_window=1,
         epsilon=0.5,
         update_mode="pa",
-        warm_start=False,
     )
     model_md = FollowTheLoser(
         strategy="olmar",
@@ -162,7 +157,6 @@ def test_md_zero_move_when_margin_satisfied():
         update_mode="md",
         mirror="euclidean",
         learning_rate=0.5,
-        warm_start=False,
     )
     model_pa.fit(X)
     model_md.fit(X)

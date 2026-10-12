@@ -43,7 +43,6 @@ def test_convergence_to_best_asset_under_stationary_env(
         update_mode=ftrl_flag,
         learning_rate=10,
         grad_predictor="last",
-        warm_start=True,
     )
     est.fit(X)
     W = est.all_weights_
@@ -61,14 +60,12 @@ def test_smooth_prediction_accelerates_initial_adaptation():
         update_mode="omd",
         learning_rate=0.3,
         grad_predictor="last",
-        warm_start=False,
     )
     opti = FollowTheWinner(
         strategy=FTWStrategy.EG,
         update_mode="omd",
         learning_rate=0.3,
         grad_predictor="smooth",
-        warm_start=False,
     )
 
     base.fit(X)
@@ -85,14 +82,12 @@ def test_eg_tilde_mixing_with_uniform():
         update_mode="omd",
         learning_rate=0.5,
         eg_tilde=False,
-        warm_start=False,
     )
     mix = FollowTheWinner(
         strategy=FTWStrategy.EG,
         learning_rate=0.5,
         eg_tilde=True,
         eg_tilde_alpha=0.5,
-        warm_start=False,
     )
 
     pure.fit(X)
@@ -127,9 +122,7 @@ def test_management_fees_flip_preference():
 def test_partial_fit_input_and_warnings_on_sample_weight_and_nonpositive_return():
     # partial_fit accepts both individual observations and causal blocks
     X = make_stationary_returns(T=5, gap=0.01, n=2)
-    est = FollowTheWinner(
-        strategy=FTWStrategy.EG, update_mode="omd", learning_rate=0.2, warm_start=False
-    )
+    est = FollowTheWinner(strategy=FTWStrategy.EG, update_mode="omd", learning_rate=0.2)
 
     # sample_weight warning
     with pytest.warns(UserWarning, match="sample_weight is ignored"):
@@ -147,7 +140,6 @@ def test_objective_not_implemented_raises_value_error():
         strategy="INVALID_OBJECTIVE",
         update_mode="omd",
         learning_rate=0.2,
-        warm_start=False,
     )
     with pytest.raises(ValueError, match="INVALID_OBJECTIVE"):
         est.fit(X)
@@ -179,7 +171,6 @@ def test_weights_respect_min_max_and_budget_constraints():
         strategy=FTWStrategy.EG,
         update_mode="ftrl",
         learning_rate=0.2,
-        warm_start=False,
         min_weights=np.array([0.20, 0.0, 0.0]),
         max_weights=np.array([0.8, 0.8, 0.8]),
         budget=1.0,
@@ -192,12 +183,12 @@ def test_weights_respect_min_max_and_budget_constraints():
     assert np.all(W <= 0.8 + 1e-12)
 
 
-def test_warm_start_reset_vs_non_warm_behavior():
-    # When warm_start=False, calling fit twice should not accumulate state
+def test_fit_resets_and_partial_fit_continues():
+    # Calling fit twice should not accumulate state
     X = make_stationary_returns(T=30, gap=0.02, n=2)
 
     est_cold = FollowTheWinner(
-        strategy=FTWStrategy.EG, update_mode="omd", learning_rate=0.2, warm_start=False
+        strategy=FTWStrategy.EG, update_mode="omd", learning_rate=0.2
     )
     est_cold.fit(X)
     W1 = est_cold.all_weights_.copy()
@@ -205,9 +196,9 @@ def test_warm_start_reset_vs_non_warm_behavior():
     W2 = est_cold.all_weights_.copy()
     np.testing.assert_allclose(W1, W2, atol=1e-12, rtol=0)
 
-    # The legacy warm_start flag no longer changes the reset contract.
+    # A refitted estimator can continue learning with partial_fit.
     est_warm = FollowTheWinner(
-        strategy=FTWStrategy.EG, update_mode="omd", learning_rate=0.2, warm_start=True
+        strategy=FTWStrategy.EG, update_mode="omd", learning_rate=0.2
     )
     est_warm.fit(X)
     W3 = est_warm.all_weights_.copy()

@@ -83,7 +83,6 @@ class OnlineParameterConstraintsMixin:
     """Shared parameter validation for online portfolio estimators."""
 
     _parameter_constraints: ClassVar[dict] = {
-        "warm_start": ["boolean"],
         "store_weights": ["boolean"],
         "initial_weights": [Real, dict, "array-like", None],
         # initial_wealth accepts: scalar float > 0, array of floats summing > 0, or None

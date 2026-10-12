@@ -38,10 +38,11 @@
       "destination": "src/skfolio/optimization/online/_base.py",
       "changes": [
         "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions.",
-        "Public initial allocations support named/scalar inputs. Statistical state and execution holdings remain separate; conversion no longer clips returns."
+        "Public initial allocations support named/scalar inputs. Statistical state and execution holdings remain separate; conversion no longer clips returns.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "3fbc2726c5145b61f75ae80d610690d64f28a745",
-      "destination_sha256": "f29de0ae99763c70a88ff74d45cac53c3a5ef0af9464badcfe6d68f02798c895"
+      "destination_sha256": "f86bd66898f322bb1aff62d726bc59a06808921befcefa7eb13ada9da6a3b41a"
     },
     {
       "source_path": "src/skfolio/optimization/online/_benchmark.py",
@@ -105,10 +106,11 @@
       "destination": "src/skfolio/optimization/online/_loser.py",
       "changes": [
         "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions.",
-        "Inactive predictors still enforce refreshed constraints. MD initializes from the explicit target; diagnostic loss accounts for residual cash."
+        "Inactive predictors still enforce refreshed constraints. MD initializes from the explicit target; diagnostic loss accounts for residual cash.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "3fbc2726c5145b61f75ae80d610690d64f28a745",
-      "destination_sha256": "bc3bf0784c307af6daa89403018d06ab637d47b9e0d9fbf48abfa33436081ee9"
+      "destination_sha256": "1e7035ffade4516e25410f17582ab9cee8a530ff51dda8e2807fe9092dbef003"
     },
     {
       "source_path": "src/skfolio/optimization/online/_mirror_maps.py",
@@ -120,10 +122,11 @@
         "Preserve Carlo's original mirror-map classes, adaptive state and composition solver.",
         "Reuse reviewed type annotations and missing method docstrings from the reference integration.",
         "Use the stored entropy-map presence check for the Tsallis entropic limit; no change to the numerical formula.",
-        "Make Burg examples self-contained and assert normalization, positivity and stationarity; describe the actual brentq solver."
+        "Make Burg examples self-contained and assert normalization, positivity and stationarity; describe the actual brentq solver.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "e174c0a4075771df6a442cce5e449eddc5164f33705a646bd7dfce506815a53e"
+      "destination_sha256": "60615f4573c8c9f0789d74a6b2f956045869112032b508e65c503e892dcb6b7a"
     },
     {
       "source_path": "src/skfolio/optimization/online/_mixins.py",
@@ -134,10 +137,11 @@
       "changes": [
         "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded.",
         "Named initial and previous weights supported; no recovery or universe extension parameters.",
-        "Review cleanup: descriptive internal benchmark names and shared vectorized wealth calculation; remove prefix fit_dynamic, duplicate regret enum and legacy dynamic modes. Retain static, universal dynamic and worst-case regret."
+        "Review cleanup: descriptive internal benchmark names and shared vectorized wealth calculation; remove prefix fit_dynamic, duplicate regret enum and legacy dynamic modes. Retain static, universal dynamic and worst-case regret.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "798e6e0270f37424441290601e7fec6170c10b853827a1da97b9ab759fc92a8b"
+      "destination_sha256": "9365eead6851745753afa54a7ce7a91edf432620d0b2a215d6ef1b4f714e6a32"
     },
     {
       "source_path": "src/skfolio/optimization/online/_prediction.py",
@@ -218,10 +222,11 @@
       "destination": "src/skfolio/optimization/online/_winner.py",
       "changes": [
         "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions.",
-        "Uses the native dual-vector projection path. Diagnostic loss accounts for residual cash."
+        "Uses the native dual-vector projection path. Diagnostic loss accounts for residual cash.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "3fbc2726c5145b61f75ae80d610690d64f28a745",
-      "destination_sha256": "4003e46bed0a0e494171cd0431f5b8654ff31faa4c2e0de471dccaabc2e8d596"
+      "destination_sha256": "4c4782f27270b953ae7b6790834ad8be2c44cf35f34f1caaa39135c08b177ab3"
     },
     {
       "source_path": "tests/test_optimization/test_online/base.py",
@@ -232,10 +237,11 @@
       "changes": [
         "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance.",
         "Renamed base.py to test_base.py so pytest collects the original base-estimator tests.",
-        "Prediction-copy tests inspect optimizer targets, history and gradient state rather than removed account wealth."
+        "Prediction-copy tests inspect optimizer targets, history and gradient state rather than removed account wealth.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "fc227bb1dcfcbc5c3b378aa1d8d979f410504921fc953011f68dab8fc7571ad6"
+      "destination_sha256": "c95719f3db034f7901843efc155a5c8e451bd905b8091c96d38a67641d91c600"
     },
     {
       "source_path": "tests/test_optimization/test_online/conftest.py",
@@ -256,10 +262,11 @@
       "status": "adapted",
       "destination": "tests/test_optimization/test_online/loser/test_cwmr.py",
       "changes": [
-        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance."
+        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "073e5372c7450282aaa4cf7641549be286cfb48cf17aa42d4f7948e690ceb604"
+      "destination_sha256": "511c24a0d266a58f80246aeecb937a34788838cd0a55336d0f390ae2b4c71a54"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_cwmr_clip.py",
@@ -268,10 +275,11 @@
       "status": "adapted",
       "destination": "tests/test_optimization/test_online/loser/test_cwmr_clip.py",
       "changes": [
-        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
+        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "40dae57d222cb22307f8b2749826081000441ef7941e42fabe502819137897bd"
+      "destination_sha256": "161f440879c31cd72e4460d361ca602fba2e9c257118f9f871705310152fe53c"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_family_modes.py",
@@ -280,10 +288,11 @@
       "status": "adapted",
       "destination": "tests/test_optimization/test_online/loser/test_family_modes.py",
       "changes": [
-        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
+        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "264194a0438fc27da9e3b312af56a3eca02675dfde54004d78e26b683ddab345"
+      "destination_sha256": "66a6eb86561e2865b6ec89f7d14df8d413b916bb8e244bf9b0aa8f40f416276a"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_olmar.py",
@@ -293,10 +302,11 @@
       "destination": "tests/test_optimization/test_online/loser/test_olmar.py",
       "changes": [
         "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance.",
-        "The two-price PA reference includes the current-price unit term and one observed relative."
+        "The two-price PA reference includes the current-price unit term and one observed relative.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "4b1f836538df63b181ae26e7c564907066a798738b6009290721b6c0a5ba74f9"
+      "destination_sha256": "88feb6264516961320cc9bd7072d12941c47e19fb38a27f7f54b3b7b16f9f645"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_olmar_pa_vs_md.py",
@@ -306,10 +316,11 @@
       "destination": "tests/test_optimization/test_online/loser/test_olmar_pa_vs_md.py",
       "changes": [
         "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance.",
-        "First-active-step PA/MD comparisons now use independent price-level forecasts and interior targets so clipping cannot mask stale indices."
+        "First-active-step PA/MD comparisons now use independent price-level forecasts and interior targets so clipping cannot mask stale indices.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "3c6a9f45789da31807347d08d8c60f92c2d9a570855af6a180ab03699c85be7d"
+      "destination_sha256": "1262555a2eb481fb68bce27d554389b5dcd76908cdbd1891664be4f79487945e"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_pamr.py",
@@ -318,10 +329,11 @@
       "status": "adapted",
       "destination": "tests/test_optimization/test_online/loser/test_pamr.py",
       "changes": [
-        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance."
+        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "fa89f3a58e4bc98066a343b68d78bee6a4b04d255775e2aba9feadeb7933f271"
+      "destination_sha256": "4f55af333dea97ec9a20f52a8e12a166d6bfdee1df4ed1e08612c6f9d2183d88"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_pamr_edgecases.py",
@@ -343,10 +355,11 @@
       "destination": "tests/test_optimization/test_online/loser/test_pamr_pa_vs_md.py",
       "changes": [
         "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance.",
-        "PA/MD comparisons cover all three slack variants with nonuniform initial targets and interior expected allocations."
+        "PA/MD comparisons cover all three slack variants with nonuniform initial targets and interior expected allocations.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "d10be4129410865448801c51017936ad6f8321322e2b75b69ba4651f6d61a8c3"
+      "destination_sha256": "04c70af15b727d7eb181004934da69571eeeb94ab88d96d70e350eee0de032d6"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_rmr.py",
@@ -355,10 +368,11 @@
       "status": "adapted",
       "destination": "tests/test_optimization/test_online/loser/test_rmr.py",
       "changes": [
-        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance."
+        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "778d799537845e6c92db97eb374bf582abca53216f25c0b8b1ef9e62280a2e77"
+      "destination_sha256": "87758ec441b1204f06d8eae0d4e30bc4a34b822ce90158722476e96022c09495"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_transaction_costs.py",
@@ -367,10 +381,11 @@
       "status": "adapted",
       "destination": "tests/test_optimization/test_online/loser/test_transaction_costs.py",
       "changes": [
-        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance."
+        "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "c0499fafae0ba849ded7b1d7cd58c42e399746a7682450c8f9d90d1ecdf43d7b"
+      "destination_sha256": "5cd3ee6687a1164282eda67e18c5a38a23d4ca2a4cde17fa570918db9ee68860"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_turnover_modes_loser.py",
@@ -391,9 +406,10 @@
       "status": "adapted",
       "destination": "tests/test_optimization/test_online/mirror_maps/test_mirror_maps.py",
       "changes": [
-        "Original mirror-map tests with reference-branch lint/format cleanup, now runnable with the engine present."
+        "Original mirror-map tests with reference-branch lint/format cleanup, now runnable with the engine present.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
-      "destination_sha256": "e32ca5866bcdabfd142463433758e09e045d7cf27518e658d0bcc59104338ab7",
+      "destination_sha256": "44d410edebdb96192703d21dc1f574b1c81669523d0a0284b0422a745a788af8",
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2"
     },
     {
@@ -418,10 +434,11 @@
       "changes": [
         "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics.",
         "Constant comparator uses CLARABEL instead of the often-unconverged multiplicative iteration. Dynamic solver errors propagate. Cash is included; aggregation and path parameters are validated.",
-        "Review cleanup: descriptive internal benchmark names and shared vectorized wealth calculation; remove prefix fit_dynamic, duplicate regret enum and legacy dynamic modes. Retain static, universal dynamic and worst-case regret."
+        "Review cleanup: descriptive internal benchmark names and shared vectorized wealth calculation; remove prefix fit_dynamic, duplicate regret enum and legacy dynamic modes. Retain static, universal dynamic and worst-case regret.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "b795008cf74bba97b89799aa15a9d9b5c7673eeb219adb9cc5f4d9294593a095"
+      "destination_sha256": "0fbc04d1823373b5f17a031fa6ce39738a78ea5d34ece7e02bbf4ded4ad5cc7a"
     },
     {
       "source_path": "tests/test_optimization/test_online/regret/test_regret_curves.py",
@@ -431,10 +448,11 @@
       "destination": "tests/test_optimization/test_online/regret/test_regret_curves.py",
       "changes": [
         "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics.",
-        "Review cleanup: descriptive internal benchmark names and shared vectorized wealth calculation; remove prefix fit_dynamic, duplicate regret enum and legacy dynamic modes. Retain static, universal dynamic and worst-case regret."
+        "Review cleanup: descriptive internal benchmark names and shared vectorized wealth calculation; remove prefix fit_dynamic, duplicate regret enum and legacy dynamic modes. Retain static, universal dynamic and worst-case regret.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "b9e21b566a6678c7975e748f0312476e9a923a72065b9fc2e1702abb4e94587d"
+      "destination_sha256": "bde605ca9fdb02ae8f7b2c0f2dec7393fe079027fd35909ff4f720cfe67917f2"
     },
     {
       "source_path": "tests/test_optimization/test_online/regret/test_regret_dynamic.py",
@@ -444,10 +462,11 @@
       "destination": "tests/test_optimization/test_online/regret/test_regret_dynamic.py",
       "changes": [
         "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics.",
-        "Review cleanup: descriptive internal benchmark names and shared vectorized wealth calculation; remove prefix fit_dynamic, duplicate regret enum and legacy dynamic modes. Retain static, universal dynamic and worst-case regret."
+        "Review cleanup: descriptive internal benchmark names and shared vectorized wealth calculation; remove prefix fit_dynamic, duplicate regret enum and legacy dynamic modes. Retain static, universal dynamic and worst-case regret.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "6c5355e0fa3afd90d7966f8641bd43c4b6ba8815524bba593b850e92d8ad82eb"
+      "destination_sha256": "c3cdbd64751aca8fce52a19057b0f2b551d864e3eaff9de428ad7a38e068fe32"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_auto_learning_rate.py",
@@ -510,10 +529,11 @@
       "changes": [
         "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance.",
         "The old Ada-BARRONS 85% concentration assertion is replaced by an independent 250-step root solve of the full adaptive constrained potential. Convex feasibility is checked at 1e-7.",
-        "Check Ada-BARRONS per-step objective gap against an independent root solve from the accepted input state, with tight per-step adaptive-state checks, avoiding cross-platform accumulated trajectory error."
+        "Check Ada-BARRONS per-step objective gap against an independent root solve from the accepted input state, with tight per-step adaptive-state checks, avoiding cross-platform accumulated trajectory error.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "383f8257cc58788999f0975ebc435c51ff2bab7694c2f95361e174f5eae14c92"
+      "destination_sha256": "f9c1fe57a0bb4e834aa049647dbf2292ade5ab11537cee2087fc4a5f5694f60c"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_initial_wealth.py",
@@ -580,9 +600,10 @@
       "status": "adapted",
       "destination": "tests/test_optimization/test_online/winner/test_foco_engine.py",
       "changes": [
-        "Original engine tests with reference-branch lint/format cleanup; no estimator family dependencies."
+        "Original engine tests with reference-branch lint/format cleanup; no estimator family dependencies.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
-      "destination_sha256": "e81573e2a43e0199cec3699958a05a8a065d28128edb57633c575cc940b97db3",
+      "destination_sha256": "c1cf0a7964eb9040060458285a7f6460949ee6a57b966c448e0063ec6b5b9391",
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2"
     },
     {
@@ -592,10 +613,11 @@
       "status": "adapted",
       "destination": "tests/test_optimization/test_online/winner/test_winner_estimator.py",
       "changes": [
-        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
+        "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions.",
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
       "adaptation_reference": "3fbc2726c5145b61f75ae80d610690d64f28a745",
-      "destination_sha256": "a3f60c6cd987839c5aa9d1de799bc514d76709ff113d4fb2be11f4dadeb09836"
+      "destination_sha256": "eabb0bee6895622373c0004da1a975e19c574d0256ebedeb0a85be4a06049673"
     }
   ],
   "added_tests": [

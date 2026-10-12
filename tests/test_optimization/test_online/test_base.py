@@ -1,4 +1,4 @@
-"""Tests for OnlinePortfolioSelection base class: predict, fit_predict, predict_online.
+"""Tests for BaseOnlineOptimization base class: predict, fit_predict, predict_online.
 
 Uses FollowTheWinner(strategy='eg') as the lightest concrete subclass.
 Structured in TDD order: happy paths first, edge cases second.
@@ -57,7 +57,7 @@ class TestPredict:
 
 
 class TestFitPredict:
-    """Tests for the OnlinePortfolioSelection.fit_predict override."""
+    """Tests for the BaseOnlineOptimization.fit_predict override."""
 
     def test_returns_mpp(self, estimator, X_synthetic):
         result = estimator.fit_predict(X_synthetic)
@@ -90,7 +90,7 @@ class TestFitPredict:
 
 
 class TestPredictOnline:
-    """Tests for the OnlinePortfolioSelection.predict_online method."""
+    """Tests for the BaseOnlineOptimization.predict_online method."""
 
     def test_returns_mpp(self, estimator, X_synthetic):
         estimator.fit(X_synthetic[:10])

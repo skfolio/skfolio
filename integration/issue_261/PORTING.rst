@@ -473,3 +473,22 @@ Calls with long argument lists use explicit keywords across the online engine,
 shared constraint callers and their tests. User documentation describes behavior;
 source credits and this inventory retain provenance. Unsupported empirical
 performance claims have been removed from the learning-rate documentation.
+
+Review follow-up: obsolete compatibility surface
+------------------------------------------------
+
+Removed the unused warm_start constructor parameter from the private families
+and base. fit still resets and partial_fit still continues. Removed the
+OnlinePortfolioSelection and ProdMirrorMap aliases, the deprecated
+AdaptiveLogBarrierMap, and the CWMR properties that existed only for tests.
+CWMR tests now inspect the strategy state directly.
+
+This is an API-removal commit, not a purely cosmetic refactor: callers using
+those names or warm_start now fail. Retained algorithm formulas are unchanged.
+Three tests dedicated to the retired map and its two native-geometry cases are
+removed. The mixed AdaGrad/barrier engine test now uses AdaBarronsBarrierMap,
+matching its stated purpose; its numerical path therefore changes. Reset and
+continuation assertions are retained without the inert parameter.
+
+Validation for this follow-up is delegated to CI. Local checks are limited to
+syntax, lint, formatting, type checks and reference searches. No push performed.

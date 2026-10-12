@@ -3,7 +3,7 @@ import pytest
 
 from skfolio.optimization.online._foco import FirstOrderOCO
 from skfolio.optimization.online._mirror_maps import (
-    AdaptiveLogBarrierMap,
+    AdaBarronsBarrierMap,
     AdaptiveMahalanobisMap,
     EntropyMirrorMap,
     EuclideanMirrorMap,
@@ -225,7 +225,7 @@ def test_dynamic_mirror_maps_update_internals():
     assert move_ad <= move_eu + 1e-12
 
     # AdaBARRONS: keep positivity and normalization even with extreme grads
-    alb = AdaptiveLogBarrierMap(eps=1e-12)
+    alb = AdaBarronsBarrierMap(eps=1e-12)
     proj = AutoProjector(ProjectionConfig(lower=0.0, upper=1.0, budget=1.0))
     ftrl_alb = FirstOrderOCO(mirror_map=alb, projector=proj, eta=0.5, mode="ftrl")
     w = ftrl_alb.step(np.array([-10.0, -10.0, -10.0]))  # adversarial sign

@@ -104,7 +104,6 @@ class TestOLMARModeEquivalence:
                 transaction_costs=0.0,
                 management_fees=0.0,
                 apply_fees_to_phi=False,
-                warm_start=False,
             )
             model.fit(X)
 
@@ -153,7 +152,6 @@ class TestOLMARModeEquivalence:
                 transaction_costs=0.0,
                 management_fees=0.0,
                 apply_fees_to_phi=False,
-                warm_start=False,
                 **constraints,
             )
             model_pa.fit(X)
@@ -171,7 +169,6 @@ class TestOLMARModeEquivalence:
                 transaction_costs=0.0,
                 management_fees=0.0,
                 apply_fees_to_phi=False,
-                warm_start=False,
                 **constraints,
             )
             model_md.fit(X)
@@ -225,7 +222,6 @@ class TestOLMARModeEquivalence:
                 transaction_costs=0.0,
                 management_fees=0.0,
                 apply_fees_to_phi=False,
-                warm_start=False,
             )
             if update_mode == "md":
                 kwargs["learning_rate"] = 1.0
@@ -250,7 +246,6 @@ class TestOLMARModeEquivalence:
                 transaction_costs=0.0,
                 management_fees=0.0,
                 apply_fees_to_phi=False,
-                warm_start=False,
             )
             if update_mode == "md":
                 kwargs["learning_rate"] = 1.0

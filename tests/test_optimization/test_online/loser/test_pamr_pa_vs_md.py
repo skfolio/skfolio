@@ -63,7 +63,6 @@ class TestPAMRModeEquivalence:
                 learning_rate=1.0,
                 transaction_costs=0.0,
                 management_fees=0.0,
-                warm_start=False,
             )
             model.partial_fit(X_single)
 
@@ -102,7 +101,6 @@ class TestPAMRModeEquivalence:
             update_mode="pa",
             transaction_costs=0.0,
             management_fees=0.0,
-            warm_start=False,
         )
         model_pa.fit(X)
         weights_pa_final = model_pa.weights_.copy()
@@ -126,7 +124,6 @@ class TestPAMRModeEquivalence:
                 mirror="euclidean",
                 transaction_costs=0.0,
                 management_fees=0.0,
-                warm_start=False,
             )
             model_md.fit(X)
             weights_md_final = model_md.weights_.copy()
@@ -213,7 +210,6 @@ class TestPAMRModeEquivalence:
                 update_mode="pa",
                 transaction_costs=0.0,
                 management_fees=0.0,
-                warm_start=False,
                 **constraints,
             )
             model_pa.partial_fit(X_single)
@@ -229,7 +225,6 @@ class TestPAMRModeEquivalence:
                 mirror="euclidean",
                 transaction_costs=0.0,
                 management_fees=0.0,
-                warm_start=False,
                 **constraints,
             )
             model_md.partial_fit(X_single)
@@ -303,7 +298,6 @@ class TestPAMRModeEquivalence:
                 update_mode="pa",
                 transaction_costs=0.0,
                 management_fees=0.0,
-                warm_start=False,
             )
             model_pa.partial_fit(X_single)
             weights_pa = model_pa.weights_.copy()
@@ -319,7 +313,6 @@ class TestPAMRModeEquivalence:
                 mirror="euclidean",
                 transaction_costs=0.0,
                 management_fees=0.0,
-                warm_start=False,
             )
             model_md.partial_fit(X_single)
             weights_md = model_md.weights_.copy()

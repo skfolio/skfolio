@@ -5,7 +5,6 @@ from scipy.stats import dirichlet
 
 from skfolio.optimization.online._foco import FirstOrderOCO
 from skfolio.optimization.online._mirror_maps import (
-    AdaptiveLogBarrierMap,
     AdaptiveMahalanobisMap,
     AdaptiveVariationMap,
     BurgMirrorMap,
@@ -69,7 +68,7 @@ def get_map_domain(map_obj):
     """Determine domain of mirror map."""
     if isinstance(map_obj, EntropyMirrorMap | TsallisMirrorMap):
         return "simplex"
-    elif isinstance(map_obj, LogBarrierMap | AdaptiveLogBarrierMap):
+    elif isinstance(map_obj, LogBarrierMap):
         return "orthant"
     else:
         return "unconstrained"
@@ -92,7 +91,6 @@ def simulate_adaptive_updates(map_obj, n=3, num_updates=10):
         LogBarrierMap,
         # Skip Tsallis q<1 as it's not convex, q=1 is entropy limit
         AdaptiveMahalanobisMap,
-        # AdaptiveLogBarrierMap needs updates - test separately
     ],
 )
 def test_hessian_positive_definite(mirror_map_cls):
@@ -120,22 +118,6 @@ def test_hessian_positive_definite(mirror_map_cls):
     )
 
 
-def test_adaptive_log_barrier_hessian():
-    """Test AdaptiveLogBarrierMap Hessian after updates."""
-    n = 3
-    map_obj = AdaptiveLogBarrierMap(n, eps=1e-12)
-    x = sample_interior_orthant(n, 1)[0]
-
-    # Simulate updates to make _D > 0
-    simulate_adaptive_updates(map_obj, n)
-
-    def psi(x):
-        return map_obj.grad_psi(x)
-
-    J = finite_diff_jacobian(psi, x)
-    assert is_positive_definite(J), "AdaptiveLogBarrier should be convex after updates"
-
-
 # Test essential smoothness: ||grad_psi(x)|| → ∞ as x → boundary
 @pytest.mark.parametrize(
     "mirror_map_cls, domain",
@@ -143,7 +125,6 @@ def test_adaptive_log_barrier_hessian():
         (EntropyMirrorMap, "simplex"),
         (LogBarrierMap, "orthant"),
         # Skip Tsallis as q<1 is not strictly convex, q=1 is entropy
-        # AdaptiveLogBarrierMap tested separately after updates
     ],
 )
 def test_essential_smoothness(mirror_map_cls, domain):
@@ -175,28 +156,6 @@ def test_essential_smoothness(mirror_map_cls, domain):
         assert norm_near_zero > norm_interior + 1e5, (
             "Gradient should blow up as w_i → 0+ for barrier"
         )
-
-
-def test_adaptive_log_barrier_smoothness():
-    """Test AdaptiveLogBarrierMap smoothness after updates."""
-    n = 3
-    map_obj = AdaptiveLogBarrierMap(n, eps=1e-12)
-
-    # Simulate updates
-    simulate_adaptive_updates(map_obj, n)
-
-    x_interior = sample_interior_orthant(n, 1)[0]
-    grad_interior = map_obj.grad_psi(x_interior)
-    norm_interior = np.linalg.norm(grad_interior)
-
-    x_near_zero = x_interior.copy()
-    x_near_zero[0] = 1e-10
-    grad_near_zero = map_obj.grad_psi(x_near_zero)
-    norm_near_zero = np.linalg.norm(grad_near_zero)
-
-    assert norm_near_zero > norm_interior + 1e5, (
-        "AdaptiveLogBarrier gradient should blow up near boundary after updates"
-    )
 
 
 # Test invertibility: compositions ≈ identity
@@ -317,20 +276,6 @@ def test_adaptive_mahalanobis():
 
     J = finite_diff_jacobian(psi, x)
     assert is_positive_definite(J)
-
-
-def test_adaptive_log_barrier():
-    n = 3
-    map_obj = AdaptiveLogBarrierMap(n, eps=1e-12)
-    x = sample_interior_orthant(n, 1)[0]
-
-    # Simulate updates
-    simulate_adaptive_updates(map_obj, n)
-
-    # Test composition
-    psi_x = map_obj.grad_psi(x)
-    x_rec = map_obj.grad_psi_star(psi_x)
-    assert_allclose(x_rec, x, atol=1e-8, rtol=0)
 
 
 # Test Tsallis for q=1 (entropy limit)

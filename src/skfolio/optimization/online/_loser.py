@@ -174,8 +174,6 @@ class FollowTheLoser(BaseOnlineOptimization):
 
         Only used with ``update_mode="md"``.
 
-    warm_start : bool, default=True
-        Legacy compatibility parameter. ``fit`` always resets; use ``partial_fit`` to continue.
 
     initial_weights : array-like of shape (n_assets,) | None, default=None
         Initial portfolio weights. If None, uses uniform weights (1/n_assets).
@@ -325,7 +323,6 @@ class FollowTheLoser(BaseOnlineOptimization):
         learning_rate: float | Callable[[int], float] = 1.0,
         apply_fees_to_phi: bool = True,
         mirror: Literal["euclidean", "entropy"] = "euclidean",
-        warm_start: bool = True,
         store_weights: bool = True,
         initial_weights: npt.ArrayLike | None = None,
         initial_wealth: float | npt.ArrayLike | None = None,
@@ -349,7 +346,6 @@ class FollowTheLoser(BaseOnlineOptimization):
         portfolio_params: dict | None = None,
     ) -> None:
         super().__init__(
-            warm_start=warm_start,
             store_weights=store_weights,
             initial_weights=initial_weights,
             initial_wealth=initial_wealth,
@@ -652,20 +648,6 @@ class FollowTheLoser(BaseOnlineOptimization):
         """Compute realized loss for the period."""
         final_return = 1.0 + float(np.dot(trade_w, x_t - 1.0))
         return -np.log(max(final_return, CLIP_EPSILON))
-
-    @property
-    def _cwmr_Sdiag(self) -> np.ndarray | None:
-        """Expose CWMR diagonal covariance for backward compatibility with tests."""
-        if self.strategy == FTLStrategy.CWMR and self._strategy_impl:
-            return getattr(self._strategy_impl, "_Sdiag", None)
-        return None
-
-    @property
-    def _cwmr_mu(self) -> np.ndarray | None:
-        """Expose CWMR mean for backward compatibility with tests."""
-        if self.strategy == FTLStrategy.CWMR and self._strategy_impl:
-            return getattr(self._strategy_impl, "_mu", None)
-        return None
 
     def _update_one(self, x_t_gross: np.ndarray) -> None:
         """Update the mean-reversion strategy with one validated observation."""

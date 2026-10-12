@@ -52,7 +52,6 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
     def __init__(
         self,
         *,
-        warm_start: bool = True,
         store_weights: bool = True,
         initial_weights: npt.ArrayLike | None = None,
         initial_wealth: float | npt.ArrayLike | None = None,
@@ -82,7 +81,7 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
             fallback=fallback,
             raise_on_failure=raise_on_failure,
         )
-        self.warm_start = warm_start
+
         self.store_weights = store_weights
         self.initial_weights = initial_weights
         self.initial_wealth = initial_wealth
@@ -420,8 +419,7 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
     ) -> BaseOnlineOptimization:
         """Reset learned state and process observations causally.
 
-        ``warm_start`` is temporarily accepted for source compatibility but no
-        longer controls this method. Use ``partial_fit`` to continue a stream.
+        Use ``partial_fit`` to continue a stream without resetting state.
         """
         self._reset_state_for_fit()
         with self._warmup_context():
@@ -531,7 +529,3 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
                 "A previous update failed; call fit to reset before reuse"
             )
         return _continue_online_predict(deepcopy(self), X, y, refit_last=False)
-
-
-# Temporary compatibility alias for Carlo's imports and downstream experiments.
-OnlinePortfolioSelection = BaseOnlineOptimization

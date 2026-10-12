@@ -15,7 +15,7 @@ def test_worst_case_dynamic_nonnegativity():
     R = _iid_relatives(T=T, n=n, seed=1)
     X = R - 1.0
 
-    est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate=0.1, warm_start=False)
+    est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate=0.1)
     rd = regret(
         estimator=est, X=X, regret_type=RegretType.DYNAMIC_WORST_CASE, average=False
     )
@@ -29,13 +29,11 @@ def test_universal_dynamic_pt_zero_equals_static():
     R = _iid_relatives(T=T, n=n, seed=2)
     X = R - 1.0
 
-    est = FollowTheWinner(strategy=FTWStrategy.OGD, learning_rate=0.1, warm_start=False)
+    est = FollowTheWinner(strategy=FTWStrategy.OGD, learning_rate=0.1)
 
     r_static = regret(estimator=est, X=X, regret_type=RegretType.STATIC, average=False)
     r_univ_pt0 = regret(
-        estimator=FollowTheWinner(
-            strategy=FTWStrategy.OGD, learning_rate=0.1, warm_start=False
-        ),
+        estimator=FollowTheWinner(strategy=FTWStrategy.OGD, learning_rate=0.1),
         X=X,
         regret_type=RegretType.DYNAMIC_UNIVERSAL,
         dynamic_config={"path_length": 0.0},  # reduces to static comparator
@@ -53,7 +51,7 @@ def test_universal_dynamic_monotonic_in_pt():
     T, n = 80, 4
     R = _iid_relatives(T=T, n=n, seed=3)
     X = R - 1.0
-    est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate=0.05, warm_start=False)
+    est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate=0.05)
 
     PTs = [
         0.0,
@@ -78,9 +76,7 @@ def test_universal_dynamic_monotonic_in_pt():
 
     # Compare with worst-case dynamic regret
     r_wc = regret(
-        estimator=FollowTheWinner(
-            strategy=FTWStrategy.EG, learning_rate=0.05, warm_start=False
-        ),
+        estimator=FollowTheWinner(strategy=FTWStrategy.EG, learning_rate=0.05),
         X=X,
         regret_type=RegretType.DYNAMIC_WORST_CASE,
     )

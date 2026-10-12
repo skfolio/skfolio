@@ -74,24 +74,20 @@ def test_smooth_prediction(X_small):
     )
 
 
-def test_warm_start_and_initial_weights(X_small_single):
+def test_initial_weights_reset_and_continuation(X_small_single):
     n = X_small_single.shape[1]
     init = np.random.rand(n)
     init /= np.sum(init)
 
-    # With warm_start=False, weights should reset to a deterministic state
-    est_no_warm = FollowTheWinner(
-        strategy=FTWStrategy.EG, initial_weights=init, warm_start=False
-    )
+    # fit resets to a deterministic state
+    est_no_warm = FollowTheWinner(strategy=FTWStrategy.EG, initial_weights=init)
     est_no_warm.partial_fit(X_small_single)  # First fit uses init
     first_weights = est_no_warm.weights_.copy()
     est_no_warm.fit(X_small_single)  # Second fit should reset and give same result
     assert np.allclose(first_weights, est_no_warm.weights_)
 
-    # With warm_start=True, weights should persist and continue updating
-    est_warm = FollowTheWinner(
-        strategy=FTWStrategy.EG, initial_weights=init, warm_start=True
-    )
+    # partial_fit preserves state and continues updating
+    est_warm = FollowTheWinner(strategy=FTWStrategy.EG, initial_weights=init)
     est_warm.partial_fit(X_small_single)
     first_weights_warm = est_warm.weights_.copy()
     est_warm.partial_fit(X_small_single)
@@ -169,7 +165,6 @@ def test_entropy_omd_matches_exponentiated_gradient():
         strategy=FTWStrategy.EG,
         update_mode="omd",
         learning_rate=lr,
-        warm_start=False,
         initial_weights=np.array([0.6, 0.4]),
     )
     X = np.array([[0.02, -0.01]])
@@ -190,7 +185,6 @@ def test_entropy_ftrl_matches_dual_averaging(X_small):
         strategy=FTWStrategy.EG,
         update_mode="ftrl",
         learning_rate=learning_rate,
-        warm_start=False,
     )
     X = np.array([[0.05, -0.02], [-0.01, 0.03]])
     model.fit(X)

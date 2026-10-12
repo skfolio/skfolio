@@ -30,7 +30,6 @@ def _make_cwmr(
         cwmr_max_var=cwmr_max_var,
         cwmr_mean_lr=cwmr_mean_lr,
         cwmr_var_lr=cwmr_var_lr,
-        warm_start=False,
         **kwargs,
     )
 
@@ -72,9 +71,9 @@ def test_cwmr_pa_variance_shrinkage_matches_loading():
     X = np.array([[0.0, 0.0], [0.3, -0.1]], dtype=float)
     model = _make_cwmr(cwmr_eta=0.99, cwmr_sigma0=1.0)
     model.fit(X[:1])
-    sigma_before = model._cwmr_Sdiag.copy()
+    sigma_before = model._strategy_impl._Sdiag.copy()
     model.partial_fit(X[1:2])
-    sigma_after = model._cwmr_Sdiag.copy()
+    sigma_after = model._strategy_impl._Sdiag.copy()
     assert sigma_after[0] <= sigma_before[0] + 1e-12
     assert np.any(sigma_after < sigma_before - 1e-14)
 
@@ -120,7 +119,7 @@ def test_cwmr_md_reduces_violation():
     X = np.array([[0.0, 0.0], [0.2, -0.1]], dtype=float)
     model.fit(X[:1])
     mu_prev = model.weights_.copy()
-    sigma_prev = model._cwmr_Sdiag.copy()
+    sigma_prev = model._strategy_impl._Sdiag.copy()
     x = 1.0 + X[1]
     phi = norm.ppf(model.cwmr_eta)
     violation_before = _violation(
@@ -128,7 +127,7 @@ def test_cwmr_md_reduces_violation():
     )
     model.partial_fit(X[1:2])
     mu_new = model.weights_.copy()
-    sigma_new = model._cwmr_Sdiag.copy()
+    sigma_new = model._strategy_impl._Sdiag.copy()
     violation_after = _violation(
         mu=mu_new, sigma=sigma_new, x=x, eps=model.epsilon, phi=phi
     )
@@ -155,8 +154,8 @@ def test_cwmr_md_learning_rates_control_update_and_variance():
     var_slow.partial_fit(X[1:2])
     var_fast.fit(X[:1])
     var_fast.partial_fit(X[1:2])
-    sigma_slow = var_slow._cwmr_Sdiag.copy()
-    sigma_fast = var_fast._cwmr_Sdiag.copy()
+    sigma_slow = var_slow._strategy_impl._Sdiag.copy()
+    sigma_fast = var_fast._strategy_impl._Sdiag.copy()
     assert np.all(sigma_fast <= sigma_slow + 1e-12)
 
 
@@ -165,12 +164,12 @@ def test_cwmr_state_persists_between_modes():
     X = np.array([[0.0, 0.0], [0.18, -0.09]], dtype=float)
     model.fit(X[:1])
     mu_pa = model.weights_.copy()
-    model._cwmr_Sdiag.copy()
+    model._strategy_impl._Sdiag.copy()
     # Switch to OCO update while keeping learned state
     model.update_mode = "md"
     model.partial_fit(X[1:2])
     mu_md = model.weights_.copy()
-    sigma_md = model._cwmr_Sdiag.copy()
+    sigma_md = model._strategy_impl._Sdiag.copy()
     assert np.allclose(mu_pa.shape, mu_md.shape)
     assert np.all(sigma_md > 0.0)
 
@@ -184,7 +183,7 @@ def test_cwmr_variance_does_not_degenerate_after_many_rounds(X_small):
     model = _make_cwmr(cwmr_eta=0.95, cwmr_sigma0=1.0)
     model.fit(X_small)  # ~250 rounds of SP500 data
 
-    diag = model._cwmr_Sdiag
+    diag = model._strategy_impl._Sdiag
     assert diag is not None, "CWMR variance not initialized"
     # After many rounds, variance should stay above 1e-6 (not degenerate to ~0)
     assert np.all(diag >= 1e-6), (

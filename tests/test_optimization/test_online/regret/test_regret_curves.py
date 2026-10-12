@@ -47,9 +47,7 @@ def test_static_regret_matches_manual(objective):
     X_net = relatives - 1.0
 
     # Online estimator
-    est_for_regret = FollowTheWinner(
-        strategy=objective, learning_rate=0.1, warm_start=False
-    )
+    est_for_regret = FollowTheWinner(strategy=objective, learning_rate=0.1)
 
     # Compute regret curve via public API
     r_curve = regret(
@@ -59,9 +57,7 @@ def test_static_regret_matches_manual(objective):
     assert np.all(np.isfinite(r_curve))
 
     # Manual recomputation using fresh estimators
-    est_manual = FollowTheWinner(
-        strategy=objective, learning_rate=0.1, warm_start=False
-    )
+    est_manual = FollowTheWinner(strategy=objective, learning_rate=0.1)
     est_manual.fit_predict(X_net)
     W_online = est_manual.all_weights_
     R = net_to_relatives(X_net)
@@ -87,23 +83,19 @@ def test_regret_average_modes_consistency_static():
     relatives = _iid_relatives(T=T, n=n, seed=2)
     X_net = relatives - 1.0
 
-    est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate=0.1, warm_start=False)
+    est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate=0.1)
 
     r_running = regret(
         estimator=est, X=X_net, regret_type=RegretType.STATIC, average=True
     )
     r_running_str = regret(
-        estimator=FollowTheWinner(
-            strategy=FTWStrategy.EG, learning_rate=0.1, warm_start=False
-        ),
+        estimator=FollowTheWinner(strategy=FTWStrategy.EG, learning_rate=0.1),
         X=X_net,
         regret_type=RegretType.STATIC,
         average="running",
     )
     r_final = regret(
-        estimator=FollowTheWinner(
-            strategy=FTWStrategy.EG, learning_rate=0.1, warm_start=False
-        ),
+        estimator=FollowTheWinner(strategy=FTWStrategy.EG, learning_rate=0.1),
         X=X_net,
         regret_type=RegretType.STATIC,
         average="final",
@@ -124,7 +116,7 @@ def test_windowed_regret_consistency():
     X_net = relatives - 1.0
     window = 10
 
-    est = FollowTheWinner(strategy=FTWStrategy.OGD, learning_rate=0.1, warm_start=False)
+    est = FollowTheWinner(strategy=FTWStrategy.OGD, learning_rate=0.1)
     # Library curve
     r_win = regret(
         estimator=est,
@@ -135,9 +127,7 @@ def test_windowed_regret_consistency():
     )
 
     # Manual computation
-    est_m = FollowTheWinner(
-        strategy=FTWStrategy.OGD, learning_rate=0.1, warm_start=False
-    )
+    est_m = FollowTheWinner(strategy=FTWStrategy.OGD, learning_rate=0.1)
     est_m.fit_predict(X_net)
     W_online = est_m.all_weights_
     R = net_to_relatives(X_net)
@@ -177,13 +167,11 @@ def test_random_relatives_static_and_dynamic_regret_curves(objective):
     relatives = _iid_relatives(T=T, n=n, seed=4)
     X_net = relatives - 1.0
 
-    model = FollowTheWinner(strategy=objective, learning_rate=0.1, warm_start=False)
+    model = FollowTheWinner(strategy=objective, learning_rate=0.1)
 
     rs = regret(estimator=model, X=X_net, regret_type=RegretType.STATIC, average=False)
     rd = regret(
-        estimator=FollowTheWinner(
-            strategy=objective, learning_rate=0.1, warm_start=False
-        ),
+        estimator=FollowTheWinner(strategy=objective, learning_rate=0.1),
         X=X_net,
         regret_type=RegretType.DYNAMIC_UNIVERSAL,
         average=False,
@@ -208,7 +196,7 @@ def test_worst_case_regret_dominates_fixed_comparator():
     X_net = relatives - 1.0
 
     # Online EG
-    est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate=0.05, warm_start=False)
+    est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate=0.05)
     est.fit_predict(X_net)
     W_online = est.all_weights_
     R = net_to_relatives(X_net)
@@ -221,9 +209,7 @@ def test_worst_case_regret_dominates_fixed_comparator():
 
     # Library computation for worst-case dynamic regret
     rd_wc = regret(
-        estimator=FollowTheWinner(
-            strategy=FTWStrategy.EG, learning_rate=0.05, warm_start=False
-        ),
+        estimator=FollowTheWinner(strategy=FTWStrategy.EG, learning_rate=0.05),
         X=X_net,
         regret_type=RegretType.DYNAMIC_WORST_CASE,
         average=False,

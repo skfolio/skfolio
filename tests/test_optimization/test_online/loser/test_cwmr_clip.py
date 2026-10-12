@@ -15,7 +15,7 @@ def test_cwmr_variance_clipping_bounds():
     x = np.array([0.01, -0.01, 0.0], dtype=float)
     est.partial_fit(x)
 
-    diag = est._cwmr_Sdiag
+    diag = est._strategy_impl._Sdiag
     assert diag is not None
     assert np.all(diag >= 0.05 - 1e-12)
     assert np.all(diag <= 0.1 + 1e-12)

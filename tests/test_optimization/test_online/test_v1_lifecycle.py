@@ -55,8 +55,7 @@ def test_blocks_and_rows_preserve_the_same_strategy_state(estimator, returns):
     assert_allclose(blocked.weights_, batch.weights_, atol=1e-12)
 
 
-def test_fit_resets_even_with_legacy_warm_start(estimator, returns):
-    estimator.set_params(warm_start=True)
+def test_fit_resets_after_partial_fit(estimator, returns):
     estimator.partial_fit(returns).fit(returns[:6])
     fresh = clone(estimator).fit(returns[:6])
     assert_allclose(estimator.weights_, fresh.weights_)

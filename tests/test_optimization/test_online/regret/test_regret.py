@@ -11,9 +11,7 @@ from skfolio.optimization.online._winner import FollowTheWinner
 
 @pytest.mark.parametrize("avg_flag", [False, True, "running", "final", "none"])
 def test_shapes_and_finiteness_static(X_small, avg_flag):
-    est = FollowTheWinner(
-        strategy=FTWStrategy.EG, learning_rate="auto", warm_start=False
-    )
+    est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate="auto")
     r = regret(
         estimator=est,
         X=X_small,
@@ -29,9 +27,7 @@ def test_shapes_and_finiteness_static(X_small, avg_flag):
 
 @pytest.mark.parametrize("avg_flag", [False, True, "running", "final", "none"])
 def test_shapes_and_finiteness_dynamic_universal(X_small, avg_flag):
-    est = FollowTheWinner(
-        strategy=FTWStrategy.EG, learning_rate="auto", warm_start=False
-    )
+    est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate="auto")
     r = regret(
         estimator=est,
         X=X_small,
@@ -46,9 +42,7 @@ def test_shapes_and_finiteness_dynamic_universal(X_small, avg_flag):
 
 
 def test_running_vs_final_average_agreement_at_T(X_small):
-    est = FollowTheWinner(
-        strategy=FTWStrategy.EG, learning_rate="auto", warm_start=False
-    )
+    est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate="auto")
     # cumulative
     r_cum = regret(
         estimator=est,
@@ -77,9 +71,7 @@ def test_running_vs_final_average_agreement_at_T(X_small):
 
 
 def test_windowed_running_and_final_average(X_small):
-    est = FollowTheWinner(
-        strategy=FTWStrategy.EG, learning_rate="auto", warm_start=False
-    )
+    est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate="auto")
     w = 10
     r_win = regret(
         estimator=est,
@@ -113,9 +105,7 @@ def test_windowed_running_and_final_average(X_small):
 
 
 def test_comparator_instance_required(X_small):
-    est = FollowTheWinner(
-        strategy=FTWStrategy.EG, learning_rate="auto", warm_start=False
-    )
+    est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate="auto")
     # Should accept instance or None (defaults to BestConstantRebalancedPortfolio())
     r1 = regret(estimator=est, X=X_small, comparator=BestConstantRebalancedPortfolio())
     r2 = regret(estimator=est, X=X_small, comparator=None)
@@ -123,9 +113,7 @@ def test_comparator_instance_required(X_small):
 
 
 def test_invalid_window_raises(X_small):
-    est = FollowTheWinner(
-        strategy=FTWStrategy.EG, learning_rate="auto", warm_start=False
-    )
+    est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate="auto")
     with pytest.raises(ValueError):
         regret(
             estimator=est,

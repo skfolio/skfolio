@@ -109,7 +109,6 @@ class FollowTheWinner(BaseOnlineOptimization):
         learning_rate: float | Literal["auto"] | Callable[[int], float] = "auto",
         learning_rate_scale: Literal["theory", "moderate", "empirical"] = "theory",
         update_mode: Literal["ftrl", "omd"] = "ftrl",
-        warm_start: bool = True,
         store_weights: bool = True,
         initial_weights: npt.ArrayLike | None = None,
         initial_wealth: float | npt.ArrayLike | None = None,
@@ -213,8 +212,6 @@ class FollowTheWinner(BaseOnlineOptimization):
             - "omd": Online Mirror Descent (local Bregman/proximal step)
             - "ftrl": Follow-the-Regularized-Leader (global cumulative minimization)
 
-        warm_start : bool, default=True
-            Legacy compatibility parameter. ``fit`` always resets; use ``partial_fit`` to continue.
 
         initial_weights : array-like of shape (n_assets,) | None, default=None
             Initial portfolio weights. If None, uses uniform weights (1/n_assets).
@@ -379,7 +376,6 @@ class FollowTheWinner(BaseOnlineOptimization):
 
         """
         super().__init__(
-            warm_start=warm_start,
             store_weights=store_weights,
             initial_weights=initial_weights,
             initial_wealth=initial_wealth,
@@ -421,7 +417,7 @@ class FollowTheWinner(BaseOnlineOptimization):
         self.discount = discount
         self.demean_gradient = demean_gradient
         self.gradient_lookback = gradient_lookback
-        self.warm_start = warm_start
+
         self.initial_weights = initial_weights
         self.grad_predictor = grad_predictor
 

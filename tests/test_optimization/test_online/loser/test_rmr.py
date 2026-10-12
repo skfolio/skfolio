@@ -23,7 +23,6 @@ def _make_rmr(
         rmr_window=rmr_window,
         rmr_max_iter=rmr_max_iter,
         rmr_tolerance=rmr_tolerance,
-        warm_start=False,
         **kwargs,
     )
 
@@ -161,7 +160,6 @@ def test_rmr_vs_olmar_on_clean_data():
         olmar_predictor="sma",
         olmar_window=5,
         epsilon=1.0,
-        warm_start=False,
     )
 
     rmr_model.fit(X)

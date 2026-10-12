@@ -7,7 +7,6 @@ import numpy as np
 
 from skfolio.optimization.online._mirror_maps import (
     AdaBarronsBarrierMap,
-    AdaptiveLogBarrierMap,
     AdaptiveMahalanobisMap,
     AdaptiveVariationMap,
     BaseMirrorMap,
@@ -43,7 +42,6 @@ def mirror_potential(
         FullQuadraticMap,
         BurgMirrorMap,
         LogBarrierMap,
-        AdaptiveLogBarrierMap,
         AdaBarronsBarrierMap,
     )
     if type(mirror) not in supported:
@@ -91,7 +89,7 @@ def mirror_potential(
         return lambda w: 0.5 * cp.sum(cp.multiply(diagonal, cp.square(w)))
     if isinstance(
         mirror,
-        (BurgMirrorMap, LogBarrierMap, AdaptiveLogBarrierMap, AdaBarronsBarrierMap),
+        (BurgMirrorMap, LogBarrierMap, AdaBarronsBarrierMap),
     ):
         coefficients = -forward(np.ones(n))
         if not np.isfinite(coefficients).all() or np.any(coefficients < 0):

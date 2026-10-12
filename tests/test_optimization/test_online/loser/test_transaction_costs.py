@@ -55,14 +55,12 @@ def test_management_fees_affect_weights(X_small, strategy):
     model_no_fee = FollowTheLoser(
         strategy=strategy,
         management_fees=0.0,
-        warm_start=False,
     )
     model_no_fee.fit(X_small)
 
     model_with_fee = FollowTheLoser(
         strategy=strategy,
         management_fees=0.001,  # 0.1% per period
-        warm_start=False,
     )
     model_with_fee.fit(X_small)
 
@@ -86,7 +84,6 @@ def test_apply_fees_to_phi(X_small, strategy):
         strategy=strategy,
         management_fees=fees,
         apply_fees_to_phi=True,
-        warm_start=False,
     )
     model_fees_to_phi.fit(X_small)
 
@@ -94,7 +91,6 @@ def test_apply_fees_to_phi(X_small, strategy):
         strategy=strategy,
         management_fees=fees,
         apply_fees_to_phi=False,
-        warm_start=False,
     )
     model_no_fees_to_phi.fit(X_small)
 
@@ -145,7 +141,6 @@ def test_costs_fees_consistency(X_small, strategy, update_mode):
         update_mode=update_mode,
         transaction_costs=0.003,
         management_fees=0.0005,
-        warm_start=False,
     )
     model.fit(X_small)
 

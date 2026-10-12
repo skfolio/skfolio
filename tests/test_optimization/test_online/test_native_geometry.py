@@ -152,7 +152,6 @@ def test_unrepresented_geometry_fails_explicitly():
         "FullQuadraticMap",
         "BurgMirrorMap",
         "LogBarrierMap",
-        "AdaptiveLogBarrierMap",
         "AdaBarronsBarrierMap",
     ],
 )
