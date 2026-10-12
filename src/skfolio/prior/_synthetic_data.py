@@ -219,11 +219,14 @@ class SyntheticData(BasePrior):
         constant_returns = np.var(synthetic_data, axis=0) < 1e-14
         n_constant = int(np.sum(constant_returns))
         if n_constant:
-            # Seeded by the distribution estimator, with independent noise per asset.
             rng = sku.check_random_state(
                 getattr(self.distribution_estimator_, "random_state", None)
             )
-            synthetic_data[:, constant_returns] += 1e-6 * rng.randn(
+            # Draw a new seed for the noise. Reusing the estimator's seed could
+            # repeat the Gaussian draws used to generate an asset's returns,
+            # making the noise perfectly correlated with that asset.
+            noise_rng = sku.check_random_state(rng.randint(np.iinfo(np.int32).max))
+            synthetic_data[:, constant_returns] += 1e-6 * noise_rng.randn(
                 len(synthetic_data), n_constant
             )
 
