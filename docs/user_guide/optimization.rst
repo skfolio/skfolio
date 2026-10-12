@@ -1196,8 +1196,7 @@ For a complete tutorial illustrating failure handling and fallbacks, see
 Online Portfolio Selection
 ==========================
 
-The estimators in :mod:`skfolio.optimization.online` reuse Carlo Nicolini's shared
-online optimization framework. :class:`~skfolio.optimization.online.ExponentiatedGradient`
+:class:`~skfolio.optimization.online.ExponentiatedGradient`
 and :class:`~skfolio.optimization.online.AdaGrad` use the same OCO engine with entropy
 and adaptive diagonal geometry respectively.
 :class:`~skfolio.optimization.online.OnlineMovingAverageReversion` uses the shared
@@ -1206,7 +1205,7 @@ mean-reversion predictor and passive-aggressive strategy.
 ``fit(X)`` resets all learned state. ``partial_fit(X)`` continues, processing one
 row or a block sequentially. After observing row t, ``weights_`` is the target for
 t+1. ``initial_weights`` specifies the learning reference before the first row;
-constraints may project this reference. EG defaults to Carlo's FTRL configuration;
+constraints may project this reference. EG defaults to follow-the-regularized-leader (FTRL);
 ``update_mode="omd"`` selects local mirror descent. FTRL uses accumulated gradients
 and its regularizer, so a nonuniform initial reference is not a persistent center.
 AdaGrad defaults to OMD. OLMAR's window includes the current price and window-1

@@ -905,15 +905,15 @@ class ConvexOptimization(BaseOptimization, ABC):
         Weight bounds must already be aligned with the investable assets.
         """
         return weight_constraints(
-            w,
-            factor,
-            min_weights,
-            max_weights,
-            allow_negative_weights,
-            self.max_long,
-            self.max_short,
-            self._scale_constraints,
-            self.__class__.__name__,
+            w=w,
+            factor=factor,
+            min_weights=min_weights,
+            max_weights=max_weights,
+            allow_negative_weights=allow_negative_weights,
+            max_long=self.max_long,
+            max_short=self.max_short,
+            scale=self._scale_constraints,
+            owner=self.__class__.__name__,
         )
 
     def _budget_constraints(
@@ -921,12 +921,12 @@ class ConvexOptimization(BaseOptimization, ABC):
     ) -> list[cpc.Constraint]:
         """Constrain the sum of weights using the configured budget or limits."""
         return budget_constraints(
-            w,
-            factor,
-            self.budget,
-            self.min_budget,
-            self.max_budget,
-            self._scale_constraints,
+            w=w,
+            factor=factor,
+            budget=self.budget,
+            min_budget=self.min_budget,
+            max_budget=self.max_budget,
+            scale=self._scale_constraints,
         )
 
     def _mixed_integer_constraints(
@@ -1022,14 +1022,14 @@ class ConvexOptimization(BaseOptimization, ABC):
         Factor constraints use the factor model from `return_distribution`.
         """
         return linear_constraints(
-            w,
-            factor,
-            self.linear_constraints,
-            groups,
-            assets_names,
-            investable_mask,
-            return_distribution,
-            self._scale_constraints,
+            w=w,
+            factor=factor,
+            linear_constraints=self.linear_constraints,
+            groups=groups,
+            assets_names=assets_names,
+            investable_mask=investable_mask,
+            return_distribution=return_distribution,
+            scale=self._scale_constraints,
         )
 
     def _matrix_inequality_constraints(

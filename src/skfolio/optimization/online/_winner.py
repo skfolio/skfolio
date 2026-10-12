@@ -46,31 +46,21 @@ from skfolio.prior import BasePrior
 
 
 class FollowTheWinner(BaseOnlineOptimization):
-    """FollowTheWinner: Online Portfolio Selection via Online Convex Optimization and momentum-based strategies.
+    """Online portfolio optimization with follow-the-winner strategies.
 
-    It unifies FTRL and OMD through the lens of FTRL-Proximal, which is a unified framework for FTRL and OMD.
+    This internal family includes OGD, EG, PROD, AdaGrad, AdaBARRONS and SWORD
+    strategies. Updates use mirror descent or FTRL with the selected geometry
+    and optional gradient prediction.
 
-    This family of algorithms increases weights on recently successful assets,
-    implementing first-order OCO methods including:
-    - Mirror Descent family: OGD, EG, PROD (Soft-Bayes)
-    - Adaptive methods: AdaGrad, AdaBARRONS
-    - Optimistic methods: Smooth Prediction, SWORD family
+    Notes
+    -----
+    Inputs to ``fit`` and ``partial_fit`` are finite net returns strictly greater
+    than -1. The shared learning loop processes rows causally, converting each
+    observation to price relatives before the strategy update. ``fit`` resets
+    state; ``partial_fit`` continues from the previous target.
 
-    Projection:
-    - Fast path: box + budget (+ turnover) via project_box_and_sum/project_with_turnover
-    - Rich constraints (groups/linear/tracking error/variance): fallback to project_convex
-
-    Data conventions
-    ----------------
-    - Inputs ``X`` to :meth:`fit` and :meth:`partial_fit` must be NET returns
-        (i.e., arithmetic returns r_t in [-1, +inf)). Internally, the estimator
-        converts each row to gross returns via ``1.0 + r_t`` before computing
-        losses/gradients. This keeps interfaces consistent with most skfolio
-        preprocessing pipelines that output net returns.
-
-    Fitting
-    -------
-    - :meth:`fit` iterates over ``X`` row by row, processing each observation causally through the shared learning loop.
+    Native constrained updates retain the strategy's mirror geometry. Projection
+    helpers also handle feasible initial targets and execution-entry constraints.
 
     References
     ----------
@@ -198,7 +188,7 @@ class FollowTheWinner(BaseOnlineOptimization):
 
             - float: Constant :math:`\eta`
             - Callable: Time-varying :math:`\eta(t)`
-            - **"auto"** (default): Empirically-validated rate per strategy (scale set by learning_rate_scale)
+            - **"auto"** (default): Strategy-specific learning rate (scale set by learning_rate_scale)
 
             For EG, the learning rate acts as an inverse temperature parameter.
             As :math:`\eta \to 0`, converges to uniform weights; as :math:`\eta \to \infty`,
@@ -351,14 +341,6 @@ class FollowTheWinner(BaseOnlineOptimization):
             When ``gradient_lookback=1`` (default), uses only the current gradient
             (standard behavior). When ``gradient_lookback=W``, averages the last
             :math:`W` gradients, capturing medium-term momentum signals.
-
-            **Empirically validated**: ``gradient_lookback`` in ``[60, 120]``
-            (3-6 month momentum) consistently turns EG from a UCRP-equivalent
-            into a modest but reliable momentum strategy, achieving decent
-            log-wealth above UCRP on average across 7 real datasets.
-
-            References: Jegadeesh & Titman (1993), "Returns to Buying Winners
-            and Selling Losers".
 
         min_weights : float | dict[str, float] | array-like of shape (n_assets,) | None, default=0.0
             Minimum weight per asset (lower bound). If float, applied to all assets.
@@ -514,10 +496,16 @@ class FollowTheWinner(BaseOnlineOptimization):
                     strategy=self.strategy,
                     n_assets=num_assets,
                     min_weights=self._clean_input(
-                        self.min_weights, num_assets, 0.0, "min_weights"
+                        value=self.min_weights,
+                        n_assets=num_assets,
+                        fill_value=0.0,
+                        name="min_weights",
                     ),
                     max_weights=self._clean_input(
-                        self.max_weights, num_assets, 1.0, "max_weights"
+                        value=self.max_weights,
+                        n_assets=num_assets,
+                        fill_value=1.0,
+                        name="max_weights",
                     ),
                     budget=1.0 if self.budget is None else self.budget,
                     objective=self.objective,  # pass enum directly
@@ -791,7 +779,7 @@ class FollowTheWinner(BaseOnlineOptimization):
         self._t += 1
 
     def _update_one(self, gross_relatives: np.ndarray) -> None:
-        """Run Carlo's winner update for one validated observation."""
+        """Update the follow-the-winner strategy with one validated observation."""
         # Step 2: Initialize engine and weights if needed
         self._ensure_initialized(gross_relatives)
 

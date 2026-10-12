@@ -116,7 +116,14 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         names = getattr(self, "feature_names_in_", None)
         groups = self.groups
         if groups is not None:
-            groups = input_to_array(groups, n_assets, "", 2, names, "groups")
+            groups = input_to_array(
+                items=groups,
+                n_assets=n_assets,
+                fill_value="",
+                dim=2,
+                assets_names=names,
+                name="groups",
+            )
         elif names is not None and self.linear_constraints is not None:
             groups = np.asarray([names])
         covariance = self.covariance
@@ -135,8 +142,18 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
                         "The causal prior must supply a finite covariance before an execution decision"
                     )
         projection_config = ProjectionConfig(
-            lower=self._clean_input(self.min_weights, n_assets, 0.0, "min_weights"),
-            upper=self._clean_input(self.max_weights, n_assets, 1.0, "max_weights"),
+            lower=self._clean_input(
+                value=self.min_weights,
+                n_assets=n_assets,
+                fill_value=0.0,
+                name="min_weights",
+            ),
+            upper=self._clean_input(
+                value=self.max_weights,
+                n_assets=n_assets,
+                fill_value=1.0,
+                name="max_weights",
+            ),
             budget=self.budget,
             groups=groups,
             linear_constraints=self.linear_constraints,
@@ -170,7 +187,13 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         if initial is None:
             initial = np.full(num_assets, 1 / num_assets)
         initial = np.asarray(
-            self._clean_input(initial, num_assets, 0.0, "initial_weights"), dtype=float
+            self._clean_input(
+                value=initial,
+                n_assets=num_assets,
+                fill_value=0.0,
+                name="initial_weights",
+            ),
+            dtype=float,
         )
         if initial.ndim == 0:
             initial = np.full(num_assets, float(initial))
@@ -214,7 +237,7 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
 
         The target after observing row t is intended for period t+1. Validation
         covers the complete block before any numerical update. Targets recorded in
-        all_weights_ are diagnostic learning history, not trades.
+        ``all_weights_`` are diagnostic learning history, not trades.
         """
         if getattr(self, "_needs_reset", False):
             raise RuntimeError(
@@ -283,7 +306,7 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
                 "use fit for warmup or one-row partial_fit for each rebalance"
             )
         if self.prior_estimator is not None:
-            _check_method_params(returns, routed.prior_estimator.partial_fit)
+            _check_method_params(X=returns, params=routed.prior_estimator.partial_fit)
         target_list = []
         try:
             for i, row in enumerate(1.0 + returns):
@@ -315,13 +338,15 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
                         self.prior_estimator_ = clone(self.prior_estimator)
                     row_slice = slice(i, i + 1)
                     metadata = _check_method_params(
-                        returns, routed.prior_estimator.partial_fit, row_slice
+                        X=returns,
+                        params=routed.prior_estimator.partial_fit,
+                        indices=row_slice,
                     )
                     _call_estimator(
-                        self.prior_estimator_,
-                        "partial_fit",
-                        safe_indexing(X, row_slice),
-                        None if y is None else safe_indexing(y, row_slice),
+                        estimator=self.prior_estimator_,
+                        method="partial_fit",
+                        X=safe_indexing(X, row_slice),
+                        y=None if y is None else safe_indexing(y, row_slice),
                         extra_params=metadata,
                     )
                 self._update_one(row)
@@ -413,10 +438,10 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
     ) -> float | np.ndarray:
         """Use common asset alignment and validate per-period management fees."""
         cleaned = super()._clean_input(
-            value,
-            n_assets,
-            fill_value,
-            name,
+            value=value,
+            n_assets=n_assets,
+            fill_value=fill_value,
+            name=name,
             apply_investable_mask=apply_investable_mask,
         )
         if name == "management_fees" and np.any(np.asarray(cleaned) >= 1.0):

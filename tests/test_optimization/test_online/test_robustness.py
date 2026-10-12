@@ -75,8 +75,8 @@ def test_universal_regret_is_finite():
     from skfolio.optimization.online._regret import regret
 
     regrets = regret(
-        model,
-        X,
+        estimator=model,
+        X=X,
         regret_type=RegretType.DYNAMIC_UNIVERSAL,
         dynamic_config={"path_length": 2.0},
     )

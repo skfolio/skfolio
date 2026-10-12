@@ -45,14 +45,19 @@ def test_entropy_engine_enforces_turnover_in_native_update():
     projector = AutoProjector(
         ProjectionConfig(previous_weights=[0.5, 0.5], max_turnover=0.2)
     )
-    engine = FirstOrderOCO(EntropyMirrorMap(), projector, eta=1, mode="omd")
+    engine = FirstOrderOCO(
+        mirror_map=EntropyMirrorMap(), projector=projector, eta=1, mode="omd"
+    )
     assert_allclose(engine.step(np.array([-2.0, 2.0])), [0.6, 0.4], atol=1e-6)
 
 
 def test_adagrad_pending_curvature_matches_weighted_projection():
     mirror = AdaptiveMahalanobisMap(eps=1e-8)
     engine = FirstOrderOCO(
-        mirror, AutoProjector(ProjectionConfig()), eta=0.1, mode="omd"
+        mirror_map=mirror,
+        projector=AutoProjector(ProjectionConfig()),
+        eta=0.1,
+        mode="omd",
     )
     center = np.array([0.5, 0.5])
     squared_sum = np.zeros(2)
@@ -97,8 +102,8 @@ def test_composite_potential_is_solved_jointly_without_state_mutation():
 def test_burg_update_respects_coefficient_and_mode(mode):
     mirror = BurgMirrorMap(barrier_coef=2)
     engine = FirstOrderOCO(
-        mirror,
-        AutoProjector(
+        mirror_map=mirror,
+        projector=AutoProjector(
             ProjectionConfig(
                 solver_params={
                     "solver": "CLARABEL",
@@ -126,7 +131,9 @@ def test_burg_update_respects_coefficient_and_mode(mode):
 
 def test_unrepresented_geometry_fails_explicitly():
     engine = FirstOrderOCO(
-        TsallisMirrorMap(), AutoProjector(ProjectionConfig()), eta=0.1
+        mirror_map=TsallisMirrorMap(),
+        projector=AutoProjector(ProjectionConfig()),
+        eta=0.1,
     )
     with pytest.raises(NotImplementedError, match="TsallisMirrorMap"):
         engine.step(np.array([0.1, -0.1]))

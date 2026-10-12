@@ -49,11 +49,11 @@ def test_running_vs_final_average_agreement_at_T(X_small):
         strategy=FTWStrategy.EG, learning_rate="auto", warm_start=False
     )
     # cumulative
-    r_cum = regret(est, X_small, comparator=BCRP(), average=False)
+    r_cum = regret(estimator=est, X=X_small, comparator=BCRP(), average=False)
     # running average (R_t / t)
-    r_run = regret(est, X_small, comparator=BCRP(), average="running")
+    r_run = regret(estimator=est, X=X_small, comparator=BCRP(), average="running")
     # final average constant curve
-    r_final = regret(est, X_small, comparator=BCRP(), average="final")
+    r_final = regret(estimator=est, X=X_small, comparator=BCRP(), average="final")
 
     T = X_small.shape[0]
     assert np.isclose(r_run[-1], r_cum[-1] / T, atol=1e-9)
@@ -65,9 +65,13 @@ def test_windowed_running_and_final_average(X_small):
         strategy=FTWStrategy.EG, learning_rate="auto", warm_start=False
     )
     w = 10
-    r_win = regret(est, X_small, comparator=BCRP(), average=False, window=w)
-    r_win_run = regret(est, X_small, comparator=BCRP(), average="running", window=w)
-    r_win_final = regret(est, X_small, comparator=BCRP(), average="final", window=w)
+    r_win = regret(estimator=est, X=X_small, comparator=BCRP(), average=False, window=w)
+    r_win_run = regret(
+        estimator=est, X=X_small, comparator=BCRP(), average="running", window=w
+    )
+    r_win_final = regret(
+        estimator=est, X=X_small, comparator=BCRP(), average="final", window=w
+    )
 
     # Before window-1, the windowed curve should be zero (by construction in our implementation)
     assert np.allclose(r_win[: w - 1], 0.0)
@@ -83,8 +87,8 @@ def test_comparator_instance_required(X_small):
         strategy=FTWStrategy.EG, learning_rate="auto", warm_start=False
     )
     # Should accept instance or None (defaults to BCRP())
-    r1 = regret(est, X_small, comparator=BCRP())
-    r2 = regret(est, X_small, comparator=None)
+    r1 = regret(estimator=est, X=X_small, comparator=BCRP())
+    r2 = regret(estimator=est, X=X_small, comparator=None)
     assert r1.shape == r2.shape
 
 
@@ -93,9 +97,9 @@ def test_invalid_window_raises(X_small):
         strategy=FTWStrategy.EG, learning_rate="auto", warm_start=False
     )
     with pytest.raises(ValueError):
-        regret(est, X_small, comparator=BCRP(), window=0)
+        regret(estimator=est, X=X_small, comparator=BCRP(), window=0)
     with pytest.raises(ValueError):
-        regret(est, X_small, comparator=BCRP(), window=X_small.shape[0] + 1)
+        regret(estimator=est, X=X_small, comparator=BCRP(), window=X_small.shape[0] + 1)
 
 
 def test_dynamic_without_fit_dynamic_raises(X_small):
@@ -108,7 +112,9 @@ def test_dynamic_without_fit_dynamic_raises(X_small):
         strategy=FTWStrategy.EG, learning_rate="auto", warm_start=False
     )
     with pytest.raises(ValueError):
-        regret(est, X_small, comparator=comp, regret_type=RegretType.DYNAMIC)
+        regret(
+            estimator=est, X=X_small, comparator=comp, regret_type=RegretType.DYNAMIC
+        )
 
 
 class DummyEstimator(BaseOptimization):
@@ -139,7 +145,13 @@ def test_static_regret_matches_manual_curve():
     X = np.array([[0.1, -0.05], [-0.02, 0.04]])
     est = DummyEstimator(weights_seq=[[0.5, 0.5], [0.6, 0.4]])
     comp = DummyComparator([0.55, 0.45])
-    reg = regret(est, X, comparator=comp, regret_type=RegretType.STATIC, average=False)
+    reg = regret(
+        estimator=est,
+        X=X,
+        comparator=comp,
+        regret_type=RegretType.STATIC,
+        average=False,
+    )
     rel = 1.0 + X
     est.fit(X)
     comp.fit(X)
@@ -161,7 +173,9 @@ def test_dynamic_worst_case_uses_argmax_weights():
             ]
         )
     )
-    reg = regret(est, X, regret_type=RegretType.DYNAMIC_WORST_CASE, average=False)
+    reg = regret(
+        estimator=est, X=X, regret_type=RegretType.DYNAMIC_WORST_CASE, average=False
+    )
     rel = 1.0 + X
     wc = np.zeros_like(rel)
     wc[np.arange(rel.shape[0]), np.argmax(rel, axis=1)] = 1.0
@@ -178,12 +192,12 @@ def test_universal_dynamic_path_length_zero():
     X = np.array([[0.05, 0.0], [0.02, 0.01]])
     est = DummyEstimator(weights_seq=np.array([[0.5, 0.5], [0.6, 0.4]]))
     reg_uni = regret(
-        est,
-        X,
+        estimator=est,
+        X=X,
         regret_type=RegretType.DYNAMIC_UNIVERSAL,
         dynamic_config={"path_length": 0.0, "solver": "SCS"},
     )
-    reg_static = regret(est, X, regret_type=RegretType.STATIC)
+    reg_static = regret(estimator=est, X=X, regret_type=RegretType.STATIC)
     assert np.allclose(reg_uni, reg_static)
 
 
@@ -191,10 +205,14 @@ def test_running_average_and_window_modes():
     """Expected outcome: _running_regret divides by t for average=True and handles window rolling sums; ensures theoretical interpretation of average regret."""
     losses_algo = np.array([0.3, 0.2, 0.4])
     losses_comp = np.array([0.1, 0.25, 0.2])
-    rr = _running_regret(losses_algo, losses_comp, average=True)
+    rr = _running_regret(
+        online_losses=losses_algo, comp_losses=losses_comp, average=True
+    )
     expected = np.cumsum(losses_algo - losses_comp) / np.arange(1, 4)
     assert np.allclose(rr, expected)
-    windowed = _running_regret(losses_algo, losses_comp, window=2, average=True)
+    windowed = _running_regret(
+        online_losses=losses_algo, comp_losses=losses_comp, window=2, average=True
+    )
     manual = np.array(
         [
             0.0,

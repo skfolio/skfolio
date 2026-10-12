@@ -61,17 +61,10 @@ class FollowTheLoser(BaseOnlineOptimization):
     - CWMR: Confidence-Weighted Mean Reversion (second-order distributional)
     - RMR: Robust Median Reversion (L1-median, outlier-robust)
 
-    Projection:
-
-    - Fast path: box + budget (+ turnover) via project_box_and_sum/project_with_turnover
-    - Rich constraints (groups/linear/tracking error/variance): fallback to project_convex
-
-    Data conventions
-    ----------------
-    Inputs ``X`` to :meth:`fit` and :meth:`partial_fit` must be NET returns
-    (i.e., arithmetic returns r_t in [-1, +inf)). Internally, the estimator
-    converts each row to gross returns via ``1.0 + r_t`` before computing
-    losses/gradients.
+    Constraints are applied by the configured projector, using native geometry
+    for mirror updates and Euclidean projection for passive-aggressive targets.
+    Inputs to ``fit`` and ``partial_fit`` are finite net returns strictly greater
+    than -1. Each row is converted to price relatives before the strategy update.
 
     Parameters
     ----------
@@ -675,7 +668,7 @@ class FollowTheLoser(BaseOnlineOptimization):
         return None
 
     def _update_one(self, x_t_gross: np.ndarray) -> None:
-        """Run Carlo's loser strategy for one validated observation."""
+        """Update the mean-reversion strategy with one validated observation."""
         d = int(x_t_gross.shape[0])
 
         # Initialize components

@@ -261,7 +261,11 @@ class CWMRStrategy(BaseStrategy):
         assert self._Sdiag is not None
         assert self._quantile is not None
         mu_new, diag_new = _cwmr.pa_distribution_update(
-            self._mu, self._Sdiag, x_t, self.epsilon, self._quantile
+            mu=self._mu,
+            diag=self._Sdiag,
+            x=x_t,
+            epsilon=self.epsilon,
+            quantile=self._quantile,
         )
 
         # Clip variances after update

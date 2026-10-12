@@ -24,7 +24,7 @@ def test_methods_basic_validity_fit(method, X_small):
     # Keep runtime low for heavier methods
     est = FollowTheWinner(strategy=method)
     est.fit(X_small)
-    assert_box_budget(est.weights_, 0.0, 1.0, 1.0)
+    assert_box_budget(w=est.weights_, lower=0.0, upper=1.0, budget=1.0)
 
 
 def test_array_transaction_costs_gating_no_ambiguous_bool():
@@ -65,8 +65,8 @@ def test_smooth_prediction(X_small):
     est_vanilla.fit(X_small)
     est_smooth.fit(X_small)
 
-    assert_box_budget(est_vanilla.weights_, 0.0, 1.0, 1.0)
-    assert_box_budget(est_smooth.weights_, 0.0, 1.0, 1.0)
+    assert_box_budget(w=est_vanilla.weights_, lower=0.0, upper=1.0, budget=1.0)
+    assert_box_budget(w=est_smooth.weights_, lower=0.0, upper=1.0, budget=1.0)
 
     # Weights should be different due to the optimistic term
     assert not np.allclose(est_vanilla.weights_, est_smooth.weights_), (
@@ -125,7 +125,7 @@ def test_eg_tilde_implementation(X_small):
         eg_tilde=True,
         eg_tilde_alpha=lambda t: 1.0 / t if t > 0 else 1.0,
     ).fit(X_small)
-    assert_box_budget(est_callable.weights_, 0.0, 1.0, 1.0)
+    assert_box_budget(w=est_callable.weights_, lower=0.0, upper=1.0, budget=1.0)
     assert not np.allclose(est_callable.weights_, est_eg.weights_)
 
 
@@ -138,12 +138,12 @@ def test_update_mode(method, X_small):
     # OMD mode (default)
     est_omd = FollowTheWinner(strategy=method, update_mode="omd")
     est_omd.fit(X_small)
-    assert_box_budget(est_omd.weights_, 0.0, 1.0, 1.0)
+    assert_box_budget(w=est_omd.weights_, lower=0.0, upper=1.0, budget=1.0)
 
     # FTRL mode
     est_ftrl = FollowTheWinner(strategy=method, update_mode="ftrl")
     est_ftrl.fit(X_small)
-    assert_box_budget(est_ftrl.weights_, 0.0, 1.0, 1.0)
+    assert_box_budget(w=est_ftrl.weights_, lower=0.0, upper=1.0, budget=1.0)
 
 
 @pytest.mark.parametrize(
@@ -155,7 +155,7 @@ def test_learning_rate(strategy, learning_rate, X_small):
     # Constant learning_rate
     est = FollowTheWinner(strategy=strategy, learning_rate=learning_rate)
     est.fit(X_small)
-    assert_box_budget(est.weights_, 0.0, 1.0, 1.0)
+    assert_box_budget(w=est.weights_, lower=0.0, upper=1.0, budget=1.0)
 
 
 def test_entropy_omd_matches_exponentiated_gradient():
@@ -213,7 +213,7 @@ class TestFollowTheWinnerConstraints:
     def test_bounds_and_budget(self, lower, upper, budget, X_small_single):
         est = FollowTheWinner(min_weights=lower, max_weights=upper, budget=budget)
         est.partial_fit(X_small_single)
-        assert_box_budget(est.weights_, lower, upper, budget)
+        assert_box_budget(w=est.weights_, lower=lower, upper=upper, budget=budget)
 
     def test_turnover_projection(self, X_small):
         max_turnover = 0.5
@@ -223,7 +223,7 @@ class TestFollowTheWinnerConstraints:
         est.fit(X_small)
         l1 = np.abs(est.weights_ - prev).sum()
         assert l1 <= max_turnover + 1e-8
-        assert_box_budget(est.weights_, 0.0, 1.0, 1.0)
+        assert_box_budget(w=est.weights_, lower=0.0, upper=1.0, budget=1.0)
 
     def test_convex_fallback_groups_linear(
         self, X_small_single, groups, linear_constraints
@@ -242,18 +242,18 @@ class TestFollowTheWinnerConstraints:
         w = est.weights_
 
         # Box + budget
-        assert_box_budget(w, 0.0, 0.8, budget)
+        assert_box_budget(w=w, lower=0.0, upper=0.8, budget=budget)
 
         # Check a subset of linear constraints semantics
-        eq_sum = group_sum(w, groups, "Equity", 0)
-        bond_sum = group_sum(w, groups, "Bond", 0)
+        eq_sum = group_sum(weights=w, groups=groups, group_name="Equity", axis=0)
+        bond_sum = group_sum(weights=w, groups=groups, group_name="Bond", axis=0)
         assert eq_sum <= 0.5 * bond_sum + 1e-6
 
-        us_sum = group_sum(w, groups, "US", 1)
+        us_sum = group_sum(weights=w, groups=groups, group_name="US", axis=1)
         assert us_sum >= 0.1 - 1e-6
 
-        europe_sum = group_sum(w, groups, "Europe", 1)
-        fund_sum = group_sum(w, groups, "Fund", 0)
+        europe_sum = group_sum(weights=w, groups=groups, group_name="Europe", axis=1)
+        fund_sum = group_sum(weights=w, groups=groups, group_name="Fund", axis=0)
         assert europe_sum >= 0.5 * fund_sum - 1e-6
 
     def test_convex_variance_bound(self, X_small):
@@ -270,6 +270,6 @@ class TestFollowTheWinnerConstraints:
         )
         est.fit(X_small)
         w = est.weights_
-        assert_box_budget(w, 0.0, 0.5, 0.9)
+        assert_box_budget(w=w, lower=0.0, upper=0.5, budget=0.9)
         quad = float(w @ Sigma @ w)
         assert quad <= var_bound * 2.0 + 1e-6

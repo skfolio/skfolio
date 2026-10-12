@@ -349,32 +349,9 @@ def compute_adaptive_base_learning_rate(n_assets: int, diameter: float) -> float
 
     Notes
     -----
-    This implementation uses a **conservative scaling** of D/√n rather than
-    Orabona's theoretical D_i (per-coordinate diameter). Extensive empirical
-    testing on financial datasets shows that this conservative rate:
-
-    - Achieves **better risk-adjusted performance** (Sharpe, Calmar) than BCRP
-    - Outperforms theory-optimal rates on real (non-adversarial) market data
-    - Provides implicit regularization against overfitting and high turnover
-
-    **Theory vs Practice**: Orabona (2020) Section 5.3 proves that η_i = D_i
-    achieves optimal worst-case regret on hyperrectangles. However, for real
-    financial portfolio selection, the conservative D/√n rate empirically
-    dominates on risk-adjusted metrics, likely due to:
-
-    1. Reduced turnover (lower implicit transaction costs)
-    2. Better handling of non-stationary market dynamics
-    3. Implicit early-stopping regularization
-    4. Smoother weight trajectories (better drawdown control)
-
-    **When theory is better**: If optimizing for cumulative log-wealth in
-    adversarial/worst-case scenarios, use explicit learning_rate=D_i values.
-    For real portfolio management optimizing risk-adjusted returns, this
-    conservative default is empirically validated as superior.
-
-    References
-    ----------
-    - Theory: Orabona F. (2020), "A Modern Introduction to Online Learning"
+    Scales the feasible-set diameter by the square root of the number of assets.
+    This heuristic is not the per-coordinate diameter used in theoretical
+    AdaGrad regret bounds. Supply an explicit learning rate to use another scale.
     """
     return diameter / np.sqrt(n_assets)
 
@@ -466,7 +443,7 @@ def get_auto_learning_rate(
     match strategy:
         case FTWStrategy.OGD:
             return lambda t: compute_ogd_learning_rate(
-                t, diameter, gradient_bound, scale=scale
+                t=t, diameter=diameter, gradient_bound=gradient_bound, scale=scale
             )
 
         case FTWStrategy.EG:

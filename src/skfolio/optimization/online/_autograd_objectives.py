@@ -1,61 +1,10 @@
-"""Autograd-compatible objective functions for online portfolio optimization.
+"""Loss functions and gradients for online portfolio optimization.
 
-This module provides automatic and analytical differentiation for risk and
-performance measures in the Online Convex Optimization (OCO) framework.
-
-OCO-Compatible Measures
-------------------------
-The following measures are convex (or exp-concave) in portfolio weights and
-suitable for online optimization with regret guarantees:
-
-**Exp-Concave (O(n log T) regret with ONS/second-order methods)**:
-- Log-Wealth (Hazan Ch. 6: rank-1 Hessian)
-- EVaR (Entropic Value at Risk)
-- EDaR (Entropic Drawdown at Risk)
-
-**Strongly Convex (O(log T) regret with appropriate step sizes)**:
-- Variance (quadratic, full-rank Hessian)
-
-**Convex (O(√T) regret)**:
-- Standard Deviation
-- Semi-Variance, Semi-Deviation
-- Mean Absolute Deviation
-- First Lower Partial Moment
-- CVaR (Conditional Value at Risk)
-- Worst Realization
-- Gini Mean Difference
-- CDaR (Conditional Drawdown at Risk)
-
-**Linear (O(√T) regret)**:
-- Mean (expected return)
-
-Non-Convex Measures (Not Included)
------------------------------------
-The following measures are NOT included because they are non-convex and
-violate OCO assumptions:
-- Value at Risk (VaR): quantile function, non-convex
-- Max Drawdown: max operator over path-dependent values, non-convex
-- Average Drawdown: path-dependent, non-convex
-- Ulcer Index: involves squared drawdown, non-convex
-
-For these measures, standard OCO regret bounds do not hold.
-
-Analytical vs Autograd Gradients
----------------------------------
-Where available, analytical gradients are significantly faster than autograd.
-The following measures have analytical gradient implementations:
-- Log-Wealth: -r / (1 + w^T r)
-- Mean: mean(X)
-- Variance: 2Σw / T (requires sample covariance)
-- Semi-Variance: closed-form with indicators
-- Mean Absolute Deviation: closed-form with signs
-- First Lower Partial Moment: closed-form with indicators
-- Worst Realization: one-hot gradient at worst asset
-- Gini Mean Difference: OWA weights
-
-References
-----------
-See OCO/gradients_risk_metrics.md for detailed mathematical formulations.
+The internal objective catalogue provides analytical gradients and optional
+Autograd derivatives for portfolio return and risk measures. Individual functions
+specify their data windows, smoothing parameters and return conventions.
+Supported derivatives do not by themselves establish an algorithm's regret bound;
+that also depends on the loss assumptions, feasible set and update rule.
 """
 
 # Copyright (c) 2025

@@ -44,7 +44,7 @@ def test_static_regret_matches_manual(objective):
     between online losses and BCRP losses. Also check final static regret is >= -tol.
     """
     T, n = 60, 6
-    relatives = _iid_relatives(T, n, seed=1)
+    relatives = _iid_relatives(T=T, n=n, seed=1)
     X_net = relatives - 1.0
 
     # Online estimator
@@ -85,7 +85,7 @@ def test_regret_average_modes_consistency_static():
     running-average regret; and that average=True equals 'running'.
     """
     T, n = 80, 5
-    relatives = _iid_relatives(T, n, seed=2)
+    relatives = _iid_relatives(T=T, n=n, seed=2)
     X_net = relatives - 1.0
 
     est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate=0.1, warm_start=False)
@@ -121,7 +121,7 @@ def test_windowed_regret_consistency():
     Verify sliding-window regret and running average agree with a manual computation.
     """
     T, n = 100, 7
-    relatives = _iid_relatives(T, n, seed=3)
+    relatives = _iid_relatives(T=T, n=n, seed=3)
     X_net = relatives - 1.0
     window = 10
 
@@ -175,7 +175,7 @@ def test_random_relatives_static_and_dynamic_regret_curves(objective):
     We check shapes, finiteness, and non-negativity of final static regret (up to tiny tolerance).
     """
     T, n = 120, 8
-    relatives = _iid_relatives(T, n, seed=4)
+    relatives = _iid_relatives(T=T, n=n, seed=4)
     X_net = relatives - 1.0
 
     model = FollowTheWinner(strategy=objective, learning_rate=0.1, warm_start=False)
@@ -206,7 +206,7 @@ def test_dynamic_regret_curve_matches_prefix_comparator_behavior():
     comparator's fit_dynamic(X) -> all_weights_ behavior (prefix-BCRP in current code).
     """
     T, n = 50, 6
-    relatives = _iid_relatives(T, n, seed=5)
+    relatives = _iid_relatives(T=T, n=n, seed=5)
     X_net = relatives - 1.0
 
     # Online EG

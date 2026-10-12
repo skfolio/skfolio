@@ -500,4 +500,9 @@ def regret(
         )
 
     # Running (or windowed) regret curve
-    return _running_regret(online_losses, comp_losses, average=average, window=window)
+    return _running_regret(
+        online_losses=online_losses,
+        comp_losses=comp_losses,
+        average=average,
+        window=window,
+    )

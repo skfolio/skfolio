@@ -94,7 +94,9 @@ class TestLogWealthObjective:
         obj = MeasureObjective(measure=PerfMeasure.LOG_WEALTH, use_autograd=True)
 
         grad_autograd = obj.grad(weights, net_returns_single)
-        grad_numerical = _finite_difference_gradient(obj, weights, net_returns_single)
+        grad_numerical = _finite_difference_gradient(
+            obj=obj, weights=weights, net_returns=net_returns_single
+        )
 
         np.testing.assert_allclose(grad_autograd, grad_numerical, atol=1e-5)
 
@@ -126,7 +128,9 @@ class TestRiskMeasures:
         obj = MeasureObjective(measure=measure, use_autograd=True)
 
         grad_autograd = obj.grad(weights, net_returns_single)
-        grad_numerical = _finite_difference_gradient(obj, weights, net_returns_single)
+        grad_numerical = _finite_difference_gradient(
+            obj=obj, weights=weights, net_returns=net_returns_single
+        )
 
         np.testing.assert_allclose(grad_autograd, grad_numerical, atol=1e-5)
 
@@ -150,7 +154,7 @@ class TestRiskMeasures:
 
         grad_autograd = obj.grad(weights, net_returns_timeseries)
         grad_numerical = _finite_difference_gradient(
-            obj, weights, net_returns_timeseries
+            obj=obj, weights=weights, net_returns=net_returns_timeseries
         )
 
         np.testing.assert_allclose(grad_autograd, grad_numerical, atol=1e-4)
@@ -187,7 +191,9 @@ class TestPerformanceMeasures:
         obj = MeasureObjective(measure=PerfMeasure.MEAN, use_autograd=True)
 
         grad_autograd = obj.grad(weights, net_returns_single)
-        grad_numerical = _finite_difference_gradient(obj, weights, net_returns_single)
+        grad_numerical = _finite_difference_gradient(
+            obj=obj, weights=weights, net_returns=net_returns_single
+        )
 
         np.testing.assert_allclose(grad_autograd, grad_numerical, atol=1e-5)
 
@@ -199,7 +205,7 @@ class TestPerformanceMeasures:
 
         grad_autograd = obj.grad(weights, net_returns_timeseries)
         grad_numerical = _finite_difference_gradient(
-            obj, weights, net_returns_timeseries
+            obj=obj, weights=weights, net_returns=net_returns_timeseries
         )
 
         np.testing.assert_allclose(grad_autograd, grad_numerical, atol=1e-5)
@@ -513,7 +519,7 @@ class TestAdvancedAnalyticalGradients:
 
         grad_analytical = obj.grad(weights, net_returns_timeseries)
         grad_numerical = _finite_difference_gradient(
-            obj, weights, net_returns_timeseries
+            obj=obj, weights=weights, net_returns=net_returns_timeseries
         )
 
         # Entropic measures have numerical sensitivity due to theta optimization
@@ -531,7 +537,7 @@ class TestAdvancedAnalyticalGradients:
 
         grad_analytical = obj.grad(weights, net_returns_timeseries)
         grad_numerical = _finite_difference_gradient(
-            obj, weights, net_returns_timeseries
+            obj=obj, weights=weights, net_returns=net_returns_timeseries
         )
 
         # Drawdown measures have path dependencies; tolerance accounts for
@@ -548,7 +554,7 @@ class TestAdvancedAnalyticalGradients:
 
         grad_analytical = obj.grad(weights, net_returns_timeseries)
         grad_numerical = _finite_difference_gradient(
-            obj, weights, net_returns_timeseries
+            obj=obj, weights=weights, net_returns=net_returns_timeseries
         )
 
         # Entropic drawdown combines theta optimization + path dependencies

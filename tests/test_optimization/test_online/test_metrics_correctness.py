@@ -410,7 +410,7 @@ def test_analytical_gradient(net_returns, weights, measure):
     elif method == "finite_diff":
         # Compute gradients via finite differences
         finite_diff_grad = _finite_difference_gradient_from_measure(
-            measure_fn, weights, net_returns, eps=1e-6
+            measure_fn=measure_fn, weights=weights, net_returns=net_returns, eps=1e-6
         )
         analytical_grad = analytical_grad_fn(weights, net_returns)
 

@@ -74,7 +74,12 @@ def test_gradient_bound_unknown_objective_raises():
 @pytest.mark.parametrize(
     "compute_fn,t",
     [
-        (lambda t: compute_ogd_learning_rate(t, np.sqrt(2), 0.8), 4),
+        (
+            lambda t: compute_ogd_learning_rate(
+                t=t, diameter=np.sqrt(2), gradient_bound=0.8
+            ),
+            4,
+        ),
         (lambda t: compute_eg_learning_rate(t, 10), 4),
         (lambda t: compute_prod_learning_rate(t, 10), 4),
     ],
@@ -226,7 +231,7 @@ def test_t_zero_safe():
     assert 0 < eta_eg < np.inf
     assert not np.isnan(eta_eg)
 
-    eta_ogd = compute_ogd_learning_rate(0, np.sqrt(2), 0.8)
+    eta_ogd = compute_ogd_learning_rate(t=0, diameter=np.sqrt(2), gradient_bound=0.8)
     assert 0 < eta_ogd < np.inf
     assert not np.isnan(eta_ogd)
 

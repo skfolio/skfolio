@@ -22,7 +22,7 @@ def test_regret_uses_execution_costs_and_preserves_fitted_state():
     weights = model.weights_.copy()
     count = model._t
     portfolio = deepcopy(model).fit_predict(X)
-    actual = regret(model, X, regret_type=RegretType.DYNAMIC_WORST_CASE)
+    actual = regret(estimator=model, X=X, regret_type=RegretType.DYNAMIC_WORST_CASE)
     expected = np.cumsum(-np.log1p(portfolio.returns) + np.log1p(X.max(axis=1)))
     np.testing.assert_allclose(actual, expected, atol=1e-12)
     np.testing.assert_array_equal(model.weights_, weights)
@@ -35,7 +35,7 @@ def test_static_comparator_is_copied_and_cash_is_included():
     X = np.array([[0.1, -0.05], [-0.02, 0.08]])
     model = ExponentiatedGradient()
     comp = CRP(weights=[0.2, 0.3])
-    actual = regret(model, X, comparator=comp)
+    actual = regret(estimator=model, X=X, comparator=comp)
     online_returns = deepcopy(model).fit_predict(X).returns
     expected = np.cumsum(-np.log1p(online_returns) + np.log1p(X @ [0.2, 0.3]))
     np.testing.assert_allclose(actual, expected)
@@ -46,7 +46,7 @@ def test_static_comparator_is_copied_and_cash_is_included():
 @pytest.mark.parametrize("X", [[], [[np.nan, 0]], [[np.inf, 0]], [[-1, 0]], [[-2, 0]]])
 def test_invalid_returns_rejected(X):
     with pytest.raises(ValueError):
-        regret(ExponentiatedGradient(), X)
+        regret(estimator=ExponentiatedGradient(), X=X)
 
 
 @pytest.mark.parametrize(
@@ -63,8 +63,8 @@ def test_invalid_returns_rejected(X):
 def test_invalid_dynamic_configuration_rejected(config):
     with pytest.raises(ValueError):
         regret(
-            ExponentiatedGradient(),
-            [[0.01, 0.02]],
+            estimator=ExponentiatedGradient(),
+            X=[[0.01, 0.02]],
             regret_type=RegretType.DYNAMIC_UNIVERSAL,
             dynamic_config=config,
         )
@@ -75,7 +75,7 @@ def test_invalid_dynamic_configuration_rejected(config):
 )
 def test_invalid_aggregation_rejected(options):
     with pytest.raises(ValueError):
-        regret(ExponentiatedGradient(), [[0.01, 0.02]], **options)
+        regret(estimator=ExponentiatedGradient(), X=[[0.01, 0.02]], **options)
 
 
 def test_invalid_solver_is_not_silently_replaced():
@@ -83,8 +83,8 @@ def test_invalid_solver_is_not_silently_replaced():
 
     with pytest.raises(cp.error.SolverError):
         regret(
-            ExponentiatedGradient(),
-            [[0.01, 0.02]],
+            estimator=ExponentiatedGradient(),
+            X=[[0.01, 0.02]],
             regret_type=RegretType.DYNAMIC_UNIVERSAL,
             dynamic_config={"path_length": 1, "solver": "NOT_A_SOLVER"},
         )
@@ -127,20 +127,20 @@ def test_dynamic_penalty_interpolates_between_hindsight_comparators(norm):
     X = np.array([[0.2, -0.1], [-0.1, 0.2], [0.15, -0.05], [-0.03, 0.08]])
     model = ExponentiatedGradient()
     unrestricted = regret(
-        model,
-        X,
+        estimator=model,
+        X=X,
         regret_type="dynamic_universal",
         dynamic_config={"path_penalty": 0.0, "norm": norm},
     )
-    worst_case = regret(model, X, regret_type="dynamic_worst_case")
+    worst_case = regret(estimator=model, X=X, regret_type="dynamic_worst_case")
     np.testing.assert_allclose(unrestricted, worst_case, atol=1e-7)
     penalized = regret(
-        model,
-        X,
+        estimator=model,
+        X=X,
         regret_type="dynamic_universal",
         dynamic_config={"path_penalty": 100.0, "norm": norm},
     )
-    static = regret(model, X, regret_type="static")
+    static = regret(estimator=model, X=X, regret_type="static")
     # Compare optimized total log wealth; near-equal optimizers can have
     # different prefix curves at solver precision.
     np.testing.assert_allclose(penalized[-1], static[-1], atol=1e-7)
@@ -152,7 +152,9 @@ def test_explicit_legacy_comparator_matches_manual_prefix_losses():
     X = np.array([[0.1, -0.05], [-0.02, 0.08], [0.04, -0.01]])
     comparator = BCRP(max_weights=0.7)
     model = ExponentiatedGradient()
-    curve = regret(model, X, comparator=comparator, regret_type="dynamic_legacy")
+    curve = regret(
+        estimator=model, X=X, comparator=comparator, regret_type="dynamic_legacy"
+    )
     weights = deepcopy(comparator).fit_dynamic(X).all_weights_
     online = deepcopy(model).fit_predict(X).returns
     expected = np.cumsum(-np.log1p(online) + np.log1p(np.sum(X * weights, axis=1)))
@@ -163,7 +165,9 @@ def test_explicit_legacy_comparator_matches_manual_prefix_losses():
 @pytest.mark.parametrize("regret_type", ["unknown", 123])
 def test_invalid_regret_type_rejected(regret_type):
     with pytest.raises(ValueError):
-        regret(ExponentiatedGradient(), [[0.1, 0.2]], regret_type=regret_type)
+        regret(
+            estimator=ExponentiatedGradient(), X=[[0.1, 0.2]], regret_type=regret_type
+        )
 
 
 def test_weight_shape_validation_prevents_broadcasted_loss():
@@ -174,4 +178,4 @@ def test_weight_shape_validation_prevents_broadcasted_loss():
 def test_bankrupt_online_execution_rejected():
     model = ExponentiatedGradient(management_fees=0.8)
     with pytest.raises(ValueError, match="strictly positive"):
-        regret(model, [[-0.5, -0.6]])
+        regret(estimator=model, X=[[-0.5, -0.6]])

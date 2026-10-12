@@ -321,14 +321,28 @@ def project_box_and_sum(
     elif np.isscalar(lower):
         lo_arr = np.full(n, lower)
     else:
-        lo_arr = input_to_array(lower, n, 0.0, 1, None, "lower_bounds")
+        lo_arr = input_to_array(
+            items=lower,
+            n_assets=n,
+            fill_value=0.0,
+            dim=1,
+            assets_names=None,
+            name="lower_bounds",
+        )
 
     if upper is None:
         up_arr = np.full(n, 1.0, dtype=float)
     elif np.isscalar(upper):
         up_arr = np.full(n, upper)
     else:
-        up_arr = input_to_array(upper, n, 1.0, 1, None, "upper_bounds")
+        up_arr = input_to_array(
+            items=upper,
+            n_assets=n,
+            fill_value=1.0,
+            dim=1,
+            assets_names=None,
+            name="upper_bounds",
+        )
 
     if (
         not np.isfinite(y_arr).all()
@@ -399,14 +413,28 @@ def project_with_turnover(
     elif np.isscalar(lower):
         lower_bounds = np.full(n, lower)
     else:
-        lower_bounds = input_to_array(lower, n, 0.0, 1, None, "lower_bounds")
+        lower_bounds = input_to_array(
+            items=lower,
+            n_assets=n,
+            fill_value=0.0,
+            dim=1,
+            assets_names=None,
+            name="lower_bounds",
+        )
 
     if upper is None:
         u = np.full(n, 1.0, dtype=float)
     elif np.isscalar(upper):
         u = np.full(n, upper)
     else:
-        u = input_to_array(upper, n, 1.0, 1, None, "upper_bounds")
+        u = input_to_array(
+            items=upper,
+            n_assets=n,
+            fill_value=1.0,
+            dim=1,
+            assets_names=None,
+            name="upper_bounds",
+        )
 
     # Iteratively enforce both box/budget and L1-turnover constraints
     w = project_box_and_sum(y=y, lower=lower_bounds, upper=u, budget=budget)
@@ -420,7 +448,9 @@ def project_with_turnover(
     if prev.shape != y.shape or not np.isfinite(prev).all():
         raise ValueError("previous_weights must be finite and match candidate weights")
     if max_turnover == 0:
-        feasible = project_box_and_sum(prev, lower_bounds, u, budget)
+        feasible = project_box_and_sum(
+            y=prev, lower=lower_bounds, upper=u, budget=budget
+        )
         if not np.allclose(prev, feasible, atol=1e-12, rtol=0):
             raise ValueError("Zero turnover holdings violate the bounds or budget")
         return prev.copy()
@@ -480,28 +510,50 @@ def project_convex(
     elif np.isscalar(lower):
         lower_bounds = np.full(n, lower)
     else:
-        lower_bounds = input_to_array(lower, n, 0.0, 1, None, "lower_bounds")
+        lower_bounds = input_to_array(
+            items=lower,
+            n_assets=n,
+            fill_value=0.0,
+            dim=1,
+            assets_names=None,
+            name="lower_bounds",
+        )
 
     if upper is None:
         u = np.full(n, 1.0)
     elif np.isscalar(upper):
         u = np.full(n, upper)
     else:
-        u = input_to_array(upper, n, 1.0, 1, None, "upper_bounds")
+        u = input_to_array(
+            items=upper,
+            n_assets=n,
+            fill_value=1.0,
+            dim=1,
+            assets_names=None,
+            name="upper_bounds",
+        )
 
     w = cp.Variable(n)
     minimization = cp.Minimize(
         0.5 * cp.sum_squares(w - w0) if objective is None else objective(w)
     )
     constraints = weight_constraints(
-        w, 1.0, lower_bounds, u, True, max_long=max_long, max_short=max_short
+        w=w,
+        factor=1.0,
+        min_weights=lower_bounds,
+        max_weights=u,
+        allow_negative_weights=True,
+        max_long=max_long,
+        max_short=max_short,
     )
-    constraints += budget_constraints(w, 1.0, budget, min_budget, max_budget)
+    constraints += budget_constraints(
+        w=w, factor=1.0, budget=budget, min_budget=min_budget, max_budget=max_budget
+    )
     constraints += build_linear_constraints(
-        w,
-        1.0,
-        linear_constraints,
-        None if groups is None else np.asarray(groups),
+        w=w,
+        factor=1.0,
+        linear_constraints=linear_constraints,
+        groups=None if groups is None else np.asarray(groups),
     )
 
     if left_inequality is not None and right_inequality is not None:

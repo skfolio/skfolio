@@ -1,4 +1,4 @@
-"""Concrete online estimators over Carlo Nicolini's shared algorithm families."""
+"""Online portfolio estimators."""
 
 from __future__ import annotations
 
@@ -12,14 +12,14 @@ from skfolio.prior import BasePrior
 
 
 class ExponentiatedGradient(FollowTheWinner):
-    """Entropy-based log-wealth learning through Carlo's shared OCO engine.
+    """Online log-wealth optimization with entropy geometry.
 
     Parameters
     ----------
     learning_rate : float, default=0.05
         Positive gradient step size.
     update_mode : str, default="ftrl"
-        Either ftrl (Carlo's default) or omd (local mirror descent).
+        Either ftrl (follow-the-regularized-leader) or omd (online mirror descent).
     initial_weights : skt.MultiInput | None, default=None
         Initial learning allocation. None uses uniform weights; named inputs follow X columns.
     previous_weights : skt.MultiInput | None, default=None
@@ -57,9 +57,10 @@ class ExponentiatedGradient(FollowTheWinner):
 
     Notes
     -----
-    fit resets learned state; partial_fit consumes rows causally. After row t,
-    weights_ is the target for t+1. Portfolio handles execution, drift and wealth.
-    Use model_selection.online_predict with test_size=1 for evaluation.
+    ``fit`` resets learned state; ``partial_fit`` consumes rows causally. After row t,
+    ``weights_`` is the target for t+1. Portfolio handles execution, drift and wealth.
+    Use :func:`~skfolio.model_selection.online_predict` with ``test_size=1``
+    for evaluation.
     Missing returns, bankrupt assets, changing universes and automatic recovery
     are not supported. A failed numerical update requires a fresh fit.
 
@@ -172,9 +173,10 @@ class AdaGrad(FollowTheWinner):
 
     Notes
     -----
-    fit resets learned state; partial_fit consumes rows causally. After row t,
-    weights_ is the target for t+1. Portfolio handles execution, drift and wealth.
-    Use model_selection.online_predict with test_size=1 for evaluation.
+    ``fit`` resets learned state; ``partial_fit`` consumes rows causally. After row t,
+    ``weights_`` is the target for t+1. Portfolio handles execution, drift and wealth.
+    Use :func:`~skfolio.model_selection.online_predict` with ``test_size=1``
+    for evaluation.
     Missing returns, bankrupt assets, changing universes and automatic recovery
     are not supported. A failed numerical update requires a fresh fit.
 
@@ -242,7 +244,7 @@ class AdaGrad(FollowTheWinner):
 
 
 class OnlineMovingAverageReversion(FollowTheLoser):
-    """Moving-average reversion through Carlo's shared passive-aggressive strategy.
+    """Online moving-average reversion with passive-aggressive updates.
 
     Parameters
     ----------
@@ -287,9 +289,10 @@ class OnlineMovingAverageReversion(FollowTheLoser):
 
     Notes
     -----
-    fit resets learned state; partial_fit consumes rows causally. After row t,
-    weights_ is the target for t+1. Portfolio handles execution, drift and wealth.
-    Use model_selection.online_predict with test_size=1 for evaluation.
+    ``fit`` resets learned state; ``partial_fit`` consumes rows causally. After row t,
+    ``weights_`` is the target for t+1. Portfolio handles execution, drift and wealth.
+    Use :func:`~skfolio.model_selection.online_predict` with ``test_size=1``
+    for evaluation.
     Missing returns, bankrupt assets, changing universes and automatic recovery
     are not supported. A failed numerical update requires a fresh fit.
 

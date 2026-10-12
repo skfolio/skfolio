@@ -13,7 +13,7 @@ def _iid_relatives(T, n, seed=42, sigma=0.02):
 
 def test_worst_case_dynamic_nonnegativity():
     T, n = 60, 5
-    R = _iid_relatives(T, n, seed=1)
+    R = _iid_relatives(T=T, n=n, seed=1)
     X = R - 1.0
 
     est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate=0.1, warm_start=False)
@@ -27,7 +27,7 @@ def test_worst_case_dynamic_nonnegativity():
 
 def test_universal_dynamic_pt_zero_equals_static():
     T, n = 50, 6
-    R = _iid_relatives(T, n, seed=2)
+    R = _iid_relatives(T=T, n=n, seed=2)
     X = R - 1.0
 
     est = FollowTheWinner(strategy=FTWStrategy.OGD, learning_rate=0.1, warm_start=False)
@@ -52,7 +52,7 @@ def test_universal_dynamic_monotonic_in_pt():
     => dynamic regret (online - comparator) is non-decreasing in PT.
     """
     T, n = 80, 4
-    R = _iid_relatives(T, n, seed=3)
+    R = _iid_relatives(T=T, n=n, seed=3)
     X = R - 1.0
     est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate=0.05, warm_start=False)
 
@@ -92,7 +92,7 @@ def test_universal_dynamic_monotonic_in_pt():
 
 def test_dynamic_legacy_alias_warns_and_matches():
     T, n = 40, 3
-    R = _iid_relatives(T, n, seed=4)
+    R = _iid_relatives(T=T, n=n, seed=4)
     X = R - 1.0
     est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate=0.1, warm_start=False)
 

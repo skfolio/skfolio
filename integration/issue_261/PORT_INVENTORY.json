@@ -41,7 +41,7 @@
         "Public initial allocations support named/scalar inputs. Statistical state and execution holdings remain separate; conversion no longer clips returns."
       ],
       "adaptation_reference": "3fbc2726c5145b61f75ae80d610690d64f28a745",
-      "destination_sha256": "33cb2cc15033542d8de81eedda62beabc6ed99b147aae5e485d4c9afc8dd6ce8"
+      "destination_sha256": "6b2efdbb9c6cccc8c43e5e29f3648c5bb8f5b6a2cdf05c83fde309f61d65f306"
     },
     {
       "source_path": "src/skfolio/optimization/online/_benchmark.py",
@@ -55,7 +55,7 @@
         "First-period legacy dynamic comparator solves return objectives directly with shared constraints. Risk objectives and custom callbacks are rejected for that one-row prefix."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "586aaa2afdbf2366e72da8b3fdc6bfd0bcbdfafa091bb93190f6bf33532b186c"
+      "destination_sha256": "45467791fc12bd72a44d691e223d90e787404000c7c4420048ee03fa28f228c1"
     },
     {
       "source_path": "src/skfolio/optimization/online/_cwmr.py",
@@ -67,7 +67,7 @@
         "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "7ac3a95fa9a042afab1855b3ef48e374a7b0d1796b63036294fe578b4cedcbe9"
+      "destination_sha256": "3b12efda7170c3fc31fdca3bddb6f5d6b158653e643a7e07f18cd57a80a745b4"
     },
     {
       "source_path": "src/skfolio/optimization/online/_foco.py",
@@ -94,7 +94,7 @@
         "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "2afedfa565e13cefd15a9fe2ee6a0228acf1590d8a9064b4422174f1ce1a80bd"
+      "destination_sha256": "f902248f15f76ecd26eb58c9e9cefd3f6350bd6663d77165ead5f4c0176e6d77"
     },
     {
       "source_path": "src/skfolio/optimization/online/_loser.py",
@@ -107,7 +107,7 @@
         "Inactive predictors still enforce refreshed constraints. MD initializes from the explicit target; diagnostic loss accounts for residual cash."
       ],
       "adaptation_reference": "3fbc2726c5145b61f75ae80d610690d64f28a745",
-      "destination_sha256": "a4ae8026999299fc2b5465138a06be792337d4b8859f303b062c3813f0843b6a"
+      "destination_sha256": "79c3d687845e59ffc14346d4bb53b9a55deebfc7033a605967e9064f6c9a7bf3"
     },
     {
       "source_path": "src/skfolio/optimization/online/_mirror_maps.py",
@@ -166,7 +166,7 @@
         "Shared batch constraint builders are reused; zero-turnover holdings are exact and must lie in the mirror domain.",
         "Use the exact separable entropy solution for free budgets with default box bounds; avoid solver-dependent precision and exponential overflow."
       ],
-      "destination_sha256": "4c02d069eaa6a86af4899b87ce2ce71cc831fe00cb4a65dabe0ea2cb405a1a69"
+      "destination_sha256": "e62cc0ef291c84e56c0d6c666a7a69e23d53378ab63ebad8f488797e51931b11"
     },
     {
       "source_path": "src/skfolio/optimization/online/_regret.py",
@@ -179,7 +179,7 @@
         "Constant comparator uses CLARABEL instead of the often-unconverged multiplicative iteration. Dynamic solver errors propagate. Cash is included; aggregation and path parameters are validated."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "8cc9219fc30e138a6908a5083a8abec6fe55fc14e75c2c849c8b8fdb66e7d19a"
+      "destination_sha256": "0d1c342845dd4243ec3d84314af9f4c3eefe6c544e3cc167e030bab20f047ccb"
     },
     {
       "source_path": "src/skfolio/optimization/online/_strategies.py",
@@ -192,7 +192,7 @@
         "OLMAR readiness follows window-1 price relatives, and inactive PA steps still recheck refreshed constraints."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "420cb8e009a1c74221e786d55ce5c8f11c04d1d0980b71c397f7fc478487aa27"
+      "destination_sha256": "2a71478de657db32789a9627945af449d152f09aaf9684d694a0cc824a2bfa34"
     },
     {
       "source_path": "src/skfolio/optimization/online/_utils.py",
@@ -218,7 +218,7 @@
         "Uses the native dual-vector projection path. Diagnostic loss accounts for residual cash."
       ],
       "adaptation_reference": "3fbc2726c5145b61f75ae80d610690d64f28a745",
-      "destination_sha256": "650e67b5dd36d94f98322f1be30dd30f7fc08c8b8fa8fabc42a99f8f731cd7d7"
+      "destination_sha256": "45d04f797994c3e2ab48b621e4588ba096f1da64f273d0ff3ecc52a953d4a430"
     },
     {
       "source_path": "tests/test_optimization/test_online/base.py",
@@ -256,7 +256,7 @@
         "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "40f2a4a85e586d6344e091a453bbd84ffeb027f66926982646a0846ca7b83fd7"
+      "destination_sha256": "073e5372c7450282aaa4cf7641549be286cfb48cf17aa42d4f7948e690ceb604"
     },
     {
       "source_path": "tests/test_optimization/test_online/loser/test_cwmr_clip.py",
@@ -417,7 +417,7 @@
         "Constant comparator uses CLARABEL instead of the often-unconverged multiplicative iteration. Dynamic solver errors propagate. Cash is included; aggregation and path parameters are validated."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "18ccfc841ba4c54741719a88f1ec04e839ce6a0150e52f42ecd89acd0c27d178"
+      "destination_sha256": "6359af463a96a86cad85d2d402394406bfb2373e733c2319f5313f1bdb458ed6"
     },
     {
       "source_path": "tests/test_optimization/test_online/regret/test_regret_curves.py",
@@ -429,7 +429,7 @@
         "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "5909b157233561342e310180c3deb7fbcbf7b44295a546c7febc3da080e8fe9d"
+      "destination_sha256": "0d53d6f335b74828949cfe1624fbc7bb59668e9322d297e7628d0e1a3bcd93f4"
     },
     {
       "source_path": "tests/test_optimization/test_online/regret/test_regret_dynamic.py",
@@ -441,7 +441,7 @@
         "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "a3fbdeb923a4971b2d47e43a16f53b5c8acb9035d488a4aa7d66f6274473fb0f"
+      "destination_sha256": "c25cbd176c5da0836645c1da123c27ec17f921695eaf56374d3a61fb12515608"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_auto_learning_rate.py",
@@ -453,7 +453,7 @@
         "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "024e91a36895d8f93119eecd75641283f2bf2c765f07ebcc363ffa3694fb0e91"
+      "destination_sha256": "3aed38e10e87eab4ce33d50e0b49fe12a6a8a74f12e143204cda3e5d71c529f6"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_autograd_objectives.py",
@@ -465,7 +465,7 @@
         "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "588211d42b6e36b6389b12541b32b4af94535c378d2c7fbec182e3df7416254a"
+      "destination_sha256": "25b158270927ec12e50e9255f74d6485d14115da8e7f3f9b6727cbeea5ed442e"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_benchmark.py",
@@ -530,7 +530,7 @@
         "Ported original algorithm tests with pre-existing reference accounting/lifecycle adaptations; imports target private families, and public variance spelling is max_variance."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "c90bd69fe6fd8bea5d96e08c7275504486cd6b87d46af89c02f89a81c18114ec"
+      "destination_sha256": "edb8bb68950bab1005dad698dfa1ddd205395e2f4b3e2fb000d5a127c019bb48"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_projection.py",
@@ -552,7 +552,7 @@
         "Enable and rename the former regret-bound smoke test to test_universal_regret_is_finite. It does not prove a theoretical bound."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "c68106d2906da00701c0ffeefadd6059c68ed69e0698549b2e30384487e8bb9d"
+      "destination_sha256": "d5ceb2ac0da55b65c4f2ceccad1cbdcdb62dbd1870b24aa27914355035d84379"
     },
     {
       "source_path": "tests/test_optimization/test_online/utils.py",
@@ -588,7 +588,7 @@
         "Carlo family adapter with fit-reset, causal row/block updates, reset-required failures and optional prior hooks from 3fbc272. Native projector interface retained; no recovery or universe extensions."
       ],
       "adaptation_reference": "3fbc2726c5145b61f75ae80d610690d64f28a745",
-      "destination_sha256": "c470010304cd27b01a8d48eb244ccd2d0e52e2ef44a3377be2012359dbf83266"
+      "destination_sha256": "a3f60c6cd987839c5aa9d1de799bc514d76709ff113d4fb2be11f4dadeb09836"
     }
   ],
   "added_tests": [

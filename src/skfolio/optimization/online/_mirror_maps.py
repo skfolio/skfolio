@@ -1288,7 +1288,7 @@ class CompositeMirrorMap(DynamicMirrorMap):
         d = z.shape[0]
         D, a, A = self._collect_coefficients(d)
 
-        solver = _DampedNewtonInverse(D, a, A, eps=self.eps)
+        solver = _DampedNewtonInverse(D=D, a=a, A=A, eps=self.eps)
         return solver.solve(z)
 
     def project_geom(self, w: np.ndarray) -> np.ndarray:

@@ -89,7 +89,7 @@ def solve_tau(m0: float, s: float, eps: float, phi: float) -> float:
         return 0.0
 
     # Check if constraint already satisfied
-    f0 = constraint_residual(0.0, m0, s, eps, phi)
+    f0 = constraint_residual(tau=0.0, m0=m0, s=s, eps=eps, phi=phi)
     if f0 <= 0.0:
         return 0.0
 
@@ -98,7 +98,7 @@ def solve_tau(m0: float, s: float, eps: float, phi: float) -> float:
 
     # Solve using fsolve
     tau_solution = fsolve(
-        lambda t: constraint_residual(t, m0, s, eps, phi),
+        lambda t: constraint_residual(tau=t, m0=m0, s=s, eps=eps, phi=phi),
         x0=tau_init,
         full_output=False,
     )
@@ -143,7 +143,7 @@ def pa_distribution_update(
         return mu.copy(), diag.copy()
 
     # Solve for tau
-    tau = solve_tau(m0, s, epsilon, phi)
+    tau = solve_tau(m0=m0, s=s, eps=epsilon, phi=phi)
 
     # Update mean: mu <- mu_0 - tau * Sigma_0 * x
     sigma_x = diag * x

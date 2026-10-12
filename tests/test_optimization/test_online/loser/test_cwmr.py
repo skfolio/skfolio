@@ -123,11 +123,15 @@ def test_cwmr_md_reduces_violation():
     sigma_prev = model._cwmr_Sdiag.copy()
     x = 1.0 + X[1]
     phi = norm.ppf(model.cwmr_eta)
-    violation_before = _violation(mu_prev, sigma_prev, x, model.epsilon, phi)
+    violation_before = _violation(
+        mu=mu_prev, sigma=sigma_prev, x=x, eps=model.epsilon, phi=phi
+    )
     model.partial_fit(X[1:2])
     mu_new = model.weights_.copy()
     sigma_new = model._cwmr_Sdiag.copy()
-    violation_after = _violation(mu_new, sigma_new, x, model.epsilon, phi)
+    violation_after = _violation(
+        mu=mu_new, sigma=sigma_new, x=x, eps=model.epsilon, phi=phi
+    )
     assert violation_after <= violation_before + 1e-10
 
 

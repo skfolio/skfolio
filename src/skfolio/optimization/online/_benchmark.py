@@ -540,12 +540,26 @@ class BCRP(MeanRisk):
             del self.investable_mask_
         self._scale_constraints = cp.Constant(1.0)
         w = cp.Variable(n)
-        constraints = self._get_weight_constraints(n, w, cp.Constant(1.0))
-        previous = self._clean_input(self.previous_weights, n, 0, "previous_weights")
+        constraints = self._get_weight_constraints(
+            n_assets=n, w=w, factor=cp.Constant(1.0)
+        )
+        previous = self._clean_input(
+            value=self.previous_weights,
+            n_assets=n,
+            fill_value=0,
+            name="previous_weights",
+        )
         if self.max_turnover is not None:
             constraints.append(cp.norm1(w - previous) <= self.max_turnover)
-        costs = self._clean_input(self.transaction_costs, n, 0, "transaction_costs")
-        fees = self._clean_input(self.management_fees, n, 0, "management_fees")
+        costs = self._clean_input(
+            value=self.transaction_costs,
+            n_assets=n,
+            fill_value=0,
+            name="transaction_costs",
+        )
+        fees = self._clean_input(
+            value=self.management_fees, n_assets=n, fill_value=0, name="management_fees"
+        )
         gain = values[0] @ w
         reward = (
             cp.log(1.0 + gain)

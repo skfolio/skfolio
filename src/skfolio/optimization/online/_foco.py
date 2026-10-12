@@ -22,72 +22,41 @@ EtaSchedule = float | np.ndarray | Callable[[int], float]
 
 
 class FirstOrderOCO:
-    r"""Implements a unified engine for first order online convex optimization algorithms supporting both Online Mirror Descent (OMD) and Follow-the-Regularized-Leader (FTRL) through COMID (Composite-Objective Mirror Descent); Duchi et al., COLT 2010).
-    The helper `_composite_update` solves min ⟨η_t ĝ, w⟩ + ψ(w) with ψ un-linearised, exactly the COMID step.
+    r"""First-order online optimization with mirror descent or FTRL updates.
 
-    This engine provides the core logic for first-order online convex optimization
-    algorithms, framed through the modern lens of FTRL-Proximal and dual averaging
-    that connects OMD and FTRL. It can be configured to run in either mode and
-    supports optimistic updates via gradient predictors and flexible learning rate
-    schedules.
+    Parameters
+    ----------
+    mirror_map : BaseMirrorMap
+        Regularizer geometry and its dual transforms.
+    projector : BaseProjector
+        Feasible-set projector or native constrained-update solver.
+    eta : float, ndarray or callable, default=1.0
+        Learning rate, indexed schedule or function of the zero-based round.
+    predictor : callable, optional
+        Predict a gradient from the round, current weights and previous gradient.
+    mode : {"omd", "ftrl"}, default="omd"
+        OMD uses a local mirror step. FTRL uses accumulated gradients.
+    skip_auto_update : bool, default=False
+        Leave adaptive mirror-state updates to the caller.
+    discount : float, optional
+        Multiply accumulated gradients by this factor before adding the new one.
 
-    OMD vs. FTRL
-    ------------
-    Two update modes are supported:
-    - **OMD** (Online Mirror Descent) takes a local proximal step around the current iterate `x_t` using the
-      current gradient `g_t`. Its update is:
-      :math:`x_{t+1} = \arg\min_{x \in K} \{ \eta_t \langle g_t, x \rangle + D_\psi(x, x_t) \}`
+    Notes
+    -----
+    OMD uses the effective gradient ``g + prediction - previous_prediction``.
+    FTRL uses the accumulated gradient plus the current prediction. Native
+    constrained solvers retain the mirror geometry in the objective.
 
-    - **FTRL** (Follow-the-Regularized-Leader) chooses the point that minimizes the regularized cumulative linearized loss over all past gradients:
-      :math:`x_{t+1} = \arg\min_{x \in K} \{ \sum_{s=1}^{t} \langle g_s, x \rangle + \frac{1}{\eta_t}\psi(x) \}`
-      This implementation uses a formulation where eta is multiplied with the linear term:
-      :math:`x_{t+1} = \arg\min_{x \in K} \{ \eta_t \sum_{s=1}^{t} \langle g_s, x \rangle + \psi(x) \}`
-
-    Equivalence
-    -----------
-    OMD and FTRL can be made mathematically equivalent. This engine implements the
-    FTRL-Proximal formulation, which can exactly reproduce OMD by choosing a
-    time-varying proximal regularizer. The core solver method
-    `_composite_update` implements this unified objective.
-
-    Optimistic Updates
-    ------------------
-    The engine supports optimistic updates following Rakhlin & Sridharan (2013).
-    When a predictor is provided, the effective gradient at round t becomes:
-        g_eff = g_t - tilde{g}_t + tilde{g}_{t+1}
-    where:
-    - g_t is the actual gradient at round t
-    - tilde{g}_t is the prediction made at round t-1 (stored from previous round)
-    - tilde{g}_{t+1} is the new prediction made at round t (returned by predictor)
-
-    This formulation ensures the regret bound scales with ||g_t - tilde{g}_t||^2
-    (prediction error) rather than ||g_t||^2, providing better performance when
-    gradients are predictable.
-
-    **OMD mode**: Uses the full effective gradient in the local proximal step
-    **FTRL mode**: The telescoping sum handles the prediction terms implicitly
-                   through cumulative gradient tracking
-
-    See Orabona (2020+), "A Modern Introduction to Online Learning", Chapter 6,
-    Section 6.9 for detailed analysis.
-    See also Joulani et al. (2017) "A modular analysis of adaptive (non-)convex
-    optimization: Optimism, composite objectives, and variational bounds"
-    for the original algorithm.
-
-    Learning Rate Schedule
-    ----------------------
-    The learning rate `eta` can be a constant float, a pre-computed numpy array,
-    or a callable `lambda t: f(t)` that returns the learning rate for round `t`.
+    With adaptive maps, OMD computes its step using geometry that includes the
+    current gradient. FTRL computes its decision before updating that geometry.
+    The family adapter can own those updates when ``skip_auto_update=True``.
 
     References
     ----------
     .. [1] McMahan, H. B. (2011). "Follow-the-Regularized-Leader and Mirror
            Descent: Equivalence Theorems and L1 Regularization". PMLR.
-
     .. [2] Xiao, L. (2009). "Dual Averaging Method for Regularized Stochastic
            Learning and Online Optimization". JMLR.
-
-    .. [3] Chiang, C., et al. "Online optimization with gradual variations." JMLR 2012.
     """
 
     def __init__(
