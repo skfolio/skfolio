@@ -178,43 +178,38 @@ def test_compositions_invertibility(mirror_map_cls):
     domain = get_map_domain(map_obj)
     if domain == "simplex":
         samples = sample_interior_simplex(n, num_samples)
-        for x in samples:
-            psi_x = map_obj.grad_psi(x)
-            x_reconstructed = map_obj.grad_psi_star(psi_x)
-            assert_allclose(x_reconstructed, x, atol=tol, rtol=0)
+    elif domain == "orthant":
+        samples = sample_interior_orthant(n, num_samples)
+    else:
+        samples = [np.random.rand(n) + 0.1 for _ in range(num_samples)]
 
-            # Dual: handle simplex invariance (add constant doesn't change softmax)
-            theta = psi_x + rng.uniform(-1, 1, n)  # perturbed dual
-            psi_star_theta = map_obj.grad_psi_star(theta)
-            psi_reconstructed = map_obj.grad_psi(psi_star_theta)
-            # Subtract mean to handle additive invariance
+    for x in samples:
+        psi_x = map_obj.grad_psi(x)
+        x_reconstructed = map_obj.grad_psi_star(psi_x)
+        assert_allclose(x_reconstructed, x, atol=tol, rtol=0)
+
+        if domain == "simplex":
+            theta = psi_x + rng.uniform(-1, 1, n)
+        elif domain == "orthant":
+            # The log-barrier conjugate exists only for negative dual values.
+            # Additive noise can cross zero and invalidate the round trip.
+            theta = psi_x * np.exp(rng.normal(0, 0.1, n))
+            assert np.all(theta < 0)
+        else:
+            theta = psi_x + rng.normal(0, 0.1, n)
+        psi_star_theta = map_obj.grad_psi_star(theta)
+        psi_reconstructed = map_obj.grad_psi(psi_star_theta)
+
+        if domain == "simplex":
+            # Subtract the mean to handle the softmax's additive invariance.
             assert_allclose(
                 psi_reconstructed - np.mean(psi_reconstructed),
                 theta - np.mean(theta),
                 atol=tol,
                 rtol=0,
             )
-    else:  # Euclidean or orthant
-        samples = (
-            sample_interior_orthant(n, num_samples)
-            if domain == "orthant"
-            else [np.random.rand(n) + 0.1 for _ in range(num_samples)]
-        )
-        for x in samples:
-            psi_x = map_obj.grad_psi(x)
-            x_reconstructed = map_obj.grad_psi_star(psi_x)
-            assert_allclose(x_reconstructed, x, atol=tol, rtol=0)
-
-            if domain == "orthant":
-                # The log-barrier conjugate exists only for negative dual values.
-                # Additive noise can cross zero and invalidate the round trip.
-                theta = psi_x * np.exp(rng.normal(0, 0.1, n))
-                assert np.all(theta < 0)
-            else:
-                theta = psi_x + rng.normal(0, 0.1, n)
-            psi_star_theta = map_obj.grad_psi_star(theta)
-            psi_reconstructed = map_obj.grad_psi(psi_star_theta)
-            # LogBarrier can have numerical issues with very small values, use relaxed tolerance
+        else:
+            # Small orthant values require the original relaxed tolerance.
             test_tol = 1e-8 if domain == "orthant" else tol
             assert_allclose(psi_reconstructed, theta, atol=test_tol, rtol=0)
 

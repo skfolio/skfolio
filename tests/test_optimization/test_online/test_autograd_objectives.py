@@ -41,6 +41,15 @@ def _finite_difference_gradient(
     return grad_numerical
 
 
+def _assert_gradient_matches_finite_difference(*, obj, weights, net_returns, atol):
+    """Compare the objective gradient with an independent numerical derivative."""
+    actual = obj.grad(weights, net_returns)
+    expected = _finite_difference_gradient(
+        obj=obj, weights=weights, net_returns=net_returns
+    )
+    np.testing.assert_allclose(actual, expected, atol=atol)
+
+
 @pytest.fixture(scope="module")
 def net_returns_single():
     """Single observation of net returns."""
@@ -93,12 +102,9 @@ class TestLogWealthObjective:
         """Test gradient matches finite difference approximation."""
         obj = MeasureObjective(measure=PerfMeasure.LOG_WEALTH, use_autograd=True)
 
-        grad_autograd = obj.grad(weights, net_returns_single)
-        grad_numerical = _finite_difference_gradient(
-            obj=obj, weights=weights, net_returns=net_returns_single
+        _assert_gradient_matches_finite_difference(
+            obj=obj, weights=weights, net_returns=net_returns_single, atol=1e-5
         )
-
-        np.testing.assert_allclose(grad_autograd, grad_numerical, atol=1e-5)
 
     def test_negative_loss_positive_returns(self, weights):
         """Test log-wealth has negative loss for positive returns."""
@@ -127,12 +133,9 @@ class TestRiskMeasures:
         """Test gradient matches finite difference for single observation."""
         obj = MeasureObjective(measure=measure, use_autograd=True)
 
-        grad_autograd = obj.grad(weights, net_returns_single)
-        grad_numerical = _finite_difference_gradient(
-            obj=obj, weights=weights, net_returns=net_returns_single
+        _assert_gradient_matches_finite_difference(
+            obj=obj, weights=weights, net_returns=net_returns_single, atol=1e-5
         )
-
-        np.testing.assert_allclose(grad_autograd, grad_numerical, atol=1e-5)
 
     @pytest.mark.parametrize(
         "measure",
@@ -152,12 +155,9 @@ class TestRiskMeasures:
         """Test gradient matches finite difference for time series."""
         obj = MeasureObjective(measure=measure, use_autograd=True, cvar_beta=0.95)
 
-        grad_autograd = obj.grad(weights, net_returns_timeseries)
-        grad_numerical = _finite_difference_gradient(
-            obj=obj, weights=weights, net_returns=net_returns_timeseries
+        _assert_gradient_matches_finite_difference(
+            obj=obj, weights=weights, net_returns=net_returns_timeseries, atol=1e-4
         )
-
-        np.testing.assert_allclose(grad_autograd, grad_numerical, atol=1e-4)
 
     def test_positive_loss_values(self, weights, net_returns_timeseries):
         """Test risk measures produce non-negative loss values."""
@@ -190,12 +190,9 @@ class TestPerformanceMeasures:
         """Test mean gradient for single observation."""
         obj = MeasureObjective(measure=PerfMeasure.MEAN, use_autograd=True)
 
-        grad_autograd = obj.grad(weights, net_returns_single)
-        grad_numerical = _finite_difference_gradient(
-            obj=obj, weights=weights, net_returns=net_returns_single
+        _assert_gradient_matches_finite_difference(
+            obj=obj, weights=weights, net_returns=net_returns_single, atol=1e-5
         )
-
-        np.testing.assert_allclose(grad_autograd, grad_numerical, atol=1e-5)
 
     def test_mean_gradient_finite_difference_timeseries(
         self, weights, net_returns_timeseries
@@ -203,12 +200,9 @@ class TestPerformanceMeasures:
         """Test mean gradient for time series."""
         obj = MeasureObjective(measure=PerfMeasure.MEAN, use_autograd=True)
 
-        grad_autograd = obj.grad(weights, net_returns_timeseries)
-        grad_numerical = _finite_difference_gradient(
-            obj=obj, weights=weights, net_returns=net_returns_timeseries
+        _assert_gradient_matches_finite_difference(
+            obj=obj, weights=weights, net_returns=net_returns_timeseries, atol=1e-5
         )
-
-        np.testing.assert_allclose(grad_autograd, grad_numerical, atol=1e-5)
 
     def test_negative_loss_positive_returns(self, weights, net_returns_timeseries):
         """Test performance measures have negative loss for positive returns."""
@@ -225,23 +219,19 @@ class TestPerformanceMeasures:
 class TestCreateObjective:
     """Test objective factory function."""
 
-    def test_create_default_log_wealth(self):
-        """Test creating default log-wealth objective."""
-        obj = create_objective(None)
+    @pytest.mark.parametrize(
+        "measure, expected",
+        [
+            pytest.param(None, PerfMeasure.LOG_WEALTH, id="default-log-wealth"),
+            pytest.param(RiskMeasure.VARIANCE, RiskMeasure.VARIANCE, id="variance"),
+            pytest.param(PerfMeasure.MEAN, PerfMeasure.MEAN, id="mean"),
+        ],
+    )
+    def test_create_measure(self, measure, expected):
+        """The factory preserves the requested measure or selects log wealth."""
+        obj = create_objective(measure)
         assert isinstance(obj, MeasureObjective)
-        assert obj.measure == PerfMeasure.LOG_WEALTH
-
-    def test_create_risk_measure(self):
-        """Test creating risk measure objective."""
-        obj = create_objective(RiskMeasure.VARIANCE)
-        assert isinstance(obj, MeasureObjective)
-        assert obj.measure == RiskMeasure.VARIANCE
-
-    def test_create_perf_measure(self):
-        """Test creating performance measure objective."""
-        obj = create_objective(PerfMeasure.MEAN)
-        assert isinstance(obj, MeasureObjective)
-        assert obj.measure == PerfMeasure.MEAN
+        assert obj.measure == expected
 
     def test_create_with_use_autograd_false(self):
         """Test creating objective with analytical gradient."""
@@ -511,56 +501,27 @@ class TestAdvancedAnalyticalGradients:
     so we validate against finite differences.
     """
 
-    def test_evar_analytical_vs_finite_diff(self, weights, net_returns_timeseries):
-        """Test EVaR analytical gradient matches finite difference."""
-        obj = MeasureObjective(
-            measure=RiskMeasure.EVAR, use_autograd=False, evar_beta=0.95
-        )
-
+    @pytest.mark.parametrize(
+        "measure, kwargs, rtol, atol",
+        [
+            # Theta optimization makes entropic measures numerically sensitive.
+            pytest.param(RiskMeasure.EVAR, {"evar_beta": 0.95}, 0.01, 1e-3, id="evar"),
+            # Drawdowns also depend on wealth accumulation and peak tracking.
+            pytest.param(RiskMeasure.CDAR, {"cdar_beta": 0.95}, 0.01, 2e-3, id="cdar"),
+            pytest.param(RiskMeasure.EDAR, {"edar_beta": 0.95}, 0.02, 3e-3, id="edar"),
+        ],
+    )
+    def test_analytical_vs_finite_diff(
+        self, measure, kwargs, rtol, atol, weights, net_returns_timeseries
+    ):
+        """Check each analytical gradient with its original numerical tolerance."""
+        obj = MeasureObjective(measure=measure, use_autograd=False, **kwargs)
         grad_analytical = obj.grad(weights, net_returns_timeseries)
         grad_numerical = _finite_difference_gradient(
             obj=obj, weights=weights, net_returns=net_returns_timeseries
         )
-
-        # Entropic measures have numerical sensitivity due to theta optimization
-        # Absolute errors are very small (<0.001), but relative errors can be large
-        # for small gradient components. Use absolute tolerance as primary criterion.
         np.testing.assert_allclose(
-            grad_analytical, grad_numerical, rtol=0.01, atol=1e-3
-        )
-
-    def test_cdar_analytical_vs_finite_diff(self, weights, net_returns_timeseries):
-        """Test CDaR analytical gradient matches finite difference."""
-        obj = MeasureObjective(
-            measure=RiskMeasure.CDAR, use_autograd=False, cdar_beta=0.95
-        )
-
-        grad_analytical = obj.grad(weights, net_returns_timeseries)
-        grad_numerical = _finite_difference_gradient(
-            obj=obj, weights=weights, net_returns=net_returns_timeseries
-        )
-
-        # Drawdown measures have path dependencies; tolerance accounts for
-        # numerical sensitivity in wealth accumulation and peak tracking
-        np.testing.assert_allclose(
-            grad_analytical, grad_numerical, rtol=0.01, atol=2e-3
-        )
-
-    def test_edar_analytical_vs_finite_diff(self, weights, net_returns_timeseries):
-        """Test EDaR analytical gradient matches finite difference."""
-        obj = MeasureObjective(
-            measure=RiskMeasure.EDAR, use_autograd=False, edar_beta=0.95
-        )
-
-        grad_analytical = obj.grad(weights, net_returns_timeseries)
-        grad_numerical = _finite_difference_gradient(
-            obj=obj, weights=weights, net_returns=net_returns_timeseries
-        )
-
-        # Entropic drawdown combines theta optimization + path dependencies
-        # Most demanding test - absolute errors ~0.002, which is excellent for OCO
-        np.testing.assert_allclose(
-            grad_analytical, grad_numerical, rtol=0.02, atol=3e-3
+            grad_analytical, grad_numerical, rtol=rtol, atol=atol
         )
 
 
