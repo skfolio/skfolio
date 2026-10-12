@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.8.3 (2026-10-12)
+
+### Bug Fixes
+
+- **prior**: Seed SyntheticData conditioning noise and draw it independently per asset
+  ([#419](https://github.com/skfolio/skfolio/pull/419),
+  [`5d3acca`](https://github.com/skfolio/skfolio/commit/5d3acca969a6d12116d8365b22facc0327e9da02))
+
+
 ## v1.8.2 (2026-10-12)
 
 ### Bug Fixes
