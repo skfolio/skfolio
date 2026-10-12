@@ -1418,9 +1418,18 @@ class MeanRisk(ConvexOptimization):
                     else:
                         args[arg_name] = getattr(self, arg_name)
 
-                risk_i, constraints_i = risk_func(**args)
-                constraints += constraints_i
+                # The lifted worst-case variance is 1-homogeneous in (w, factor), which
+                # suits a limit written as `risk <= limit * factor`. A ratio objective
+                # needs the 2-homogeneous variance, hence `factor=1`.
+                objective_args: dict[str, Any] = args
+                if risk_func == self._worst_case_variance_risk and isinstance(
+                    factor, cp.Variable
+                ):
+                    objective_args = {**args, "factor": cp.Constant(1)}
+
                 if risk_limit is not None:
+                    risk_i, constraints_i = risk_func(**args)
+                    constraints += constraints_i
                     parameter = cp.Parameter(nonneg=True)
                     constraints += [
                         risk_i * self._scale_constraints
@@ -1428,7 +1437,11 @@ class MeanRisk(ConvexOptimization):
                     ]
                     parameters_values.append((parameter, risk_limit))
                 if self.risk_measure == r_m:
-                    risk = risk_i
+                    if risk_limit is not None and objective_args is args:
+                        risk = risk_i
+                    else:
+                        risk, constraints_i = risk_func(**objective_args)
+                        constraints += constraints_i
 
         return risk, constraints, parameters_values
 
