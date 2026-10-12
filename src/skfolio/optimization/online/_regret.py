@@ -6,7 +6,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 from copy import deepcopy
-from enum import Enum
 
 import cvxpy as cp
 import numpy as np
@@ -15,9 +14,10 @@ from numpy.typing import ArrayLike
 
 from skfolio.optimization._base import BaseOptimization
 from skfolio.optimization.online._base import BaseOnlineOptimization
+from skfolio.utils.tools import AutoEnum
 
 
-class RegretType(str, Enum):
+class RegretType(AutoEnum):
     """Available historical comparator conventions."""
 
     STATIC = "static"
@@ -45,8 +45,6 @@ def plot_regret_curve(
     label : str, optional
         Custom label for the curve.
     """
-    import plotly.graph_objects as go
-
     r = np.asarray(regret, dtype=float)
     if fig is None:
         fig = go.Figure()
