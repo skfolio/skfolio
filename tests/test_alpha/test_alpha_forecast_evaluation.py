@@ -24,6 +24,9 @@ from skfolio.alpha._evaluation import (
     _compute_factor_correlation_diagnostics,
     _correlation_stats,
     _coverage_stats,
+    _dependent_multipliers,
+    _hac_inference,
+    _qs_kernel,
 )
 from skfolio.containers import AssetPanel
 from skfolio.descriptor import Passthrough
@@ -71,6 +74,25 @@ def _perfect_forecast_panel() -> AssetPanel:
         asset_names=assets,
     )
     return panel
+
+
+def _noisy_forecast_panel(n_obs: int = 150, n_assets: int = 12) -> AssetPanel:
+    """Create a long panel where the signal weakly predicts next-period returns."""
+    rng = np.random.default_rng(7)
+    observations = pd.bdate_range("2020-01-01", periods=n_obs).to_numpy()
+    assets = np.array([f"asset_{i}" for i in range(n_assets)])
+    idio_returns = 0.01 * rng.standard_normal((n_obs, n_assets))
+    signal = np.vstack(
+        [
+            0.3 * idio_returns[1:] + 0.01 * rng.standard_normal((n_obs - 1, n_assets)),
+            np.full((1, n_assets), np.nan),
+        ]
+    )
+    return AssetPanel(
+        fields={_IDIO_RETURNS: idio_returns, "signal": signal},
+        observations=observations,
+        asset_names=assets,
+    )
 
 
 def _decay_common_sample_panel() -> AssetPanel:
@@ -754,11 +776,15 @@ class TestAlphaForecastEvaluation:
             n_forward_periods=2,
         ).decay_summary()
 
-        # every window sees all evaluation dates, with the excluded ones as NaN gaps
-        n_dates = {n for n, _ in calls}
-        assert len(n_dates) == 1
-        assert all(ic.shape[0] == next(iter(n_dates)) for _, ic in calls)
-        assert any(np.isnan(ic).any() for _, ic in calls)
+        # The main diagnostics leave out the date without valid assets. Every forward
+        # window sees the whole evaluation grid, with that date kept as a NaN gap.
+        main, windows = calls[0], calls[1:]
+        assert windows
+        # The grid runs to the end of the panel (8 dates), the main sample has 6.
+        assert main[0] == 6
+        assert all(n_dates == panel.n_observations for n_dates, _ in windows)
+        assert all(ic.shape[0] == panel.n_observations for _, ic in windows)
+        assert all(np.isnan(ic[3]) for _, ic in windows)
 
     def test_missing_target_field_raises(self, alpha_deterministic_panel):
         """target must be a field in the AssetPanel."""
@@ -1182,3 +1208,397 @@ class TestHacInference:
         summary = evaluation.ic_summary().loc["spearman_ic"]
         assert summary["t_stat"] == pytest.approx(expected["t_stat"], nan_ok=True)
         assert summary["p_value"] == pytest.approx(expected["p_value"], nan_ok=True)
+
+    def test_dependent_multipliers_have_kernel_covariance(self):
+        n_dates, bandwidth = 12, 3.0
+        draws = _dependent_multipliers(
+            n_dates, 200_000, bandwidth, np.random.default_rng(0)
+        )
+        lags = np.abs(np.subtract.outer(np.arange(n_dates), np.arange(n_dates)))
+        expected = _qs_kernel(lags / bandwidth)
+        np.testing.assert_allclose(np.cov(draws, rowvar=False), expected, atol=0.02)
+
+    @pytest.mark.parametrize("kind", ["iid", "overlap"])
+    def test_null_rejection_rate_is_close_to_nominal(self, monkeypatch, kind):
+        """Under a true null the 5% test rejects at a rate close to 5%."""
+        monkeypatch.setattr("skfolio.alpha._evaluation._N_BOOTSTRAP", 199)
+        rng = np.random.default_rng(11)
+        n_trials, rejections = 300, 0
+        for _ in range(n_trials):
+            noise = rng.standard_normal(250 + 9)
+            if kind == "iid":
+                arr = noise[:250]
+            else:
+                arr = 3 * np.convolve(noise, np.ones(10) / 10, mode="valid")
+            rejections += _correlation_stats(arr, ratio_name="icir")["p_value"] < 0.05
+        assert 0.02 <= rejections / n_trials <= 0.11
+
+    def test_confidence_interval_excludes_zero_exactly_when_p_value_is_small(self):
+        for shift in np.linspace(0.0, 0.5, 25):
+            arr = self._overlapping_series(
+                n=100, window=5, mean=0.0, seed=int(shift * 100)
+            )
+            arr = arr + shift * arr.std()
+            stats = _hac_inference(arr)
+            excludes_zero = not stats["mean_ci_lower"] < 0 < stats["mean_ci_upper"]
+            assert excludes_zero == (stats["p_value"] < 0.05)
+
+    def test_inference_is_invariant_to_a_constant_shift_of_dispersion(self):
+        base = self._overlapping_series(n=100, window=5, mean=0.0, seed=8)
+        scaled = 1e-6 * base + 5.0
+        stats = _correlation_stats(scaled, ratio_name="icir")
+        assert np.isfinite(stats["t_stat"])
+        assert np.isfinite(stats["p_value"])
+        assert stats["mean_ci_lower"] < stats["mean"] < stats["mean_ci_upper"]
+
+    def test_inference_is_cached(self, monkeypatch):
+        arr = self._overlapping_series(n=100, window=5, seed=9) + 0.01234
+        first = _hac_inference(arr)
+        monkeypatch.setattr(
+            "skfolio.alpha._evaluation._hac_inference_uncached",
+            lambda _: pytest.fail("inference was recomputed"),
+        )
+        assert _hac_inference(arr.copy()) == first
+
+    @pytest.mark.parametrize(
+        "positions",
+        [
+            np.array([[0, 1, 2]]),
+            np.array([0.0, 1.0, 2.0]),
+            np.array([0, 1]),
+            np.array([0, 2, 1]),
+            np.array([0, 1, 1]),
+            np.array([-1, 0, 1]),
+            np.array([2, 1, 0], dtype=np.uint64),
+            np.array([], dtype=int),
+        ],
+    )
+    def test_invalid_evaluation_positions_raise(
+        self, alpha_deterministic_panel, positions
+    ):
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(), alpha_deterministic_panel, holding_period=1
+        )
+        evaluation = replace(
+            evaluation,
+            observations=evaluation.observations[:3],
+            evaluation_positions=None,
+        )
+        with pytest.raises(ValueError, match="evaluation_positions"):
+            replace(evaluation, evaluation_positions=positions)
+
+    @pytest.mark.parametrize("evaluation_step", [1, 2])
+    def test_holding_period_and_decay_inference(self, evaluation_step):
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            _noisy_forecast_panel(),
+            holding_period=2,
+            signal_lag=1,
+            evaluation_step=evaluation_step,
+            n_forward_periods=3,
+        )
+        for summary in (
+            evaluation.holding_period_summary(),
+            evaluation.decay_summary(),
+        ):
+            for prefix in ("spearman", "pearson"):
+                columns = [
+                    f"{prefix}_ic_{name}"
+                    for name in ("t_stat", "p_value", "mean_ci_lower", "mean_ci_upper")
+                ]
+                assert np.isfinite(summary[columns].to_numpy()).all()
+                assert (summary[columns[1]].between(0, 1)).all()
+                assert (summary[columns[2]] < summary[columns[3]]).all()
+
+    def test_summary_without_common_sample_keeps_inference_columns(self):
+        panel = _perfect_forecast_panel()
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            panel,
+            holding_period=1,
+            signal_lag=1,
+            n_forward_periods=2,
+            min_count=panel.n_assets + 1,
+        )
+        for summary in (
+            evaluation.holding_period_summary(),
+            evaluation.decay_summary(),
+        ):
+            assert "pearson_ic_p_value" in summary.columns
+            assert "spearman_ic_mean_ci_upper" in summary.columns
+            assert summary.filter(like="_ic_").isna().all().all()
+
+    def test_excluded_dates_stay_at_their_grid_position(self, monkeypatch):
+        """Dates dropped from the common sample are NaN gaps, not removed."""
+        captured = []
+        original = _correlation_stats
+
+        def spy(arr, **kwargs):
+            captured.append(arr.copy())
+            return original(arr, **kwargs)
+
+        monkeypatch.setattr("skfolio.alpha._evaluation._correlation_stats", spy)
+
+        def evaluate(panel):
+            captured.clear()
+            alpha_forecast_evaluation(
+                _fixed_signal_alpha(),
+                panel,
+                holding_period=2,
+                signal_lag=1,
+                evaluation_step=1,
+                n_forward_periods=2,
+            )
+            return list(captured)
+
+        clean = evaluate(_noisy_forecast_panel())
+        panel = _noisy_forecast_panel()
+        idio_returns = panel[_IDIO_RETURNS].copy()
+        idio_returns[60:62] = np.nan
+        panel[_IDIO_RETURNS] = idio_returns
+        gapped = evaluate(panel)
+
+        assert len(gapped) == len(clean)
+        for arr, reference in zip(gapped, clean, strict=True):
+            assert arr.size == reference.size
+            missing = np.flatnonzero(np.isnan(arr) & np.isfinite(reference))
+            # The dates whose target windows lie in the NaN rows are excluded in
+            # place, so the dates after the gap keep their grid position.
+            assert missing.size > 0
+            assert missing.min() >= 50
+            assert missing.max() < 65
+            assert np.isfinite(arr[:50]).all()
+
+    def test_ic_summary_keeps_dates_without_valid_assets_as_gaps(self):
+        panel = _noisy_forecast_panel()
+        idio_returns = panel[_IDIO_RETURNS].copy()
+        idio_returns[60:62] = np.nan
+        panel[_IDIO_RETURNS] = idio_returns
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            panel,
+            holding_period=2,
+            signal_lag=1,
+            evaluation_step=1,
+        )
+        positions = evaluation.evaluation_positions
+        assert positions.size == evaluation.spearman_ic.size
+        assert positions[-1] + 1 == positions.size + 1
+        grid = np.full(panel.n_observations - evaluation.evaluation_origin, np.nan)
+        grid[positions] = evaluation.spearman_ic
+        expected = _correlation_stats(
+            grid, ratio_name="icir", horizon=2, evaluation_step=1
+        )
+        summary = evaluation.ic_summary().loc["spearman_ic"]
+        assert summary["t_stat"] == pytest.approx(expected["t_stat"])
+        compacted = _correlation_stats(
+            evaluation.spearman_ic, ratio_name="icir", horizon=2, evaluation_step=1
+        )
+        assert summary["t_stat"] != pytest.approx(compacted["t_stat"], rel=1e-9)
+
+    def test_ic_summary_without_positions_uses_consecutive_dates(
+        self, alpha_deterministic_panel
+    ):
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(), alpha_deterministic_panel, holding_period=1
+        )
+        evaluation = replace(evaluation, evaluation_positions=None)
+        expected = _correlation_stats(
+            evaluation.spearman_ic, ratio_name="icir", horizon=1, evaluation_step=1
+        )
+        summary = evaluation.ic_summary().loc["spearman_ic"]
+        assert summary["mean"] == pytest.approx(expected["mean"])
+
+    def test_summary_inference_uses_original_date_positions(self, monkeypatch):
+        """Inference inputs place every date at its index in the original panel."""
+        panel = _noisy_forecast_panel()
+        idio_returns = panel[_IDIO_RETURNS].copy()
+        # With a two-period target, the date before the two NaN rows has no target.
+        idio_returns[60:62] = np.nan
+        panel[_IDIO_RETURNS] = idio_returns
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            panel,
+            holding_period=2,
+            signal_lag=1,
+            evaluation_step=1,
+            n_forward_periods=2,
+        )
+        # Date 59 is the only interior date missing from the main sample.
+        assert 59 not in np.searchsorted(panel.observations, evaluation.observations)
+        assert np.flatnonzero(
+            np.diff(evaluation.evaluation_positions) > 1
+        ).tolist() == [58]
+
+        inputs = []
+        original = _hac_inference
+
+        def spy(arr):
+            inputs.append(arr.copy())
+            return original(arr)
+
+        monkeypatch.setattr("skfolio.alpha._evaluation._hac_inference", spy)
+        summary = evaluation.ic_summary()
+        evaluation.holding_period_summary()
+        evaluation.decay_summary()
+
+        # Independent grid: original panel index of each evaluation date.
+        panel_index = np.searchsorted(panel.observations, evaluation.observations)
+        expected = np.full(panel.n_observations - panel_index[0], np.nan)
+        expected[panel_index] = evaluation.spearman_ic
+        np.testing.assert_array_equal(inputs[0], expected)
+        assert summary.loc["spearman_ic", "t_stat"] == pytest.approx(
+            original(expected)["t_stat"]
+        )
+        for arr in inputs:
+            assert arr.size == panel.n_observations - panel_index[0]
+            assert np.isnan(arr[59])
+            assert np.isfinite(arr[60])
+
+    def test_inference_history_boundary(self):
+        # The grid spans (n - 1) * step + 1 periods up to the end of the panel.
+        for n, horizon, step, finite in (
+            (60, 6, 1, True),  # 60 >= 60
+            (59, 6, 1, False),  # 59 < 60
+            (60, 7, 1, False),  # 60 < 70
+            (95, 10, 1, False),  # 95 < 100, even though 94 + 10 >= 100
+            (100, 10, 1, True),  # 100 >= 100
+            (50, 10, 2, False),  # 99 < 100
+            (51, 10, 2, True),  # 101 >= 100
+        ):
+            series = self._overlapping_series(n=n, window=3)
+            stats = _correlation_stats(
+                series, ratio_name="icir", horizon=horizon, evaluation_step=step
+            )
+            assert np.isfinite(stats["t_stat"]) == finite
+
+    def test_factor_correlation_summary_uses_the_evaluation_dates(self):
+        panel = _noisy_forecast_panel()
+        exposures = np.random.default_rng(3).standard_normal((150, 12, 2))
+        panel.add_3d_field(
+            _EXPOSURES,
+            exposures,
+            third_axis_name="factors",
+            third_axis_labels=["f0", "f1"],
+        )
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            panel,
+            holding_period=2,
+            signal_lag=1,
+            evaluation_step=2,
+        )
+        summary = evaluation.factor_correlation_summary()
+        origin = evaluation.evaluation_origin
+        for i in range(2):
+            series = evaluation.factor_correlation[origin::2, i]
+            assert summary.iloc[i]["mean"] == pytest.approx(np.nanmean(series))
+            assert summary.iloc[i]["mean_ci_lower"] < summary.iloc[i]["mean"]
+            assert summary.iloc[i]["mean"] < summary.iloc[i]["mean_ci_upper"]
+
+    def test_inference_cache_is_bounded(self, monkeypatch):
+        monkeypatch.setattr("skfolio.alpha._evaluation._INFERENCE_CACHE_SIZE", 2)
+        monkeypatch.setattr("skfolio.alpha._evaluation._N_BOOTSTRAP", 99)
+        for seed in range(4):
+            _hac_inference(self._overlapping_series(n=40, window=3, seed=seed))
+        from skfolio.alpha._evaluation import _INFERENCE_CACHE
+
+        assert len(_INFERENCE_CACHE) <= 2
+
+    def test_factor_correlation_inference_keeps_missing_dates_as_gaps(
+        self, monkeypatch
+    ):
+        panel = _noisy_forecast_panel()
+        exposures = np.random.default_rng(3).standard_normal((150, 12, 2))
+        exposures[59] = np.nan
+        panel.add_3d_field(
+            _EXPOSURES,
+            exposures,
+            third_axis_name="factors",
+            third_axis_labels=["f0", "f1"],
+        )
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            panel,
+            holding_period=2,
+            signal_lag=1,
+            evaluation_step=1,
+        )
+        inputs = []
+        original = _hac_inference
+
+        def spy(arr):
+            inputs.append(arr.copy())
+            return original(arr)
+
+        monkeypatch.setattr("skfolio.alpha._evaluation._hac_inference", spy)
+        summary = evaluation.factor_correlation_summary()
+        assert len(inputs) == 2
+        last_row = panel.n_observations - 1
+        for i, arr in enumerate(inputs):
+            # The grid runs from the first to the last evaluation date.
+            assert arr.size == last_row + 1
+            assert np.isnan(arr[59])
+            assert np.isfinite(arr[58]) and np.isfinite(arr[60])
+            expected = original(evaluation.factor_correlation[: last_row + 1, i])
+            assert summary.iloc[i]["t_stat"] == pytest.approx(expected["t_stat"])
+            assert summary.iloc[i]["p_value"] == pytest.approx(expected["p_value"])
+
+    @pytest.mark.parametrize("evaluation_step", [1, 2])
+    def test_inference_inputs_are_on_the_evaluation_grid_with_offset_origin(
+        self, monkeypatch, evaluation_step
+    ):
+        panel = _noisy_forecast_panel()
+        idio_returns = panel[_IDIO_RETURNS].copy()
+        # Dates 0 and 1 have no target, so the evaluation grid starts at row 2.
+        idio_returns[0:4] = np.nan
+        panel[_IDIO_RETURNS] = idio_returns
+        exposures = np.random.default_rng(3).standard_normal((150, 12, 2))
+        exposures[60:62] = np.nan
+        panel.add_3d_field(
+            _EXPOSURES,
+            exposures,
+            third_axis_name="factors",
+            third_axis_labels=["f0", "f1"],
+        )
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            panel,
+            holding_period=2,
+            signal_lag=1,
+            evaluation_step=evaluation_step,
+            n_forward_periods=2,
+        )
+        rows = np.searchsorted(panel.observations, evaluation.observations)
+        assert rows[0] == 2
+        assert (np.diff(rows) == evaluation_step).all()
+
+        inputs = []
+        original = _hac_inference
+
+        def spy(arr):
+            inputs.append(arr.copy())
+            return original(arr)
+
+        monkeypatch.setattr("skfolio.alpha._evaluation._hac_inference", spy)
+        evaluation.ic_summary()
+        n_ic_inputs = len(inputs)
+        evaluation.factor_correlation_summary()
+        factor_inputs = inputs[n_ic_inputs:]
+
+        # Independent grid: panel rows from the first to the last evaluation date.
+        grid_rows = np.arange(rows[0], panel.n_observations, evaluation_step)
+        for i, arr in enumerate(factor_inputs):
+            expected = evaluation.factor_correlation[grid_rows, i]
+            assert arr.size == grid_rows.size
+            np.testing.assert_array_equal(arr, expected)
+            gap_rows = grid_rows[np.isnan(arr)]
+            # The last panel row has no alpha, hence no correlation.
+            assert set(gap_rows) <= {60, 61, 149}
+            assert {60}.issubset(gap_rows)
+            assert gap_rows.size > 0
+        for arr in inputs[:n_ic_inputs]:
+            # The grid keeps its first date and its trailing dates without target.
+            assert arr.size == grid_rows.size
+            assert np.isfinite(arr[0])
+            assert np.isnan(arr[-1])
