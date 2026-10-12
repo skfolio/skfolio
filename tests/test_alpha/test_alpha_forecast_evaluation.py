@@ -24,7 +24,6 @@ from skfolio.alpha._evaluation import (
     _compute_factor_correlation_diagnostics,
     _correlation_stats,
     _coverage_stats,
-    _n_overlap_lags,
 )
 from skfolio.containers import AssetPanel
 from skfolio.descriptor import Passthrough
@@ -210,6 +209,9 @@ class TestAlphaForecastEvaluation:
             "std",
             "icir",
             "t_stat",
+            "p_value",
+            "mean_ci_lower",
+            "mean_ci_upper",
             "hit_rate",
         ]
         assert list(evaluation.portfolio_summary().index) == [
@@ -238,12 +240,21 @@ class TestAlphaForecastEvaluation:
         assert "spearman_mean_ic" in evaluation.holding_period_summary().columns
         assert "spearman_mean_ic" in evaluation.decay_summary().columns
         assert "spearman_icir" in evaluation.decay_summary().columns
-        assert "spearman_ic_t_stat" in evaluation.decay_summary().columns
+        for prefix in ("spearman", "pearson"):
+            for suffix in ("t_stat", "p_value", "mean_ci_lower", "mean_ci_upper"):
+                assert f"{prefix}_ic_{suffix}" in evaluation.decay_summary().columns
+                assert (
+                    f"{prefix}_ic_{suffix}"
+                    in evaluation.holding_period_summary().columns
+                )
         assert list(evaluation.factor_correlation_summary().columns) == [
             "mean",
             "std",
             "ir",
             "t_stat",
+            "p_value",
+            "mean_ci_lower",
+            "mean_ci_upper",
             "hit_rate",
         ]
         assert evaluation.factor_correlation_summary().empty
@@ -260,23 +271,23 @@ class TestAlphaForecastEvaluation:
         )
         assert coverage["min_n_valid_assets"] == np.nanmin(evaluation.n_valid_assets)
 
-    def test_ic_summary_t_stat(self, alpha_deterministic_panel):
-        """IC t-stat is computed from finite evaluation dates."""
+    def test_ic_summary_inference_matches_helper(self, alpha_deterministic_panel):
+        """IC inference is the HAC inference of the date-level IC series."""
         evaluation = alpha_forecast_evaluation(
             _fixed_signal_alpha(),
             alpha_deterministic_panel,
             holding_period=1,
             signal_lag=1,
         )
-
-        spearman_ic = evaluation.spearman_ic[np.isfinite(evaluation.spearman_ic)]
-        expected = np.nanmean(spearman_ic) / (
-            np.nanstd(spearman_ic, ddof=1) / np.sqrt(spearman_ic.size)
+        expected = _correlation_stats(
+            evaluation.spearman_ic,
+            ratio_name="icir",
+            horizon=1,
+            evaluation_step=1,
         )
-
-        assert evaluation.ic_summary().loc["spearman_ic", "t_stat"] == pytest.approx(
-            expected
-        )
+        summary = evaluation.ic_summary().loc["spearman_ic"]
+        for column in ("t_stat", "p_value", "mean_ci_lower", "mean_ci_upper"):
+            assert summary[column] == pytest.approx(expected[column], nan_ok=True)
 
     def test_return_summaries_are_annualized(self, alpha_deterministic_panel):
         """Portfolio and quantile summaries annualize return statistics."""
@@ -1047,97 +1058,127 @@ class TestAlphaForecastEvaluation:
         assert stats["n_valid_assets"] == pytest.approx(4.0)
 
 
-class TestOverlappingWindowTStat:
-    """The IC t-statistic accounts for serially overlapping forward windows."""
-
-    @pytest.mark.parametrize(
-        ("horizon", "step", "expected"),
-        [(1, 1, 0), (5, 5, 0), (5, 1, 4), (10, 3, 3), (3, 5, 0)],
-    )
-    def test_n_overlap_lags(self, horizon, step, expected):
-        assert _n_overlap_lags(horizon, step) == expected
-
-    def test_zero_lags_matches_iid_t_stat(self):
-        rng = np.random.default_rng(0)
-        arr = rng.normal(0.05, 0.1, size=200)
-        stats = _correlation_stats(arr, ratio_name="icir", n_lags=0)
-        expected = np.mean(arr) / (np.std(arr, ddof=1) / np.sqrt(arr.size))
-        assert stats["t_stat"] == pytest.approx(expected)
-
-    def test_overlap_shrinks_t_stat_for_autocorrelated_values(self):
-        rng = np.random.default_rng(1)
-        noise = rng.normal(size=2000)
-        # Moving average over 10 dates mimics ICs built from overlapping windows.
-        arr = np.convolve(noise, np.ones(10) / 10, mode="valid") + 0.1
-        iid = _correlation_stats(arr, ratio_name="icir", n_lags=0)["t_stat"]
-        hac = _correlation_stats(arr, ratio_name="icir", n_lags=9)["t_stat"]
-        assert 0 < hac < iid
-        # sqrt(10) is the factor predicted by full overlap.
-        assert iid / hac == pytest.approx(np.sqrt(10), rel=0.3)
+class TestHacInference:
+    """IC inference accounts for overlapping forward windows and heteroskedasticity."""
 
     @staticmethod
-    def _bartlett_t_stat(arr, n_lags):
-        """Reference: Bartlett long-run variance from explicit autocovariances."""
+    def _overlapping_series(n=300, window=10, mean=0.1, seed=1):
+        noise = np.random.default_rng(seed).normal(size=n + window - 1)
+        return np.convolve(noise, np.ones(window) / window, mode="valid") + mean
+
+    @staticmethod
+    def _reference_t_stat(arr, bandwidth_ratio=0.1):
+        """Reference: quadratic-spectral long-run variance from autocovariances."""
         valid = np.isfinite(arr)
         n = int(valid.sum())
         mean = arr[valid].mean()
         centered = np.where(valid, arr - mean, 0.0)
-        gamma = [
-            np.dot(centered[k:], centered[: arr.size - k]) / (n - 1)
-            for k in range(n_lags + 1)
-        ]
-        var = gamma[0] + 2 * sum(
-            (1 - k / (n_lags + 1)) * gamma[k] for k in range(1, n_lags + 1)
-        )
-        return mean / np.sqrt(var / n)
+        bandwidth = bandwidth_ratio * arr.size
+        long_run_var = np.dot(centered, centered) / n
+        for lag in range(1, arr.size):
+            x = 6 * np.pi * lag / bandwidth / 5
+            weight = (
+                25
+                / (12 * np.pi**2 * (lag / bandwidth) ** 2)
+                * (np.sin(x) / x - np.cos(x))
+            )
+            long_run_var += 2 * weight * np.dot(centered[lag:], centered[:-lag]) / n
+        return mean / np.sqrt(long_run_var / n)
 
-    def test_overlap_matches_bartlett_reference(self):
-        rng = np.random.default_rng(1)
-        noise = rng.normal(size=500)
-        arr = np.convolve(noise, np.ones(10) / 10, mode="valid") + 0.1
-        for n_lags in (1, 4, 9):
-            stats = _correlation_stats(arr, ratio_name="icir", n_lags=n_lags)
-            assert stats["t_stat"] == pytest.approx(self._bartlett_t_stat(arr, n_lags))
+    def test_t_stat_matches_quadratic_spectral_reference(self):
+        arr = self._overlapping_series()
+        stats = _correlation_stats(arr, ratio_name="icir")
+        assert stats["t_stat"] == pytest.approx(self._reference_t_stat(arr))
 
-    def test_overlap_keeps_missing_dates_as_gaps(self):
-        rng = np.random.default_rng(2)
-        arr = np.convolve(rng.normal(size=300), np.ones(5) / 5, mode="valid") + 0.1
+    def test_t_stat_keeps_missing_dates_as_gaps(self):
+        arr = self._overlapping_series(n=200, window=5, seed=2)
         arr[[40, 41, 150]] = np.nan
-        stats = _correlation_stats(arr, ratio_name="icir", n_lags=4)
-        assert stats["t_stat"] == pytest.approx(self._bartlett_t_stat(arr, 4))
-        # Dropping the NaN dates instead would pair dates more than k steps apart.
-        compacted = _correlation_stats(
-            arr[np.isfinite(arr)], ratio_name="icir", n_lags=4
-        )
+        stats = _correlation_stats(arr, ratio_name="icir")
+        assert stats["t_stat"] == pytest.approx(self._reference_t_stat(arr))
+        # Dropping the NaN dates instead would change the spacing of observations.
+        compacted = _correlation_stats(arr[np.isfinite(arr)], ratio_name="icir")
         assert stats["t_stat"] != pytest.approx(compacted["t_stat"], rel=1e-9)
 
-    def test_overlap_ignores_non_finite_values(self):
-        arr = np.array([0.1, np.nan, 0.2, 0.15, 0.05, 0.12, 0.08])
-        stats = _correlation_stats(arr, ratio_name="icir", n_lags=2)
-        assert np.isfinite(stats["t_stat"])
+    def test_overlap_shrinks_t_stat_versus_independent_dates(self):
+        arr = self._overlapping_series(n=2000, mean=0.1)
+        t_stat = _correlation_stats(arr, ratio_name="icir")["t_stat"]
+        iid = np.mean(arr) / (np.std(arr, ddof=1) / np.sqrt(arr.size))
+        assert 0 < t_stat < iid
 
-    def test_ic_summary_uses_overlap_lags(self, alpha_deterministic_panel):
-        kwargs = {"holding_period": 5, "signal_lag": 1}
-        disjoint = alpha_forecast_evaluation(
-            _fixed_signal_alpha(), alpha_deterministic_panel, **kwargs
+    def test_p_value_and_confidence_interval(self):
+        arr = self._overlapping_series(mean=0.3)
+        stats = _correlation_stats(arr, ratio_name="icir")
+        assert stats["p_value"] < 0.05
+        assert 0 < stats["mean_ci_lower"] < stats["mean"] < stats["mean_ci_upper"]
+        assert not stats["mean_ci_lower"] < 0 < stats["mean_ci_upper"]
+
+        null = self._overlapping_series(mean=0.0, seed=5)
+        null -= null.mean()
+        stats = _correlation_stats(null, ratio_name="icir")
+        assert stats["p_value"] > 0.05
+        assert stats["mean_ci_lower"] < 0 < stats["mean_ci_upper"]
+
+    def test_confidence_interval_is_consistent_with_p_value(self):
+        arr = self._overlapping_series(mean=0.05, seed=3)
+        stats = _correlation_stats(arr, ratio_name="icir")
+        excludes_zero = not stats["mean_ci_lower"] < 0 < stats["mean_ci_upper"]
+        assert excludes_zero == (stats["p_value"] < 0.05)
+
+    def test_inference_is_deterministic(self):
+        arr = self._overlapping_series()
+        first = _correlation_stats(arr, ratio_name="icir")
+        second = _correlation_stats(arr.copy(), ratio_name="icir")
+        assert first == second
+
+    def test_wild_bootstrap_is_robust_to_changing_variance(self):
+        """Under a true null with a volatility shift, rejections stay near 5%."""
+        rng = np.random.default_rng(0)
+        scale = np.where(np.arange(120) < 60, 0.5, 2.0)
+        n_trials = 60
+        rejections = 0
+        for _ in range(n_trials):
+            arr = rng.normal(size=120) * scale
+            rejections += _correlation_stats(arr, ratio_name="icir")["p_value"] < 0.05
+        assert rejections / n_trials < 0.2
+
+    def test_nan_with_fewer_than_20_valid_observations(self):
+        arr = self._overlapping_series(n=30)
+        arr[:11] = np.nan
+        stats = _correlation_stats(arr, ratio_name="icir")
+        assert np.isfinite(stats["mean"])
+        for key in ("t_stat", "p_value", "mean_ci_lower", "mean_ci_upper"):
+            assert np.isnan(stats[key])
+
+    def test_nan_with_degenerate_variance(self):
+        stats = _correlation_stats(np.full(50, 0.1), ratio_name="icir")
+        assert stats["mean"] == pytest.approx(0.1)
+        for key in ("t_stat", "p_value", "mean_ci_lower", "mean_ci_upper"):
+            assert np.isnan(stats[key])
+
+    def test_nan_when_history_covers_fewer_than_10_holding_periods(self):
+        arr = self._overlapping_series(n=60)
+        short = _correlation_stats(arr, ratio_name="icir", horizon=7)
+        assert np.isnan(short["t_stat"])
+        assert np.isnan(short["p_value"])
+        enough = _correlation_stats(arr, ratio_name="icir", horizon=6)
+        assert np.isfinite(enough["t_stat"])
+        # A wider evaluation step stretches the history covered by each date.
+        sparse = _correlation_stats(
+            arr, ratio_name="icir", horizon=7, evaluation_step=2
         )
-        overlapping = alpha_forecast_evaluation(
+        assert np.isfinite(sparse["t_stat"])
+
+    def test_ic_summary_uses_evaluation_grid(self, alpha_deterministic_panel):
+        evaluation = alpha_forecast_evaluation(
             _fixed_signal_alpha(),
             alpha_deterministic_panel,
+            holding_period=5,
+            signal_lag=1,
             evaluation_step=1,
-            **kwargs,
         )
-        ic = overlapping.spearman_ic
         expected = _correlation_stats(
-            ic, ratio_name="icir", n_lags=_n_overlap_lags(5, 1)
-        )["t_stat"]
-        assert overlapping.ic_summary().loc["spearman_ic", "t_stat"] == pytest.approx(
-            expected, nan_ok=True
+            evaluation.spearman_ic, ratio_name="icir", horizon=5, evaluation_step=1
         )
-        # Default spacing keeps the plain date-level t-statistic.
-        ic = disjoint.spearman_ic
-        valid = ic[np.isfinite(ic)]
-        plain = np.mean(valid) / (np.std(valid, ddof=1) / np.sqrt(valid.size))
-        assert disjoint.ic_summary().loc["spearman_ic", "t_stat"] == pytest.approx(
-            plain
-        )
+        summary = evaluation.ic_summary().loc["spearman_ic"]
+        assert summary["t_stat"] == pytest.approx(expected["t_stat"], nan_ok=True)
+        assert summary["p_value"] == pytest.approx(expected["p_value"], nan_ok=True)
