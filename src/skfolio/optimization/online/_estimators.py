@@ -58,6 +58,25 @@ class ExponentiatedGradient(FollowTheWinner):
     portfolio_params : dict | None, default=None
         Portfolio evaluation settings, for example weight_drift=True.
 
+    Attributes
+    ----------
+    weights_ : ndarray of shape (n_assets,)
+        Target for the next observation, after processing the latest return.
+    initial_weights_ : ndarray of shape (n_assets,)
+        Feasible learning allocation before the first observed return.
+    n_observations_ : int
+        Number of observations successfully processed since the last reset.
+    n_features_in_ : int
+        Number of assets seen during fitting.
+    feature_names_in_ : ndarray of shape (n_assets,)
+        Asset names, when fitted with named DataFrame columns.
+    all_weights_ : ndarray of shape (n_stored_observations, n_assets)
+        Diagnostic targets before each stored observation, available only when
+        ``store_weights=True``. This is not a record of executed trades. Use
+        ``all_weights_.copy()`` to retain an independent snapshot.
+    prior_estimator_ : BasePrior
+        Fitted incremental prior, present when ``prior_estimator`` is supplied.
+
     Notes
     -----
     ``fit`` resets learned state; ``partial_fit`` consumes rows causally. After row t,
@@ -66,6 +85,13 @@ class ExponentiatedGradient(FollowTheWinner):
     for evaluation.
     Missing returns, bankrupt assets, changing universes and automatic recovery
     are not supported. A failed numerical update requires a fresh fit.
+
+    References
+    ----------
+    .. [1] Helmbold, D. P., Schapire, R. E., Singer, Y., and Warmuth, M. K.
+           (1998). "On-Line Portfolio Selection Using Multiplicative Updates."
+           Mathematical Finance, 8(4), 325-347.
+           https://doi.org/10.1111/1467-9965.00058
 
     Examples
     --------
@@ -174,6 +200,25 @@ class AdaGrad(FollowTheWinner):
     portfolio_params : dict | None, default=None
         Portfolio evaluation settings, for example weight_drift=True.
 
+    Attributes
+    ----------
+    weights_ : ndarray of shape (n_assets,)
+        Target for the next observation, after processing the latest return.
+    initial_weights_ : ndarray of shape (n_assets,)
+        Feasible learning allocation before the first observed return.
+    n_observations_ : int
+        Number of observations successfully processed since the last reset.
+    n_features_in_ : int
+        Number of assets seen during fitting.
+    feature_names_in_ : ndarray of shape (n_assets,)
+        Asset names, when fitted with named DataFrame columns.
+    all_weights_ : ndarray of shape (n_stored_observations, n_assets)
+        Diagnostic targets before each stored observation, available only when
+        ``store_weights=True``. This is not a record of executed trades. Use
+        ``all_weights_.copy()`` to retain an independent snapshot.
+    prior_estimator_ : BasePrior
+        Fitted incremental prior, present when ``prior_estimator`` is supplied.
+
     Notes
     -----
     ``fit`` resets learned state; ``partial_fit`` consumes rows causally. After row t,
@@ -182,6 +227,13 @@ class AdaGrad(FollowTheWinner):
     for evaluation.
     Missing returns, bankrupt assets, changing universes and automatic recovery
     are not supported. A failed numerical update requires a fresh fit.
+
+    References
+    ----------
+    .. [1] Duchi, J., Hazan, E., and Singer, Y. (2011). "Adaptive Subgradient
+           Methods for Online Learning and Stochastic Optimization."
+           Journal of Machine Learning Research, 12, 2121-2159.
+           https://jmlr.org/papers/v12/duchi11a.html
 
     Examples
     --------
@@ -290,6 +342,25 @@ class OnlineMovingAverageReversion(FollowTheLoser):
     portfolio_params : dict | None, default=None
         Portfolio evaluation settings, for example weight_drift=True.
 
+    Attributes
+    ----------
+    weights_ : ndarray of shape (n_assets,)
+        Target for the next observation, after processing the latest return.
+    initial_weights_ : ndarray of shape (n_assets,)
+        Feasible learning allocation before the first observed return.
+    n_observations_ : int
+        Number of observations successfully processed since the last reset.
+    n_features_in_ : int
+        Number of assets seen during fitting.
+    feature_names_in_ : ndarray of shape (n_assets,)
+        Asset names, when fitted with named DataFrame columns.
+    all_weights_ : ndarray of shape (n_stored_observations, n_assets)
+        Diagnostic targets before each stored observation, available only when
+        ``store_weights=True``. This is not a record of executed trades. Use
+        ``all_weights_.copy()`` to retain an independent snapshot.
+    prior_estimator_ : BasePrior
+        Fitted incremental prior, present when ``prior_estimator`` is supplied.
+
     Notes
     -----
     ``fit`` resets learned state; ``partial_fit`` consumes rows causally. After row t,
@@ -298,6 +369,12 @@ class OnlineMovingAverageReversion(FollowTheLoser):
     for evaluation.
     Missing returns, bankrupt assets, changing universes and automatic recovery
     are not supported. A failed numerical update requires a fresh fit.
+
+    References
+    ----------
+    .. [1] Li, B., and Hoi, S. C. H. (2012). "On-Line Portfolio Selection with
+           Moving Average Reversion." ICML.
+           https://icml.cc/2012/papers/168.pdf
 
     Examples
     --------

@@ -40,12 +40,87 @@ from skfolio.utils.tools import (
 
 
 class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
-    """Online Portfolio Selection (OPS) base class.
+    """Base lifecycle for causal online portfolio optimizers.
 
-    This class serves as a foundation for implementing various online portfolio
-    selection algorithms. It handles the common logic for fitting data sequentially,
-    managing weights, and applying projections. Subclasses should implement the
-    core update logic.
+    Subclasses implement ``_update_one``. ``fit`` resets learned state and
+    ``partial_fit`` processes observations sequentially.
+
+    Parameters
+    ----------
+    store_weights : bool, default=True
+        Store diagnostic pre-observation targets. Public estimators default to False.
+    initial_weights : array-like, optional
+        Initial learning allocation. None uses equal weights, then applies constraints.
+    initial_wealth : float or array-like, optional
+        Legacy allocation input. An array supplies relative initial asset capital;
+        its sum does not create an execution account. Cannot combine array capital
+        with array initial_weights. Scalar capital must be positive.
+    previous_weights : float, dict or array-like, optional
+        Actual pre-trade holdings used as the turnover anchor.
+    transaction_costs : float, dict or array-like, default=0.0
+        Proportional trading costs used during portfolio evaluation.
+    management_fees : float, dict or array-like, default=0.0
+        Per-period asset fees used by evaluation and the learning objective.
+    groups : array-like or dict, optional
+        Asset group labels aligned with fitted asset names.
+    linear_constraints : list of str, optional
+        Named asset and group equations using the common constraint syntax.
+    left_inequality : array-like, optional
+        Left-hand matrix for linear weight inequalities.
+    right_inequality : array-like, optional
+        Right-hand vector paired with left_inequality.
+    max_turnover : float, optional
+        Maximum L1 trade size relative to explicit pre-trade holdings.
+    min_weights : float, dict or array-like, default=0.0
+        Lower asset weight bounds.
+    max_weights : float, dict or array-like, default=1.0
+        Upper asset weight bounds.
+    budget : float, default=1.0
+        Required sum of asset weights; None disables the equality constraint.
+    X_tracking : array-like, optional
+        Historical returns supplied for an explicit tracking-error constraint.
+    tracking_error_benchmark : array-like, optional
+        Benchmark returns aligned with X_tracking.
+    max_tracking_error : float, optional
+        Tracking-error limit computed from the explicit tracking inputs.
+    covariance : array-like, optional
+        Fixed covariance matrix for a risk constraint; exclusive with prior_estimator.
+    max_variance : float, optional
+        Maximum portfolio variance using fixed or causal prior covariance.
+    prior_estimator : BasePrior, optional
+        Incremental prior cloned and updated once per observed row.
+    portfolio_params : dict, optional
+        Parameters forwarded to Portfolio for prediction and evaluation.
+    fallback : estimator, str or list, optional
+        Inherited base configuration. Incremental update failures are not recovered
+        through fallback; a failed update requires a fresh fit.
+    raise_on_failure : bool, default=True
+        Inherited base configuration. Incremental update failures always propagate.
+
+    Attributes
+    ----------
+    weights_ : ndarray of shape (n_assets,)
+        Target for the next observation, after processing the latest return.
+    initial_weights_ : ndarray of shape (n_assets,)
+        Feasible learning allocation before the first observed return.
+    n_observations_ : int
+        Number of observations successfully processed since the last reset.
+    n_features_in_ : int
+        Number of assets seen during fitting.
+    feature_names_in_ : ndarray of shape (n_assets,)
+        Asset names, when fitted with named DataFrame columns.
+    all_weights_ : ndarray of shape (n_stored_observations, n_assets)
+        Diagnostic targets before each stored observation, available only when
+        ``store_weights=True``. This is not a record of executed trades. Use
+        ``all_weights_.copy()`` to retain an independent snapshot.
+    prior_estimator_ : BasePrior
+        Fitted incremental prior, present when ``prior_estimator`` is supplied.
+
+    Notes
+    -----
+    Statistical estimates, algorithm targets and actual account holdings are
+    separate. Portfolio evaluation owns execution and wealth. A failed numerical
+    or prior update can partially advance state and requires a fresh ``fit``.
     """
 
     weights_: np.ndarray
