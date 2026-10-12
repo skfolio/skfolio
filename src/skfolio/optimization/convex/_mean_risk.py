@@ -1467,9 +1467,9 @@ class MeanRisk(ConvexOptimization):
                     else:
                         args[arg_name] = getattr(self, arg_name)
 
-                # The lifted worst-case variance is 1-homogeneous in (w, factor), which
-                # suits a limit written as `risk <= limit * factor`. A ratio objective
-                # needs the 2-homogeneous variance, hence `factor=1`.
+                # Lifted worst-case variance is 1-homogeneous in (w, factor), matching
+                # risk <= limit * factor. The ratio objective needs 2-homogeneity in w,
+                # so use factor=1 for the objective only.
                 objective_args: dict[str, Any] = args
                 if risk_func == self._worst_case_variance_risk and isinstance(
                     factor, cp.Variable
