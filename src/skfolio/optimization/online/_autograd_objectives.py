@@ -64,12 +64,12 @@ class BaseObjective(ABC):
 
     Parameters
     ----------
-    use_autograd : bool, default=True
+    use_autograd : bool, default=False
         If True, use automatic differentiation to compute gradients.
         If False, use analytical gradients (when available).
     """
 
-    def __init__(self, use_autograd: bool = True) -> None:
+    def __init__(self, use_autograd: bool = False) -> None:
         self.use_autograd = use_autograd
 
     @abstractmethod
@@ -1541,7 +1541,7 @@ class MeasureObjective(BaseObjective):
     ----------
     measure : RiskMeasure | PerfMeasure | None
         The measure to optimize. If None, uses log-wealth objective.
-    use_autograd : bool, default=True
+    use_autograd : bool, default=False
         Whether to use autograd for gradient computation. If False, uses analytical
         gradients when available (faster but limited to certain measures).
     risk_free_rate : float, default=0.0
@@ -1559,7 +1559,7 @@ class MeasureObjective(BaseObjective):
     """
 
     measure: BaseMeasure | None = None
-    use_autograd: bool = True
+    use_autograd: bool = False
     risk_free_rate: float = 0.0
     min_acceptable_return: float = 0.0
     cvar_beta: float = 0.95
@@ -2038,7 +2038,7 @@ def create_mean_reversion_objective(
 
 def create_objective(
     measure: BaseMeasure | None,
-    use_autograd: bool = True,
+    use_autograd: bool = False,
     **kwargs: Any,
 ) -> BaseObjective:
     """Factory function to create objective from measure enum.
@@ -2048,7 +2048,7 @@ def create_objective(
     measure : BaseMeasure or None
         Measure enum (RiskMeasure, ExtraRiskMeasure, or PerfMeasure).
         If None, uses log-wealth (default).
-    use_autograd : bool, default=True
+    use_autograd : bool, default=False
         Whether to use autograd for gradients.
     **kwargs
         Additional parameters passed to MeasureObjective.

@@ -694,3 +694,24 @@ class TestAutogradVsReferenceImplementations:
                         ) from e
                 else:
                     raise
+
+
+@pytest.mark.parametrize("factory", [MeasureObjective, create_objective])
+@pytest.mark.parametrize(
+    "measure", [None, RiskMeasure.STANDARD_DEVIATION, RiskMeasure.SEMI_DEVIATION]
+)
+def test_default_objectives_do_not_request_autograd(monkeypatch, factory, measure):
+    from skfolio.optimization.online import _autograd_objectives as objectives
+
+    def unavailable(*args, **kwargs):
+        raise ImportError("Autograd is unavailable")
+
+    monkeypatch.setattr(objectives, "grad", unavailable)
+    objective = factory(measure=measure)
+    weights = np.array([0.4, 0.6])
+    returns = np.array([[0.02, -0.01], [-0.03, 0.04], [0.01, 0.02]])
+    assert objective.use_autograd is False
+    assert np.isfinite(objective.loss(weights, returns))
+    assert np.isfinite(objective.grad(weights, returns)).all()
+    with pytest.raises(ImportError, match="unavailable"):
+        factory(measure=measure, use_autograd=True)
