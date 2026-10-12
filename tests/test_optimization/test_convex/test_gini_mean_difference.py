@@ -286,7 +286,7 @@ def test_500_observations_use_one_sparse_solver_call(monkeypatch, n_assets):
         ([0.0002, 0.0003], True),
     ],
 )
-def test_sweep_reuses_problem_and_restores_last_success(
+def test_sweep_reuses_problem_and_keeps_last_attempt(
     monkeypatch, risk_measure, save_problem, targets, raise_on_failure
 ):
     calls = []
@@ -316,22 +316,37 @@ def test_sweep_reuses_problem_and_restores_last_success(
     with expectation:
         model.fit(returns)
     assert calls == [calls[0]] * len(targets)
-    last = max(i for i, error in enumerate(model.error_) if error is None)
-    assert all(
-        np.isnan(weights).all()
-        for weights, error in zip(model.weights_, model.error_, strict=True)
-        if error
-    )
+    assert [error is not None for error in model.error_] == [
+        target == 1.0 for target in targets
+    ]
+    for weights, values, error in zip(
+        model.weights_, model.problem_values_, model.error_, strict=True
+    ):
+        if error:
+            assert np.isnan(weights).all()
+            assert values is None
+        else:
+            assert np.isfinite(weights).all()
+            expected_risk = (
+                _pairwise_gmd(returns @ weights)
+                if risk_measure == RiskMeasure.GINI_MEAN_DIFFERENCE
+                else np.var(returns @ weights, ddof=1)
+            )
+            np.testing.assert_allclose(values["risk"], expected_risk, atol=1e-8)
     if not save_problem:
         assert not hasattr(model, "problem_")
         return
     assert model.problem_ is calls[0]
-    assert model.problem_.status == cp.OPTIMAL
-    assert model.problem_.solver_stats is solver_stats[last]
-    assert any(float(p.value) == targets[last] for p in model.problem_.parameters())
+    assert model.problem_.solver_stats is solver_stats[-1]
+    assert any(float(p.value) == targets[-1] for p in model.problem_.parameters())
     saved = next(v for v in model.problem_.variables() if v.shape == (6,))
+    if model.error_[-1] is not None:
+        assert model.problem_.status == cp.INFEASIBLE
+        assert saved.value is None
+        return
+    assert model.problem_.status == cp.OPTIMAL
     np.testing.assert_allclose(
-        saved.value, model.weights_[last] * model.problem_values_[last]["factor"]
+        saved.value, model.weights_[-1] * model.problem_values_[-1]["factor"]
     )
     for constraint in model.problem_.constraints:
         assert np.max(constraint.violation()) <= 1e-7

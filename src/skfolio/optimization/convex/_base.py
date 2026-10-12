@@ -1326,8 +1326,8 @@ class ConvexOptimization(BaseOptimization, ABC):
         Notes
         -----
         With `raise_on_failure=False`, a failed target in a sweep has NaN weights,
-        None for its reported values, and an error message in `error_`. When at least
-        one target succeeds, the saved problem holds the last successful solution.
+        None for its reported values, and an error message in `error_`. The saved
+        problem retains the state left by the last solve attempt.
         """
         if self.solver not in INSTALLED_SOLVERS:
             raise ValueError(f"The solver {self.solver} is not installed.")
@@ -1381,7 +1381,6 @@ class ConvexOptimization(BaseOptimization, ABC):
                 all_weights = []
                 all_problem_values = []
                 all_errors = []
-                last_success = None
                 with warnings.catch_warnings():
                     warnings.simplefilter("once", UserWarning)
                     for i in range(n_optimizations):
@@ -1397,12 +1396,6 @@ class ConvexOptimization(BaseOptimization, ABC):
                                 solver=self.solver,
                                 solver_params=self._solver_params,
                             )
-                            if self.save_problem and not self.raise_on_failure:
-                                last_success = (
-                                    i,
-                                    problem.solution,
-                                    problem.solver_stats,
-                                )
                             error = None
                         except OptimizationError as optimization_error:
                             if self.raise_on_failure:
@@ -1429,15 +1422,6 @@ class ConvexOptimization(BaseOptimization, ABC):
                 self.weights_[failed] = np.nan
                 self.problem_values_ = all_problem_values
                 self.error_ = all_errors
-
-                if last_success is not None and failed[-1]:
-                    # Preserve the final successful target after a later failed solve.
-                    index, solution, solver_stats = last_success
-                    for parameter, values in values_by_parameter:
-                        parameter.value = values[index]
-                    problem.unpack(solution)
-                    # CVXPY's unpack restores values and status, but not solver stats.
-                    problem._solver_stats = solver_stats
         finally:
             if self.save_problem:
                 self.problem_ = problem
