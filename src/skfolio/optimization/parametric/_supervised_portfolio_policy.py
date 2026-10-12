@@ -60,8 +60,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
     Only complete windows inside the training sample produce labels. Labels use
     future returns *within that sample*, so ``weights_history_`` is an in-sample
     diagnostic, not a backtest. Evaluate on a later, untouched sample.
-    Predictions are projected onto a static feasible portfolio set using the
-    existing CLARABEL solver dependency.
+    Predictions are projected onto the configured portfolio constraints, with
+    supplied covariance and holdings used for risk and turnover limits.
 
     Parameters
     ----------
@@ -137,7 +137,7 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
     characteristics uses repeatable ``predict_weights``. Streaming callers can
     opt into state advancement with ``update_state=True`` and must pass successive,
     non-overlapping panels with the fitted coverage asset names and order.
-    This is a supervised prototype, not a reproduction of the full
+    This estimator does not reproduce the full
     Chevalier, Coqueret and Raffinot method.
     """
 
@@ -244,12 +244,12 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             raise ValueError("Final characteristics must be available for every asset.")
 
         projection = _WeightProjection(
-            X.columns,
-            self.long_only,
-            self.min_weights,
-            self.max_weights,
-            self.groups,
-            self.linear_constraints,
+            asset_names=X.columns,
+            long_only=self.long_only,
+            min_weights=self.min_weights,
+            max_weights=self.max_weights,
+            groups=self.groups,
+            linear_constraints=self.linear_constraints,
         )
         # Check feasibility before fitting label optimizers.
         projection.project(inputs.benchmark[-1:], eligible=inputs.holdable[-1:])
@@ -429,12 +429,12 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         if not inputs.holdable[-1, new_positions].all():
             raise ValueError("New assets need warmed-up finite characteristics.")
         projection = _WeightProjection(
-            X.columns,
-            worker.long_only,
-            worker.min_weights,
-            worker.max_weights,
-            worker.groups,
-            worker.linear_constraints,
+            asset_names=X.columns,
+            long_only=worker.long_only,
+            min_weights=worker.min_weights,
+            max_weights=worker.max_weights,
+            groups=worker.groups,
+            linear_constraints=worker.linear_constraints,
         )
         final_inputs = _PolicyInputs(
             tilt=inputs.tilt[-1:],

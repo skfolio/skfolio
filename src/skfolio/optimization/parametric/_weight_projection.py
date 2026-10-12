@@ -39,7 +39,14 @@ class _WeightProjection:
             values = (
                 np.full(n, bound, dtype=float)
                 if np.isscalar(bound)
-                else input_to_array(bound, n, fill, 1, np.asarray(asset_names), name)
+                else input_to_array(
+                    items=bound,
+                    n_assets=n,
+                    fill_value=fill,
+                    dim=1,
+                    assets_names=np.asarray(asset_names),
+                    name=name,
+                )
             )
             if not np.isfinite(values).all():
                 raise ValueError(f"`{name}` must contain finite values.")

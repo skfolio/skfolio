@@ -1249,8 +1249,7 @@ For a complete tutorial illustrating failure handling and fallbacks, see
 Supervised characteristic policies (experimental)
 -------------------------------------------------
 
-:class:`SupervisedPortfolioPolicy` provides a first supervised implementation of the
-supervised alternative discussed in issue #262. It clones an optimizer over
+:class:`SupervisedPortfolioPolicy` clones an optimizer over
 non-overlapping training subperiods, then uses a configurable regressor to learn the
 relationship between characteristics and those target allocations.
 
@@ -1286,7 +1285,7 @@ non-overlapping panels with the same coverage asset names and ordering.
 ``predict(X_test)`` instead evaluates the last allocation
 using the standard optimizer interface; it does not rebalance from ``targets``.
 
-By default this prototype uses a fixed active universe. Opt-in eligibility changes
+By default the estimator uses a fixed active universe. Opt-in eligibility changes
 are supported within the registered columns. Label windows require complete
 returns for decision-eligible assets. The model skips
 training decisions with unavailable characteristics and requires all final
