@@ -226,7 +226,21 @@ def test_dynamic_mirror_maps_update_internals():
 
     # AdaBARRONS: keep positivity and normalization even with extreme grads
     alb = AdaBarronsBarrierMap(eps=1e-12)
-    proj = AutoProjector(ProjectionConfig(lower=0.0, upper=1.0, budget=1.0))
+    # Request accuracy tighter than the simplex assertion below. Default conic
+    # tolerances can leave a few 1e-9 of budget residual across platforms.
+    proj = AutoProjector(
+        ProjectionConfig(
+            lower=0.0,
+            upper=1.0,
+            budget=1.0,
+            solver_params={
+                "solver": "CLARABEL",
+                "tol_gap_abs": 1e-11,
+                "tol_gap_rel": 1e-11,
+                "tol_feas": 1e-11,
+            },
+        )
+    )
     ftrl_alb = FirstOrderOCO(mirror_map=alb, projector=proj, eta=0.5, mode="ftrl")
     w = ftrl_alb.step(np.array([-10.0, -10.0, -10.0]))  # adversarial sign
     assert_simplex(w, atol=1e-9)

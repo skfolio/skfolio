@@ -606,7 +606,7 @@
         "Original engine tests with reference-branch lint/format cleanup; no estimator family dependencies.",
         "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
       ],
-      "destination_sha256": "c1cf0a7964eb9040060458285a7f6460949ee6a57b966c448e0063ec6b5b9391",
+      "destination_sha256": "e30eaeb009555805e45f4927e178eac94aec20162c6c269777ab63e06b8cd3dd",
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2"
     },
     {
