@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.8.5 (2026-10-12)
+
+### Bug Fixes
+
+- **optimization**: Use the degree-2 worst-case variance in the MAXIMIZE_RATIO objective
+  ([#425](https://github.com/skfolio/skfolio/pull/425),
+  [`ab34a25`](https://github.com/skfolio/skfolio/commit/ab34a252744b6eee5e0273e685be75b9de844c69))
+
+
 ## v1.8.4 (2026-10-12)
 
 ### Performance Improvements
