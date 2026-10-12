@@ -175,3 +175,67 @@ def test_dynamic_risk_objective_rejects_undefined_first_period():
         BestConstantRebalancedPortfolio(
             objective_measure=RiskMeasure.VARIANCE
         ).fit_dynamic([[0.1, 0.2]])
+
+
+@pytest.mark.parametrize("weights", [[0.8, 0.2], [0.4, 0.1], [1.2, -0.2]])
+def test_constant_wealth_preserves_cash_and_short_positions(weights):
+    returns = np.array([[0.1, -0.05], [-0.02, 0.03], [0.04, 0.01]])
+    model = ConstantRebalancedPortfolio(weights=weights).fit(returns)
+    # Independent account calculation: cash earns zero and targets are restored
+    # before each observation, including when an asset is held short.
+    value = 1.0
+    expected = [value]
+    for row in returns:
+        cash = value * (1.0 - sum(weights))
+        positions = value * np.array(weights)
+        value = cash + sum(positions * (1.0 + row))
+        expected.append(value)
+    np.testing.assert_allclose(model.all_wealth_, expected)
+    assert model.wealth_ == pytest.approx(value)
+    np.testing.assert_allclose(model.all_weights_, [weights] * len(returns))
+    model.all_weights_[0, 0] = 99
+    assert model.all_weights_[1, 0] == weights[0]
+    assert model.weights_[0] == weights[0]
+
+
+def test_best_asset_wealth_and_refit():
+    model = BestAsset().fit([[0.1, 0.05], [-0.2, 0.05]])
+    np.testing.assert_array_equal(model.weights_, [0.0, 1.0])
+    np.testing.assert_allclose(model.all_wealth_, [1.0, 1.05, 1.1025])
+    model.fit([[0.2, 0.1]])
+    np.testing.assert_array_equal(model.weights_, [1.0, 0.0])
+    np.testing.assert_allclose(model.all_wealth_, [1.0, 1.2])
+    assert model.all_weights_.shape == (1, 2)
+
+
+def test_optimized_wealth_preserves_initial_capital_and_cash(X_small):
+    model = BestConstantRebalancedPortfolio(initial_wealth=250.0, budget=0.5).fit(
+        X_small
+    )
+    value = 250.0
+    expected = [value]
+    for row in np.asarray(X_small):
+        cash = value * (1.0 - model.weights_.sum())
+        value = cash + sum(value * model.weights_ * (1.0 + row))
+        expected.append(value)
+    np.testing.assert_allclose(model.all_wealth_, expected)
+    assert model.wealth_ == pytest.approx(value)
+
+
+@pytest.mark.parametrize(
+    "factory", [BestAsset, UniformConstantRebalanced, BestConstantRebalancedPortfolio]
+)
+@pytest.mark.parametrize(
+    "returns", [[], [[np.nan, 0.0]], [[np.inf, 0.0]], [[-1.0, 0.0]], [0.1, 0.2]]
+)
+def test_benchmarks_reject_invalid_returns(factory, returns):
+    with pytest.raises(ValueError):
+        factory().fit(returns)
+
+
+@pytest.mark.parametrize("initial_wealth", [0.0, -1.0, np.nan, np.inf, [1.0, 2.0]])
+def test_initial_wealth_must_be_positive_scalar(initial_wealth, X_small):
+    with pytest.raises(
+        ValueError, match="initial_wealth must be a finite positive scalar"
+    ):
+        BestConstantRebalancedPortfolio(initial_wealth=initial_wealth).fit(X_small)

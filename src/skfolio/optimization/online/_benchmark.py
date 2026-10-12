@@ -14,7 +14,7 @@ import numpy.typing as npt
 import pandas as pd
 
 import skfolio.typing as skt
-from skfolio.measures import PerfMeasure, RiskMeasure
+from skfolio.measures import PerfMeasure, RiskMeasure, get_cumulative_returns
 from skfolio.optimization._base import BaseOptimization
 from skfolio.optimization.convex._base import ObjectiveFunction
 from skfolio.optimization.convex._mean_risk import MeanRisk
@@ -30,8 +30,35 @@ def net_to_relatives(X: npt.ArrayLike) -> np.ndarray:
     return 1.0 + values
 
 
+def _constant_wealth_history(
+    relatives: np.ndarray,
+    weights: np.ndarray | None,
+    initial_wealth: float = 1.0,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Compute gross hindsight wealth and fixed targets with zero-return cash."""
+    if weights is None:
+        raise ValueError("Cannot compute hindsight wealth without fitted weights")
+    if (
+        np.ndim(initial_wealth) != 0
+        or not np.isfinite(initial_wealth)
+        or initial_wealth <= 0
+    ):
+        raise ValueError("initial_wealth must be a finite positive scalar")
+    portfolio_returns = (relatives - 1.0) @ weights
+    wealth = np.concatenate(
+        (
+            [initial_wealth],
+            get_cumulative_returns(
+                returns=portfolio_returns, compounded=True, base=initial_wealth
+            ),
+        )
+    )
+    targets = np.broadcast_to(weights, relatives.shape).copy()
+    return wealth, targets
+
+
 class ConstantRebalancedPortfolio(BaseOptimization):
-    """Constant Rebalanced Portfolio (ConstantRebalancedPortfolio).
+    """Portfolio rebalanced to fixed weights each period.
 
     Keeps a fixed portfolio w and rebalances to it every period.
 
@@ -52,7 +79,7 @@ class ConstantRebalancedPortfolio(BaseOptimization):
         Gross hindsight wealth after all periods, excluding costs and fees.
 
     all_wealth_ : ndarray of shape (T+1,)
-        Wealth history: wealth_[0] is initial wealth (1.0), wealth_[t] is wealth after period t.
+        Wealth history including the initial value, followed by wealth after each period.
 
     all_weights_ : ndarray of shape (T, n_assets)
         Weight history: weights used at the start of each period (before observing returns).
@@ -73,23 +100,23 @@ class ConstantRebalancedPortfolio(BaseOptimization):
         self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
     ) -> ConstantRebalancedPortfolio:
         """Update the comparator target using the supplied observations."""
-        net_to_relatives(X)
-        X = np.asarray(X)
+        relatives = net_to_relatives(X)
+        self._set_weights(relatives.shape[1])
+        return self
+
+    def _set_weights(self, n_assets: int) -> None:
+        """Set finite fixed weights matching the validated asset count."""
         if self.weights is None:
-            n = X.shape[1]
-            self.weights_ = np.ones(n) / n
+            self.weights_ = np.full(n_assets, 1.0 / n_assets)
         else:
             self.weights_ = np.asarray(self.weights, dtype=float)
-        if self.weights_.shape != (X.shape[1],) or not np.all(
-            np.isfinite(self.weights_)
-        ):
+        if self.weights_.shape != (n_assets,) or not np.all(np.isfinite(self.weights_)):
             raise ValueError("weights must contain one finite value per asset")
-        return self
 
     def fit(
         self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
     ) -> ConstantRebalancedPortfolio:
-        """Fit the ConstantRebalancedPortfolio/UniformConstantRebalanced and compute wealth trajectory.
+        """Set fixed weights and compute the gross wealth trajectory.
 
         Parameters
         ----------
@@ -103,30 +130,12 @@ class ConstantRebalancedPortfolio(BaseOptimization):
         self
             The estimator instance.
         """
-        X_arr = np.asarray(X, dtype=float)
-
-        # Set weights
-        self.partial_fit(X_arr, y)
-
-        # Compute wealth trajectory
-        relatives = net_to_relatives(X_arr)  # (T, n_assets)
-        T = relatives.shape[0]
-
-        # Initialize wealth tracking
-        self.wealth_ = 1.0
-        wealth_history = [self.wealth_]
-        weight_history = []
-
-        # Compute wealth evolution (constant rebalanced portfolio)
-        for t in range(T):
-            weight_history.append(np.asarray(self.weights_, dtype=float).copy())
-            portfolio_return = 1.0 + np.dot(self.weights_, relatives[t] - 1.0)
-            self.wealth_ *= portfolio_return
-            wealth_history.append(self.wealth_)
-
-        self.all_wealth_ = np.array(wealth_history, dtype=float)
-        self.all_weights_ = np.vstack(weight_history)
-
+        relatives = net_to_relatives(X)
+        self._set_weights(relatives.shape[1])
+        self.all_wealth_, self.all_weights_ = _constant_wealth_history(
+            relatives=relatives, weights=self.weights_, initial_wealth=1.0
+        )
+        self.wealth_ = float(self.all_wealth_[-1])
         return self
 
 
@@ -160,7 +169,7 @@ class BestAsset(BaseOptimization):
         Gross hindsight wealth after all periods, excluding costs and fees.
 
     all_wealth_ : ndarray of shape (T+1,)
-        Wealth history: wealth_[0] is initial wealth (1.0), wealth_[t] is wealth after period t.
+        Wealth history including the initial value, followed by wealth after each period.
 
     all_weights_ : ndarray of shape (T, n_assets)
         Weight history: weights used at the start of each period (before observing returns).
@@ -173,14 +182,17 @@ class BestAsset(BaseOptimization):
         self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
     ) -> BestAsset:
         """Update the comparator target using the supplied observations."""
-        relatives = net_to_relatives(X)
-        best_asset = np.argmax(np.sum(np.log(relatives), axis=0, keepdims=True), axis=1)
-        self.weights_ = np.zeros(relatives.shape[1])
-        self.weights_[best_asset] = 1.0
+        self._set_weights(net_to_relatives(X))
         return self
 
+    def _set_weights(self, relatives: np.ndarray) -> None:
+        """Select the asset with the highest cumulative log return."""
+        best_asset = np.argmax(np.sum(np.log(relatives), axis=0))
+        self.weights_ = np.zeros(relatives.shape[1])
+        self.weights_[best_asset] = 1.0
+
     def fit(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None) -> BestAsset:
-        """Fit BestAsset and compute wealth trajectory.
+        """Select the best asset and compute its gross wealth trajectory.
 
         Parameters
         ----------
@@ -194,35 +206,17 @@ class BestAsset(BaseOptimization):
         self
             The estimator instance.
         """
-        X_arr = np.asarray(X, dtype=float)
-
-        # Set weights (identifies best asset in hindsight)
-        self.partial_fit(X_arr, y)
-
-        # Compute wealth trajectory
-        relatives = net_to_relatives(X_arr)  # (T, n_assets)
-        T = relatives.shape[0]
-
-        # Initialize wealth tracking
-        self.wealth_ = 1.0
-        wealth_history = [self.wealth_]
-        weight_history = []
-
-        # Compute wealth evolution (all capital in best asset)
-        for t in range(T):
-            weight_history.append(np.asarray(self.weights_, dtype=float).copy())
-            portfolio_return = 1.0 + np.dot(self.weights_, relatives[t] - 1.0)
-            self.wealth_ *= portfolio_return
-            wealth_history.append(self.wealth_)
-
-        self.all_wealth_ = np.array(wealth_history, dtype=float)
-        self.all_weights_ = np.vstack(weight_history)
-
+        relatives = net_to_relatives(X)
+        self._set_weights(relatives)
+        self.all_wealth_, self.all_weights_ = _constant_wealth_history(
+            relatives=relatives, weights=self.weights_, initial_wealth=1.0
+        )
+        self.wealth_ = float(self.all_wealth_[-1])
         return self
 
 
 class BestConstantRebalancedPortfolio(MeanRisk):
-    """Best Constant Rebalanced Portfolio (BestConstantRebalancedPortfolio) in hindsight.
+    """Best constant rebalanced portfolio in hindsight.
 
     Optimizes portfolio weights on historical data using any convex objective:
     - Risk minimization (variance, CVaR, CDaR, etc.)
@@ -235,7 +229,7 @@ class BestConstantRebalancedPortfolio(MeanRisk):
         The measure to optimize:
 
         - If ``PerfMeasure.LOG_WEALTH``: maximizes cumulative log-wealth
-          ``sum_t log((1 + r_t)^T w)``
+          ``sum_t log(1 + r_t^T w)``
         - If ``RiskMeasure``: uses specified ``objective_function``
           (minimize risk, maximize utility, etc.)
 
@@ -315,6 +309,9 @@ class BestConstantRebalancedPortfolio(MeanRisk):
     portfolio_params : dict | None, default=None
         Additional portfolio parameters.
 
+    initial_wealth : float, optional
+        Positive initial capital for the gross wealth history. None uses 1.0.
+
     Attributes
     ----------
     weights_ : ndarray of shape (n_assets,)
@@ -324,7 +321,7 @@ class BestConstantRebalancedPortfolio(MeanRisk):
         Gross hindsight wealth after all periods, excluding costs and fees.
 
     all_wealth_ : ndarray of shape (T+1,)
-        Wealth history: wealth_[0] is initial wealth (1.0), wealth_[t] is wealth after period t.
+        Wealth history including the initial value, followed by wealth after each period.
 
     all_weights_ : ndarray of shape (T, n_assets)
         Weight history from ``fit`` method. For ``fit_dynamic``, contains weights
@@ -371,10 +368,9 @@ class BestConstantRebalancedPortfolio(MeanRisk):
 
     @staticmethod
     def _log_wealth_expr(w: cp.Variable, estimator: MeanRisk) -> cp.Expression:
-        """Log-wealth objective: sum_t log(r_t^T w)."""
+        """Log-wealth objective: sum_t log(1 + r_t^T w)."""
         rd = estimator.prior_estimator_.return_distribution_
-        relatives = 1.0 + rd.returns
-        return cp.sum(cp.log(1.0 + (relatives - 1.0) @ w))
+        return cp.sum(cp.log(1.0 + rd.returns @ w))
 
     def __init__(
         self,
@@ -382,7 +378,7 @@ class BestConstantRebalancedPortfolio(MeanRisk):
         *,
         objective_function: ObjectiveFunction = ObjectiveFunction.MAXIMIZE_RETURN,
         risk_aversion: float = 1.0,
-        initial_wealth: float | npt.ArrayLike | None = None,
+        initial_wealth: float | None = None,
         l2_coef: float = 0.0,
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
@@ -483,7 +479,7 @@ class BestConstantRebalancedPortfolio(MeanRisk):
     def fit(
         self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params: Any
     ) -> BestConstantRebalancedPortfolio:
-        """Fit BestConstantRebalancedPortfolio and compute wealth trajectory.
+        """Optimize fixed weights and compute the gross wealth trajectory.
 
         Parameters
         ----------
@@ -499,30 +495,14 @@ class BestConstantRebalancedPortfolio(MeanRisk):
         self
             The estimator instance.
         """
-        net_to_relatives(X)
-        # Call parent fit (MeanRisk)
+        relatives = net_to_relatives(X)
         super().fit(X, y, **fit_params)
-
-        # Add wealth tracking
-        X_arr = np.asarray(X, dtype=float)
-        relatives = net_to_relatives(X_arr)  # (T, n_assets)
-        T = relatives.shape[0]
-
-        # Initialize wealth tracking
-        self.wealth_ = self.initial_wealth or 1.0
-        wealth_history = [self.wealth_]
-        weight_history = []
-
-        # Compute wealth evolution with constant optimal weights
-        for t in range(T):
-            weight_history.append(np.asarray(self.weights_, dtype=float).copy())
-            portfolio_return = 1.0 + np.dot(self.weights_, relatives[t] - 1.0)
-            self.wealth_ *= portfolio_return
-            wealth_history.append(self.wealth_)
-
-        self.all_wealth_ = np.array(wealth_history, dtype=float)
-        self.all_weights_ = np.vstack(weight_history)
-
+        self.all_wealth_, self.all_weights_ = _constant_wealth_history(
+            relatives=relatives,
+            weights=self.weights_,
+            initial_wealth=1.0 if self.initial_wealth is None else self.initial_wealth,
+        )
+        self.wealth_ = float(self.all_wealth_[-1])
         return self
 
     def _fit_first_prefix(self, X: npt.ArrayLike) -> None:

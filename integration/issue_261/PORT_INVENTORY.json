@@ -55,7 +55,7 @@
         "First-period legacy dynamic comparator solves return objectives directly with shared constraints. Risk objectives and custom callbacks are rejected for that one-row prefix."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "00f0fc2c78270c459cf50169c4247f7ce37abc7b37b26e3aa5741c55a7e87245"
+      "destination_sha256": "9c1546ab279478345a6b0efeb5dbcdf70497bc2a8a4651dac17313e1139a14c1"
     },
     {
       "source_path": "src/skfolio/optimization/online/_cwmr.py",
@@ -480,7 +480,7 @@
         "First-period legacy dynamic comparator solves return objectives directly with shared constraints. Risk objectives and custom callbacks are rejected for that one-row prefix."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "5b097dbafd873f7896211e484a8a7c14e6a27f351eb28a5f5cb996ceeca2a757"
+      "destination_sha256": "2ad37dc152a988874ac925fc27817d2214051dce56b08080dadc2e032f8dd09b"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_costs.py",
