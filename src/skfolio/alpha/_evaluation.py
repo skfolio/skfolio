@@ -57,6 +57,24 @@ __all__ = [
 
 _CALIBRATION_BINS = 10
 _LONG_SHORT_GROSS = 2.0
+_HAC_BANDWIDTH_RATIO = 0.1
+_N_BOOTSTRAP = 9_999
+_BOOTSTRAP_CHUNK_SIZE = 1_000
+_BOOTSTRAP_SEED = 0
+_MIN_INFERENCE_OBSERVATIONS = 20
+_MIN_INFERENCE_HORIZONS = 10
+_DEGENERATE_VARIANCE_RTOL = 1e-12
+_INFERENCE_KEYS = ("t_stat", "p_value", "mean_ci_lower", "mean_ci_upper")
+_CORRELATION_STATS_COLUMNS_IR = [
+    "mean",
+    "std",
+    "ir",
+    "t_stat",
+    "p_value",
+    "mean_ci_lower",
+    "mean_ci_upper",
+    "hit_rate",
+]
 
 
 @dataclass(frozen=True, eq=False)
@@ -247,21 +265,41 @@ class AlphaForecastEvaluation:
         r"""Information Coefficient summary.
 
         Returns one row for Spearman IC and one row for Pearson IC. The `icir`
-        column is :math:`\bar{IC} / \sigma_{IC}`. The `t_stat` column is the
-        date-level t-statistic of the mean IC. When `evaluation_step` is smaller
-        than `holding_period`, forward windows of consecutive evaluation dates
-        overlap and their ICs are serially correlated, so the t-statistic uses a
-        Newey-West variance with `ceil(holding_period / evaluation_step) - 1`
-        lags.
+        column is :math:`\bar{IC} / \sigma_{IC}`.
+
+        The `t_stat`, `p_value`, `mean_ci_lower` and `mean_ci_upper` columns test
+        the mean IC against zero and give a 95% confidence interval for it.
+        Forward windows of consecutive evaluation dates overlap when
+        `evaluation_step` is smaller than `holding_period`, and ICs are then
+        serially correlated, so the inference does not assume independent dates.
+        The `t_stat` is the mean IC divided by a quadratic-spectral
+        heteroskedasticity and autocorrelation consistent (HAC) standard error with
+        a bandwidth of 10% of the number of evaluation dates. Dates without a
+        valid IC are kept as gaps, so the spacing between observations is
+        preserved. The `p_value` is two-sided and comes from a Gaussian wild
+        bootstrap of this t-statistic with 9,999 draws and a fixed internal seed,
+        so the same data always gives the same result. The confidence interval
+        uses the same bootstrap distribution. A `p_value` below 0.05, or a
+        confidence interval that excludes zero, indicates a mean IC that is
+        statistically different from zero at the 5% level.
+
+        The inference columns are NaN with fewer than 20 valid dates, with a
+        degenerate variance estimate, or when the evaluation history covers fewer
+        than 10 holding periods.
         """
-        n_lags = _n_overlap_lags(self.holding_period, self.evaluation_step)
         return pd.DataFrame(
             {
                 "spearman_ic": _correlation_stats(
-                    self.spearman_ic, ratio_name="icir", n_lags=n_lags
+                    self.spearman_ic,
+                    ratio_name="icir",
+                    horizon=self.holding_period,
+                    evaluation_step=self.evaluation_step,
                 ),
                 "pearson_ic": _correlation_stats(
-                    self.pearson_ic, ratio_name="icir", n_lags=n_lags
+                    self.pearson_ic,
+                    ratio_name="icir",
+                    horizon=self.holding_period,
+                    evaluation_step=self.evaluation_step,
                 ),
             }
         ).T
@@ -330,10 +368,14 @@ class AlphaForecastEvaluation:
         Measures contemporaneous cross-sectional correlation between alpha
         forecasts and factor exposures. This helps assess whether the alpha
         forecast is cross-sectionally neutral to existing factors. The `ir`
-        column is :math:`\bar{\rho} / \sigma_{\rho}`. The `t_stat` column is
-        the date-level t-statistic of the mean correlation. Pearson
-        correlations are weighted by the cross-sectional weights resolved from
-        `cs_weighting`.
+        column is :math:`\bar{\rho} / \sigma_{\rho}`. The `t_stat`, `p_value`,
+        `mean_ci_lower` and `mean_ci_upper` columns test the mean correlation
+        against zero and give a 95% confidence interval for it, using the same
+        HAC t-statistic and wild bootstrap as in :meth:`ic_summary`. A `p_value`
+        below 0.05, or a confidence interval that excludes zero, indicates a mean
+        correlation that is statistically different from zero at the 5% level.
+        Pearson correlations are weighted by the cross-sectional weights resolved
+        from `cs_weighting`.
 
         Parameters
         ----------
@@ -346,10 +388,10 @@ class AlphaForecastEvaluation:
         Returns
         -------
         summary : DataFrame
-            Rows are factors and columns are `mean`, `std`, `ir`, `t_stat` and
-            `hit_rate`.
+            Rows are factors and columns are `mean`, `std`, `ir`, `t_stat`,
+            `p_value`, `mean_ci_lower`, `mean_ci_upper` and `hit_rate`.
         """
-        columns = ["mean", "std", "ir", "t_stat", "hit_rate"]
+        columns = _CORRELATION_STATS_COLUMNS_IR
         if self.factor_correlation is None or len(self.factor_names) == 0:
             return pd.DataFrame(columns=columns)
 
@@ -367,11 +409,22 @@ class AlphaForecastEvaluation:
         return pd.DataFrame(records, index=factor_names, columns=columns)
 
     def holding_period_summary(self) -> pd.DataFrame:
-        """Alpha diagnostics by cumulative holding period."""
+        """Alpha diagnostics by cumulative holding period.
+
+        The `t_stat`, `p_value`, `mean_ci_lower` and `mean_ci_upper` columns
+        follow :meth:`ic_summary`, with `spearman_ic_` and `pearson_ic_`
+        prefixes. They are NaN when the evaluation history covers fewer than 10
+        windows of the row's holding period.
+        """
         return self.holding_period_diagnostics.copy()
 
     def decay_summary(self) -> pd.DataFrame:
-        """Alpha decay summary by disjoint forward period."""
+        """Alpha decay summary by disjoint forward period.
+
+        The `t_stat`, `p_value`, `mean_ci_lower` and `mean_ci_upper` columns
+        follow :meth:`ic_summary`, with `spearman_ic_` and `pearson_ic_`
+        prefixes.
+        """
         return self.decay.copy()
 
     def plot_cumulative_ic(
@@ -805,8 +858,8 @@ def alpha_forecast_evaluation(
         overlapping forward targets when `holding_period > 1`. Values greater
         than `holding_period` produce a sparse evaluation. When
         `evaluation_step < holding_period`, summary means remain descriptive
-        diagnostics, but IC t-statistics and IR should be interpreted with the
-        serial dependence from overlapping targets in mind.
+        diagnostics, and the IC inference accounts for the serial dependence
+        from overlapping targets.
 
     n_forward_periods : int, default=10
         Number of consecutive forward periods used for holding-period and decay
@@ -1497,7 +1550,8 @@ def _compute_forward_window_diagnostics(
                 index_name=index_name,
                 index_value=index_value,
                 diagnostics=diagnostics,
-                n_lags=_n_overlap_lags(horizon, evaluation_step),
+                horizon=horizon,
+                evaluation_step=evaluation_step,
             )
         )
     return pd.DataFrame.from_records(records).set_index(index_name)
@@ -1508,7 +1562,8 @@ def _forward_window_record(
     index_name: str,
     index_value: int,
     diagnostics: dict[str, Any] | None = None,
-    n_lags: int = 0,
+    horizon: int = 1,
+    evaluation_step: int = 1,
 ) -> dict[str, float]:
     """Return one summary record for a forward target window."""
     record = {index_name: index_value}
@@ -1518,9 +1573,15 @@ def _forward_window_record(
                 "spearman_mean_ic": np.nan,
                 "spearman_icir": np.nan,
                 "spearman_ic_t_stat": np.nan,
+                "spearman_ic_p_value": np.nan,
+                "spearman_ic_mean_ci_lower": np.nan,
+                "spearman_ic_mean_ci_upper": np.nan,
                 "pearson_mean_ic": np.nan,
                 "pearson_icir": np.nan,
                 "pearson_ic_t_stat": np.nan,
+                "pearson_ic_p_value": np.nan,
+                "pearson_ic_mean_ci_lower": np.nan,
+                "pearson_ic_mean_ci_upper": np.nan,
                 "rank_weighted_portfolio_mean": np.nan,
                 "rank_weighted_portfolio_ir": np.nan,
                 "zscore_weighted_portfolio_mean": np.nan,
@@ -1531,10 +1592,16 @@ def _forward_window_record(
         return record
 
     spearman_ic = _correlation_stats(
-        diagnostics["spearman_ic"], ratio_name="icir", n_lags=n_lags
+        diagnostics["spearman_ic"],
+        ratio_name="icir",
+        horizon=horizon,
+        evaluation_step=evaluation_step,
     )
     pearson_ic = _correlation_stats(
-        diagnostics["pearson_ic"], ratio_name="icir", n_lags=n_lags
+        diagnostics["pearson_ic"],
+        ratio_name="icir",
+        horizon=horizon,
+        evaluation_step=evaluation_step,
     )
     rank_weighted_portfolio = _return_stats(
         diagnostics["rank_weighted_portfolio_return"]
@@ -1550,9 +1617,15 @@ def _forward_window_record(
             "spearman_mean_ic": spearman_ic["mean"],
             "spearman_icir": spearman_ic["icir"],
             "spearman_ic_t_stat": spearman_ic["t_stat"],
+            "spearman_ic_p_value": spearman_ic["p_value"],
+            "spearman_ic_mean_ci_lower": spearman_ic["mean_ci_lower"],
+            "spearman_ic_mean_ci_upper": spearman_ic["mean_ci_upper"],
             "pearson_mean_ic": pearson_ic["mean"],
             "pearson_icir": pearson_ic["icir"],
             "pearson_ic_t_stat": pearson_ic["t_stat"],
+            "pearson_ic_p_value": pearson_ic["p_value"],
+            "pearson_ic_mean_ci_lower": pearson_ic["mean_ci_lower"],
+            "pearson_ic_mean_ci_upper": pearson_ic["mean_ci_upper"],
             "rank_weighted_portfolio_mean": rank_weighted_portfolio["mean"],
             "rank_weighted_portfolio_ir": rank_weighted_portfolio["ir"],
             "zscore_weighted_portfolio_mean": zscore_weighted_portfolio["mean"],
@@ -1563,66 +1636,124 @@ def _forward_window_record(
     return record
 
 
-def _n_overlap_lags(horizon: int, evaluation_step: int) -> int:
-    """Return the number of serially overlapping evaluation dates.
+def _qs_kernel(x: FloatArray) -> FloatArray:
+    """Quadratic-spectral kernel weights."""
+    weights = np.ones_like(x, dtype=float)
+    nonzero = x != 0
+    z = 6.0 * np.pi * x[nonzero] / 5.0
+    weights[nonzero] = (
+        25.0 / (12.0 * np.pi**2 * x[nonzero] ** 2) * (np.sin(z) / z - np.cos(z))
+    )
+    return weights
 
-    Two evaluation dates `evaluation_step` apart share forward-return days when
-    `horizon > evaluation_step`. Their ICs are then serially correlated up to this
-    many lags.
+
+def _qs_kernel_matrix(n_dates: int) -> FloatArray:
+    """Kernel weight for every pair of positions on the evaluation grid.
+
+    The bandwidth is `_HAC_BANDWIDTH_RATIO * n_dates`.
     """
-    return max(int(np.ceil(horizon / evaluation_step)) - 1, 0)
+    bandwidth = max(_HAC_BANDWIDTH_RATIO * n_dates, 1.0)
+    lags = np.abs(np.subtract.outer(np.arange(n_dates), np.arange(n_dates)))
+    return _qs_kernel(lags / bandwidth)
 
 
-def _newey_west_t_stat(arr: FloatArray, n_lags: int) -> float:
-    """t-statistic of the mean using a Bartlett-kernel (Newey-West) variance.
+def _hac_t_stats(
+    values: FloatArray, valid: BoolArray, kernel: FloatArray
+) -> tuple[FloatArray, FloatArray, FloatArray]:
+    """Mean, standard error and t-statistic of the mean for each row of `values`.
 
-    `arr` is indexed by evaluation date. Non-finite values are kept in place as
-    zero-weight gaps, so lag `k` only pairs dates that are exactly `k` evaluation
-    steps apart and pairs across a missing date are dropped rather than shifted.
-
-    With `n_lags=0` this is the usual `mean / (std / sqrt(n))` with `ddof=1`.
+    Each row is indexed by evaluation date. Invalid dates are kept in place as
+    zero-weight gaps, so the kernel weight of a pair of observations depends on
+    their spacing on the evaluation grid and pairs across a missing date are not
+    shifted together. Rows with a non-positive variance estimate, which the
+    quadratic-spectral kernel can produce, get NaN.
     """
-    valid = np.isfinite(arr)
     n = int(np.sum(valid))
-    if n < 2:
-        return np.nan
-    mean = float(np.mean(arr[valid]))
+    mean = np.sum(np.where(valid, values, 0.0), axis=1) / n
+    centered = np.where(valid, values - mean[:, None], 0.0)
+    long_run_var = np.einsum("bt,bt->b", centered @ kernel, centered) / n
+    # Variance estimates at rounding-error level are degenerate, not small.
+    scale = np.sum(np.where(valid, values, 0.0) ** 2, axis=1) / n
+    long_run_var = np.where(
+        long_run_var > _DEGENERATE_VARIANCE_RTOL * scale, long_run_var, np.nan
+    )
+    std_err = np.sqrt(long_run_var / n)
+    return mean, std_err, mean / std_err
+
+
+def _hac_inference(arr: FloatArray) -> dict[str, float]:
+    """t-statistic, p-value and 95% confidence interval of the mean of `arr`.
+
+    The t-statistic uses a quadratic-spectral HAC standard error. The p-value and
+    the confidence interval come from a Gaussian wild bootstrap of this
+    t-statistic, with a fixed seed and a local generator so that the same data
+    always gives the same result.
+    """
+    nan_result = dict.fromkeys(_INFERENCE_KEYS, np.nan)
+    valid = np.isfinite(arr)
+    if int(np.sum(valid)) < _MIN_INFERENCE_OBSERVATIONS:
+        return nan_result
+    kernel = _qs_kernel_matrix(arr.size)
+    mean, std_err, t_stat = (
+        float(x[0])
+        for x in _hac_t_stats(np.where(valid, arr, 0.0)[None, :], valid, kernel)
+    )
+    if not np.isfinite(t_stat):
+        return nan_result
+
     centered = np.where(valid, arr - mean, 0.0)
-    long_run_var = float(np.dot(centered, centered)) / (n - 1)
-    for lag in range(1, min(n_lags, arr.size - 1) + 1):
-        weight = 1.0 - lag / (n_lags + 1)
-        long_run_var += (
-            2.0 * weight * float(np.dot(centered[lag:], centered[:-lag])) / (n - 1)
-        )
-    if not np.isfinite(long_run_var) or long_run_var <= 0:
-        return np.nan
-    return float(mean / np.sqrt(long_run_var / n))
+    rng = np.random.default_rng(_BOOTSTRAP_SEED)
+    t_boot = []
+    for start in range(0, _N_BOOTSTRAP, _BOOTSTRAP_CHUNK_SIZE):
+        size = min(_BOOTSTRAP_CHUNK_SIZE, _N_BOOTSTRAP - start)
+        draws = centered * rng.standard_normal((size, arr.size))
+        t_boot.append(_hac_t_stats(draws, valid, kernel)[2])
+    abs_t_boot = np.abs(np.concatenate(t_boot))
+    abs_t_boot = abs_t_boot[np.isfinite(abs_t_boot)]
+    if abs_t_boot.size == 0:
+        return nan_result
+    p_value = (1.0 + np.sum(abs_t_boot >= abs(t_stat))) / (1.0 + abs_t_boot.size)
+    critical_value = float(np.quantile(abs_t_boot, 0.95))
+    return {
+        "t_stat": t_stat,
+        "p_value": float(p_value),
+        "mean_ci_lower": mean - critical_value * std_err,
+        "mean_ci_upper": mean + critical_value * std_err,
+    }
 
 
 def _correlation_stats(
-    arr: FloatArray, *, ratio_name: str, n_lags: int = 0
+    arr: FloatArray,
+    *,
+    ratio_name: str,
+    horizon: int | None = None,
+    evaluation_step: int = 1,
 ) -> dict[str, float]:
     """Compute summary statistics for correlation values.
 
-    `n_lags` is the number of serially overlapping dates. When positive, the
-    t-statistic uses a Newey-West variance instead of assuming independent dates.
+    `arr` is indexed by evaluation date. The inference statistics (`t_stat`,
+    `p_value` and the confidence interval of the mean) are NaN when there are fewer
+    than 20 valid dates or when the variance estimate is degenerate. For
+    forward-return correlations, `horizon` is the length of the target window
+    and they are also NaN when the evaluation history, `arr.size * evaluation_step`
+    periods, covers fewer than 10 windows.
     """
-    valid = np.isfinite(arr)
-    n_observations = int(np.sum(valid))
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
         mean = float(np.nanmean(arr))
         std = float(np.nanstd(arr, ddof=1))
     ratio = safe_divide(mean, std, fill_value=np.nan)
-    if n_lags > 0:
-        t_stat = _newey_west_t_stat(arr, n_lags)
+    if horizon is not None and arr.size * evaluation_step < (
+        _MIN_INFERENCE_HORIZONS * horizon
+    ):
+        inference = dict.fromkeys(_INFERENCE_KEYS, np.nan)
     else:
-        t_stat = ratio * np.sqrt(n_observations)
+        inference = _hac_inference(arr)
     return {
         "mean": mean,
         "std": std,
         ratio_name: ratio,
-        "t_stat": t_stat,
+        **inference,
         "hit_rate": _hit_rate(arr),
     }
 
