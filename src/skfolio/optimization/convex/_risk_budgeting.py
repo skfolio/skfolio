@@ -18,7 +18,7 @@ import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
-from skfolio.optimization.convex._base import ConvexOptimization
+from skfolio.optimization.convex._base import ConvexOptimization, _gmd_reported_risk
 from skfolio.prior import BasePrior, EmpiricalPrior
 from skfolio.typing import ArrayLike
 from skfolio.utils.tools import args_names, check_estimator
@@ -702,6 +702,12 @@ class RiskBudgeting(ConvexOptimization):
                 args[arg_name] = getattr(self, arg_name)
         risk, constraints_i = risk_func(**args)
         constraints += constraints_i
+        if self.risk_measure == RiskMeasure.GINI_MEAN_DIFFERENCE:
+            reported_risk = _gmd_reported_risk(return_distribution.returns, w / factor)
+        elif self.risk_measure in [RiskMeasure.VARIANCE, RiskMeasure.SEMI_VARIANCE]:
+            reported_risk = risk / factor / factor
+        else:
+            reported_risk = risk / factor
 
         # custom objectives and constraints
         custom_objective = self._get_custom_objective(w=w)
@@ -721,8 +727,8 @@ class RiskBudgeting(ConvexOptimization):
             factor=factor,
             parameters_values=parameters_values,
             expressions={
-                "expected_return": expected_return,
-                "risk": risk,
+                "expected_return": expected_return / factor,
+                "risk": reported_risk,
                 "factor": factor,
             },
         )
