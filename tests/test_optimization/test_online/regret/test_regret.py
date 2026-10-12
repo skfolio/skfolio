@@ -2,8 +2,9 @@ import numpy as np
 import pytest
 
 from skfolio.optimization._base import BaseOptimization
+from skfolio.optimization.online import RegretType
 from skfolio.optimization.online._benchmark import BestConstantRebalancedPortfolio
-from skfolio.optimization.online._mixins import FTWStrategy, RegretType
+from skfolio.optimization.online._mixins import FTWStrategy
 from skfolio.optimization.online._regret import _running_regret, regret
 from skfolio.optimization.online._winner import FollowTheWinner
 
@@ -138,23 +139,6 @@ def test_invalid_window_raises(X_small):
             X=X_small,
             comparator=BestConstantRebalancedPortfolio(),
             window=X_small.shape[0] + 1,
-        )
-
-
-def test_dynamic_without_fit_dynamic_raises(X_small):
-    class DummyComparator(
-        BestConstantRebalancedPortfolio.__class__
-    ):  # create a dummy type without fit_dynamic
-        pass
-
-    # Build a simple dummy instance with no fit_dynamic attribute
-    comp = object()
-    est = FollowTheWinner(
-        strategy=FTWStrategy.EG, learning_rate="auto", warm_start=False
-    )
-    with pytest.raises(ValueError):
-        regret(
-            estimator=est, X=X_small, comparator=comp, regret_type=RegretType.DYNAMIC
         )
 
 

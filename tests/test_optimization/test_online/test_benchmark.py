@@ -130,18 +130,9 @@ def test_best_constant_with_box_constraints(X_small):
     assert np.sum(best_constant.weights_) == pytest.approx(1.0)
 
 
-def test_best_constant_fit_dynamic_produces_all_weights(X_small):
-    """Test fit_dynamic produces weights for each time step."""
-    best_constant = BestConstantRebalancedPortfolio()
-    best_constant.fit_dynamic(X_small)
-
-    assert hasattr(best_constant, "all_weights_")
-    assert best_constant.all_weights_.shape == X_small.shape
-
-
 def test_best_constant_solver_warns_on_nonconvergence():
-    """_solve_best_constant_constant must emit a warning when max_iter is reached."""
-    from skfolio.optimization.online._regret import _solve_best_constant_constant
+    """_solve_best_constant_weights must emit a warning when max_iter is reached."""
+    from skfolio.optimization.online._regret import _solve_best_constant_weights
 
     # Construct data where BestConstantRebalancedPortfolio is far from uniform (one asset dominates),
     # so the solver needs many iterations to converge from uniform init.
@@ -150,31 +141,7 @@ def test_best_constant_solver_warns_on_nonconvergence():
     relatives[:, 0] += 0.05  # asset 0 strongly dominates
 
     with pytest.warns(UserWarning, match="not converge"):
-        _solve_best_constant_constant(relatives, max_iter=1)
-
-
-def test_dynamic_comparator_respects_first_period_constraints():
-    X = np.array([[0.1, 0.01], [0.02, 0.03], [0.03, -0.01]])
-    model = BestConstantRebalancedPortfolio(max_weights=0.6).fit_dynamic(X)
-    assert np.all(model.all_weights_ <= 0.6 + 1e-7)
-    assert np.all(model.all_weights_ >= -1e-7)
-
-
-def test_dynamic_comparator_named_first_period_constraint():
-    import pandas as pd
-
-    X = pd.DataFrame([[0.1, 0.01], [0.02, 0.03], [0.03, -0.01]], columns=["A", "B"])
-    model = BestConstantRebalancedPortfolio(
-        linear_constraints=["A <= 0.6"]
-    ).fit_dynamic(X)
-    assert np.all(model.all_weights_[:, 0] <= 0.6 + 1e-7)
-
-
-def test_dynamic_risk_objective_rejects_undefined_first_period():
-    with pytest.raises(ValueError, match="risk cannot be estimated"):
-        BestConstantRebalancedPortfolio(
-            objective_measure=RiskMeasure.VARIANCE
-        ).fit_dynamic([[0.1, 0.2]])
+        _solve_best_constant_weights(relatives, max_iter=1)
 
 
 @pytest.mark.parametrize("weights", [[0.8, 0.2], [0.4, 0.1], [1.2, -0.2]])

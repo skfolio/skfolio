@@ -4,8 +4,7 @@ import pytest
 from skfolio.optimization.online import RegretType, regret
 from skfolio.optimization.online._mixins import FTWStrategy
 from skfolio.optimization.online._regret import (
-    _prefix_best_constant_weights,
-    _solve_best_constant_constant,
+    _solve_best_constant_weights,
 )
 from skfolio.optimization.online._utils import CLIP_EPSILON, net_to_relatives
 from skfolio.optimization.online._winner import FollowTheWinner
@@ -68,7 +67,7 @@ def test_static_regret_matches_manual(objective):
     R = net_to_relatives(X_net)
     online_losses = _manual_losses_from_weights(R, W_online)
 
-    w_star = _solve_best_constant_constant(R)
+    w_star = _solve_best_constant_weights(R)
     comp_losses = _manual_losses_from_weights(R, w_star)
 
     manual_curve = np.cumsum(online_losses - comp_losses)
@@ -144,7 +143,7 @@ def test_windowed_regret_consistency():
     R = net_to_relatives(X_net)
     online_losses = _manual_losses_from_weights(R, W_online)
 
-    w_star = _solve_best_constant_constant(R)
+    w_star = _solve_best_constant_weights(R)
     comp_losses = _manual_losses_from_weights(R, w_star)
 
     # Manual windowed regret averaged by window size
@@ -200,10 +199,9 @@ def test_random_relatives_static_and_dynamic_regret_curves(objective):
     assert rs[-1] >= -1e-6
 
 
-def test_dynamic_regret_curve_matches_prefix_comparator_behavior():
+def test_worst_case_regret_dominates_fixed_comparator():
     """
-    Ensure that the DYNAMIC comparator used by regret() is consistent with the
-    comparator's fit_dynamic(X) -> all_weights_ behavior (prefix-BestConstantRebalancedPortfolio in current code).
+    The per-period best asset dominates the best fixed portfolio at each prefix.
     """
     T, n = 50, 6
     relatives = _iid_relatives(T=T, n=n, seed=5)
@@ -216,7 +214,7 @@ def test_dynamic_regret_curve_matches_prefix_comparator_behavior():
     R = net_to_relatives(X_net)
     online_losses = _manual_losses_from_weights(R, W_online)
 
-    comp_weights = _prefix_best_constant_weights(R)
+    comp_weights = _solve_best_constant_weights(R)
     comp_losses = _manual_losses_from_weights(R, comp_weights)
 
     manual_dr = np.cumsum(online_losses - comp_losses)
@@ -231,6 +229,6 @@ def test_dynamic_regret_curve_matches_prefix_comparator_behavior():
         average=False,
     )
 
-    # Worst-case comparator should dominate prefix BestConstantRebalancedPortfolio regret (manual_dr)
+    # Worst-case comparator should dominate fixed-comparator regret (manual_dr)
     assert rd_wc.shape == manual_dr.shape
     assert np.all(rd_wc >= manual_dr - 1e-8)

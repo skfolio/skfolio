@@ -28,7 +28,7 @@
         "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "46dfde7d21713e4d3162b9e8f0821802cf7d29e8f320e66e3d21fa82e7565005"
+      "destination_sha256": "7199e9c6bdb009bf89588701fb215d8875a09d4ba89aea530942945b5043f8db"
     },
     {
       "source_path": "src/skfolio/optimization/online/_base.py",
@@ -41,7 +41,7 @@
         "Public initial allocations support named/scalar inputs. Statistical state and execution holdings remain separate; conversion no longer clips returns."
       ],
       "adaptation_reference": "3fbc2726c5145b61f75ae80d610690d64f28a745",
-      "destination_sha256": "6b2efdbb9c6cccc8c43e5e29f3648c5bb8f5b6a2cdf05c83fde309f61d65f306"
+      "destination_sha256": "f29de0ae99763c70a88ff74d45cac53c3a5ef0af9464badcfe6d68f02798c895"
     },
     {
       "source_path": "src/skfolio/optimization/online/_benchmark.py",
@@ -52,10 +52,11 @@
       "changes": [
         "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics.",
         "Benchmark classes remain internal. Gross hindsight wealth diagnostics exclude fees. First prefix retains constraints and named assets; max_turnover is forwarded to MeanRisk.",
-        "First-period legacy dynamic comparator solves return objectives directly with shared constraints. Risk objectives and custom callbacks are rejected for that one-row prefix."
+        "First-period legacy dynamic comparator solves return objectives directly with shared constraints. Risk objectives and custom callbacks are rejected for that one-row prefix.",
+        "Review cleanup: descriptive internal benchmark names and shared vectorized wealth calculation; remove prefix fit_dynamic, duplicate regret enum and legacy dynamic modes. Retain static, universal dynamic and worst-case regret."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "9c1546ab279478345a6b0efeb5dbcdf70497bc2a8a4651dac17313e1139a14c1"
+      "destination_sha256": "6fdefb4715bbd05bf7ecc9d9bc37ff795caef9cc482c09c199e3e75d8fd1fe60"
     },
     {
       "source_path": "src/skfolio/optimization/online/_cwmr.py",
@@ -81,7 +82,7 @@
         "Keep the original projector.project interface; do not port the reference branch's entropy-geometry dispatch before its dependencies and tests.",
         "Resolve constrained geometry via projector.solve_update(map, dual, pending gradient). Preserve source OMD pending-state and FTRL current-state ordering; identity-projector path remains unchanged."
       ],
-      "destination_sha256": "b6b3990106ecf3dc3d189a499145bb8df263c5fded91ea8af58a3691cb54ac5e",
+      "destination_sha256": "346edd8cec3ac634c5a13631dc631b4d03f2f1a39d203348f99ad3ba42de1baf",
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2"
     },
     {
@@ -107,7 +108,7 @@
         "Inactive predictors still enforce refreshed constraints. MD initializes from the explicit target; diagnostic loss accounts for residual cash."
       ],
       "adaptation_reference": "3fbc2726c5145b61f75ae80d610690d64f28a745",
-      "destination_sha256": "79c3d687845e59ffc14346d4bb53b9a55deebfc7033a605967e9064f6c9a7bf3"
+      "destination_sha256": "bc3bf0784c307af6daa89403018d06ab637d47b9e0d9fbf48abfa33436081ee9"
     },
     {
       "source_path": "src/skfolio/optimization/online/_mirror_maps.py",
@@ -122,7 +123,7 @@
         "Make Burg examples self-contained and assert normalization, positivity and stationarity; describe the actual brentq solver."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "4cce08a58b1b40be713ce509e2b5750bdfbf73294533536fc874e46b38660108"
+      "destination_sha256": "e174c0a4075771df6a442cce5e449eddc5164f33705a646bd7dfce506815a53e"
     },
     {
       "source_path": "src/skfolio/optimization/online/_mixins.py",
@@ -132,10 +133,11 @@
       "destination": "src/skfolio/optimization/online/_mixins.py",
       "changes": [
         "Ported family dependencies with reference typing and analytical-gradient compatibility fixes. Optional autograd remains verification-only; recovery and universe extensions excluded.",
-        "Named initial and previous weights supported; no recovery or universe extension parameters."
+        "Named initial and previous weights supported; no recovery or universe extension parameters.",
+        "Review cleanup: descriptive internal benchmark names and shared vectorized wealth calculation; remove prefix fit_dynamic, duplicate regret enum and legacy dynamic modes. Retain static, universal dynamic and worst-case regret."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "39a74233eb97086a641a1e887b8019751816c26c463d9c8621e5cdeb01c476aa"
+      "destination_sha256": "798e6e0270f37424441290601e7fec6170c10b853827a1da97b9ab759fc92a8b"
     },
     {
       "source_path": "src/skfolio/optimization/online/_prediction.py",
@@ -176,10 +178,11 @@
       "destination": "src/skfolio/optimization/online/_regret.py",
       "changes": [
         "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics.",
-        "Constant comparator uses CLARABEL instead of the often-unconverged multiplicative iteration. Dynamic solver errors propagate. Cash is included; aggregation and path parameters are validated."
+        "Constant comparator uses CLARABEL instead of the often-unconverged multiplicative iteration. Dynamic solver errors propagate. Cash is included; aggregation and path parameters are validated.",
+        "Review cleanup: descriptive internal benchmark names and shared vectorized wealth calculation; remove prefix fit_dynamic, duplicate regret enum and legacy dynamic modes. Retain static, universal dynamic and worst-case regret."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "ed470fd8d7c1b8cca30af462e3c0dd90b6247911cfb18746095451b269e49dea"
+      "destination_sha256": "cb0ab2c7badaac6254bd546502873d20c3068dff6a04344d36c8e3ef434ab2a6"
     },
     {
       "source_path": "src/skfolio/optimization/online/_strategies.py",
@@ -218,7 +221,7 @@
         "Uses the native dual-vector projection path. Diagnostic loss accounts for residual cash."
       ],
       "adaptation_reference": "3fbc2726c5145b61f75ae80d610690d64f28a745",
-      "destination_sha256": "45d04f797994c3e2ab48b621e4588ba096f1da64f273d0ff3ecc52a953d4a430"
+      "destination_sha256": "4003e46bed0a0e494171cd0431f5b8654ff31faa4c2e0de471dccaabc2e8d596"
     },
     {
       "source_path": "tests/test_optimization/test_online/base.py",
@@ -414,10 +417,11 @@
       "destination": "tests/test_optimization/test_online/regret/test_regret.py",
       "changes": [
         "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics.",
-        "Constant comparator uses CLARABEL instead of the often-unconverged multiplicative iteration. Dynamic solver errors propagate. Cash is included; aggregation and path parameters are validated."
+        "Constant comparator uses CLARABEL instead of the often-unconverged multiplicative iteration. Dynamic solver errors propagate. Cash is included; aggregation and path parameters are validated.",
+        "Review cleanup: descriptive internal benchmark names and shared vectorized wealth calculation; remove prefix fit_dynamic, duplicate regret enum and legacy dynamic modes. Retain static, universal dynamic and worst-case regret."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "f15e4b8d74652425590016e29cae2bac04462cdda7d325b9f7a1bb2c2ff15b6f"
+      "destination_sha256": "b795008cf74bba97b89799aa15a9d9b5c7673eeb219adb9cc5f4d9294593a095"
     },
     {
       "source_path": "tests/test_optimization/test_online/regret/test_regret_curves.py",
@@ -426,10 +430,11 @@
       "status": "adapted",
       "destination": "tests/test_optimization/test_online/regret/test_regret_curves.py",
       "changes": [
-        "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics."
+        "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics.",
+        "Review cleanup: descriptive internal benchmark names and shared vectorized wealth calculation; remove prefix fit_dynamic, duplicate regret enum and legacy dynamic modes. Retain static, universal dynamic and worst-case regret."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "b21012d48d2b11fc43623f0df4e65530d9993e5cc8c10d7e1c23d0076a97002e"
+      "destination_sha256": "b9e21b566a6678c7975e748f0312476e9a923a72065b9fc2e1702abb4e94587d"
     },
     {
       "source_path": "tests/test_optimization/test_online/regret/test_regret_dynamic.py",
@@ -438,10 +443,11 @@
       "status": "adapted",
       "destination": "tests/test_optimization/test_online/regret/test_regret_dynamic.py",
       "changes": [
-        "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics."
+        "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics.",
+        "Review cleanup: descriptive internal benchmark names and shared vectorized wealth calculation; remove prefix fit_dynamic, duplicate regret enum and legacy dynamic modes. Retain static, universal dynamic and worst-case regret."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "c25cbd176c5da0836645c1da123c27ec17f921695eaf56374d3a61fb12515608"
+      "destination_sha256": "6c5355e0fa3afd90d7966f8641bd43c4b6ba8815524bba593b850e92d8ad82eb"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_auto_learning_rate.py",
@@ -477,10 +483,11 @@
         "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics.",
         "Benchmark classes remain internal. Gross hindsight wealth diagnostics exclude fees. First prefix retains constraints and named assets; max_turnover is forwarded to MeanRisk.",
         "Removed vacuous objective-pair tests whose bodies returned immediately and broad solver xfail; dynamic comparator is tested normally, including first-period bounds.",
-        "First-period legacy dynamic comparator solves return objectives directly with shared constraints. Risk objectives and custom callbacks are rejected for that one-row prefix."
+        "First-period legacy dynamic comparator solves return objectives directly with shared constraints. Risk objectives and custom callbacks are rejected for that one-row prefix.",
+        "Review cleanup: descriptive internal benchmark names and shared vectorized wealth calculation; remove prefix fit_dynamic, duplicate regret enum and legacy dynamic modes. Retain static, universal dynamic and worst-case regret."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "2ad37dc152a988874ac925fc27817d2214051dce56b08080dadc2e032f8dd09b"
+      "destination_sha256": "9c52628aa56c98b707749cfb1831d3db3d853251228b620d21fc7d78de87202a"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_costs.py",
@@ -552,7 +559,7 @@
         "Enable and rename the former regret-bound smoke test to test_universal_regret_is_finite. It does not prove a theoretical bound."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "d5ceb2ac0da55b65c4f2ceccad1cbdcdb62dbd1870b24aa27914355035d84379"
+      "destination_sha256": "375f32eaa0757661d3304737ec36826d7556eb239f2a93f83195462a43b9df19"
     },
     {
       "source_path": "tests/test_optimization/test_online/utils.py",

@@ -6,7 +6,6 @@
 
 from copy import deepcopy
 from enum import Enum
-from typing import Any
 
 import cvxpy as cp
 import numpy as np
@@ -15,39 +14,14 @@ from numpy.typing import ArrayLike
 
 from skfolio.optimization._base import BaseOptimization
 from skfolio.optimization.online._base import BaseOnlineOptimization
-from skfolio.optimization.online._mixins import RegretType as LegacyRegretType
-
-_LEGACY_TO_REGRET: dict[Any, "RegretType"] = {}
 
 
 class RegretType(str, Enum):
     """Available historical comparator conventions."""
 
     STATIC = "static"
-    # Legacy dynamic mode (prefix BestConstantRebalancedPortfolio). Kept for backward compatibility.
-    DYNAMIC = "dynamic"
-    DYNAMIC_UNIVERSAL = "dynamic_universal"  # universal dynamic regret with path-length budget or penalty
-    DYNAMIC_WORST_CASE = (
-        "dynamic_worst_case"  # per-round minimizers (one-hot on argmax relative)
-    )
-    DYNAMIC_LEGACY = "dynamic_legacy"  # explicit alias for legacy
-
-
-if isinstance(LegacyRegretType, type):
-    _LEGACY_TO_REGRET = {
-        LegacyRegretType.STATIC: RegretType.STATIC,
-        LegacyRegretType.DYNAMIC: RegretType.DYNAMIC,
-    }
-    if hasattr(LegacyRegretType, "DYNAMIC_UNIVERSAL"):
-        _LEGACY_TO_REGRET[LegacyRegretType.DYNAMIC_UNIVERSAL] = (
-            RegretType.DYNAMIC_UNIVERSAL
-        )
-    if hasattr(LegacyRegretType, "DYNAMIC_WORST_CASE"):
-        _LEGACY_TO_REGRET[LegacyRegretType.DYNAMIC_WORST_CASE] = (
-            RegretType.DYNAMIC_WORST_CASE
-        )
-    if hasattr(LegacyRegretType, "DYNAMIC_LEGACY"):
-        _LEGACY_TO_REGRET[LegacyRegretType.DYNAMIC_LEGACY] = RegretType.DYNAMIC_LEGACY
+    DYNAMIC_UNIVERSAL = "dynamic_universal"
+    DYNAMIC_WORST_CASE = "dynamic_worst_case"
 
 
 def plot_regret_curve(
@@ -179,7 +153,7 @@ def _worst_case_dynamic_weights(relatives: np.ndarray) -> np.ndarray:
     return W
 
 
-def _solve_best_constant_constant(
+def _solve_best_constant_weights(
     relatives: np.ndarray,
     *,
     init: np.ndarray | None = None,
@@ -224,20 +198,6 @@ def _solve_best_constant_constant(
     # Remove tiny solver residuals at the simplex boundary.
     result = np.maximum(np.asarray(weights.value, dtype=float), 0.0)
     return result / result.sum()
-
-
-def _prefix_best_constant_weights(relatives: np.ndarray) -> np.ndarray:
-    r"""Compute BestConstantRebalancedPortfolio weights on each prefix of ``relatives`` for legacy dynamic regret."""
-    R = np.asarray(relatives, dtype=float)
-    if R.ndim != 2:
-        raise ValueError("relatives must have shape (T, n)")
-    T, n = R.shape
-    weights = np.zeros((T, n), dtype=float)
-    init = None
-    for t in range(1, T + 1):
-        init = _solve_best_constant_constant(R[:t, :], init=init)
-        weights[t - 1] = init
-    return weights
 
 
 def _universal_dynamic_weights(
@@ -289,12 +249,12 @@ def _universal_dynamic_weights(
 
     # Special case: path_length == 0 -> STATIC comparator (one constant u) = BestConstantRebalancedPortfolio
     if path_length is not None and path_length <= 1e-18:
-        w = _solve_best_constant_constant(R)
+        w = _solve_best_constant_weights(R)
         return np.repeat(w[None, :], T, axis=0)
 
     # Decision variable: one weight vector per t
     W = cp.Variable((T, n))
-    constraints: list[Any] = [W >= 0, cp.sum(W, axis=1) == 1]
+    constraints: list[cp.constraints.Constraint] = [W >= 0, cp.sum(W, axis=1) == 1]
 
     diffs = W[1:, :] - W[:-1, :] if T >= 2 else None
     if diffs is not None:
@@ -303,7 +263,7 @@ def _universal_dynamic_weights(
         else:
             path_expr = cp.sum(cp.norm2(diffs, axis=1))
     else:
-        path_expr = 0.0
+        path_expr = cp.Constant(0.0)
 
     # Objective: maximize sum log(R[t]^T W_t). This is concave; maximizing is DCP-valid.
     # R is strictly positive, so we don't need extra positivity constraints for the affine inner product.
@@ -331,7 +291,7 @@ def regret(
     X: ArrayLike,
     *,
     comparator: BaseOptimization | None = None,
-    regret_type: RegretType = RegretType.STATIC,
+    regret_type: RegretType | str = RegretType.STATIC,
     average: bool | str = False,
     window: int | None = None,
     dynamic_config: dict | None = None,
@@ -347,11 +307,11 @@ def regret(
     X : array-like of shape (T, n)
         Net returns per period. Internally converted to gross relatives via `1 + r`.
     comparator : BaseOptimization, optional
-        - For STATIC: if None, defaults to BestConstantRebalancedPortfolio() (best fixed in hindsight).
-        - For DYNAMIC_UNIVERSAL and DYNAMIC_WORST_CASE: ignored; comparator is defined by regret_type.
-        - For DYNAMIC_LEGACY or DYNAMIC: if None, defaults to BestConstantRebalancedPortfolio().fit_dynamic(...) as before.
-    regret_type : RegretType
-        STATIC, DYNAMIC_UNIVERSAL, DYNAMIC_WORST_CASE, or DYNAMIC_LEGACY (DYNAMIC is an alias to LEGACY).
+        For STATIC, fits the supplied comparator on a copy. If None, solves
+        the best fixed long-only, fully invested log-wealth portfolio.
+        Dynamic modes use their own comparators and ignore this argument.
+    regret_type : RegretType or str, default=RegretType.STATIC
+        STATIC, DYNAMIC_UNIVERSAL or DYNAMIC_WORST_CASE, or their string values.
     average : {False, "none", True, "running", "final"}, default=False
         Averaging mode for the returned curve:
         - False or "none": return cumulative (or windowed) regret curve
@@ -392,20 +352,7 @@ def regret(
     - Path length PT is the canonical non-stationarity measure in dynamic regret bounds; SWORD
       algorithms achieve problem-dependent bounds in terms of PT and gradient variation VT (and small loss FT) under smoothness, within the universal dynamic regret framework.
     """
-    # Fit the online estimator and collect per-period weights
-    if isinstance(regret_type, RegretType):
-        rt = regret_type
-    elif isinstance(LegacyRegretType, type) and isinstance(
-        regret_type, LegacyRegretType
-    ):
-        try:
-            rt = _LEGACY_TO_REGRET[regret_type]
-        except KeyError as exc:  # pragma: no cover - defensive
-            raise ValueError(f"Unsupported regret_type: {regret_type!r}") from exc
-    elif isinstance(regret_type, str):
-        rt = RegretType(regret_type)
-    else:
-        rt = RegretType(regret_type)
+    rt = RegretType(regret_type)
 
     values = np.asarray(X, dtype=float)
     if values.ndim != 2 or 0 in values.shape or not np.all(np.isfinite(values)):
@@ -435,45 +382,13 @@ def regret(
         online_losses = _losses_from_weights(relatives, weights)
 
     # Comparator weights and losses
-    if rt == RegretType.DYNAMIC:
-        # Alias to legacy; warn to migrate
-        import warnings
-
-        warnings.warn(
-            "RegretType.DYNAMIC is legacy (prefix BestConstantRebalancedPortfolio). Use DYNAMIC_UNIVERSAL or "
-            "DYNAMIC_WORST_CASE for literature-aligned dynamic regret.",
-            UserWarning,
-            stacklevel=2,
-        )
-        rt = RegretType.DYNAMIC_LEGACY
-
     if rt == RegretType.STATIC:
         if comparator is not None:
             comp = deepcopy(comparator).fit(X)
             w_star = np.asarray(comp.weights_, dtype=float)
         else:
-            w_star = _solve_best_constant_constant(relatives)
+            w_star = _solve_best_constant_weights(relatives)
         comp_losses = _losses_from_weights(relatives, w_star)
-
-    elif rt == RegretType.DYNAMIC_LEGACY:
-        if comparator is not None:
-            comp = deepcopy(comparator)
-            if not hasattr(comp, "fit_dynamic"):
-                raise ValueError(
-                    "Legacy dynamic regret requested but comparator has no fit_dynamic method"
-                )
-            fit_dynamic = comp.fit_dynamic
-            if not callable(fit_dynamic):
-                raise TypeError("fit_dynamic must be callable")
-            fit_dynamic(X)
-            if not hasattr(comp, "all_weights_"):
-                raise RuntimeError("comparator.fit_dynamic must set all_weights_")
-            comp_losses = _losses_from_weights(
-                relatives, np.asarray(comp.all_weights_, dtype=float)
-            )
-        else:
-            dyn_weights = _prefix_best_constant_weights(relatives)
-            comp_losses = _losses_from_weights(relatives, dyn_weights)
 
     elif rt == RegretType.DYNAMIC_WORST_CASE:
         W_wc = _worst_case_dynamic_weights(relatives)
@@ -495,8 +410,7 @@ def regret(
 
     else:
         raise ValueError(
-            "Unknown regret_type. Use STATIC, DYNAMIC_UNIVERSAL, DYNAMIC_WORST_CASE, "
-            "or DYNAMIC_LEGACY (DYNAMIC aliases to legacy)."
+            "Unknown regret_type. Use STATIC, DYNAMIC_UNIVERSAL or DYNAMIC_WORST_CASE."
         )
 
     # Running (or windowed) regret curve

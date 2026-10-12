@@ -11,7 +11,6 @@ from typing import Any
 import cvxpy as cp
 import numpy as np
 import numpy.typing as npt
-import pandas as pd
 
 import skfolio.typing as skt
 from skfolio.measures import PerfMeasure, RiskMeasure, get_cumulative_returns
@@ -324,8 +323,7 @@ class BestConstantRebalancedPortfolio(MeanRisk):
         Wealth history including the initial value, followed by wealth after each period.
 
     all_weights_ : ndarray of shape (T, n_assets)
-        Weight history from ``fit`` method. For ``fit_dynamic``, contains weights
-        from each expanding window (dynamic regret).
+        Fixed hindsight target repeated for every observation.
 
     Examples
     --------
@@ -503,117 +501,4 @@ class BestConstantRebalancedPortfolio(MeanRisk):
             initial_wealth=1.0 if self.initial_wealth is None else self.initial_wealth,
         )
         self.wealth_ = float(self.all_wealth_[-1])
-        return self
-
-    def _fit_first_prefix(self, X: npt.ArrayLike) -> None:
-        """Solve a one-period return comparator without estimating covariance."""
-        if self.objective_measure not in (PerfMeasure.LOG_WEALTH, PerfMeasure.MEAN):
-            raise ValueError(
-                "fit_dynamic requires a return objective; risk cannot be estimated from one row"
-            )
-        if self.add_objective is not None or self.add_constraints is not None:
-            raise ValueError(
-                "fit_dynamic does not support custom callbacks on its one-row prefix"
-            )
-        values = np.asarray(X, dtype=float)
-        n = values.shape[1]
-        self.n_features_in_ = n
-        if hasattr(self, "feature_names_in_"):
-            del self.feature_names_in_
-        if isinstance(X, pd.DataFrame):
-            self.feature_names_in_ = np.asarray(X.columns)
-        if hasattr(self, "investable_mask_"):
-            del self.investable_mask_
-        self._scale_constraints = cp.Constant(1.0)
-        w = cp.Variable(n)
-        constraints = self._get_weight_constraints(
-            n_assets=n, w=w, factor=cp.Constant(1.0)
-        )
-        previous = self._clean_input(
-            value=self.previous_weights,
-            n_assets=n,
-            fill_value=0,
-            name="previous_weights",
-        )
-        if self.max_turnover is not None:
-            constraints.append(cp.norm1(w - previous) <= self.max_turnover)
-        costs = self._clean_input(
-            value=self.transaction_costs,
-            n_assets=n,
-            fill_value=0,
-            name="transaction_costs",
-        )
-        fees = self._clean_input(
-            value=self.management_fees, n_assets=n, fill_value=0, name="management_fees"
-        )
-        gain = values[0] @ w
-        reward = (
-            cp.log(1.0 + gain)
-            if self.objective_measure == PerfMeasure.LOG_WEALTH
-            else gain
-        )
-        objective = (
-            reward
-            - cp.sum(cp.multiply(costs, cp.abs(w - previous)))
-            - cp.sum(cp.multiply(fees, w))
-            - self.l2_coef * cp.sum_squares(w)
-        )
-        problem = cp.Problem(cp.Maximize(objective), constraints)
-        problem.solve(solver=self.solver, **(self.solver_params or {}))
-        if problem.status not in (cp.OPTIMAL, cp.OPTIMAL_INACCURATE) or w.value is None:
-            raise RuntimeError("First-prefix comparator optimization failed")
-        self.weights_ = np.asarray(w.value, dtype=float)
-
-    def fit_dynamic(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params: Any
-    ) -> MeanRisk:
-        """Fit over increasingly large folds and compute wealth trajectory.
-
-        Helper method to fit over increasingly large folds of data from t=1 to T.
-        Useful for legacy prefix regret. Requires a log-wealth or mean-return
-        objective; risk objectives and custom callbacks are unsupported because
-        the first prefix contains only one observation.
-
-        Parameters
-        ----------
-        X : array-like of shape (T, n_assets)
-            Net returns per period.
-        y : Ignored
-            Present for API consistency.
-        **fit_params
-            Additional fit parameters.
-
-        Returns
-        -------
-        self
-            The estimator instance with all_weights_ and all_wealth_ attributes.
-        """
-        X_arr = np.asarray(X, dtype=float)
-        if X_arr.ndim != 2:
-            raise ValueError("X must be 2D array of shape (T, n_assets)")
-        T = X_arr.shape[0]
-
-        relatives = net_to_relatives(X_arr)
-
-        weights_list: list[np.ndarray] = []
-        wealth_history = [1.0]  # Initial wealth
-        current_wealth = 1.0
-
-        for t in range(1, T + 1):
-            prefix = X.iloc[:t] if isinstance(X, pd.DataFrame) else X_arr[:t]
-            if t == 1:
-                self._fit_first_prefix(prefix)
-            else:
-                super().fit(prefix, y, **fit_params)
-            weights_list.append(np.asarray(self.weights_, dtype=float).copy())
-
-            # Update wealth for this period
-            portfolio_return = 1.0 + np.dot(weights_list[-1], relatives[t - 1] - 1.0)
-            current_wealth *= portfolio_return
-            wealth_history.append(current_wealth)
-
-        self.all_weights_ = np.vstack(weights_list)
-        self.all_wealth_ = np.array(wealth_history, dtype=float)
-        self.wealth_ = current_wealth
-
         return self

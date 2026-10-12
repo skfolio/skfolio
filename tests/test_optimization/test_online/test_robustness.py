@@ -2,8 +2,9 @@ import numpy as np
 import pytest
 from tests.test_optimization.test_online.utils import make_stationary_returns
 
+from skfolio.optimization.online import RegretType
 from skfolio.optimization.online._loser import FollowTheLoser
-from skfolio.optimization.online._mixins import FTLStrategy, FTWStrategy, RegretType
+from skfolio.optimization.online._mixins import FTLStrategy, FTWStrategy
 from skfolio.optimization.online._winner import FollowTheWinner
 
 

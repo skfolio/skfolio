@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 from skfolio.optimization.online import RegretType, regret
 from skfolio.optimization.online._mixins import FTWStrategy
@@ -88,22 +87,3 @@ def test_universal_dynamic_monotonic_in_pt():
 
     # With PT large enough, universal dynamic regret should match worst-case (within tolerance)
     assert abs(final_vals[-1] - r_wc[-1]) <= 1e-5
-
-
-def test_dynamic_legacy_alias_warns_and_matches():
-    T, n = 40, 3
-    R = _iid_relatives(T=T, n=n, seed=4)
-    X = R - 1.0
-    est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate=0.1, warm_start=False)
-
-    with pytest.warns(UserWarning):
-        r_dyn = regret(estimator=est, X=X, regret_type=RegretType.DYNAMIC)
-
-    r_leg = regret(
-        estimator=FollowTheWinner(
-            strategy=FTWStrategy.EG, learning_rate=0.1, warm_start=False
-        ),
-        X=X,
-        regret_type=RegretType.DYNAMIC_LEGACY,
-    )
-    assert np.allclose(r_dyn, r_leg, atol=1e-12)

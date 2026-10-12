@@ -287,7 +287,7 @@ Classes
     OnlineMovingAverageReversion
 
 .. autoclass:: RegretType
-    :members: STATIC, DYNAMIC, DYNAMIC_LEGACY, DYNAMIC_UNIVERSAL, DYNAMIC_WORST_CASE
+    :members: STATIC, DYNAMIC_UNIVERSAL, DYNAMIC_WORST_CASE
     :no-inherited-members:
 
 .. autosummary::

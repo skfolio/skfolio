@@ -14,16 +14,6 @@ from skfolio.prior import BasePrior
 from skfolio.utils.tools import AutoEnum
 
 
-class RegretType(AutoEnum):
-    """Available historical comparator conventions."""
-
-    STATIC = auto()
-    DYNAMIC = auto()
-    DYNAMIC_UNIVERSAL = auto()
-    DYNAMIC_WORST_CASE = auto()
-    DYNAMIC_LEGACY = auto()
-
-
 class FTWStrategy(AutoEnum):
     """Available follow-the-winner numerical strategies."""
 

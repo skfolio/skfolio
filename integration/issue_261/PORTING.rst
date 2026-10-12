@@ -452,3 +452,24 @@ Validation: 692 online tests pass. The online suite alone covers 91.39% of chang
 executable lines against the PR base (2,962 / 3,241), and 91.75% of the online
 package. This is a local estimate; Codecov recomputes its own patch report in CI.
 Ruff lint/format and repository type checks pass. The coverage threshold stays 90%.
+
+
+Review follow-up: readability, benchmarks and regret
+--------------------------------------------------
+
+The earlier iteration notes above record the port history. The prefix comparator
+and legacy dynamic regret described there have now been removed after review.
+The current public RegretType has STATIC, DYNAMIC_UNIVERSAL and
+DYNAMIC_WORST_CASE only. The old dynamic string aliases are rejected.
+
+Internal comparators use descriptive names: ConstantRebalancedPortfolio,
+UniformConstantRebalanced, BestAsset and BestConstantRebalancedPortfolio.
+Their gross wealth calculation uses the existing compounded-return helper, with
+residual cash earning zero. Tests cover short positions, residual cash, initial
+capital, independent history rows and refitting. Return validation is performed
+once per benchmark fit; invalid or bankrupt asset returns are still rejected.
+
+Calls with long argument lists use explicit keywords across the online engine,
+shared constraint callers and their tests. User documentation describes behavior;
+source credits and this inventory retain provenance. Unsupported empirical
+performance claims have been removed from the learning-rate documentation.

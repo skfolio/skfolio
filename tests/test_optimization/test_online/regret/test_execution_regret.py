@@ -96,17 +96,17 @@ def test_invalid_gross_wealth_is_not_clipped():
 
 
 def test_constant_comparator_matches_analytic_optimum():
-    from skfolio.optimization.online._regret import _solve_best_constant_constant
+    from skfolio.optimization.online._regret import _solve_best_constant_weights
 
     # Symmetric opposing returns have their unique optimum at equal weights.
     relatives = np.array([[1.2, 0.9], [0.9, 1.2]])
-    weights = _solve_best_constant_constant(relatives)
+    weights = _solve_best_constant_weights(relatives)
     # Solver tolerances control the objective, not individual near-optimal weights.
     assert abs(np.log(relatives @ weights).sum() - 2 * np.log(1.05)) < 1e-9
     assert np.all(weights >= 0)
     assert weights.sum() == pytest.approx(1)
     # A strictly dominant asset puts the optimum on the simplex boundary.
-    weights = _solve_best_constant_constant(np.array([[1.1, 1.0], [1.2, 1.01]]))
+    weights = _solve_best_constant_weights(np.array([[1.1, 1.0], [1.2, 1.01]]))
     np.testing.assert_allclose(weights, [1.0, 0.0], atol=1e-7)
 
 
@@ -146,23 +146,7 @@ def test_dynamic_penalty_interpolates_between_hindsight_comparators(norm):
     np.testing.assert_allclose(penalized[-1], static[-1], atol=1e-7)
 
 
-def test_explicit_legacy_comparator_matches_manual_prefix_losses():
-    from skfolio.optimization.online._benchmark import BestConstantRebalancedPortfolio
-
-    X = np.array([[0.1, -0.05], [-0.02, 0.08], [0.04, -0.01]])
-    comparator = BestConstantRebalancedPortfolio(max_weights=0.7)
-    model = ExponentiatedGradient()
-    curve = regret(
-        estimator=model, X=X, comparator=comparator, regret_type="dynamic_legacy"
-    )
-    weights = deepcopy(comparator).fit_dynamic(X).all_weights_
-    online = deepcopy(model).fit_predict(X).returns
-    expected = np.cumsum(-np.log1p(online) + np.log1p(np.sum(X * weights, axis=1)))
-    np.testing.assert_allclose(curve, expected, atol=1e-10)
-    assert not hasattr(comparator, "all_weights_")
-
-
-@pytest.mark.parametrize("regret_type", ["unknown", 123])
+@pytest.mark.parametrize("regret_type", ["unknown", "dynamic", "dynamic_legacy", 123])
 def test_invalid_regret_type_rejected(regret_type):
     with pytest.raises(ValueError):
         regret(
