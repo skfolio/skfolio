@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from skfolio.optimization._base import BaseOptimization
-from skfolio.optimization.online._benchmark import BCRP
+from skfolio.optimization.online._benchmark import BestConstantRebalancedPortfolio
 from skfolio.optimization.online._mixins import FTWStrategy, RegretType
 from skfolio.optimization.online._regret import _running_regret, regret
 from skfolio.optimization.online._winner import FollowTheWinner
@@ -16,7 +16,7 @@ def test_shapes_and_finiteness_static(X_small, avg_flag):
     r = regret(
         estimator=est,
         X=X_small,
-        comparator=BCRP(),
+        comparator=BestConstantRebalancedPortfolio(),
         average=avg_flag,
         regret_type=RegretType.STATIC,
     )
@@ -49,11 +49,26 @@ def test_running_vs_final_average_agreement_at_T(X_small):
         strategy=FTWStrategy.EG, learning_rate="auto", warm_start=False
     )
     # cumulative
-    r_cum = regret(estimator=est, X=X_small, comparator=BCRP(), average=False)
+    r_cum = regret(
+        estimator=est,
+        X=X_small,
+        comparator=BestConstantRebalancedPortfolio(),
+        average=False,
+    )
     # running average (R_t / t)
-    r_run = regret(estimator=est, X=X_small, comparator=BCRP(), average="running")
+    r_run = regret(
+        estimator=est,
+        X=X_small,
+        comparator=BestConstantRebalancedPortfolio(),
+        average="running",
+    )
     # final average constant curve
-    r_final = regret(estimator=est, X=X_small, comparator=BCRP(), average="final")
+    r_final = regret(
+        estimator=est,
+        X=X_small,
+        comparator=BestConstantRebalancedPortfolio(),
+        average="final",
+    )
 
     T = X_small.shape[0]
     assert np.isclose(r_run[-1], r_cum[-1] / T, atol=1e-9)
@@ -65,12 +80,26 @@ def test_windowed_running_and_final_average(X_small):
         strategy=FTWStrategy.EG, learning_rate="auto", warm_start=False
     )
     w = 10
-    r_win = regret(estimator=est, X=X_small, comparator=BCRP(), average=False, window=w)
+    r_win = regret(
+        estimator=est,
+        X=X_small,
+        comparator=BestConstantRebalancedPortfolio(),
+        average=False,
+        window=w,
+    )
     r_win_run = regret(
-        estimator=est, X=X_small, comparator=BCRP(), average="running", window=w
+        estimator=est,
+        X=X_small,
+        comparator=BestConstantRebalancedPortfolio(),
+        average="running",
+        window=w,
     )
     r_win_final = regret(
-        estimator=est, X=X_small, comparator=BCRP(), average="final", window=w
+        estimator=est,
+        X=X_small,
+        comparator=BestConstantRebalancedPortfolio(),
+        average="final",
+        window=w,
     )
 
     # Before window-1, the windowed curve should be zero (by construction in our implementation)
@@ -86,8 +115,8 @@ def test_comparator_instance_required(X_small):
     est = FollowTheWinner(
         strategy=FTWStrategy.EG, learning_rate="auto", warm_start=False
     )
-    # Should accept instance or None (defaults to BCRP())
-    r1 = regret(estimator=est, X=X_small, comparator=BCRP())
+    # Should accept instance or None (defaults to BestConstantRebalancedPortfolio())
+    r1 = regret(estimator=est, X=X_small, comparator=BestConstantRebalancedPortfolio())
     r2 = regret(estimator=est, X=X_small, comparator=None)
     assert r1.shape == r2.shape
 
@@ -97,13 +126,25 @@ def test_invalid_window_raises(X_small):
         strategy=FTWStrategy.EG, learning_rate="auto", warm_start=False
     )
     with pytest.raises(ValueError):
-        regret(estimator=est, X=X_small, comparator=BCRP(), window=0)
+        regret(
+            estimator=est,
+            X=X_small,
+            comparator=BestConstantRebalancedPortfolio(),
+            window=0,
+        )
     with pytest.raises(ValueError):
-        regret(estimator=est, X=X_small, comparator=BCRP(), window=X_small.shape[0] + 1)
+        regret(
+            estimator=est,
+            X=X_small,
+            comparator=BestConstantRebalancedPortfolio(),
+            window=X_small.shape[0] + 1,
+        )
 
 
 def test_dynamic_without_fit_dynamic_raises(X_small):
-    class DummyComparator(BCRP.__class__):  # create a dummy type without fit_dynamic
+    class DummyComparator(
+        BestConstantRebalancedPortfolio.__class__
+    ):  # create a dummy type without fit_dynamic
         pass
 
     # Build a simple dummy instance with no fit_dynamic attribute

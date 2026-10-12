@@ -55,7 +55,7 @@
         "First-period legacy dynamic comparator solves return objectives directly with shared constraints. Risk objectives and custom callbacks are rejected for that one-row prefix."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "45467791fc12bd72a44d691e223d90e787404000c7c4420048ee03fa28f228c1"
+      "destination_sha256": "00f0fc2c78270c459cf50169c4247f7ce37abc7b37b26e3aa5741c55a7e87245"
     },
     {
       "source_path": "src/skfolio/optimization/online/_cwmr.py",
@@ -179,7 +179,7 @@
         "Constant comparator uses CLARABEL instead of the often-unconverged multiplicative iteration. Dynamic solver errors propagate. Cash is included; aggregation and path parameters are validated."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "0d1c342845dd4243ec3d84314af9f4c3eefe6c544e3cc167e030bab20f047ccb"
+      "destination_sha256": "ed470fd8d7c1b8cca30af462e3c0dd90b6247911cfb18746095451b269e49dea"
     },
     {
       "source_path": "src/skfolio/optimization/online/_strategies.py",
@@ -417,7 +417,7 @@
         "Constant comparator uses CLARABEL instead of the often-unconverged multiplicative iteration. Dynamic solver errors propagate. Cash is included; aggregation and path parameters are validated."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "6359af463a96a86cad85d2d402394406bfb2373e733c2319f5313f1bdb458ed6"
+      "destination_sha256": "f15e4b8d74652425590016e29cae2bac04462cdda7d325b9f7a1bb2c2ff15b6f"
     },
     {
       "source_path": "tests/test_optimization/test_online/regret/test_regret_curves.py",
@@ -429,7 +429,7 @@
         "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "0d53d6f335b74828949cfe1624fbc7bb59668e9322d297e7628d0e1a3bcd93f4"
+      "destination_sha256": "b21012d48d2b11fc43623f0df4e65530d9993e5cc8c10d7e1c23d0076a97002e"
     },
     {
       "source_path": "tests/test_optimization/test_online/regret/test_regret_dynamic.py",
@@ -480,7 +480,7 @@
         "First-period legacy dynamic comparator solves return objectives directly with shared constraints. Risk objectives and custom callbacks are rejected for that one-row prefix."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "36c40e5664acb45a2aa43925308bb63c7c96acb3cafef7ecdac058fb4aba501b"
+      "destination_sha256": "5b097dbafd873f7896211e484a8a7c14e6a27f351eb28a5f5cb996ceeca2a757"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_costs.py",

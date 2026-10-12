@@ -30,8 +30,8 @@ def net_to_relatives(X: npt.ArrayLike) -> np.ndarray:
     return 1.0 + values
 
 
-class CRP(BaseOptimization):
-    """Constant Rebalanced Portfolio (CRP).
+class ConstantRebalancedPortfolio(BaseOptimization):
+    """Constant Rebalanced Portfolio (ConstantRebalancedPortfolio).
 
     Keeps a fixed portfolio w and rebalances to it every period.
 
@@ -39,7 +39,7 @@ class CRP(BaseOptimization):
     ----------
     weights : array-like of shape (n_assets,), optional
         Fixed weights to rebalance to. If None, uses uniform weights leading to the
-        Uniform Constant Rebalanced Portfolio (UCRP).
+        Uniform Constant Rebalanced Portfolio (UniformConstantRebalanced).
     portfolio_params : dict, optional
         Portfolio parameters propagated to the produced portfolio.
 
@@ -69,7 +69,9 @@ class CRP(BaseOptimization):
         self.weights = weights
         self.portfolio_params = portfolio_params
 
-    def partial_fit(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None) -> CRP:
+    def partial_fit(
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
+    ) -> ConstantRebalancedPortfolio:
         """Update the comparator target using the supplied observations."""
         net_to_relatives(X)
         X = np.asarray(X)
@@ -84,8 +86,10 @@ class CRP(BaseOptimization):
             raise ValueError("weights must contain one finite value per asset")
         return self
 
-    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None) -> CRP:
-        """Fit the CRP/UCRP and compute wealth trajectory.
+    def fit(
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
+    ) -> ConstantRebalancedPortfolio:
+        """Fit the ConstantRebalancedPortfolio/UniformConstantRebalanced and compute wealth trajectory.
 
         Parameters
         ----------
@@ -126,8 +130,8 @@ class CRP(BaseOptimization):
         return self
 
 
-# utility class for UCRP
-class UCRP(CRP):
+# utility class for UniformConstantRebalanced
+class UniformConstantRebalanced(ConstantRebalancedPortfolio):
     """Uniform constant-rebalanced portfolio comparator."""
 
     def __init__(
@@ -136,8 +140,8 @@ class UCRP(CRP):
         super().__init__(weights, portfolio_params)
 
 
-class BestStock(BaseOptimization):
-    """Best Stock (ex-post).
+class BestAsset(BaseOptimization):
+    """Best asset (ex-post).
 
     Invests all capital in the single asset with highest cumulative log-return.
     This is a hindsight benchmark showing the best possible single-asset performance.
@@ -167,16 +171,16 @@ class BestStock(BaseOptimization):
 
     def partial_fit(
         self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
-    ) -> BestStock:
+    ) -> BestAsset:
         """Update the comparator target using the supplied observations."""
         relatives = net_to_relatives(X)
-        best_stock = np.argmax(np.sum(np.log(relatives), axis=0, keepdims=True), axis=1)
+        best_asset = np.argmax(np.sum(np.log(relatives), axis=0, keepdims=True), axis=1)
         self.weights_ = np.zeros(relatives.shape[1])
-        self.weights_[best_stock] = 1.0
+        self.weights_[best_asset] = 1.0
         return self
 
-    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None) -> BestStock:
-        """Fit BestStock and compute wealth trajectory.
+    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None) -> BestAsset:
+        """Fit BestAsset and compute wealth trajectory.
 
         Parameters
         ----------
@@ -192,7 +196,7 @@ class BestStock(BaseOptimization):
         """
         X_arr = np.asarray(X, dtype=float)
 
-        # Set weights (identifies best stock in hindsight)
+        # Set weights (identifies best asset in hindsight)
         self.partial_fit(X_arr, y)
 
         # Compute wealth trajectory
@@ -204,7 +208,7 @@ class BestStock(BaseOptimization):
         wealth_history = [self.wealth_]
         weight_history = []
 
-        # Compute wealth evolution (all capital in best stock)
+        # Compute wealth evolution (all capital in best asset)
         for t in range(T):
             weight_history.append(np.asarray(self.weights_, dtype=float).copy())
             portfolio_return = 1.0 + np.dot(self.weights_, relatives[t] - 1.0)
@@ -217,8 +221,8 @@ class BestStock(BaseOptimization):
         return self
 
 
-class BCRP(MeanRisk):
-    """Best Constant Rebalanced Portfolio (BCRP) in hindsight.
+class BestConstantRebalancedPortfolio(MeanRisk):
+    """Best Constant Rebalanced Portfolio (BestConstantRebalancedPortfolio) in hindsight.
 
     Optimizes portfolio weights on historical data using any convex objective:
     - Risk minimization (variance, CVaR, CDaR, etc.)
@@ -328,29 +332,29 @@ class BCRP(MeanRisk):
 
     Examples
     --------
-    >>> from skfolio.optimization.online._benchmark import BCRP
+    >>> from skfolio.optimization.online._benchmark import BestConstantRebalancedPortfolio
     >>> from skfolio.measures import RiskMeasure, PerfMeasure
     >>> from skfolio.optimization.convex._base import ObjectiveFunction
     >>> import numpy as np
     >>>
     >>> # Log-wealth maximization (default)
-    >>> bcrp_log = BCRP()
+    >>> best_constant_log = BestConstantRebalancedPortfolio()
     >>>
     >>> # Variance minimization
-    >>> bcrp_var = BCRP(
+    >>> best_constant_var = BestConstantRebalancedPortfolio(
     ...     objective_measure=RiskMeasure.VARIANCE,
     ...     objective_function=ObjectiveFunction.MINIMIZE_RISK
     ... )
     >>>
     >>> # CVaR minimization
-    >>> bcrp_cvar = BCRP(
+    >>> best_constant_cvar = BestConstantRebalancedPortfolio(
     ...     objective_measure=RiskMeasure.CVAR,
     ...     objective_function=ObjectiveFunction.MINIMIZE_RISK,
     ...     cvar_beta=0.95
     ... )
     >>>
     >>> # Mean-variance utility
-    >>> bcrp_utility = BCRP(
+    >>> best_constant_utility = BestConstantRebalancedPortfolio(
     ...     objective_measure=RiskMeasure.VARIANCE,
     ...     objective_function=ObjectiveFunction.MAXIMIZE_UTILITY,
     ...     risk_aversion=2.0
@@ -362,7 +366,7 @@ class BCRP(MeanRisk):
            arXiv:1212.2129.
     """
 
-    name: str = "BCRP"
+    name: str = "BestConstantRebalancedPortfolio"
     n_features_in_: int
 
     @staticmethod
@@ -413,7 +417,7 @@ class BCRP(MeanRisk):
             # Log-wealth maximization: override expected return with log-sum
             risk_measure = RiskMeasure.VARIANCE
             obj_func = ObjectiveFunction.MAXIMIZE_RETURN
-            overwrite_expected_return = BCRP._log_wealth_expr
+            overwrite_expected_return = BestConstantRebalancedPortfolio._log_wealth_expr
         elif objective_measure == PerfMeasure.MEAN:
             # Mean maximization uses the standard MeanRisk expected-return objective.
             # We keep a valid risk measure only to satisfy MeanRisk validation; the
@@ -470,14 +474,16 @@ class BCRP(MeanRisk):
         self.max_turnover = max_turnover
         self.objective_measure = objective_measure
 
-    def partial_fit(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None) -> BCRP:
+    def partial_fit(
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
+    ) -> BestConstantRebalancedPortfolio:
         """Update the comparator target using the supplied observations."""
         return self.fit(X, y)
 
     def fit(
         self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params: Any
-    ) -> BCRP:
-        """Fit BCRP and compute wealth trajectory.
+    ) -> BestConstantRebalancedPortfolio:
+        """Fit BestConstantRebalancedPortfolio and compute wealth trajectory.
 
         Parameters
         ----------

@@ -392,7 +392,7 @@ Iteration: regret and hindsight benchmarks
 
 Ported the remaining two modules and four test files from Carlo's implementation,
 using df64d34 for compatibility edits. Public additions are regret, RegretType and
-plot_regret_curve. CRP, UCRP, BestStock and BCRP remain internal comparator helpers.
+plot_regret_curve. ConstantRebalancedPortfolio, UniformConstantRebalanced, BestAsset and BestConstantRebalancedPortfolio remain internal comparator helpers.
 
 Online losses come from a copied estimator's fit_predict execution, beginning with
 its explicit initial allocation. Costs, drift and turnover constraints use the
@@ -411,7 +411,7 @@ Corrected source behavior: strict finite returns above -1 instead of clipping;
 no repeated-final-weight fallback; cash-aware loss; invalid aggregation/path
 settings rejected; explicit solver failures propagate. The static comparator uses
 a convex log-wealth solve instead of the source multiplicative routine that often
-stopped unconverged after 2,000 iterations. BCRP forwards max_turnover, retains named
+stopped unconverged after 2,000 iterations. BestConstantRebalancedPortfolio forwards max_turnover, retains named
 assets in prefix fitting and enforces first-period bounds. The first prefix uses a direct shared-constraint return solve, avoiding an
 undefined covariance estimate. Legacy dynamic benchmarks explicitly reject risk
 objectives and custom callbacks on that first row.

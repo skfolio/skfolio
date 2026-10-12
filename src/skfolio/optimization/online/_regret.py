@@ -24,7 +24,7 @@ class RegretType(str, Enum):
     """Available historical comparator conventions."""
 
     STATIC = "static"
-    # Legacy dynamic mode (prefix BCRP). Kept for backward compatibility.
+    # Legacy dynamic mode (prefix BestConstantRebalancedPortfolio). Kept for backward compatibility.
     DYNAMIC = "dynamic"
     DYNAMIC_UNIVERSAL = "dynamic_universal"  # universal dynamic regret with path-length budget or penalty
     DYNAMIC_WORST_CASE = (
@@ -179,14 +179,14 @@ def _worst_case_dynamic_weights(relatives: np.ndarray) -> np.ndarray:
     return W
 
 
-def _solve_bcrp_constant(
+def _solve_best_constant_constant(
     relatives: np.ndarray,
     *,
     init: np.ndarray | None = None,
     tol: float = 1e-9,
     max_iter: int = 2000,
 ) -> np.ndarray:
-    r"""Compute best constant rebalanced portfolio (BCRP) for log wealth."""
+    r"""Compute best constant rebalanced portfolio (BestConstantRebalancedPortfolio) for log wealth."""
     R = np.asarray(relatives, dtype=float)
     if R.ndim != 2:
         raise ValueError("relatives must have shape (T, n)")
@@ -215,19 +215,19 @@ def _solve_bcrp_constant(
         import warnings
 
         warnings.warn(
-            f"BCRP solver did not converge to optimal status: {problem.status}",
+            f"BestConstantRebalancedPortfolio solver did not converge to optimal status: {problem.status}",
             UserWarning,
             stacklevel=2,
         )
     if weights.value is None:
-        raise RuntimeError("BCRP optimization failed")
+        raise RuntimeError("BestConstantRebalancedPortfolio optimization failed")
     # Remove tiny solver residuals at the simplex boundary.
     result = np.maximum(np.asarray(weights.value, dtype=float), 0.0)
     return result / result.sum()
 
 
-def _prefix_bcrp_weights(relatives: np.ndarray) -> np.ndarray:
-    r"""Compute BCRP weights on each prefix of ``relatives`` for legacy dynamic regret."""
+def _prefix_best_constant_weights(relatives: np.ndarray) -> np.ndarray:
+    r"""Compute BestConstantRebalancedPortfolio weights on each prefix of ``relatives`` for legacy dynamic regret."""
     R = np.asarray(relatives, dtype=float)
     if R.ndim != 2:
         raise ValueError("relatives must have shape (T, n)")
@@ -235,7 +235,7 @@ def _prefix_bcrp_weights(relatives: np.ndarray) -> np.ndarray:
     weights = np.zeros((T, n), dtype=float)
     init = None
     for t in range(1, T + 1):
-        init = _solve_bcrp_constant(R[:t, :], init=init)
+        init = _solve_best_constant_constant(R[:t, :], init=init)
         weights[t - 1] = init
     return weights
 
@@ -258,7 +258,7 @@ def _universal_dynamic_weights(
                      or penalized with path_penalty * sum ||u_t - u_{t-1}||_p
 
     - Use norm='l1' (default) or 'l2'. L1 matches many path-length results in the literature.
-    - If path_length=0, this reduces to STATIC BCRP (one u_t constant), which we can detect.
+    - If path_length=0, this reduces to STATIC BestConstantRebalancedPortfolio (one u_t constant), which we can detect.
 
     This implements the canonical universal dynamic regret comparator used in OCO,
     where non-stationarity is captured by the path-length PT, a key regularity in
@@ -287,9 +287,9 @@ def _universal_dynamic_weights(
     if path_penalty is not None and (not np.isfinite(path_penalty) or path_penalty < 0):
         raise ValueError("path_penalty must be nonnegative.")
 
-    # Special case: path_length == 0 -> STATIC comparator (one constant u) = BCRP
+    # Special case: path_length == 0 -> STATIC comparator (one constant u) = BestConstantRebalancedPortfolio
     if path_length is not None and path_length <= 1e-18:
-        w = _solve_bcrp_constant(R)
+        w = _solve_best_constant_constant(R)
         return np.repeat(w[None, :], T, axis=0)
 
     # Decision variable: one weight vector per t
@@ -347,9 +347,9 @@ def regret(
     X : array-like of shape (T, n)
         Net returns per period. Internally converted to gross relatives via `1 + r`.
     comparator : BaseOptimization, optional
-        - For STATIC: if None, defaults to BCRP() (best fixed in hindsight).
+        - For STATIC: if None, defaults to BestConstantRebalancedPortfolio() (best fixed in hindsight).
         - For DYNAMIC_UNIVERSAL and DYNAMIC_WORST_CASE: ignored; comparator is defined by regret_type.
-        - For DYNAMIC_LEGACY or DYNAMIC: if None, defaults to BCRP().fit_dynamic(...) as before.
+        - For DYNAMIC_LEGACY or DYNAMIC: if None, defaults to BestConstantRebalancedPortfolio().fit_dynamic(...) as before.
     regret_type : RegretType
         STATIC, DYNAMIC_UNIVERSAL, DYNAMIC_WORST_CASE, or DYNAMIC_LEGACY (DYNAMIC is an alias to LEGACY).
     average : {False, "none", True, "running", "final"}, default=False
@@ -377,7 +377,7 @@ def regret(
     comparator with a path penalty but reports unpenalized log-wealth differences.
     Sliding windows sum these same losses; comparators are not refitted per window.
 
-    - For path_length=0, DYNAMIC_UNIVERSAL reduces to STATIC comparator (BCRP).
+    - For path_length=0, DYNAMIC_UNIVERSAL reduces to STATIC comparator (BestConstantRebalancedPortfolio).
     - For L1 norm and sufficiently large path_length (≥ 2*(T-1)), the universal dynamic comparator approaches the worst-case dynamic comparator (can change fully every round).
 
     Returns
@@ -440,7 +440,7 @@ def regret(
         import warnings
 
         warnings.warn(
-            "RegretType.DYNAMIC is legacy (prefix BCRP). Use DYNAMIC_UNIVERSAL or "
+            "RegretType.DYNAMIC is legacy (prefix BestConstantRebalancedPortfolio). Use DYNAMIC_UNIVERSAL or "
             "DYNAMIC_WORST_CASE for literature-aligned dynamic regret.",
             UserWarning,
             stacklevel=2,
@@ -452,7 +452,7 @@ def regret(
             comp = deepcopy(comparator).fit(X)
             w_star = np.asarray(comp.weights_, dtype=float)
         else:
-            w_star = _solve_bcrp_constant(relatives)
+            w_star = _solve_best_constant_constant(relatives)
         comp_losses = _losses_from_weights(relatives, w_star)
 
     elif rt == RegretType.DYNAMIC_LEGACY:
@@ -472,7 +472,7 @@ def regret(
                 relatives, np.asarray(comp.all_weights_, dtype=float)
             )
         else:
-            dyn_weights = _prefix_bcrp_weights(relatives)
+            dyn_weights = _prefix_best_constant_weights(relatives)
             comp_losses = _losses_from_weights(relatives, dyn_weights)
 
     elif rt == RegretType.DYNAMIC_WORST_CASE:
