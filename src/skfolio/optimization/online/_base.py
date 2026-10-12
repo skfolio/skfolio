@@ -368,13 +368,22 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
             raise
         finally:
             if target_list:
-                history = np.asarray(target_list)
-                self.all_weights_ = (
-                    np.vstack((self.all_weights_, history))
-                    if hasattr(self, "all_weights_")
-                    else history
-                )
+                self._append_weight_history(np.asarray(target_list))
         return self
+
+    def _append_weight_history(self, history: np.ndarray) -> None:
+        """Append targets with amortized linear storage cost across a stream."""
+        size = len(self.all_weights_) if hasattr(self, "all_weights_") else 0
+        required = size + len(history)
+        buffer = getattr(self, "_weight_history_buffer_", None)
+        if buffer is None or required > len(buffer):
+            capacity = max(required, 16 if buffer is None else 2 * len(buffer))
+            buffer = np.zeros((capacity, history.shape[1]), dtype=history.dtype)
+            if size:
+                buffer[:size] = self.all_weights_
+            self._weight_history_buffer_ = buffer
+        buffer[size:required] = history
+        self.all_weights_ = buffer[:required]
 
     @contextmanager
     def _warmup_context(self) -> Generator[None, None, None]:
