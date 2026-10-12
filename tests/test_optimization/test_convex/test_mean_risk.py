@@ -287,11 +287,7 @@ def test_mean_risk_minimize_risk_2(
     risk_measure2,
 ):
     precision = precisions[risk_measure2]
-    X_test = (
-        X_small.iloc[-100:]
-        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
-        else X_small
-    )
+    X_test = X_small
 
     # Minimize risk
     model = MeanRisk(
@@ -388,11 +384,7 @@ def test_mean_risk_under_risk_and_return_constraint_2(
 ):
     precision = precisions2[risk_measure2]
     max_risk_arg = f"max_{risk_measure2.value}"
-    X_test = (
-        X_small.iloc[-100:]
-        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
-        else X_small
-    )
+    X_test = X_small
 
     # Minimize risk
     min_risk_model = MeanRisk(
@@ -494,11 +486,7 @@ def test_mean_risk_utility2(
     risk_measure2,
 ):
     precision = precisions2[risk_measure2]
-    X_test = (
-        X_small.iloc[-100:]
-        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
-        else X_small
-    )
+    X_test = X_small
 
     # Maximize utility
     risk_aversion = 3
@@ -558,11 +546,7 @@ def test_mean_risk_ratio2(
     risk_measure2,
 ):
     precision = precisions2[risk_measure2]
-    X_test = (
-        X_small.iloc[-100:]
-        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
-        else X_small
-    )
+    X_test = X_small
 
     # Maximize ratio
     model = MeanRisk(
