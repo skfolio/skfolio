@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.8.4 (2026-10-12)
+
+### Performance Improvements
+
+- **optimization**: Use sparse sorting networks for Gini mean difference
+  ([#295](https://github.com/skfolio/skfolio/pull/295),
+  [`b7e8287`](https://github.com/skfolio/skfolio/commit/b7e82875ca2be71a9d4c4105cb5430b68122c949))
+
+
 ## v1.8.3 (2026-10-12)
 
 ### Bug Fixes
