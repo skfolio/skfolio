@@ -1467,9 +1467,18 @@ class MeanRisk(ConvexOptimization):
                     else:
                         args[arg_name] = getattr(self, arg_name)
 
-                risk_i, constraints_i = risk_func(**args)
-                constraints += constraints_i
+                # Lifted worst-case variance is 1-homogeneous in (w, factor), matching
+                # risk <= limit * factor. The ratio objective needs 2-homogeneity in w,
+                # so use factor=1 for the objective only.
+                objective_args: dict[str, Any] = args
+                if risk_func == self._worst_case_variance_risk and isinstance(
+                    factor, cp.Variable
+                ):
+                    objective_args = {**args, "factor": cp.Constant(1)}
+
                 if risk_limit is not None:
+                    risk_i, constraints_i = risk_func(**args)
+                    constraints += constraints_i
                     parameter = cp.Parameter(nonneg=True)
                     constraints += [
                         risk_i * self._scale_constraints
@@ -1477,15 +1486,19 @@ class MeanRisk(ConvexOptimization):
                     ]
                     parameters_values.append((parameter, risk_limit))
                 if self.risk_measure == r_m:
-                    risk = risk_i
+                    if risk_limit is not None and objective_args is args:
+                        risk = risk_i
+                    else:
+                        risk, constraints_i = risk_func(**objective_args)
+                        constraints += constraints_i
                     if r_m == RiskMeasure.GINI_MEAN_DIFFERENCE:
                         reported_risk = _gmd_reported_risk(
                             return_distribution.returns, args["w"] / factor
                         )
                     elif r_m in [RiskMeasure.VARIANCE, RiskMeasure.SEMI_VARIANCE]:
-                        reported_risk = risk_i / factor / factor
+                        reported_risk = risk / factor / factor
                     else:
-                        reported_risk = risk_i / factor
+                        reported_risk = risk / factor
 
         return risk, constraints, parameters_values, reported_risk
 
