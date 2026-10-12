@@ -392,38 +392,9 @@ class WalkForward(sks.BaseCrossValidator):
                 return n // test_size + 1
             return n // test_size
 
-        if not hasattr(X, "index") or not isinstance(X.index, pd.DatetimeIndex):
-            raise ValueError(
-                "X must be a DataFrame with an index of type DatetimeIndex"
-            )
-        ts_index = X.index
-
-        start = ts_index[0]
-        end = ts_index[-1]
-        if self.freq_offset is not None:
-            start = min(start, start - self.freq_offset)
-
-        date_range = pd.date_range(start=start, end=end, freq=self.freq)
-        if self.freq_offset is not None:
-            date_range += self.freq_offset
-
-        idx = ts_index.get_indexer(
-            date_range, method="ffill" if self.previous else "bfill"
-        )
-        n = len(idx)
-
-        if isinstance(train_size, int):
-            max_start = n - train_size - (0 if self.reduce_test else test_size)
-            return _special_div(max_start, test_size) + 1 if max_start > 0 else 0
-
-        train_idx = ts_index.get_indexer(date_range - train_size, method="ffill")
-        if np.all(train_idx == -1):
-            return 0
-        first_valid = int(np.argmax(train_idx > -1))
-        last_allowed_start = n if self.reduce_test else n - test_size
-        if first_valid >= last_allowed_start:
-            return 0
-        return _special_div(last_allowed_start - first_valid, test_size) + 1
+        # Periods without observations produce no fold, so count the folds that
+        # `split` yields.
+        return sum(1 for _ in self.split(X))
 
     def _validate_window_sizes(
         self,
@@ -624,6 +595,10 @@ def _split_from_period_without_train_offset(
             test_indices = np.arange(
                 idx[i + train_size], idx[i + train_size + test_size]
             )
+        if test_indices.size == 0:
+            # Periods without observations (weekends, holidays) map to the same one.
+            i += test_size
+            continue
         if expand_train:
             train_start = 0
         else:
@@ -720,6 +695,10 @@ def _split_from_period_with_train_offset(
         else:
             test_indices = np.arange(idx[i], idx[i + test_size])
 
+        if test_indices.size == 0:
+            # Periods without observations (weekends, holidays) map to the same one.
+            i += test_size
+            continue
         if expand_train:
             train_start = 0
         else:
@@ -728,24 +707,3 @@ def _split_from_period_with_train_offset(
         yield train_indices, test_indices
 
         i += test_size
-
-
-def _special_div(a: int, b: int) -> int:
-    """Compute a division adjusted for exact multiples.
-
-    Parameters
-    ----------
-    a : int
-        Dividend.
-
-    b : int
-        Divisor.
-
-    Returns
-    -------
-    q : int
-        Value equal to `floor(a / b)`, except that exact multiples return
-        `floor(a / b) - 1`.
-    """
-    q, r = divmod(a, b)
-    return q - (1 if r == 0 else 0)

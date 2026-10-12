@@ -1059,3 +1059,27 @@ def test_walk_forward_get_n_splits_offset_train_window_leaves_no_test_window(
         ).get_n_splits(X_small)
         == 1
     )
+
+
+@pytest.mark.parametrize("freq", ["D", "B"])
+@pytest.mark.parametrize("previous", [False, True])
+@pytest.mark.parametrize(
+    "train_size", [14, pd.Timedelta(days=14)], ids=["train_periods", "train_offset"]
+)
+def test_walk_forward_skips_periods_without_observations(freq, previous, train_size):
+    """Periods without observations (weekends, holidays) give no empty test fold."""
+    index = pd.bdate_range("2024-01-01", periods=60)
+    # Drop a few weekdays to mimic market holidays.
+    index = index.drop(index[[7, 8, 20, 33]])
+    X = pd.DataFrame(np.random.default_rng(0).normal(size=(len(index), 2)), index=index)
+    cv = WalkForward(test_size=1, train_size=train_size, freq=freq, previous=previous)
+
+    splits = list(cv.split(X))
+
+    assert splits
+    assert cv.get_n_splits(X) == len(splits)
+    assert all(test.size > 0 for _, test in splits)
+    # The test folds tile the observations without gaps or overlaps.
+    tests = np.concatenate([test for _, test in splits])
+    assert np.array_equal(tests, np.arange(tests[0], tests[0] + len(tests)))
+    cross_val_predict(InverseVolatility(), X, cv=cv)
