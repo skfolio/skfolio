@@ -1,5 +1,8 @@
 """Online portfolio estimators."""
 
+# Copyright (c) 2023-2026 skfolio contributors (integration and modifications)
+# SPDX-License-Identifier: BSD-3-Clause
+
 from __future__ import annotations
 
 from typing import ClassVar, Literal

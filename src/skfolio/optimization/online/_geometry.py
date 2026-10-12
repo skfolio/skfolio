@@ -1,5 +1,8 @@
 """Convex potentials for solving constrained mirror updates in dual coordinates."""
 
+# Copyright (c) 2023-2026 skfolio contributors (integration and modifications)
+# SPDX-License-Identifier: BSD-3-Clause
+
 from collections.abc import Callable
 
 import cvxpy as cp

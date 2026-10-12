@@ -1,5 +1,6 @@
 """Strategy classes for mean-reversion portfolio selection."""
 
+# Copyright (c) 2023-2026 skfolio contributors (integration and modifications)
 # Copyright (c) 2025
 # Author: Carlo Nicolini <nicolini.carlo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause

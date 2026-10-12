@@ -3,6 +3,9 @@
 Inputs are already aligned to the investable asset universe by the caller.
 """
 
+# Copyright (c) 2023-2026 skfolio contributors (integration and modifications)
+# SPDX-License-Identifier: BSD-3-Clause
+
 import cvxpy as cp
 import cvxpy.constraints as cpc
 import numpy as np
