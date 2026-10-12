@@ -671,6 +671,9 @@ def test_default_objectives_do_not_request_autograd(monkeypatch, factory, measur
     objective = factory(measure=measure)
     weights = np.array([0.4, 0.6])
     returns = np.array([[0.02, -0.01], [-0.03, 0.04], [0.01, 0.02]])
+    if objective.measure == PerfMeasure.LOG_WEALTH:
+        # The online log-wealth gradient observes one period at a time.
+        returns = returns[0]
     assert objective.use_autograd is False
     assert np.isfinite(objective.loss(weights, returns))
     assert np.isfinite(objective.grad(weights, returns)).all()
