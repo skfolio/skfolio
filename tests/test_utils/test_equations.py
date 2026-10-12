@@ -153,6 +153,34 @@ def test_string_to_equation_rejects_misplaced_multiplication(equation):
         )
 
 
+@pytest.mark.parametrize(
+    "equation,expected_left,expected_right",
+    [
+        # Consecutive signs multiply.
+        ("SPX - -0.1 <= 0.3", [1.0, 0.0], 0.2),
+        ("SPX - +0.1 <= 0.3", [1.0, 0.0], 0.4),
+        ("SPX + -0.1 <= 0.3", [1.0, 0.0], 0.4),
+        ("SPX + +0.1 <= 0.3", [1.0, 0.0], 0.2),
+        ("- -SPX <= 0.3", [1.0, 0.0], 0.3),
+        ("Equity - -0.5 * Bond >= 0", [-1.0, -0.5], 0.0),
+        ("Equity - -Bond <= 1", [1.0, 1.0], 1.0),
+        # Single signs.
+        ("SPX + 0.1 <= 0.3", [1.0, 0.0], 0.2),
+        ("SPX - 0.1 <= 0.3", [1.0, 0.0], 0.4),
+        ("Equity + 0.5 * Bond >= 0", [-1.0, -0.5], 0.0),
+        ("Equity - 0.5 * Bond >= 0", [-1.0, 0.5], 0.0),
+    ],
+)
+def test_string_to_equation_consecutive_signs(equation, expected_left, expected_right):
+    groups = np.array([["SPX", "TLT"], ["Equity", "Bond"]])
+    left, right, is_inequality = _string_to_equation(
+        groups=groups, string=equation, sum_to_one=False
+    )
+    assert is_inequality is True
+    np.testing.assert_array_almost_equal(left, np.array(expected_left))
+    assert right == pytest.approx(expected_right)
+
+
 def test_matching_array(groups):
     arr = _matching_array(values=groups, key="a", sum_to_one=False)
 
