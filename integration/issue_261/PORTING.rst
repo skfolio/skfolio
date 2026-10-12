@@ -492,3 +492,34 @@ continuation assertions are retained without the inert parameter.
 
 Validation for this follow-up is delegated to CI. Local checks are limited to
 syntax, lint, formatting, type checks and reference searches. No push performed.
+
+Review follow-up: equivalent test consolidation
+-----------------------------------------------
+
+Four groups now share parameterized test bodies: uniform benchmark weights,
+log-wealth/variance box constraints, static/universal regret shape and finiteness,
+and nonpositive initial capital. All 16 cases retain their input values,
+assertions and tolerances. Pytest node names change; production code does not.
+Independent numerical references and strategy-specific regressions are retained.
+No local tests were run for this follow-up; CI must validate it after publication.
+
+Reviewing the six local commits by impact
+----------------------------------------
+
+* Readability and documentation: no intended numerical or API changes.
+* Benchmark naming: imports, class names and diagnostic strings change. Old-name
+  tests or downstream imports can fail; retained calculations are unchanged.
+* Calculation cleanup: vectorized compounding may differ at floating-point
+  precision. Invalid initial capital and missing fitted weights now produce
+  explicit errors. Tests for previously accepted invalid inputs can change.
+* Legacy regret removal: removes fit_dynamic, legacy enum members/string modes
+  and the duplicate enum. Consumers of those APIs must change.
+* Compatibility cleanup: removes additional private APIs and an inert constructor
+  parameter. Retires tests for the deleted map and retargets one engine check to
+  the supported Ada-BARRONS barrier, so test counts/numerical paths change.
+* Test consolidation: same 16 parameter cases, data, assertions and tolerances;
+  different test node names. Expected pass/fail results should be unchanged.
+
+Keep these as six focused commits rather than squash API removals into cosmetic
+changes. The working branch includes all six; no push is authorized by this
+preparation step. CI results for the new cleanup remain pending.

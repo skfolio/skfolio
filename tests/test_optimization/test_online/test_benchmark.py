@@ -23,22 +23,20 @@ def test_constant_rebalanced_with_custom_weights(X_small):
     constant_rebalanced.fit(X_small)
 
 
-def test_uniform_constant_uniform_weights(X_small):
-    """Test UniformConstantRebalanced produces uniform weights."""
+@pytest.mark.parametrize(
+    "factory, kwargs",
+    [
+        pytest.param(UniformConstantRebalanced, {}, id="uniform-comparator"),
+        pytest.param(
+            ConstantRebalancedPortfolio, {"weights": None}, id="default-weights"
+        ),
+    ],
+)
+def test_comparator_uniform_weights(X_small, factory, kwargs):
     n_assets = X_small.shape[1]
-    uniform_constant = UniformConstantRebalanced()
-    uniform_constant.fit(X_small)
+    model = factory(**kwargs).fit(X_small)
     expected = np.ones(n_assets) / n_assets
-    np.testing.assert_array_almost_equal(uniform_constant.weights_, expected)
-
-
-def test_constant_rebalanced_none_defaults_to_uniform(X_small):
-    """Test ConstantRebalancedPortfolio with weights=None defaults to uniform."""
-    n_assets = X_small.shape[1]
-    constant_rebalanced = ConstantRebalancedPortfolio(weights=None)
-    constant_rebalanced.fit(X_small)
-    expected = np.ones(n_assets) / n_assets
-    np.testing.assert_array_almost_equal(constant_rebalanced.weights_, expected)
+    np.testing.assert_array_almost_equal(model.weights_, expected)
 
 
 def test_best_asset_picks_best_performer(X_small):
@@ -79,20 +77,23 @@ def test_best_constant_log_wealth_explicit(X_small):
     assert np.sum(best_constant.weights_) == pytest.approx(1.0)
 
 
-def test_best_constant_log_wealth_with_constraints(X_small):
-    """Test BestConstantRebalancedPortfolio log-wealth with box constraints."""
-    n_assets = X_small.shape[1]
-    min_weight, max_weight = 1 / n_assets, 0.5
-    best_constant = BestConstantRebalancedPortfolio(
-        objective_measure=PerfMeasure.LOG_WEALTH,
+@pytest.mark.parametrize(
+    "objective, minimum, maximum",
+    [
+        pytest.param(PerfMeasure.LOG_WEALTH, None, 0.5, id="log-wealth"),
+        pytest.param(RiskMeasure.VARIANCE, 0.05, 0.4, id="variance"),
+    ],
+)
+def test_best_constant_box_constraints(X_small, objective, minimum, maximum):
+    min_weight = 1 / X_small.shape[1] if minimum is None else minimum
+    model = BestConstantRebalancedPortfolio(
+        objective_measure=objective,
         min_weights=min_weight,
-        max_weights=max_weight,
-    )
-    best_constant.fit(X_small)
-
-    assert np.all(best_constant.weights_ >= min_weight - 1e-6)
-    assert np.all(best_constant.weights_ <= max_weight + 1e-6)
-    assert np.sum(best_constant.weights_) == pytest.approx(1.0)
+        max_weights=maximum,
+    ).fit(X_small)
+    assert np.all(model.weights_ >= min_weight - 1e-6)
+    assert np.all(model.weights_ <= maximum + 1e-6)
+    assert np.sum(model.weights_) == pytest.approx(1.0)
 
 
 @pytest.mark.parametrize("objective_measure", allowed_measures)
@@ -113,21 +114,6 @@ def test_best_constant_rejects_invalid_measure(X_small):
     with pytest.raises(ValueError, match="objective_measure must be RiskMeasure"):
         best_constant = BestConstantRebalancedPortfolio(objective_measure="invalid")
         best_constant.fit(X_small)
-
-
-def test_best_constant_with_box_constraints(X_small):
-    """Test BestConstantRebalancedPortfolio respects min/max weight constraints."""
-    min_weight, max_weight = 0.05, 0.4
-    best_constant = BestConstantRebalancedPortfolio(
-        objective_measure=RiskMeasure.VARIANCE,
-        min_weights=min_weight,
-        max_weights=max_weight,
-    )
-    best_constant.fit(X_small)
-
-    assert np.all(best_constant.weights_ >= min_weight - 1e-6)
-    assert np.all(best_constant.weights_ <= max_weight + 1e-6)
-    assert np.sum(best_constant.weights_) == pytest.approx(1.0)
 
 
 def test_best_constant_solver_warns_on_nonconvergence():

@@ -10,30 +10,18 @@ from skfolio.optimization.online._winner import FollowTheWinner
 
 
 @pytest.mark.parametrize("avg_flag", [False, True, "running", "final", "none"])
-def test_shapes_and_finiteness_static(X_small, avg_flag):
+@pytest.mark.parametrize(
+    "regret_type", [RegretType.STATIC, RegretType.DYNAMIC_UNIVERSAL]
+)
+def test_regret_shape_and_finiteness(X_small, avg_flag, regret_type):
     est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate="auto")
-    r = regret(
-        estimator=est,
-        X=X_small,
-        comparator=BestConstantRebalancedPortfolio(),
-        average=avg_flag,
-        regret_type=RegretType.STATIC,
+    kwargs = (
+        {"comparator": BestConstantRebalancedPortfolio()}
+        if regret_type == RegretType.STATIC
+        else {"dynamic_config": {"path_length": 5.0}}
     )
-    assert isinstance(r, np.ndarray)
-    assert r.ndim == 1
-    assert r.size == X_small.shape[0]
-    assert np.all(np.isfinite(r))
-
-
-@pytest.mark.parametrize("avg_flag", [False, True, "running", "final", "none"])
-def test_shapes_and_finiteness_dynamic_universal(X_small, avg_flag):
-    est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate="auto")
     r = regret(
-        estimator=est,
-        X=X_small,
-        average=avg_flag,
-        regret_type=RegretType.DYNAMIC_UNIVERSAL,
-        dynamic_config={"path_length": 5.0},
+        estimator=est, X=X_small, average=avg_flag, regret_type=regret_type, **kwargs
     )
     assert isinstance(r, np.ndarray)
     assert r.ndim == 1

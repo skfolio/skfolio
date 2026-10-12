@@ -435,10 +435,11 @@
         "Ported Carlo benchmark/regret slice with execution-aware online losses, copied estimators, strict return validation and explicit hindsight comparator semantics.",
         "Constant comparator uses CLARABEL instead of the often-unconverged multiplicative iteration. Dynamic solver errors propagate. Cash is included; aggregation and path parameters are validated.",
         "Review cleanup: descriptive internal benchmark names and shared vectorized wealth calculation; remove prefix fit_dynamic, duplicate regret enum and legacy dynamic modes. Retain static, universal dynamic and worst-case regret.",
-        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions."
+        "Compatibility cleanup: remove obsolete map, aliases, inert warm_start parameter and test-only CWMR properties where applicable; retain supported lifecycle assertions.",
+        "Consolidate equivalent benchmark, regret or capital-validation tests; preserve parameter cases, input values, assertions and tolerances."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "0fbc04d1823373b5f17a031fa6ce39738a78ea5d34ece7e02bbf4ded4ad5cc7a"
+      "destination_sha256": "b2f85e55e7191e4e16e2c206e8d0f0356bece88425f0f6cc0b9a318352d204b5"
     },
     {
       "source_path": "tests/test_optimization/test_online/regret/test_regret_curves.py",
@@ -503,10 +504,11 @@
         "Benchmark classes remain internal. Gross hindsight wealth diagnostics exclude fees. First prefix retains constraints and named assets; max_turnover is forwarded to MeanRisk.",
         "Removed vacuous objective-pair tests whose bodies returned immediately and broad solver xfail; dynamic comparator is tested normally, including first-period bounds.",
         "First-period legacy dynamic comparator solves return objectives directly with shared constraints. Risk objectives and custom callbacks are rejected for that one-row prefix.",
-        "Review cleanup: descriptive internal benchmark names and shared vectorized wealth calculation; remove prefix fit_dynamic, duplicate regret enum and legacy dynamic modes. Retain static, universal dynamic and worst-case regret."
+        "Review cleanup: descriptive internal benchmark names and shared vectorized wealth calculation; remove prefix fit_dynamic, duplicate regret enum and legacy dynamic modes. Retain static, universal dynamic and worst-case regret.",
+        "Consolidate equivalent benchmark, regret or capital-validation tests; preserve parameter cases, input values, assertions and tolerances."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "9c52628aa56c98b707749cfb1831d3db3d853251228b620d21fc7d78de87202a"
+      "destination_sha256": "9288731da8db3b081e0af5380cc306d9c4dd411b56cf4f6432c66861f047611c"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_costs.py",
@@ -542,10 +544,11 @@
       "status": "adapted",
       "destination": "tests/test_optimization/test_online/test_initial_wealth.py",
       "changes": [
-        "Adapted to existing Portfolio accounting and one-period model-selection evaluation; larger windows deferred."
+        "Adapted to existing Portfolio accounting and one-period model-selection evaluation; larger windows deferred.",
+        "Consolidate equivalent benchmark, regret or capital-validation tests; preserve parameter cases, input values, assertions and tolerances."
       ],
       "adaptation_reference": "df64d344914c2a8bf4735b3a3780f01b949e41c2",
-      "destination_sha256": "0b5fde3af448cc847d14774d04f63efeeced96f4f460ab17323d1df86f4aa3cf"
+      "destination_sha256": "ebb797ad3b09197fd22fa5f4ab93552fb5c3bdc6de8c46dc2c7a8ec55d57370d"
     },
     {
       "source_path": "tests/test_optimization/test_online/test_metrics_correctness.py",

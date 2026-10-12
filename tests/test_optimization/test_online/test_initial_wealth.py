@@ -105,24 +105,11 @@ class TestInitialWealthValidation:
         assert not hasattr(est, "wealth_")
         assert np.allclose(est.all_weights_[0], initial_weights)
 
-    def test_negative_wealth_raises_error(self):
-        """Test negative initial_wealth raises ValueError."""
+    @pytest.mark.parametrize("initial_wealth", [-1000.0, 0.0], ids=["negative", "zero"])
+    def test_nonpositive_wealth_raises_error(self, initial_wealth):
         with pytest.raises(ValueError, match="initial_wealth"):
             est = FollowTheWinner(
-                strategy="eg",
-                initial_wealth=-1000.0,
-                learning_rate=0.05,
-            )
-            X = np.array([[0.01, 0.02, -0.01]])
-            est.fit(X)
-
-    def test_zero_wealth_raises_error(self):
-        """Test zero initial_wealth raises ValueError."""
-        with pytest.raises(ValueError, match="initial_wealth"):
-            est = FollowTheWinner(
-                strategy="eg",
-                initial_wealth=0.0,
-                learning_rate=0.05,
+                strategy="eg", initial_wealth=initial_wealth, learning_rate=0.05
             )
             X = np.array([[0.01, 0.02, -0.01]])
             est.fit(X)
