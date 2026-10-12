@@ -1,4 +1,8 @@
-"""Online portfolio optimization using shared algorithm families."""
+"""Online portfolio optimization using shared algorithm families.
+
+Adapted from Carlo Nicolini's online framework in CarloNicolini/skfolio,
+source revision c1bd1f168cf7d660c81f74710aadd9941e64a2c7, under BSD-3-Clause.
+"""
 
 from skfolio.optimization.online._base import BaseOnlineOptimization
 from skfolio.optimization.online._estimators import (
