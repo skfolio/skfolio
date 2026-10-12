@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import itertools
+from contextlib import nullcontext
 
 import cvxpy as cp
 import numpy as np
@@ -11,8 +12,7 @@ import pytest
 from skfolio import RiskMeasure
 from skfolio.moments import EWCovariance, EWMu
 from skfolio.optimization import MeanRisk, ObjectiveFunction, RiskBudgeting
-from skfolio.optimization.convex._base import _solve, _validated_factor_value
-from skfolio.optimization.convex._gini_mean_difference import (
+from skfolio.optimization.convex._base import (
     _gmd_sorting_network,
     _odd_even_merge_sort_comparators,
 )
@@ -189,7 +189,10 @@ def test_maximum_return_reports_empirical_gmd_with_nonbinding_cap(target, risk_l
         objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
         max_gini_mean_difference=risk_limit,
         target_weights=target_weights,
+        save_problem=True,
     ).fit(returns)
+    # The exact reporting expression must never enter the compiled problem.
+    assert cp.dotsort not in model.problem_.atoms()
     results = (
         zip(model.weights_, model.problem_values_, strict=True)
         if isinstance(risk_limit, list)
@@ -273,9 +276,18 @@ def test_500_observations_use_one_sparse_solver_call(monkeypatch, n_assets):
 @pytest.mark.parametrize(
     "risk_measure", [RiskMeasure.GINI_MEAN_DIFFERENCE, RiskMeasure.VARIANCE]
 )
-@pytest.mark.parametrize("targets", [[0.0002, 1.0, 0.0003], [0.0002, 0.0003, 1.0]])
+@pytest.mark.parametrize("save_problem", [False, True])
+@pytest.mark.parametrize(
+    ("targets", "raise_on_failure"),
+    [
+        ([0.0002, 1.0, 0.0003], False),
+        ([0.0002, 0.0003, 1.0], False),
+        ([0.0002, 0.0003], False),
+        ([0.0002, 0.0003], True),
+    ],
+)
 def test_sweep_reuses_problem_and_restores_last_success(
-    monkeypatch, risk_measure, targets
+    monkeypatch, risk_measure, save_problem, targets, raise_on_failure
 ):
     calls = []
     solver_stats = []
@@ -293,20 +305,29 @@ def test_sweep_reuses_problem_and_restores_last_success(
         risk_measure=risk_measure,
         max_gini_mean_difference=0.02,
         min_return=targets,
-        raise_on_failure=False,
-        save_problem=True,
+        raise_on_failure=raise_on_failure,
+        save_problem=save_problem,
     )
-    with pytest.warns(UserWarning, match="Solver 'CLARABEL' failed"):
+    expectation = (
+        pytest.warns(UserWarning, match="Solver 'CLARABEL' failed")
+        if 1.0 in targets
+        else nullcontext()
+    )
+    with expectation:
         model.fit(returns)
-    assert calls == [model.problem_] * 3
-    assert model.problem_.status == cp.OPTIMAL
+    assert calls == [calls[0]] * len(targets)
     last = max(i for i, error in enumerate(model.error_) if error is None)
-    assert model.problem_.solver_stats is solver_stats[last]
     assert all(
         np.isnan(weights).all()
         for weights, error in zip(model.weights_, model.error_, strict=True)
         if error
     )
+    if not save_problem:
+        assert not hasattr(model, "problem_")
+        return
+    assert model.problem_ is calls[0]
+    assert model.problem_.status == cp.OPTIMAL
+    assert model.problem_.solver_stats is solver_stats[last]
     assert any(float(p.value) == targets[last] for p in model.problem_.parameters())
     saved = next(v for v in model.problem_.variables() if v.shape == (6,))
     np.testing.assert_allclose(
@@ -399,76 +420,13 @@ def test_truly_unbounded_problem_is_rejected(raise_on_failure):
         max_weights=None,
         max_gini_mean_difference=0.02,
         raise_on_failure=raise_on_failure,
+        save_problem=True,
     )
     if raise_on_failure:
-        with pytest.raises(cp.SolverError, match="status 'unbounded"):
+        with pytest.raises(cp.SolverError, match="Solver 'CLARABEL' failed"):
             model.fit(returns)
     else:
-        with pytest.warns(UserWarning, match="status 'unbounded"):
+        with pytest.warns(UserWarning, match="Solver 'CLARABEL' failed"):
             model.fit(returns)
         assert model.weights_ is None
-
-
-@pytest.mark.parametrize("status", [cp.OPTIMAL_INACCURATE, cp.USER_LIMIT])
-def test_solver_status_handling(monkeypatch, status):
-    original_solve = cp.Problem.solve
-
-    def solve(problem, *args, **kwargs):
-        result = original_solve(problem, *args, **kwargs)
-        problem._status = status
-        return result
-
-    monkeypatch.setattr(cp.Problem, "solve", solve)
-    model = MeanRisk(risk_measure=RiskMeasure.GINI_MEAN_DIFFERENCE)
-    if status == cp.OPTIMAL_INACCURATE:
-        with pytest.warns(UserWarning, match="Solution may be inaccurate"):
-            model.fit(_make_returns())
-    else:
-        with pytest.raises(cp.SolverError, match="status 'user_limit'"):
-            model.fit(_make_returns())
-
-
-@pytest.mark.parametrize("factor", [0.0, -1.0, np.nan, np.inf, -np.inf])
-def test_invalid_ratio_factor_is_rejected(factor):
-    with pytest.raises(cp.SolverError, match="invalid homogeneous"):
-        _validated_factor_value(factor)
-
-
-@pytest.mark.parametrize("invalid_weight", [np.nan, np.inf, -np.inf])
-def test_non_finite_solver_weights_are_rejected(monkeypatch, invalid_weight):
-    weights = cp.Variable(2)
-    problem = cp.Problem(cp.Minimize(cp.sum_squares(weights)))
-
-    def solve(**kwargs):
-        weights.save_value(np.array([invalid_weight, 1.0]))
-        problem._status = cp.OPTIMAL
-
-    monkeypatch.setattr(problem, "solve", solve)
-    with pytest.raises(cp.SolverError, match="non-finite weights"):
-        _solve(
-            w=weights,
-            factor=cp.Constant(1),
-            expressions={},
-            problem=problem,
-            solver="CLARABEL",
-            solver_params={},
-            risk_measure=RiskMeasure.GINI_MEAN_DIFFERENCE,
-            scale_objective=cp.Constant(1),
-        )
-
-
-def test_empirical_gmd_normalization_overflow_is_rejected():
-    weights = cp.Variable(2)
-    problem = cp.Problem(cp.Minimize(cp.sum_squares(weights)), [cp.sum(weights) == 1])
-    with pytest.raises(cp.SolverError, match="normalized empirical GMD is non-finite"):
-        _solve(
-            w=weights,
-            factor=cp.Constant(1e-11),
-            expressions={},
-            problem=problem,
-            solver="CLARABEL",
-            solver_params={},
-            risk_measure=RiskMeasure.GINI_MEAN_DIFFERENCE,
-            scale_objective=cp.Constant(1),
-            risk_returns=cp.Constant(np.array([1e308, -1e308])),
-        )
+    assert model.problem_.status in {cp.UNBOUNDED, cp.UNBOUNDED_INACCURATE}

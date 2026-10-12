@@ -7,7 +7,6 @@ import pytest
 import sklearn.model_selection as sks
 from sklearn import clone, config_context
 
-import skfolio.optimization.convex._base as sco
 from skfolio import (
     FailedPortfolio,
     MultiPeriodPortfolio,
@@ -1931,27 +1930,6 @@ def test_raise_on_failure_multi(X):
         x=RiskMeasure.ANNUALIZED_VARIANCE,
         y=RiskMeasure.ANNUALIZED_STANDARD_DEVIATION,
     )
-
-
-@pytest.mark.parametrize(
-    "risk_measure", [RiskMeasure.VARIANCE, RiskMeasure.GINI_MEAN_DIFFERENCE]
-)
-def test_parameter_sweep_reuses_problem(X, monkeypatch, risk_measure):
-    problem_ids = []
-    original_solve = sco._solve
-
-    def record_problem(**kwargs):
-        problem_ids.append(id(kwargs["problem"]))
-        return original_solve(**kwargs)
-
-    monkeypatch.setattr(sco, "_solve", record_problem)
-    MeanRisk(
-        risk_measure=risk_measure,
-        min_return=[0.0005, 0.0001],
-    ).fit(X)
-
-    assert len(problem_ids) == 2
-    assert len(set(problem_ids)) == 1
 
 
 def test_raise_on_failure_off_multi_all_fail(X):
