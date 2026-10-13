@@ -210,8 +210,8 @@ Use `type(scope): description`, where the scope is optional. Common types are:
 - `ci`: Continuous integration changes.
 - `chore`: Repository maintenance.
 
-Add `!` for a breaking change, for example
-`feat!: remove deprecated parameter`.
+Discuss backward-incompatible changes with the maintainers before implementation.
+Major releases are coordinated by the maintainers.
 
 ```shell
 git add .
