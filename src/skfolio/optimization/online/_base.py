@@ -339,6 +339,10 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
                 "A previous update failed; call fit to reset before reuse"
             )
         self._validate_params()
+        if (self.left_inequality is None) != (self.right_inequality is None):
+            raise ValueError(
+                "left_inequality and right_inequality must be provided together"
+            )
         if self.prior_estimator is not None and self.covariance is not None:
             raise ValueError("Use prior_estimator or covariance, not both")
         if self.prior_estimator is not None and not callable(
@@ -578,6 +582,10 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
     def _initialize_for_evaluation(self, X: npt.ArrayLike) -> None:
         """Initialize before the first return without consuming that observation."""
         self._validate_params()
+        if (self.left_inequality is None) != (self.right_inequality is None):
+            raise ValueError(
+                "left_inequality and right_inequality must be provided together"
+            )
         data = validate_data(self, X, reset=True, dtype=float)
         self._decision_turnover = self.max_turnover
         self._execution_anchor = (

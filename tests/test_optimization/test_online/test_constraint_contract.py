@@ -101,3 +101,39 @@ def test_factor_constraint_cannot_be_deferred_for_initial_execution(factory):
     with pytest.raises(GroupNotFoundError, match="missing"):
         model.fit_predict(X)
     assert not hasattr(model, "prior_estimator_")
+
+
+@pytest.mark.parametrize("factory", ESTIMATORS)
+@pytest.mark.parametrize("side", ["left_inequality", "right_inequality"])
+def test_incomplete_inequality_fails_before_advancing(factory, side):
+    model = factory().fit([[0.01, 0.02]])
+    previous = model.weights_.copy()
+    count = model.n_observations_
+    model.set_params(**{side: [[1.0, 0.0]] if side == "left_inequality" else [0.2]})
+    with pytest.raises(ValueError, match="provided together"):
+        model.partial_fit([[0.02, 0.01]])
+    assert_allclose(model.weights_, previous)
+    assert model.n_observations_ == count
+    assert not getattr(model, "_needs_reset", False)
+
+
+@pytest.mark.parametrize("factory", ESTIMATORS)
+def test_complete_inequality_is_enforced(factory):
+    model = factory(left_inequality=[[1.0, 0.0]], right_inequality=[0.2])
+    model.fit([[0.2, -0.1], [-0.02, 0.03]])
+    assert model.weights_[0] <= 0.2 + 1e-6
+
+
+@pytest.mark.parametrize("side", ["left_inequality", "right_inequality"])
+def test_direct_projection_rejects_incomplete_inequality(side):
+    from skfolio.optimization.online._projection import project_convex
+
+    params = {side: [[1.0, 0.0]] if side == "left_inequality" else [0.2]}
+    with pytest.raises(ValueError, match="provided together"):
+        project_convex([0.5, 0.5], **params)
+
+
+@pytest.mark.parametrize("factory", ESTIMATORS)
+def test_inequality_shape_error_is_explicit(factory):
+    with pytest.raises(ValueError, match="inequality shapes"):
+        factory(left_inequality=[[1.0]], right_inequality=[0.2]).fit([[0.01, 0.02]])

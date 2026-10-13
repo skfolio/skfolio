@@ -517,6 +517,10 @@ def project_convex(
     group_min <= G @ w <= group_max  (if provided)
     w' Sigma w <= max_tracking_error^2 (if provided)
     """
+    if (left_inequality is None) != (right_inequality is None):
+        raise ValueError(
+            "left_inequality and right_inequality must be provided together"
+        )
     w0 = np.asarray(w_raw, dtype=float)
     n = int(w0.shape[0])
     if lower is None:
