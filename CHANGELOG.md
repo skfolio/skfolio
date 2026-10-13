@@ -2,6 +2,42 @@
 
 <!-- version list -->
 
+## v1.8.5 (2026-10-12)
+
+### Bug Fixes
+
+- **optimization**: Use the degree-2 worst-case variance in the MAXIMIZE_RATIO objective
+  ([#425](https://github.com/skfolio/skfolio/pull/425),
+  [`ab34a25`](https://github.com/skfolio/skfolio/commit/ab34a252744b6eee5e0273e685be75b9de844c69))
+
+
+## v1.8.4 (2026-10-12)
+
+### Performance Improvements
+
+- **optimization**: Use sparse sorting networks for Gini mean difference
+  ([#295](https://github.com/skfolio/skfolio/pull/295),
+  [`b7e8287`](https://github.com/skfolio/skfolio/commit/b7e82875ca2be71a9d4c4105cb5430b68122c949))
+
+
+## v1.8.3 (2026-10-12)
+
+### Bug Fixes
+
+- **prior**: Seed SyntheticData conditioning noise and draw it independently per asset
+  ([#419](https://github.com/skfolio/skfolio/pull/419),
+  [`5d3acca`](https://github.com/skfolio/skfolio/commit/5d3acca969a6d12116d8365b22facc0327e9da02))
+
+
+## v1.8.2 (2026-10-12)
+
+### Bug Fixes
+
+- **equations**: Multiply consecutive signs in linear equations
+  ([#423](https://github.com/skfolio/skfolio/pull/423),
+  [`5cff516`](https://github.com/skfolio/skfolio/commit/5cff516e7adc2864d3fdfa7d8f9a910a67ec75d5))
+
+
 ## v1.8.1 (2026-10-10)
 
 ### Bug Fixes
