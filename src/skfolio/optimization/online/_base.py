@@ -77,6 +77,10 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         Upper asset weight bounds.
     budget : float, default=1.0
         Required sum of asset weights; None disables the equality constraint.
+    min_budget : float, optional
+        Lower bound on the sum of weights. Requires ``budget=None``.
+    max_budget : float, optional
+        Upper bound on the sum of weights. Requires ``budget=None``.
     X_tracking : array-like, optional
         Historical returns supplied for an explicit tracking-error constraint.
     tracking_error_benchmark : array-like, optional
@@ -142,6 +146,8 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         min_weights: skt.MultiInput | None = 0.0,
         max_weights: skt.MultiInput | None = 1.0,
         budget: float | None = 1.0,
+        min_budget: float | None = None,
+        max_budget: float | None = None,
         X_tracking: npt.ArrayLike | None = None,
         tracking_error_benchmark: npt.ArrayLike | None = None,
         max_tracking_error: float | None = None,
@@ -172,6 +178,8 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         self.min_weights = min_weights
         self.max_weights = max_weights
         self.budget = budget
+        self.min_budget = min_budget
+        self.max_budget = max_budget
         self.X_tracking = X_tracking
         self.tracking_error_benchmark = tracking_error_benchmark
         self.max_tracking_error = max_tracking_error
@@ -230,6 +238,8 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
                 name="max_weights",
             ),
             budget=self.budget,
+            min_budget=self.min_budget,
+            max_budget=self.max_budget,
             groups=groups,
             linear_constraints=self.linear_constraints,
             left_inequality=self.left_inequality,

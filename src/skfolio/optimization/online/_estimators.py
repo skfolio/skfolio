@@ -33,6 +33,10 @@ class ExponentiatedGradient(FollowTheWinner):
         Upper bounds, aligned by asset name when supplied as a dictionary.
     budget : float | None, default=1.0
         Sum of weights. None removes the equality budget.
+    min_budget : float, optional
+        Lower bound on the sum of weights. Requires ``budget=None``.
+    max_budget : float, optional
+        Upper bound on the sum of weights. Requires ``budget=None``.
     groups : skt.Groups | None, default=None
         Asset groups for named linear constraints.
     linear_constraints : skt.LinearConstraints | None, default=None
@@ -117,6 +121,8 @@ class ExponentiatedGradient(FollowTheWinner):
         min_weights: skt.MultiInput = 0.0,
         max_weights: skt.MultiInput = 1.0,
         budget: float | None = 1.0,
+        min_budget: float | None = None,
+        max_budget: float | None = None,
         groups: skt.Groups | None = None,
         linear_constraints: skt.LinearConstraints | None = None,
         left_inequality: skt.Inequality | None = None,
@@ -139,6 +145,8 @@ class ExponentiatedGradient(FollowTheWinner):
             min_weights=min_weights,
             max_weights=max_weights,
             budget=budget,
+            min_budget=min_budget,
+            max_budget=max_budget,
             groups=groups,
             linear_constraints=linear_constraints,
             left_inequality=left_inequality,
@@ -175,6 +183,10 @@ class AdaGrad(FollowTheWinner):
         Upper bounds, aligned by asset name when supplied as a dictionary.
     budget : float | None, default=1.0
         Sum of weights. None removes the equality budget.
+    min_budget : float, optional
+        Lower bound on the sum of weights. Requires ``budget=None``.
+    max_budget : float, optional
+        Upper bound on the sum of weights. Requires ``budget=None``.
     groups : skt.Groups | None, default=None
         Asset groups for named linear constraints.
     linear_constraints : skt.LinearConstraints | None, default=None
@@ -260,6 +272,8 @@ class AdaGrad(FollowTheWinner):
         min_weights: skt.MultiInput = 0.0,
         max_weights: skt.MultiInput = 1.0,
         budget: float | None = 1.0,
+        min_budget: float | None = None,
+        max_budget: float | None = None,
         groups: skt.Groups | None = None,
         linear_constraints: skt.LinearConstraints | None = None,
         left_inequality: skt.Inequality | None = None,
@@ -283,6 +297,8 @@ class AdaGrad(FollowTheWinner):
             min_weights=min_weights,
             max_weights=max_weights,
             budget=budget,
+            min_budget=min_budget,
+            max_budget=max_budget,
             groups=groups,
             linear_constraints=linear_constraints,
             left_inequality=left_inequality,
@@ -317,6 +333,10 @@ class OnlineMovingAverageReversion(FollowTheLoser):
         Upper bounds, aligned by asset name when supplied as a dictionary.
     budget : float | None, default=1.0
         Sum of weights. None removes the equality budget.
+    min_budget : float, optional
+        Lower bound on the sum of weights. Requires ``budget=None``.
+    max_budget : float, optional
+        Upper bound on the sum of weights. Requires ``budget=None``.
     groups : skt.Groups | None, default=None
         Asset groups for named linear constraints.
     linear_constraints : skt.LinearConstraints | None, default=None
@@ -405,6 +425,8 @@ class OnlineMovingAverageReversion(FollowTheLoser):
         min_weights: skt.MultiInput = 0.0,
         max_weights: skt.MultiInput = 1.0,
         budget: float | None = 1.0,
+        min_budget: float | None = None,
+        max_budget: float | None = None,
         groups: skt.Groups | None = None,
         linear_constraints: skt.LinearConstraints | None = None,
         left_inequality: skt.Inequality | None = None,
@@ -428,6 +450,8 @@ class OnlineMovingAverageReversion(FollowTheLoser):
             min_weights=min_weights,
             max_weights=max_weights,
             budget=budget,
+            min_budget=min_budget,
+            max_budget=max_budget,
             groups=groups,
             linear_constraints=linear_constraints,
             left_inequality=left_inequality,

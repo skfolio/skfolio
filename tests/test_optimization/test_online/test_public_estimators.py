@@ -180,3 +180,50 @@ def test_zero_turnover_retains_exact_execution_holdings(factory):
     model.partial_fit([0.1, -0.1])
     np.testing.assert_array_equal(model.weights_, anchor)
     assert_allclose(model.predict([[0.1, -0.1]]).transaction_costs, 0)
+
+
+@pytest.mark.parametrize(
+    "factory", [ExponentiatedGradient, AdaGrad, OnlineMovingAverageReversion]
+)
+@pytest.mark.parametrize("limits", [(None, 0.7), (1.2, None), (0.6, 0.8)])
+def test_public_budget_bounds(factory, limits):
+    """Budget bounds apply to initialization and every streamed target."""
+    lower, upper = limits
+    model = factory(budget=None, min_budget=lower, max_budget=upper, store_weights=True)
+    assert clone(model).get_params() == model.get_params()
+    returns = np.array([[0.02, -0.01, 0.01], [-0.01, 0.03, 0.02]])
+    model.fit(returns)
+    streamed = clone(model)
+    for row in returns:
+        streamed.partial_fit(row)
+    assert_allclose(model.all_weights_, streamed.all_weights_, atol=1e-6)
+    targets = np.vstack([model.initial_weights_, model.all_weights_])
+    totals = targets.sum(axis=1)
+    if lower is not None:
+        assert np.all(totals >= lower - 1e-6)
+    if upper is not None:
+        assert np.all(totals <= upper + 1e-6)
+
+
+@pytest.mark.parametrize(
+    "factory", [ExponentiatedGradient, AdaGrad, OnlineMovingAverageReversion]
+)
+@pytest.mark.parametrize("bound", ["min_budget", "max_budget"])
+def test_public_budget_bound_rejects_equality_budget(factory, bound):
+    with pytest.raises(ValueError, match="cannot be provided at the same time"):
+        factory(**{bound: 0.8}).fit([[0.01, -0.01]])
+
+
+@pytest.mark.parametrize(
+    "factory", [ExponentiatedGradient, AdaGrad, OnlineMovingAverageReversion]
+)
+@pytest.mark.parametrize(
+    "bounds",
+    [
+        {"min_budget": 0.9, "max_budget": 0.8},
+        {"min_budget": 0.9, "max_weights": 0.2},
+    ],
+)
+def test_public_infeasible_budget_bounds(factory, bounds):
+    with pytest.raises(RuntimeError, match="Convex projection failed"):
+        factory(budget=None, **bounds).fit([[0.01, -0.01]])

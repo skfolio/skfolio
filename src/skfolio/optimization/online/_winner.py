@@ -142,6 +142,8 @@ class FollowTheWinner(BaseOnlineOptimization):
         min_weights: skt.MultiInput | None = 0.0,
         max_weights: skt.MultiInput | None = 1.0,
         budget: float | None = 1.0,
+        min_budget: float | None = None,
+        max_budget: float | None = None,
         # Rich constraints (fallback)
         X_tracking: npt.ArrayLike | None = None,
         tracking_error_benchmark: npt.ArrayLike | None = None,
@@ -349,6 +351,11 @@ class FollowTheWinner(BaseOnlineOptimization):
         budget : float | None, default=1.0
             Investment budget (sum of weights). If None, no budget constraint.
 
+        min_budget : float, optional
+            Lower bound on the sum of weights. Requires ``budget=None``.
+        max_budget : float, optional
+            Upper bound on the sum of weights. Requires ``budget=None``.
+
         X_tracking : array-like of shape (n_observations, n_assets) | None, default=None
             Tracking portfolio returns for tracking error constraint.
 
@@ -391,6 +398,8 @@ class FollowTheWinner(BaseOnlineOptimization):
             min_weights=min_weights,
             max_weights=max_weights,
             budget=budget,
+            min_budget=min_budget,
+            max_budget=max_budget,
             X_tracking=X_tracking,
             tracking_error_benchmark=tracking_error_benchmark,
             max_tracking_error=max_tracking_error,

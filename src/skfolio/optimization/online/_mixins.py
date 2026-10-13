@@ -106,6 +106,8 @@ class OnlineParameterConstraintsMixin:
         "min_weights": [Interval(Real, 0, 1, closed="both"), "array-like", dict, None],
         "max_weights": [Interval(Real, 0, 1, closed="both"), "array-like", dict, None],
         "budget": [Interval(Real, 0, 1.0, closed="right"), None],
+        "min_budget": [Real, None],
+        "max_budget": [Real, None],
         "max_turnover": [Interval(Real, 0, None, closed="left"), None],
         "groups": ["array-like", dict, None],
         "linear_constraints": [list, None],
