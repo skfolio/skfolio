@@ -1245,6 +1245,11 @@ Current scope is a fixed asset universe, finite returns strictly greater than -1
 and contiguous one-period evaluation. Larger windows and purged gaps raise.
 A numerical or prior failure can leave partially advanced state and requires a
 fresh ``fit``; automatic rollback and recovery are not implemented. Shared box,
-budget and named group/asset constraints use the same expressions as batch convex
+budget and named group/asset/factor constraints use the same expressions as batch convex
 optimization, while the update objective retains the algorithm's own geometry.
 Broader family factories remain private pending API and algorithm review.
+
+Online factor constraints use the prior updated through the current observation.
+Unknown names raise at decision time instead of dropping the constraint. The
+initial learning reference precedes the first prior update and cannot yet apply
+factor constraints; it is not an executed allocation.

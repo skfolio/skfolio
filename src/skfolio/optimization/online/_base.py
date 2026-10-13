@@ -209,6 +209,11 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
             )
         elif names is not None and self.linear_constraints is not None:
             groups = np.asarray([names])
+        distribution = (
+            self.prior_estimator_.return_distribution_
+            if hasattr(self, "prior_estimator_")
+            else None
+        )
         covariance = self.covariance
         if self.max_variance is not None and hasattr(self, "prior_estimator_"):
             distribution = self.prior_estimator_.return_distribution_
@@ -242,6 +247,11 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
             max_budget=self.max_budget,
             groups=groups,
             linear_constraints=self.linear_constraints,
+            return_distribution=distribution,
+            # Initial learning references precede the first causal prior update.
+            strict_linear_constraints=(
+                self.prior_estimator is None or distribution is not None
+            ),
             left_inequality=self.left_inequality,
             right_inequality=self.right_inequality,
             X_tracking=self.X_tracking,
@@ -579,6 +589,13 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
             raise ValueError("max_turnover requires explicit previous_weights holdings")
         self._initialize_algorithm(data.shape[1])
         assert self._projector is not None
+        if not self._projector.config.strict_linear_constraints:
+            # This allocation will be executed before any prior observation.
+            # Unknown factors must fail here, not be deferred as during fit.
+            self._projector = AutoProjector(
+                replace(self._projector.config, strict_linear_constraints=True)
+            )
+            self.weights_ = self._projector.project(self.weights_)
         if self.max_turnover is not None:
             self.weights_ = self._projector.project(self.weights_)
         self._synchronize_target()

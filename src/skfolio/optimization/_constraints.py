@@ -94,6 +94,7 @@ def linear_constraints(
     investable_mask: BoolArray | None = None,
     return_distribution: ReturnDistribution | None = None,
     scale: float | cp.Constant = 1.0,
+    raise_if_group_missing: bool = False,
 ) -> list[cpc.Constraint]:
     """Build named asset, group and factor constraints on the aligned universe."""
     constraints = []
@@ -129,7 +130,7 @@ def linear_constraints(
         a_eq, b_eq, a_ineq, b_ineq = equations_to_matrix(
             groups=groups,
             equations=linear_constraints,
-            raise_if_group_missing=False,
+            raise_if_group_missing=raise_if_group_missing,
             loading_matrix=loading_matrix,
             factor_groups=factor_groups,
         )

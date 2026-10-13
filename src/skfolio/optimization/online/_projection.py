@@ -28,6 +28,7 @@ from skfolio.optimization.online._mirror_maps import (
     EntropyMirrorMap,
     EuclideanMirrorMap,
 )
+from skfolio.prior import ReturnDistribution
 from skfolio.utils.tools import input_to_array
 
 
@@ -51,6 +52,10 @@ class ProjectionConfig:
         Time-series tracking error constraint components.
     covariance, variance_bound : array-like or None
         Variance-style quadratic bound.
+    return_distribution : ReturnDistribution or None
+        Causal factor information for named exposure constraints.
+    strict_linear_constraints : bool
+        Raise for unknown asset, group or factor names when True.
     previous_weights, max_turnover : array-like or float or None
         Turnover information for L1 cap.
     """
@@ -74,6 +79,8 @@ class ProjectionConfig:
     previous_weights: Any | None = None
     max_turnover: float | None = None
     solver_params: dict[str, Any] | None = None
+    return_distribution: ReturnDistribution | None = None
+    strict_linear_constraints: bool = True
 
 
 class BaseProjector:
@@ -167,6 +174,8 @@ class ConvexProjector(BaseProjector):
             max_long=self.config.max_long,
             groups=self.config.groups,
             linear_constraints=self.config.linear_constraints,
+            return_distribution=self.config.return_distribution,
+            strict_linear_constraints=self.config.strict_linear_constraints,
             left_inequality=self.config.left_inequality,
             right_inequality=self.config.right_inequality,
             X=self.config.X_tracking,
@@ -259,6 +268,8 @@ class AutoProjector(BaseProjector):
             max_long=config.max_long,
             groups=config.groups,
             linear_constraints=config.linear_constraints,
+            return_distribution=config.return_distribution,
+            strict_linear_constraints=config.strict_linear_constraints,
             left_inequality=config.left_inequality,
             right_inequality=config.right_inequality,
             X=config.X_tracking,
@@ -494,6 +505,8 @@ def project_convex(
     max_turnover: float | None = None,
     solver_params: dict[str, Any] | None = None,
     objective: Callable[[cp.Variable], cp.Expression] | None = None,
+    return_distribution: ReturnDistribution | None = None,
+    strict_linear_constraints: bool = True,
 ) -> np.ndarray:
     r"""
     Convex projection with advanced constraints using cvxpy.
@@ -555,6 +568,8 @@ def project_convex(
         factor=1.0,
         linear_constraints=linear_constraints,
         groups=None if groups is None else np.asarray(groups),
+        return_distribution=return_distribution,
+        raise_if_group_missing=strict_linear_constraints,
     )
 
     if left_inequality is not None and right_inequality is not None:
