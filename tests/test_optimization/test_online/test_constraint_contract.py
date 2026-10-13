@@ -137,3 +137,51 @@ def test_direct_projection_rejects_incomplete_inequality(side):
 def test_inequality_shape_error_is_explicit(factory):
     with pytest.raises(ValueError, match="inequality shapes"):
         factory(left_inequality=[[1.0]], right_inequality=[0.2]).fit([[0.01, 0.02]])
+
+
+@pytest.mark.parametrize("factory", ESTIMATORS)
+@pytest.mark.parametrize("form", ["scalar", "array", "named"])
+@pytest.mark.parametrize("bound", ["min_weights", "max_weights"])
+@pytest.mark.parametrize("value", [-0.1, np.nan, np.inf])
+def test_invalid_weight_domains_are_consistent(factory, form, bound, value):
+    X = pd.DataFrame([[0.01, 0.02]], columns=["a", "b"])
+    setting = (
+        value
+        if form == "scalar"
+        else ([value, value] if form == "array" else {"a": value, "b": value})
+    )
+    with pytest.raises(ValueError, match="finite nonnegative"):
+        factory(**{bound: setting}).fit(X)
+
+
+@pytest.mark.parametrize("factory", ESTIMATORS)
+@pytest.mark.parametrize("budget", [0.0, 0.6, 1.2])
+def test_equivalent_bound_forms_and_budgets(factory, budget):
+    X = pd.DataFrame([[0.02, -0.01], [-0.01, 0.03]], columns=["a", "b"])
+    results = []
+    for upper in (1.5, [1.5, 1.5], {"a": 1.5, "b": 1.5}):
+        model = factory(max_weights=upper, budget=budget).fit(X)
+        assert_allclose(model.weights_.sum(), budget, atol=1e-6)
+        assert np.all(model.weights_ >= -1e-6)
+        results.append(model.weights_)
+    assert_allclose(results[0], results[1], atol=1e-7)
+    assert_allclose(results[0], results[2], atol=1e-7)
+
+
+@pytest.mark.parametrize("factory", ESTIMATORS)
+@pytest.mark.parametrize("name", ["budget", "min_budget", "max_budget"])
+@pytest.mark.parametrize("value", [-0.1, np.nan, np.inf])
+def test_invalid_budget_domain_fails_before_update(factory, name, value):
+    model = factory().fit([[0.01, 0.02]])
+    count = model.n_observations_
+    model.set_params(**{name: value})
+    with pytest.raises(ValueError, match="finite and nonnegative"):
+        model.partial_fit([[0.02, 0.01]])
+    assert model.n_observations_ == count
+    assert not getattr(model, "_needs_reset", False)
+
+
+@pytest.mark.parametrize("factory", ESTIMATORS)
+def test_reversed_weight_bounds_raise(factory):
+    with pytest.raises(ValueError, match="min_weights must not exceed"):
+        factory(min_weights=[0.7, 0], max_weights=[0.6, 1]).fit([[0.01, 0.02]])

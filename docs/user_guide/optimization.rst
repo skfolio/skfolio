@@ -1253,3 +1253,14 @@ Online factor constraints use the prior updated through the current observation.
 Unknown names raise at decision time instead of dropping the constraint. The
 initial learning reference precedes the first prior update and cannot yet apply
 factor constraints; it is not an executed allocation.
+
+Online weight bounds are finite and nonnegative, whether supplied as scalars,
+arrays or dictionaries. Short positions are not supported by this API. Bounds
+above one are allowed, as are finite nonnegative equality budgets and budget
+limits. A zero equality budget leaves no risky-asset allocation; a budget above
+one permits leveraged long exposure. These settings extend the textbook simplex
+constraint and do not add borrowing fees or margin accounting. ``budget=None``
+removes the equality constraint; use it when specifying budget limits.
+
+Both ``left_inequality`` and ``right_inequality`` must be supplied for matrix
+constraints. Missing sides raise before the online state advances.

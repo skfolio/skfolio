@@ -193,6 +193,38 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         self._t: int = 0
         self._previous_target_: np.ndarray | None = None
 
+    def _validate_constraint_domain(self, n_assets: int) -> None:
+        """Apply the same long-only domain to scalar, array and named bounds."""
+        bounds = []
+        for name, default in (("min_weights", 0.0), ("max_weights", 1.0)):
+            raw = getattr(self, name)
+            if raw is not None:
+                raw_array = np.asarray(
+                    list(raw.values()) if isinstance(raw, dict) else raw, dtype=float
+                )
+                if not np.isfinite(raw_array).all() or np.any(raw_array < 0):
+                    raise ValueError(
+                        f"{name} must contain finite nonnegative bounds; shorting is not supported"
+                    )
+            value = self._clean_input(
+                value=getattr(self, name),
+                n_assets=n_assets,
+                fill_value=default,
+                name=name,
+            )
+            array = np.asarray(value, dtype=float)
+            if not np.isfinite(array).all() or np.any(array < 0):
+                raise ValueError(
+                    f"{name} must contain finite nonnegative bounds; shorting is not supported"
+                )
+            bounds.append(array)
+        if np.any(bounds[0] > bounds[1]):
+            raise ValueError("min_weights must not exceed max_weights")
+        for name in ("budget", "min_budget", "max_budget"):
+            value = getattr(self, name)
+            if value is not None and (not np.isfinite(value) or value < 0):
+                raise ValueError(f"{name} must be finite and nonnegative, or None")
+
     def _initialize_projector(self) -> AutoProjector:
         """Build the projector from aligned constraints and available causal estimates."""
         n_assets = self.n_features_in_
@@ -376,6 +408,7 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
             ensure_2d=True,
             accept_sparse=False,
         )
+        self._validate_constraint_domain(returns.shape[1])
         if np.any(returns <= -1):
             raise ValueError(
                 "Online learning requires returns greater than -1; bankrupt assets "
@@ -587,6 +620,7 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
                 "left_inequality and right_inequality must be provided together"
             )
         data = validate_data(self, X, reset=True, dtype=float)
+        self._validate_constraint_domain(data.shape[1])
         self._decision_turnover = self.max_turnover
         self._execution_anchor = (
             None

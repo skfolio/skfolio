@@ -28,11 +28,11 @@ class ExponentiatedGradient(FollowTheWinner):
     previous_weights : skt.MultiInput | None, default=None
         Actual holdings at rebalance time. Required for a turnover limit.
     min_weights : skt.MultiInput, default=0.0
-        Lower bounds, aligned by asset name when supplied as a dictionary.
+        Finite nonnegative lower bounds, aligned by asset name for dictionaries.
     max_weights : skt.MultiInput, default=1.0
-        Upper bounds, aligned by asset name when supplied as a dictionary.
+        Finite nonnegative upper bounds; values above one allow leveraged positions.
     budget : float | None, default=1.0
-        Sum of weights. None removes the equality budget.
+        Finite nonnegative sum of weights. None removes the equality budget.
     min_budget : float, optional
         Lower bound on the sum of weights. Requires ``budget=None``.
     max_budget : float, optional
@@ -178,11 +178,11 @@ class AdaGrad(FollowTheWinner):
     previous_weights : skt.MultiInput | None, default=None
         Actual holdings at rebalance time. Required for a turnover limit.
     min_weights : skt.MultiInput, default=0.0
-        Lower bounds, aligned by asset name when supplied as a dictionary.
+        Finite nonnegative lower bounds, aligned by asset name for dictionaries.
     max_weights : skt.MultiInput, default=1.0
-        Upper bounds, aligned by asset name when supplied as a dictionary.
+        Finite nonnegative upper bounds; values above one allow leveraged positions.
     budget : float | None, default=1.0
-        Sum of weights. None removes the equality budget.
+        Finite nonnegative sum of weights. None removes the equality budget.
     min_budget : float, optional
         Lower bound on the sum of weights. Requires ``budget=None``.
     max_budget : float, optional
@@ -328,11 +328,11 @@ class OnlineMovingAverageReversion(FollowTheLoser):
     previous_weights : skt.MultiInput | None, default=None
         Actual holdings at rebalance time. Required for a turnover limit.
     min_weights : skt.MultiInput, default=0.0
-        Lower bounds, aligned by asset name when supplied as a dictionary.
+        Finite nonnegative lower bounds, aligned by asset name for dictionaries.
     max_weights : skt.MultiInput, default=1.0
-        Upper bounds, aligned by asset name when supplied as a dictionary.
+        Finite nonnegative upper bounds; values above one allow leveraged positions.
     budget : float | None, default=1.0
-        Sum of weights. None removes the equality budget.
+        Finite nonnegative sum of weights. None removes the equality budget.
     min_budget : float, optional
         Lower bound on the sum of weights. Requires ``budget=None``.
     max_budget : float, optional
@@ -493,11 +493,11 @@ class PassiveAggressiveMeanReversion(FollowTheLoser):
     previous_weights : skt.MultiInput | None, default=None
         Actual holdings at rebalance time. Required for a turnover limit.
     min_weights : skt.MultiInput, default=0.0
-        Lower bounds, aligned by asset name when supplied as a dictionary.
+        Finite nonnegative lower bounds, aligned by asset name for dictionaries.
     max_weights : skt.MultiInput, default=1.0
-        Upper bounds, aligned by asset name when supplied as a dictionary.
+        Finite nonnegative upper bounds; values above one allow leveraged positions.
     budget : float | None, default=1.0
-        Sum of weights. None removes the equality budget.
+        Finite nonnegative sum of weights. None removes the equality budget.
     min_budget : float, optional
         Lower bound on the sum of weights. Requires ``budget=None``.
     max_budget : float, optional
