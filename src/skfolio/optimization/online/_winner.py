@@ -22,7 +22,6 @@ from skfolio.optimization.online._base import BaseOnlineOptimization
 from skfolio.optimization.online._foco import (
     FirstOrderOCO,
     Predictor,
-    SwordMeta,
 )
 from skfolio.optimization.online._learning_rate import get_auto_learning_rate
 from skfolio.optimization.online._mirror_maps import (
@@ -42,6 +41,7 @@ from skfolio.optimization.online._mixins import (
 )
 from skfolio.optimization.online._prediction import LastGradPredictor, SmoothPredictor
 from skfolio.optimization.online._projection import IdentityProjector
+from skfolio.optimization.online._sword import SwordMeta
 from skfolio.optimization.online._utils import CLIP_EPSILON
 from skfolio.prior import BasePrior
 
