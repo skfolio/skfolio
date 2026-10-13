@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import date
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -2353,6 +2354,258 @@ class TestPersistence:
 
         panel.save(tmp_path / "panel", overwrite=True)
         _assert_panels_equal(AssetPanel.load(tmp_path / "panel"), panel)
+
+    @pytest.mark.parametrize("overwrite", [False, True])
+    @pytest.mark.parametrize(
+        "failed_file",
+        [
+            "observations.npy",
+            "assets.npy",
+            "active_mask.npy",
+            "estimation_mask.npy",
+            "fields/momentum.npy",
+            "fields/sector.npy",
+            "levels/sector.npy",
+            "fields/exposures.npy",
+            "third_axis/exposures_labels.npy",
+            "third_axis/exposures_groups.npy",
+            "_metadata.json",
+            "mkdir:fields",
+            "mkdir:levels",
+            "mkdir:third_axis",
+        ],
+    )
+    def test_save_write_failure_preserves_destination(
+        self, tmp_path, monkeypatch, overwrite, failed_file
+    ):
+        """Every serialized component must finish before replacing the old panel."""
+        path = tmp_path / "panel"
+        old = _make_panel()
+        if overwrite:
+            old.save(path)
+        before = {
+            p.relative_to(path): p.read_bytes() for p in path.rglob("*") if p.is_file()
+        }
+        panel = _make_full_panel()
+        original = panel.copy(deep=True)
+        save = np.save
+        mkdir = Path.mkdir
+
+        def failing_save(file, *args, **kwargs):
+            """Fail at the selected physical write, including metadata arrays."""
+            if Path(file).as_posix().endswith("/" + failed_file):
+                raise OSError("injected write failure")
+            return save(file, *args, **kwargs)
+
+        def failing_dump(*args, **kwargs):
+            """Fail after every array has been written, at manifest completion."""
+            raise OSError("injected write failure")
+
+        def failing_mkdir(directory, *args, **kwargs):
+            """Reject metadata-directory creation before its associated writes."""
+            if failed_file == "mkdir:" + directory.name:
+                raise OSError("injected write failure")
+            return mkdir(directory, *args, **kwargs)
+
+        monkeypatch.setattr(np, "save", failing_save)
+        monkeypatch.setattr(Path, "mkdir", failing_mkdir)
+        if failed_file == "_metadata.json":
+            monkeypatch.setattr(json, "dump", failing_dump)
+        with pytest.raises(OSError, match="injected write failure"):
+            panel.save(path, overwrite=overwrite)
+
+        _assert_panels_equal(panel, original)
+        if overwrite:
+            after = {
+                p.relative_to(path): p.read_bytes()
+                for p in path.rglob("*")
+                if p.is_file()
+            }
+            assert after == before
+            _assert_panels_equal(AssetPanel.load(path), old)
+        else:
+            assert not path.exists()
+        assert list(tmp_path.iterdir()) == ([path] if overwrite else [])
+
+    @pytest.mark.parametrize(
+        "failed_step", ["backup", "install", "rollback", "interrupted_rollback"]
+    )
+    def test_overwrite_rename_failure_retains_old_panel(
+        self, tmp_path, monkeypatch, failed_step
+    ):
+        """Keep the original at its path or report an intact recovery backup."""
+        path = tmp_path / "panel"
+        old = _make_panel()
+        old.save(path)
+        rename = Path.rename
+        calls = 0
+
+        def failing_rename(source, target):
+            """Inject faults at each transition, independently of file contents."""
+            nonlocal calls
+            calls += 1
+            if (
+                (failed_step == "backup" and calls == 1)
+                or (
+                    failed_step in {"install", "rollback", "interrupted_rollback"}
+                    and calls == 2
+                )
+                or (failed_step == "rollback" and calls == 3)
+            ):
+                raise OSError("injected rename failure")
+            if failed_step == "interrupted_rollback" and calls == 3:
+                raise KeyboardInterrupt
+            return rename(source, target)
+
+        monkeypatch.setattr(Path, "rename", failing_rename)
+        with pytest.raises(OSError) as error:
+            _make_full_panel().save(path, overwrite=True)
+
+        if failed_step in {"rollback", "interrupted_rollback"}:
+            backups = list(tmp_path.glob("*/previous"))
+            assert len(backups) == 1
+            assert str(backups[0]) in str(error.value)
+            _assert_panels_equal(AssetPanel.load(backups[0]), old)
+            assert not path.exists()
+        else:
+            assert "injected rename failure" in str(error.value)
+            _assert_panels_equal(AssetPanel.load(path), old)
+            assert list(tmp_path.iterdir()) == [path]
+
+    @pytest.mark.parametrize("interrupt", [OSError, KeyboardInterrupt])
+    @pytest.mark.parametrize("restore_fails", [False, True])
+    def test_overwrite_interrupted_after_backup_move(
+        self, tmp_path, monkeypatch, interrupt, restore_fails
+    ):
+        """Recover old bytes when the first rename raises after moving them."""
+        path = tmp_path / "panel"
+        old = _make_panel()
+        old.save(path)
+        before = {
+            p.relative_to(path): p.read_bytes() for p in path.rglob("*") if p.is_file()
+        }
+        rename = Path.rename
+
+        def interrupted_rename(source, target):
+            """Fail after the backup move, unlike a rejected filesystem operation."""
+            if source == path:
+                rename(source, target)
+                raise interrupt("interrupted after backup move")
+            if restore_fails and source.name == "previous":
+                raise OSError("injected restoration failure")
+            return rename(source, target)
+
+        monkeypatch.setattr(Path, "rename", interrupted_rename)
+        with pytest.raises((OSError, KeyboardInterrupt)) as error:
+            _make_full_panel().save(path, overwrite=True)
+        assert isinstance(error.value, OSError if restore_fails else interrupt)
+
+        if restore_fails:
+            backups = list(tmp_path.glob("*/previous"))
+            assert len(backups) == 1
+            restored = backups[0]
+            assert str(restored) in str(error.value)
+            assert not path.exists()
+        else:
+            restored = path
+            assert list(tmp_path.iterdir()) == [path]
+        after = {
+            p.relative_to(restored): p.read_bytes()
+            for p in restored.rglob("*")
+            if p.is_file()
+        }
+        assert after == before
+        _assert_panels_equal(AssetPanel.load(restored), old)
+
+    def test_overwrite_replaces_all_files_and_keeps_mapped_input(self, tmp_path):
+        """Replace obsolete files without changing caller-owned read-only maps."""
+        path = tmp_path / "panel"
+        input_path = tmp_path / "mapped-input"
+        old = _make_full_panel()
+        old.save(input_path)
+        old.save(path)
+        mapped = AssetPanel.load(input_path, mmap_mode="r")
+
+        mapped.save(path, overwrite=True)
+        _assert_panels_equal(AssetPanel.load(path), old)
+        _assert_panels_equal(mapped, old)
+
+        replacement = _make_panel()
+        replacement.save(path, overwrite=True)
+        _assert_panels_equal(AssetPanel.load(path), replacement)
+        assert not (path / "levels").exists()
+        assert not (path / "third_axis").exists()
+        assert not (path / "active_mask.npy").exists()
+        assert set(tmp_path.iterdir()) == {path, input_path}
+
+    def test_save_refuses_directory_and_broken_symlinks(self, tmp_path):
+        """Rejection must preserve both a link and its caller-owned target."""
+        target = tmp_path / "target"
+        panel = _make_panel()
+        panel.save(target)
+        link = tmp_path / "link"
+        try:
+            link.symlink_to(target, target_is_directory=True)
+        except OSError:
+            pytest.skip("Creating symlinks is not supported by this environment")
+        with pytest.raises(OSError, match="symbolic link"):
+            _make_full_panel().save(link, overwrite=True)
+        assert link.is_symlink()
+        _assert_panels_equal(AssetPanel.load(target), panel)
+
+        target.rename(tmp_path / "retained-target")
+        with pytest.raises(FileExistsError):
+            panel.save(link)
+        assert link.is_symlink()
+
+    def test_save_install_failure_keeps_first_destination_absent(
+        self, tmp_path, monkeypatch
+    ):
+        """A first save must not expose a partial directory on installation failure."""
+        path = tmp_path / "panel"
+
+        def failing_rename(*args, **kwargs):
+            """Refuse the final installation of the completely written directory."""
+            raise OSError("injected installation failure")
+
+        monkeypatch.setattr(Path, "rename", failing_rename)
+        with pytest.raises(OSError, match="injected installation failure"):
+            _make_full_panel().save(path)
+        assert not path.exists()
+        assert not list(tmp_path.iterdir())
+
+    def test_overwrite_invalid_field_name_preserves_old_panel(self, tmp_path):
+        """Field validation must precede every mutation of the old destination."""
+        path = tmp_path / "panel"
+        old = _make_panel()
+        old.save(path)
+        invalid = _make_full_panel()
+        invalid.fields["invalid/name"] = invalid.fields.pop("momentum")
+
+        with pytest.raises(ValueError, match="invalid characters"):
+            invalid.save(path, overwrite=True)
+        _assert_panels_equal(AssetPanel.load(path), old)
+        assert list(tmp_path.iterdir()) == [path]
+
+    def test_overwrite_cleanup_failure_does_not_report_failed_save(
+        self, tmp_path, monkeypatch
+    ):
+        """A committed replacement remains successful if backup cleanup is denied."""
+        import os
+
+        path = tmp_path / "panel"
+        _make_panel().save(path)
+        unlink = os.unlink
+
+        def failing_unlink(file, *args, **kwargs):
+            """Deny deletion inside the obsolete backup during best-effort cleanup."""
+            raise PermissionError("injected cleanup failure")
+
+        monkeypatch.setattr(os, "unlink", failing_unlink)
+        new = _make_full_panel()
+        new.save(path, overwrite=True)
+        _assert_panels_equal(AssetPanel.load(path), new)
+        monkeypatch.setattr(os, "unlink", unlink)
 
     def test_refuses_non_panel_directory_and_file_path(self, tmp_path):
         directory = tmp_path / "directory"

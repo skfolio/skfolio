@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import tempfile
 from collections.abc import Collection, Generator, Iterable, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -994,6 +995,12 @@ class AssetPanel(_BaseAssetPanel):
         Object-dtype axis labels and field metadata labels are converted to strings
         so the panel is loaded with `allow_pickle=False`.
 
+        All files are written to a temporary sibling before replacing an existing
+        panel. A write failure leaves the existing panel unchanged. If replacement
+        fails, including an interrupted backup move, the old directory is restored;
+        if restoration also fails, the error reports the retained backup path.
+        Temporary cleanup is best effort.
+
         Parameters
         ----------
         path : str or pathlib.Path
@@ -1017,69 +1024,49 @@ class AssetPanel(_BaseAssetPanel):
                     f"Directory '{path}' already contains a saved AssetPanel. "
                     "Use overwrite=True to replace it."
                 )
-            shutil.rmtree(path)
+
+        # Never move a caller-owned symlink target or replace the link itself.
+        if path.is_symlink():
+            if not path.exists():
+                raise FileExistsError(f"Path '{path}' is a broken symbolic link.")
+            raise OSError(f"Cannot save an AssetPanel through symbolic link '{path}'.")
 
         for name in self.fields:
             _validate_field_name(name)
 
-        path.mkdir(parents=True)
-        fields_dir = path / "fields"
-        fields_dir.mkdir()
-        levels_dir = path / "levels"
-        third_axis_dir = path / "third_axis"
-
-        np.save(path / "observations.npy", _as_pickle_safe_array(self.observations))
-        np.save(path / "assets.npy", _as_pickle_safe_array(self.asset_names))
-
-        active_mask_storage = "all_true"
-        if not self.active_mask.all():
-            np.save(path / "active_mask.npy", self.active_mask)
-            active_mask_storage = "file"
-
-        estimation_mask_storage = "all_true"
-        if not self.estimation_mask.all():
-            np.save(path / "estimation_mask.npy", self.estimation_mask)
-            estimation_mask_storage = "file"
-
-        field_metadata: dict[str, dict[str, Any]] = {}
-        for name, field in self.fields.items():
-            np.save(fields_dir / f"{name}.npy", field.values)
-            entry: dict[str, Any] = {
-                "type": type(field).__name__,
-                "dtype": str(field.values.dtype),
-                "shape": list(field.values.shape),
-                "inactive_policy": field.inactive_policy.value,
-            }
-
-            if isinstance(field, FieldCategorical):
-                levels_dir.mkdir(exist_ok=True)
-                np.save(levels_dir / f"{name}.npy", _as_pickle_safe_array(field.levels))
-
-            if isinstance(field, Field3D):
-                third_axis_dir.mkdir(exist_ok=True)
-                np.save(
-                    third_axis_dir / f"{name}_labels.npy",
-                    _as_pickle_safe_array(field.third_axis_labels),
-                )
-                entry["third_axis_name"] = field.third_axis_name
-                if field.third_axis_groups is not None:
-                    np.save(
-                        third_axis_dir / f"{name}_groups.npy",
-                        _as_pickle_safe_array(field.third_axis_groups),
-                    )
-
-            field_metadata[name] = entry
-
-        metadata = {
-            "version": _SAVE_VERSION,
-            "n_observations": self.n_observations,
-            "n_assets": self.n_assets,
-            "active_mask": active_mask_storage,
-            "estimation_mask": estimation_mask_storage,
-            "fields": field_metadata,
-        }
-        with open(path / _METADATA_FILENAME, "w", encoding="utf-8") as f:
-            json.dump(metadata, f, indent=2)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # A sibling keeps both renames on the destination filesystem.
+        temporary = Path(tempfile.mkdtemp(prefix=".asset-panel-", dir=path.parent))
+        replacement = temporary / "replacement"
+        backup = temporary / "previous"
+        preserve_backup = False
+        try:
+            self._save_to_directory(replacement)
+            try:
+                if path.exists():
+                    # A rename can move the original before an interruption raises.
+                    # Keep cleanup conservative until installation or recovery ends.
+                    preserve_backup = True
+                    path.rename(backup)
+                replacement.rename(path)
+            except BaseException:
+                if backup.exists():
+                    try:
+                        backup.rename(path)
+                    except BaseException as error:
+                        # Cleanup must not destroy the only remaining original.
+                        preserve_backup = True
+                        raise OSError(
+                            f"Could not restore AssetPanel at '{path}'; "
+                            f"the previous panel remains at '{backup}'."
+                        ) from error
+                preserve_backup = False
+                raise
+            preserve_backup = False
+        finally:
+            if not preserve_backup:
+                # Cleanup failure after installation must not report a failed save.
+                shutil.rmtree(temporary, ignore_errors=True)
 
     @classmethod
     def load(
@@ -1214,6 +1201,67 @@ class AssetPanel(_BaseAssetPanel):
             estimation_mask=estimation_mask,
             _validate_on_init=False,
         )
+
+    def _save_to_directory(self, path: Path) -> None:
+        """Write the existing pickle-free format into a new directory."""
+        path.mkdir(parents=True)
+        fields_dir = path / "fields"
+        fields_dir.mkdir()
+        levels_dir = path / "levels"
+        third_axis_dir = path / "third_axis"
+
+        np.save(path / "observations.npy", _as_pickle_safe_array(self.observations))
+        np.save(path / "assets.npy", _as_pickle_safe_array(self.asset_names))
+
+        active_mask_storage = "all_true"
+        if not self.active_mask.all():
+            np.save(path / "active_mask.npy", self.active_mask)
+            active_mask_storage = "file"
+
+        estimation_mask_storage = "all_true"
+        if not self.estimation_mask.all():
+            np.save(path / "estimation_mask.npy", self.estimation_mask)
+            estimation_mask_storage = "file"
+
+        field_metadata: dict[str, dict[str, Any]] = {}
+        for name, field in self.fields.items():
+            np.save(fields_dir / f"{name}.npy", field.values)
+            entry: dict[str, Any] = {
+                "type": type(field).__name__,
+                "dtype": str(field.values.dtype),
+                "shape": list(field.values.shape),
+                "inactive_policy": field.inactive_policy.value,
+            }
+
+            if isinstance(field, FieldCategorical):
+                levels_dir.mkdir(exist_ok=True)
+                np.save(levels_dir / f"{name}.npy", _as_pickle_safe_array(field.levels))
+
+            if isinstance(field, Field3D):
+                third_axis_dir.mkdir(exist_ok=True)
+                np.save(
+                    third_axis_dir / f"{name}_labels.npy",
+                    _as_pickle_safe_array(field.third_axis_labels),
+                )
+                entry["third_axis_name"] = field.third_axis_name
+                if field.third_axis_groups is not None:
+                    np.save(
+                        third_axis_dir / f"{name}_groups.npy",
+                        _as_pickle_safe_array(field.third_axis_groups),
+                    )
+
+            field_metadata[name] = entry
+
+        metadata = {
+            "version": _SAVE_VERSION,
+            "n_observations": self.n_observations,
+            "n_assets": self.n_assets,
+            "active_mask": active_mask_storage,
+            "estimation_mask": estimation_mask_storage,
+            "fields": field_metadata,
+        }
+        with open(path / _METADATA_FILENAME, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=2)
 
     def _first_field(self) -> BaseField:
         """Return the first field used to derive panel dimensions."""
