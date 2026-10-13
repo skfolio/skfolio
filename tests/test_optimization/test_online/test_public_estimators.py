@@ -12,6 +12,7 @@ from skfolio.optimization.online import (
     AdaGrad,
     ExponentiatedGradient,
     OnlineMovingAverageReversion,
+    PassiveAggressiveMeanReversion,
 )
 from skfolio.optimization.online._foco import FirstOrderOCO
 from skfolio.optimization.online._loser import FollowTheLoser
@@ -20,7 +21,13 @@ from skfolio.prior import BasePrior, ReturnDistribution
 
 
 @pytest.mark.parametrize(
-    "factory", [ExponentiatedGradient, AdaGrad, OnlineMovingAverageReversion]
+    "factory",
+    [
+        ExponentiatedGradient,
+        AdaGrad,
+        OnlineMovingAverageReversion,
+        PassiveAggressiveMeanReversion,
+    ],
 )
 def test_public_clone_reset_blocks_and_execution(factory):
     X = np.random.default_rng(261).normal(0, 0.015, (12, 3))
@@ -96,7 +103,13 @@ def test_olmar_window_tuning_and_first_full_window():
 
 
 @pytest.mark.parametrize(
-    "factory", [ExponentiatedGradient, AdaGrad, OnlineMovingAverageReversion]
+    "factory",
+    [
+        ExponentiatedGradient,
+        AdaGrad,
+        OnlineMovingAverageReversion,
+        PassiveAggressiveMeanReversion,
+    ],
 )
 def test_named_initial_allocation_and_constraints(factory):
     X = pd.DataFrame([[0.1, -0.1, 0.02], [0.02, 0.01, -0.01]], columns=["a", "b", "c"])
@@ -116,6 +129,10 @@ def test_named_initial_allocation_and_constraints(factory):
         (ExponentiatedGradient, {"learning_rate": [0.01, 0.1]}),
         (AdaGrad, {"learning_rate": [0.01, 0.1]}),
         (OnlineMovingAverageReversion, {"window": [2, 3]}),
+        (
+            PassiveAggressiveMeanReversion,
+            {"aggressiveness": [1.0, 10.0], "variant": ["slack_linear"]},
+        ),
     ],
 )
 def test_public_online_search(factory, grid):
@@ -163,7 +180,13 @@ def test_internal_mean_reversion_md_starts_from_explicit_initial_target():
 
 
 @pytest.mark.parametrize(
-    "factory", [ExponentiatedGradient, AdaGrad, OnlineMovingAverageReversion]
+    "factory",
+    [
+        ExponentiatedGradient,
+        AdaGrad,
+        OnlineMovingAverageReversion,
+        PassiveAggressiveMeanReversion,
+    ],
 )
 def test_diagnostic_loss_includes_uninvested_cash(factory):
     model = factory(budget=0.5, store_weights=True).fit([[0.1, 0.2]])
@@ -172,7 +195,13 @@ def test_diagnostic_loss_includes_uninvested_cash(factory):
 
 
 @pytest.mark.parametrize(
-    "factory", [ExponentiatedGradient, AdaGrad, OnlineMovingAverageReversion]
+    "factory",
+    [
+        ExponentiatedGradient,
+        AdaGrad,
+        OnlineMovingAverageReversion,
+        PassiveAggressiveMeanReversion,
+    ],
 )
 def test_zero_turnover_retains_exact_execution_holdings(factory):
     anchor = np.array([0.4, 0.6])
@@ -183,7 +212,13 @@ def test_zero_turnover_retains_exact_execution_holdings(factory):
 
 
 @pytest.mark.parametrize(
-    "factory", [ExponentiatedGradient, AdaGrad, OnlineMovingAverageReversion]
+    "factory",
+    [
+        ExponentiatedGradient,
+        AdaGrad,
+        OnlineMovingAverageReversion,
+        PassiveAggressiveMeanReversion,
+    ],
 )
 @pytest.mark.parametrize("limits", [(None, 0.7), (1.2, None), (0.6, 0.8)])
 def test_public_budget_bounds(factory, limits):
@@ -206,7 +241,13 @@ def test_public_budget_bounds(factory, limits):
 
 
 @pytest.mark.parametrize(
-    "factory", [ExponentiatedGradient, AdaGrad, OnlineMovingAverageReversion]
+    "factory",
+    [
+        ExponentiatedGradient,
+        AdaGrad,
+        OnlineMovingAverageReversion,
+        PassiveAggressiveMeanReversion,
+    ],
 )
 @pytest.mark.parametrize("bound", ["min_budget", "max_budget"])
 def test_public_budget_bound_rejects_equality_budget(factory, bound):
@@ -215,7 +256,13 @@ def test_public_budget_bound_rejects_equality_budget(factory, bound):
 
 
 @pytest.mark.parametrize(
-    "factory", [ExponentiatedGradient, AdaGrad, OnlineMovingAverageReversion]
+    "factory",
+    [
+        ExponentiatedGradient,
+        AdaGrad,
+        OnlineMovingAverageReversion,
+        PassiveAggressiveMeanReversion,
+    ],
 )
 @pytest.mark.parametrize(
     "bounds",

@@ -12,6 +12,7 @@ from skfolio.optimization.online._estimators import (
     AdaGrad,
     ExponentiatedGradient,
     OnlineMovingAverageReversion,
+    PassiveAggressiveMeanReversion,
 )
 from skfolio.optimization.online._regret import RegretType, plot_regret_curve, regret
 
@@ -20,6 +21,7 @@ __all__ = [
     "BaseOnlineOptimization",
     "ExponentiatedGradient",
     "OnlineMovingAverageReversion",
+    "PassiveAggressiveMeanReversion",
     "RegretType",
     "plot_regret_curve",
     "regret",

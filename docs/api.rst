@@ -285,6 +285,7 @@ Classes
     ExponentiatedGradient
     AdaGrad
     OnlineMovingAverageReversion
+    PassiveAggressiveMeanReversion
 
 .. autoclass:: RegretType
     :members: STATIC, DYNAMIC_UNIVERSAL, DYNAMIC_WORST_CASE

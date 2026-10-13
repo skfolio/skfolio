@@ -475,3 +475,174 @@ class OnlineMovingAverageReversion(FollowTheLoser):
     def window(self, value: int) -> None:
         """Update the shared predictor parameter for subsequent fitting."""
         self.olmar_window = value
+
+
+class PassiveAggressiveMeanReversion(FollowTheLoser):
+    """Passive-aggressive mean reversion using the observed price relatives.
+
+    Parameters
+    ----------
+    variant : {"simple", "slack_linear", "slack_quadratic"}, default="simple"
+        PAMR, PAMR-1 or PAMR-2 respectively. The slack variants soften the margin.
+    aggressiveness : float, default=500.0
+        Positive slack penalty C. Used only by the two slack variants.
+    epsilon : float, default=1.0
+        Upper margin on the observed portfolio price relative.
+    initial_weights : skt.MultiInput | None, default=None
+        Initial learning allocation. None uses uniform weights; named inputs follow X columns.
+    previous_weights : skt.MultiInput | None, default=None
+        Actual holdings at rebalance time. Required for a turnover limit.
+    min_weights : skt.MultiInput, default=0.0
+        Lower bounds, aligned by asset name when supplied as a dictionary.
+    max_weights : skt.MultiInput, default=1.0
+        Upper bounds, aligned by asset name when supplied as a dictionary.
+    budget : float | None, default=1.0
+        Sum of weights. None removes the equality budget.
+    min_budget : float, optional
+        Lower bound on the sum of weights. Requires ``budget=None``.
+    max_budget : float, optional
+        Upper bound on the sum of weights. Requires ``budget=None``.
+    groups : skt.Groups | None, default=None
+        Asset groups for named linear constraints.
+    linear_constraints : skt.LinearConstraints | None, default=None
+        Named asset or group constraints.
+    left_inequality : skt.Inequality | None, default=None
+        Left matrix A in A @ weights <= b.
+    right_inequality : skt.Inequality | None, default=None
+        Right vector b in A @ weights <= b.
+    max_turnover : float | None, default=None
+        Maximum L1 change from actual previous_weights. Warmup uses this only at entry.
+    max_variance : float | None, default=None
+        Maximum variance, using covariance or the optional causal prior.
+    covariance : skt.ArrayLike | None, default=None
+        Fixed covariance matrix. Mutually exclusive with prior_estimator.
+    prior_estimator : BasePrior | None, default=None
+        Optional incremental prior, cloned and updated once per observed row.
+    transaction_costs : skt.MultiInput, default=0.0
+        Proportional trading costs booked by Portfolio during evaluation.
+    management_fees : skt.MultiInput, default=0.0
+        Per-period asset fees, accounted for by Portfolio and the learning objective.
+    store_weights : bool, default=False
+        Whether to retain diagnostic target history. False avoids accumulating target history.
+    portfolio_params : dict | None, default=None
+        Portfolio evaluation settings, for example weight_drift=True.
+
+    Attributes
+    ----------
+    weights_ : ndarray of shape (n_assets,)
+        Target for the next observation, after processing the latest return.
+    initial_weights_ : ndarray of shape (n_assets,)
+        Feasible learning allocation before the first observed return.
+    n_observations_ : int
+        Number of observations successfully processed since the last reset.
+    n_features_in_ : int
+        Number of assets seen during fitting.
+    feature_names_in_ : ndarray of shape (n_assets,)
+        Asset names, when fitted with named DataFrame columns.
+    all_weights_ : ndarray of shape (n_stored_observations, n_assets)
+        Diagnostic targets before each stored observation, available only when
+        ``store_weights=True``. This is not a record of executed trades. Use
+        ``all_weights_.copy()`` to retain an independent snapshot.
+    prior_estimator_ : BasePrior
+        Fitted incremental prior, present when ``prior_estimator`` is supplied.
+
+    Notes
+    -----
+    ``fit`` resets learned state; ``partial_fit`` consumes rows causally. After row t,
+    ``weights_`` is the target for t+1. Portfolio handles execution, drift and wealth.
+    Use :func:`~skfolio.model_selection.online_predict` with ``test_size=1``
+    for evaluation.
+    Missing returns, bankrupt assets, changing universes and automatic recovery
+    are not supported. A failed numerical update requires a fresh fit.
+
+
+    The update reduces exposure to assets with high recent price relatives.
+    ``simple`` uses the unbounded passive-aggressive step; ``slack_linear``
+    caps the step at C, and ``slack_quadratic`` adds 1/(2C) to its denominator.
+    Only the passive-aggressive update is exposed.
+
+    References
+    ----------
+    .. [1] Li, B., Zhao, P., Hoi, S. C. H., and Gopalkrishnan, V. (2012).
+           "PAMR: Passive Aggressive Mean Reversion Strategy for Portfolio
+           Selection." Machine Learning, 87, 221-258.
+    """
+
+    _parameter_constraints: ClassVar[dict] = {
+        **FollowTheLoser._parameter_constraints,
+        "variant": FollowTheLoser._parameter_constraints["pamr_variant"],
+        "aggressiveness": FollowTheLoser._parameter_constraints["pamr_C"],
+    }
+
+    def __init__(
+        self,
+        *,
+        variant: str = "simple",
+        aggressiveness: float = 500.0,
+        epsilon: float = 1.0,
+        initial_weights: skt.MultiInput | None = None,
+        previous_weights: skt.MultiInput | None = None,
+        min_weights: skt.MultiInput = 0.0,
+        max_weights: skt.MultiInput = 1.0,
+        budget: float | None = 1.0,
+        min_budget: float | None = None,
+        max_budget: float | None = None,
+        groups: skt.Groups | None = None,
+        linear_constraints: skt.LinearConstraints | None = None,
+        left_inequality: skt.Inequality | None = None,
+        right_inequality: skt.Inequality | None = None,
+        max_turnover: float | None = None,
+        max_variance: float | None = None,
+        covariance: skt.ArrayLike | None = None,
+        prior_estimator: BasePrior | None = None,
+        transaction_costs: skt.MultiInput = 0.0,
+        management_fees: skt.MultiInput = 0.0,
+        store_weights: bool = False,
+        portfolio_params: dict | None = None,
+    ) -> None:
+        super().__init__(
+            strategy=FTLStrategy.PAMR,
+            update_mode="pa",
+            pamr_variant=variant,
+            pamr_C=aggressiveness,
+            epsilon=epsilon,
+            initial_weights=initial_weights,
+            previous_weights=previous_weights,
+            min_weights=min_weights,
+            max_weights=max_weights,
+            budget=budget,
+            min_budget=min_budget,
+            max_budget=max_budget,
+            groups=groups,
+            linear_constraints=linear_constraints,
+            left_inequality=left_inequality,
+            right_inequality=right_inequality,
+            max_turnover=max_turnover,
+            max_variance=max_variance,
+            covariance=covariance,
+            prior_estimator=prior_estimator,
+            transaction_costs=transaction_costs,
+            management_fees=management_fees,
+            store_weights=store_weights,
+            portfolio_params=portfolio_params,
+        )
+
+    @property
+    def variant(self) -> str:
+        """Expose the shared kernel parameter for sklearn tuning."""
+        return self.pamr_variant
+
+    @variant.setter
+    def variant(self, value: str) -> None:
+        """Set the kernel parameter for subsequent fitting."""
+        self.pamr_variant = value
+
+    @property
+    def aggressiveness(self) -> float:
+        """Expose the shared kernel parameter for sklearn tuning."""
+        return self.pamr_C
+
+    @aggressiveness.setter
+    def aggressiveness(self, value: float) -> None:
+        """Set the kernel parameter for subsequent fitting."""
+        self.pamr_C = value

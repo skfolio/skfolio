@@ -2,7 +2,7 @@
 Online portfolio selection on stock returns
 ==========================================
 
-Compare three online learners with a daily equal-weight allocation using the
+Compare online learners with a daily equal-weight allocation using the
 skfolio S&P 500 dataset. The first 60 observations initialize the learners;
 performance is measured only over the following observations. Every decision
 uses returns available before its holding period.
@@ -20,6 +20,7 @@ from skfolio.optimization.online import (
     AdaGrad,
     ExponentiatedGradient,
     OnlineMovingAverageReversion,
+    PassiveAggressiveMeanReversion,
 )
 from skfolio.population import Population
 from skfolio.portfolio import Portfolio
@@ -35,6 +36,7 @@ models = [
     ExponentiatedGradient(update_mode="ftrl"),
     AdaGrad(learning_rate=0.05),
     OnlineMovingAverageReversion(window=5),
+    PassiveAggressiveMeanReversion(),
 ]
 
 # %%

@@ -1202,6 +1202,10 @@ and adaptive diagonal geometry respectively.
 :class:`~skfolio.optimization.online.OnlineMovingAverageReversion` uses the shared
 mean-reversion predictor and passive-aggressive strategy.
 
+:class:`~skfolio.optimization.online.PassiveAggressiveMeanReversion`
+exposes the PAMR kernel. PAMR uses the latest price relatives directly. Its ``variant`` selects the
+original update or linear/quadratic slack, controlled by ``aggressiveness``.
+
 ``fit(X)`` resets all learned state. ``partial_fit(X)`` continues, processing one
 row or a block sequentially. After observing row t, ``weights_`` is the target for
 t+1. ``initial_weights`` specifies the learning reference before the first row;
