@@ -127,7 +127,9 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
     or prior update can partially advance state and requires a fresh ``fit``.
     """
 
-    weights_: np.ndarray
+    # Online updates initialize an array and propagate failures instead of using
+    # the base fallback path that can assign None to weights_.
+    weights_: np.ndarray  # ty: ignore[invalid-mutable-override]
 
     def __init__(
         self,
