@@ -78,19 +78,8 @@ def _perfect_forecast_panel() -> AssetPanel:
 def _noisy_forecast_panel(n_obs: int = 150, n_assets: int = 12) -> AssetPanel:
     """Create a panel where a noisy signal predicts next-period returns.
 
-    Parameters
-    ----------
-    n_obs : int, default=150
-        Number of observation dates.
-
-    n_assets : int, default=12
-        Number of assets.
-
-    Returns
-    -------
-    panel : AssetPanel
-        Returns and signals generated with a fixed seed. Signals on the last
-        date are NaN because there is no next-period return.
+    Use a fixed seed. Signals on the last date are NaN because there is no
+    next-period return.
     """
     rng = np.random.default_rng(7)
     observations = pd.bdate_range("2020-01-01", periods=n_obs).to_numpy()
@@ -1049,27 +1038,7 @@ class TestHacInference:
 
     @staticmethod
     def _overlapping_series(n=300, window=10, mean=0.1, seed=1):
-        """Generate overlapping averages of independent Gaussian observations.
-
-        Parameters
-        ----------
-        n : int, default=300
-            Number of output observations.
-
-        window : int, default=10
-            Number of observations in each moving average.
-
-        mean : float, default=0.1
-            Constant added to each moving average.
-
-        seed : int, default=1
-            Seed for the local random number generator.
-
-        Returns
-        -------
-        arr : ndarray of shape (n,)
-            Moving averages with the requested mean added.
-        """
+        """Generate `n` overlapping Gaussian averages with the requested mean."""
         noise = np.random.default_rng(seed).normal(size=n + window - 1)
         return np.convolve(noise, np.ones(window) / window, mode="valid") + mean
 
@@ -1077,19 +1046,8 @@ class TestHacInference:
     def _reference_kernel(positions, span):
         """Build the full quadratic spectral kernel matrix for comparison.
 
-        Parameters
-        ----------
-        positions : ndarray of shape (n_observations,)
-            Positions of the observed values, including gaps for missing dates.
-
-        span : int
-            Number of evaluation positions from the first date to the last,
-            including both endpoints.
-
-        Returns
-        -------
-        kernel : ndarray of shape (n_observations, n_observations)
-            Exact kernel weights with bandwidth `0.1 * span`.
+        Use bandwidth `0.1 * span`, with `positions` and `span` as defined in
+        `_quadratic_spectral_basis`.
         """
         distance = np.abs(np.subtract.outer(positions, positions)) / (0.1 * span)
         kernel = np.ones_like(distance, dtype=float)
@@ -1102,15 +1060,7 @@ class TestHacInference:
     def _reference_t_stat(cls, arr):
         """Compute the HAC t-statistic directly from the full kernel matrix.
 
-        Parameters
-        ----------
-        arr : ndarray of shape (n_steps,)
-            Observations in time order. NaN values mark missing dates.
-
-        Returns
-        -------
-        t_stat : float
-            Mean divided by the quadratic spectral HAC standard error.
+        Keep the gaps left by non-finite values in `arr`.
         """
         positions = np.flatnonzero(np.isfinite(arr))
         positions -= positions[0]

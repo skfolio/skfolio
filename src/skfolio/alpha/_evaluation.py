@@ -281,24 +281,20 @@ class AlphaForecastEvaluation:
 
         Notes
         -----
-        The fixed-b method in [1]_ keeps the bandwidth proportional to the
-        length of the history. We use 10% of the number of scheduled evaluation
-        dates from the first valid IC to the last, including missing dates in
-        between. The bootstrap uses 9,999 independent Gaussian multiplier draws
-        and a fixed internal seed for reproducible results.
+        The method follows [1]_. The bandwidth is 10% of the evaluation history,
+        including gaps between valid ICs. The bootstrap uses 9,999 independent
+        Gaussian draws and a fixed seed.
 
-        The t-statistic, p-value and confidence interval are NaN with fewer than
-        20 valid IC values, with effectively constant IC values or a zero
-        estimated standard error, or when the history covers fewer than 10
-        holding periods. These history thresholds are library defaults. The
-        descriptive statistics are still returned.
+        The t-statistic, p-value and confidence interval require at least 20
+        valid ICs spanning 10 holding periods. They are NaN if these conditions
+        are unmet, ICs are nearly constant or the standard error is zero.
+        Descriptive statistics are still returned.
 
         References
         ----------
-        .. [1] Demetrescu, Hanck and Kruse-Becher (2026), "Robust Fixed-b
-           Inference in the Presence of Time-Varying Volatility",
+        .. [1] "Robust Fixed-b Inference in the Presence of Time-Varying Volatility".
            Econometrics and Statistics, 37, 154-173.
-           https://www.sciencedirect.com/science/article/abs/pii/S2452306223000357
+           Demetrescu, Hanck and Kruse-Becher (2026).
         """
         return pd.DataFrame(
             {
@@ -436,8 +432,8 @@ class AlphaForecastEvaluation:
     def holding_period_summary(self) -> pd.DataFrame:
         """Alpha diagnostics by cumulative holding period.
 
-        All rows use the same forecast dates so that holding periods can be
-        compared. The IC t-statistics, p-values and confidence intervals use
+        Each holding period is evaluated using the same forecast dates.
+        The IC t-statistics, p-values and confidence intervals use
         the method described in :meth:`ic_summary`. The minimum history is
         10 times the holding period of each row. For example, a 15-observation
         holding period requires a history spanning at least 150 observations.
@@ -1483,47 +1479,9 @@ def _compute_holding_period_diagnostics(
 ) -> pd.DataFrame:
     """Evaluate increasingly long return windows using the same forecast dates.
 
-    Parameters
-    ----------
-    evaluation_step : int
-        Number of input observations between scheduled forecast evaluations.
-
-    alpha : ndarray of shape (n_observations, n_assets)
-        Historical alpha forecasts aligned with `X`.
-
-    X : AssetPanel or AssetPanelView
-        Input panel containing target returns and the estimation mask.
-
-    target : str
-        Name of the return field in `X`.
-
-    eval_idx : ndarray of shape (n_steps,)
-        Input row indices selected for the main evaluation. Only dates with
-        enough valid assets in every return window are retained.
-
-    holding_period : int
-        Number of input observations added to each successive return window.
-
-    signal_lag : int
-        Number of input observations from the forecast to the window start.
-
-    n_forward_periods : int
-        Number of windows. Their lengths are `holding_period`,
-        `2 * holding_period`, and so on.
-
-    cs_weights : ndarray of shape (n_observations, n_assets) or None
-        Cross-sectional weights. `None` uses equal weights.
-
-    quantiles : tuple of float
-        Tail fractions used to form top-minus-bottom forecast portfolios.
-
-    min_count : int
-        Minimum number of valid assets required per date in every window.
-
-    Returns
-    -------
-    summary : DataFrame
-        Diagnostics indexed by the length of each return window.
+    Window lengths are `holding_period`, `2 * holding_period`, and so on.
+    All start at `signal_lag`. The returned DataFrame is indexed by window
+    length. See `_compute_forward_window_diagnostics` for date selection.
     """
     windows = tuple(
         (
@@ -1563,47 +1521,10 @@ def _compute_decay(
 ) -> pd.DataFrame:
     """Evaluate successive return windows using the same forecast dates.
 
-    Parameters
-    ----------
-    evaluation_step : int
-        Number of input observations between scheduled forecast evaluations.
-
-    alpha : ndarray of shape (n_observations, n_assets)
-        Historical alpha forecasts aligned with `X`.
-
-    X : AssetPanel or AssetPanelView
-        Input panel containing target returns and the estimation mask.
-
-    target : str
-        Name of the return field in `X`.
-
-    eval_idx : ndarray of shape (n_steps,)
-        Input row indices selected for the main evaluation. Only dates with
-        enough valid assets in every return window are retained.
-
-    holding_period : int
-        Length of each return window in input observations. For a given forecast
-        date, the windows follow one another without overlapping.
-
-    signal_lag : int
-        Number of input observations from the forecast to the first window.
-
-    n_forward_periods : int
-        Number of successive return windows.
-
-    cs_weights : ndarray of shape (n_observations, n_assets) or None
-        Cross-sectional weights. `None` uses equal weights.
-
-    quantiles : tuple of float
-        Tail fractions used to form top-minus-bottom forecast portfolios.
-
-    min_count : int
-        Minimum number of valid assets required per date in every window.
-
-    Returns
-    -------
-    summary : DataFrame
-        Diagnostics indexed by forward period, starting at 1.
+    For each forecast date, windows of length `holding_period` follow one
+    another without overlapping, starting at `signal_lag`. The returned
+    DataFrame is indexed by forward period, starting at 1. See
+    `_compute_forward_window_diagnostics` for date selection.
     """
     windows = tuple(
         (
@@ -1642,46 +1563,13 @@ def _compute_forward_window_diagnostics(
 ) -> pd.DataFrame:
     """Compare return windows using dates with enough data for every window.
 
-    Parameters
-    ----------
-    evaluation_step : int
-        Number of input observations between scheduled forecast evaluations.
+    `alpha` and `cs_weights` are aligned with `X`. From the input row indices
+    in `eval_idx`, keep only dates with at least `min_count` eligible assets
+    with finite forecasts and targets in every window.
 
-    alpha : ndarray of shape (n_observations, n_assets)
-        Historical alpha forecasts aligned with `X`.
-
-    X : AssetPanel or AssetPanelView
-        Input panel containing target returns and the estimation mask.
-
-    target : str
-        Name of the return field in `X`.
-
-    eval_idx : ndarray of shape (n_steps,)
-        Input row indices selected for the main evaluation.
-
-    windows : tuple of (int, int, int)
-        Each entry contains the output row label, the return window length and
-        the delay from the forecast to the window start. Lengths and delays
-        count input observations.
-
-    index_name : str
-        Name of the index in the returned DataFrame.
-
-    cs_weights : ndarray of shape (n_observations, n_assets) or None
-        Cross-sectional weights. `None` uses equal weights.
-
-    quantiles : tuple of float
-        Tail fractions used to form top-minus-bottom forecast portfolios.
-
-    min_count : int
-        Minimum number of eligible assets with finite forecasts and targets.
-        A date is retained only if every window meets this requirement.
-
-    Returns
-    -------
-    summary : DataFrame
-        One row per window. All statistics are NaN if no forecast dates meet
-        the data requirements for every window.
+    Each entry in `windows` is `(row_label, horizon, lag)`, with the horizon
+    and lag measured in input observations. Return one row per window, with
+    the index named `index_name`. If no dates qualify, all statistics are NaN.
     """
     targets = [
         _forward_mean_return(X[target], horizon=horizon, lag=lag)
@@ -1735,29 +1623,9 @@ def _forward_window_record(
 ) -> dict[str, float]:
     """Summarize IC, portfolio returns and coverage for one return window.
 
-    Parameters
-    ----------
-    diagnostics : dict[str, Any], optional
-        Output of `_compute_diagnostics` for the selected forecast dates.
-        `None` returns a record with NaN for every statistic.
-
-    positions : ndarray of shape (n_steps,), optional
-        Original evaluation positions of the selected dates, preserving any
-        gaps from omitted dates. `None` uses consecutive positions.
-
-    horizon : int, optional
-        Return window length in input observations. Used to check that the
-        history spans at least 10 such windows. `None` skips this check.
-
-    evaluation_step : int, default=1
-        Number of input observations per evaluation step.
-
-    Returns
-    -------
-    record : dict[str, float]
-        Spearman and Pearson IC statistics, portfolio means and information
-        ratios, and mean coverage. IC statistics include a t-statistic, p-value
-        and 95% confidence interval for the mean.
+    `diagnostics` is the output of `_compute_diagnostics`. Passing `None`
+    returns the same output keys with NaN values. Inference arguments are
+    passed through to `_mean_inference`.
     """
     record = {}
     for prefix in ("spearman", "pearson"):
@@ -2006,32 +1874,10 @@ def _correlation_stats(
 ) -> dict[str, float]:
     """Summarize correlations and test whether their mean differs from zero.
 
-    Parameters
-    ----------
-    arr : ndarray of shape (n_steps,)
-        Correlations in time order. Missing values are represented by NaN.
-
-    ratio_name : str
-        Output key for the mean divided by the sample standard deviation,
-        typically `icir` or `ir`.
-
-    positions : ndarray of shape (n_steps,), optional
-        Original evaluation positions, preserving gaps from omitted dates.
-        `None` uses the indices of `arr`.
-
-    horizon : int, optional
-        Return window length in input observations. Used to check that the
-        history spans at least 10 such windows. `None` skips this check.
-
-    evaluation_step : int, default=1
-        Number of input observations per evaluation step.
-
-    Returns
-    -------
-    stats : dict[str, float]
-        Mean, sample standard deviation, ratio under `ratio_name`, fraction of
-        positive correlations (`hit_rate`), and the t-statistic, p-value and
-        confidence interval returned by `_mean_inference`.
+    `arr` contains correlations in time order, with NaN for missing values.
+    `ratio_name` is the output key for the mean divided by the sample standard
+    deviation, typically `icir` or `ir`. Inference arguments and results are
+    documented in `_mean_inference`.
     """
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
