@@ -20,6 +20,7 @@ import sklearn as sk
 import sklearn.base as skb
 from sklearn.pipeline import Pipeline
 
+import skfolio.measures as sm
 from skfolio._constants import (
     _ANNUALIZATION_FACTOR_DEFAULT,
     _BENCHMARK_WEIGHTS,
@@ -360,9 +361,9 @@ class AlphaForecastEvaluation:
         """Coverage summary over evaluated forecast dates."""
         return pd.Series(
             {
-                "mean_coverage": float(np.nanmean(self.coverage)),
+                "mean_coverage": float(sm.mean(self.coverage)),
                 "min_coverage": float(np.nanmin(self.coverage)),
-                "mean_n_valid_assets": float(np.nanmean(self.n_valid_assets)),
+                "mean_n_valid_assets": float(sm.mean(self.n_valid_assets)),
                 "min_n_valid_assets": int(np.nanmin(self.n_valid_assets)),
             },
             name="Coverage",
@@ -704,12 +705,10 @@ class AlphaForecastEvaluation:
         )
         if not factor_names:
             raise ValueError("No factor correlation diagnostics are available.")
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", RuntimeWarning)
-            means = pd.Series(
-                np.nanmean(self.factor_correlation[:, factor_indices], axis=0),
-                index=factor_names,
-            )
+        means = pd.Series(
+            sm.mean(self.factor_correlation[:, factor_indices]),
+            index=factor_names,
+        )
         means = means.loc[means.abs().sort_values(ascending=False).index]
         if top_n is not None:
             means = means.iloc[:top_n]
@@ -1300,8 +1299,8 @@ def _compute_diagnostics(
         axis=1,
         min_count=min_count,
     )
-    rank_weighted_weights = _rank_weighted_portfolio_weights(alpha_eval)
-    zscore_weighted_weights = _zscore_weighted_portfolio_weights(alpha_eval)
+    rank_weighted_weights = _long_short_portfolio_weights(cs_rank(alpha_eval, axis=1))
+    zscore_weighted_weights = _long_short_portfolio_weights(alpha_eval)
     rank_weighted_portfolio_return = np.sum(
         rank_weighted_weights * np.where(np.isfinite(target_eval), target_eval, 0.0),
         axis=1,
@@ -1353,24 +1352,12 @@ def _compute_diagnostics(
     }
 
 
-def _rank_weighted_portfolio_weights(alpha: FloatArray) -> FloatArray:
-    """Return 200% gross centered-rank long-short portfolio weights."""
-    ranks = cs_rank(alpha, axis=1)
+def _long_short_portfolio_weights(scores: FloatArray) -> FloatArray:
+    """Center each row of scores and normalize weights to 200% gross exposure."""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
-        mean_rank = np.nanmean(ranks, axis=1, keepdims=True)
-    centered = ranks - mean_rank
-    centered = np.where(np.isfinite(centered), centered, 0.0)
-    gross = np.sum(np.abs(centered), axis=1, keepdims=True)
-    return _LONG_SHORT_GROSS * safe_divide(centered, gross, fill_value=0.0)
-
-
-def _zscore_weighted_portfolio_weights(alpha: FloatArray) -> FloatArray:
-    """Return 200% gross centered-forecast long-short portfolio weights."""
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        mean_alpha = np.nanmean(alpha, axis=1, keepdims=True)
-    centered = alpha - mean_alpha
+        mean_scores = np.nanmean(scores, axis=1, keepdims=True)
+    centered = scores - mean_scores
     centered = np.where(np.isfinite(centered), centered, 0.0)
     gross = np.sum(np.abs(centered), axis=1, keepdims=True)
     return _LONG_SHORT_GROSS * safe_divide(centered, gross, fill_value=0.0)
@@ -1662,13 +1649,9 @@ def _forward_window_record(
         )
         record[f"{prefix}_portfolio_mean"] = stats["mean"]
         record[f"{prefix}_portfolio_ir"] = stats["ir"]
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        record["mean_coverage"] = (
-            np.nan
-            if diagnostics is None
-            else float(np.nanmean(diagnostics["coverage"]))
-        )
+    record["mean_coverage"] = (
+        np.nan if diagnostics is None else float(sm.mean(diagnostics["coverage"]))
+    )
     return record
 
 
@@ -1883,10 +1866,8 @@ def _correlation_stats(
     deviation, typically `icir` or `ir`. Inference arguments and results are
     documented in `_mean_inference`.
     """
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        mean = float(np.nanmean(arr))
-        std = float(np.nanstd(arr, ddof=1))
+    mean = float(sm.mean(arr))
+    std = float(sm.standard_deviation(arr))
     return {
         "mean": mean,
         "std": std,
@@ -1903,9 +1884,7 @@ def _portfolio_stats(
 ) -> dict[str, float]:
     """Compute annualized return statistics with average turnover."""
     return_stats = _annualized_return_stats(returns, annualization_factor)
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        mean_turnover = float(np.nanmean(turnover))
+    mean_turnover = float(sm.mean(turnover))
     return {**return_stats, "mean_turnover": mean_turnover}
 
 
@@ -1928,10 +1907,8 @@ def _annualized_return_stats(
 
 def _return_stats(returns: FloatArray) -> dict[str, float]:
     """Compute mean, volatility, IR and hit rate for returns."""
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        mean = float(np.nanmean(returns))
-        vol = float(np.nanstd(returns, ddof=1))
+    mean = float(sm.mean(returns))
+    vol = float(sm.standard_deviation(returns))
     return {
         "mean": mean,
         "vol": vol,
@@ -1949,11 +1926,11 @@ def _hit_rate(values: FloatArray) -> float:
 def _coverage_stats(coverage: FloatArray, n_valid_assets: IntArray) -> dict[str, float]:
     """Compute summary statistics for evaluation coverage."""
     return {
-        "mean": float(np.nanmean(coverage)),
-        "std": float(np.nanstd(coverage, ddof=1)),
+        "mean": float(sm.mean(coverage)),
+        "std": float(sm.standard_deviation(coverage)),
         "ir": np.nan,
         "hit_rate": np.nan,
-        "n_valid_assets": float(np.nanmean(n_valid_assets)),
+        "n_valid_assets": float(sm.mean(n_valid_assets)),
     }
 
 
