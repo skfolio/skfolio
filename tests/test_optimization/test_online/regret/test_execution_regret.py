@@ -5,6 +5,7 @@ from copy import deepcopy
 import numpy as np
 import pytest
 
+from skfolio.optimization import EqualWeighted
 from skfolio.optimization.online import ExponentiatedGradient, RegretType, regret
 from skfolio.optimization.online._benchmark import ConstantRebalancedPortfolio
 from skfolio.optimization.online._regret import _losses_from_weights
@@ -163,3 +164,14 @@ def test_bankrupt_online_execution_rejected():
     model = ExponentiatedGradient(management_fees=0.8)
     with pytest.raises(ValueError, match="strictly positive"):
         regret(estimator=model, X=[[-0.5, -0.6]])
+
+
+def test_equal_weighted_comparator_needs_no_online_adapter():
+    X = np.array([[0.1, -0.05], [-0.02, 0.08], [0.04, -0.01]])
+    model = ExponentiatedGradient(initial_weights=[0.8, 0.2])
+    comparator = EqualWeighted()
+    actual = regret(estimator=model, X=X, comparator=comparator)
+    online_returns = deepcopy(model).fit_predict(X).returns
+    expected = np.cumsum(-np.log1p(online_returns) + np.log1p(X.mean(axis=1)))
+    np.testing.assert_allclose(actual, expected)
+    assert not hasattr(comparator, "weights_")

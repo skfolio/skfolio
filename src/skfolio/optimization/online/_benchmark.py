@@ -18,6 +18,7 @@ from skfolio.measures import PerfMeasure, RiskMeasure, get_cumulative_returns
 from skfolio.optimization._base import BaseOptimization
 from skfolio.optimization.convex._base import ObjectiveFunction
 from skfolio.optimization.convex._mean_risk import MeanRisk
+from skfolio.optimization.naive import EqualWeighted
 
 
 def net_to_relatives(X: npt.ArrayLike) -> np.ndarray:
@@ -65,8 +66,8 @@ class ConstantRebalancedPortfolio(BaseOptimization):
     Parameters
     ----------
     weights : array-like of shape (n_assets,), optional
-        Fixed weights to rebalance to. If None, uses uniform weights leading to the
-        Uniform Constant Rebalanced Portfolio (UniformConstantRebalanced).
+        Fixed weights to rebalance to. If None, uses
+        :class:`~skfolio.optimization.EqualWeighted` to obtain uniform weights.
     portfolio_params : dict, optional
         Portfolio parameters propagated to the produced portfolio.
 
@@ -100,14 +101,15 @@ class ConstantRebalancedPortfolio(BaseOptimization):
         self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
     ) -> ConstantRebalancedPortfolio:
         """Update the comparator target using the supplied observations."""
-        relatives = net_to_relatives(X)
-        self._set_weights(relatives.shape[1])
+        net_to_relatives(X)
+        self._set_weights(X)
         return self
 
-    def _set_weights(self, n_assets: int) -> None:
+    def _set_weights(self, X: npt.ArrayLike) -> None:
         """Set finite fixed weights matching the validated asset count."""
+        n_assets = np.shape(X)[1]
         if self.weights is None:
-            self.weights_ = np.full(n_assets, 1.0 / n_assets)
+            self.weights_ = np.asarray(EqualWeighted().fit(X).weights_, dtype=float)
         else:
             self.weights_ = np.asarray(self.weights, dtype=float)
         if self.weights_.shape != (n_assets,) or not np.all(np.isfinite(self.weights_)):
@@ -131,22 +133,12 @@ class ConstantRebalancedPortfolio(BaseOptimization):
             The estimator instance.
         """
         relatives = net_to_relatives(X)
-        self._set_weights(relatives.shape[1])
+        self._set_weights(X)
         self.all_wealth_, self.all_weights_ = _constant_wealth_history(
             relatives=relatives, weights=self.weights_, initial_wealth=1.0
         )
         self.wealth_ = float(self.all_wealth_[-1])
         return self
-
-
-# utility class for UniformConstantRebalanced
-class UniformConstantRebalanced(ConstantRebalancedPortfolio):
-    """Uniform constant-rebalanced portfolio comparator."""
-
-    def __init__(
-        self, weights: npt.ArrayLike | None = None, portfolio_params: dict | None = None
-    ) -> None:
-        super().__init__(weights, portfolio_params)
 
 
 class BestAsset(BaseOptimization):

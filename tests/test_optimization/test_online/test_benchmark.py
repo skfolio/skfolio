@@ -1,4 +1,4 @@
-"""Tests for benchmark portfolio classes (BestConstantRebalancedPortfolio, ConstantRebalancedPortfolio, UniformConstantRebalanced, BestAsset)"""
+"""Tests for online hindsight benchmarks."""
 
 import numpy as np
 import pytest
@@ -9,7 +9,6 @@ from skfolio.optimization.online._benchmark import (
     BestAsset,
     BestConstantRebalancedPortfolio,
     ConstantRebalancedPortfolio,
-    UniformConstantRebalanced,
 )
 
 allowed_measures = list(MEASURE_PROPERTIES.keys())
@@ -23,20 +22,16 @@ def test_constant_rebalanced_with_custom_weights(X_small):
     constant_rebalanced.fit(X_small)
 
 
-@pytest.mark.parametrize(
-    "factory, kwargs",
-    [
-        pytest.param(UniformConstantRebalanced, {}, id="uniform-comparator"),
-        pytest.param(
-            ConstantRebalancedPortfolio, {"weights": None}, id="default-weights"
-        ),
-    ],
-)
-def test_comparator_uniform_weights(X_small, factory, kwargs):
-    n_assets = X_small.shape[1]
-    model = factory(**kwargs).fit(X_small)
-    expected = np.ones(n_assets) / n_assets
-    np.testing.assert_array_almost_equal(model.weights_, expected)
+def test_comparator_uniform_weights(X_small):
+    model = ConstantRebalancedPortfolio(weights=None).fit(X_small)
+    expected_returns = np.asarray(X_small).mean(axis=1)
+    np.testing.assert_allclose(model.weights_, 1 / X_small.shape[1])
+    np.testing.assert_allclose(
+        model.all_wealth_, np.r_[1.0, np.cumprod(1 + expected_returns)]
+    )
+    np.testing.assert_allclose(model.all_weights_, 1 / X_small.shape[1])
+    model.partial_fit(X_small.iloc[:1])
+    np.testing.assert_allclose(model.weights_, 1 / X_small.shape[1])
 
 
 def test_best_asset_picks_best_performer(X_small):
@@ -176,7 +171,12 @@ def test_optimized_wealth_preserves_initial_capital_and_cash(X_small):
 
 
 @pytest.mark.parametrize(
-    "factory", [BestAsset, UniformConstantRebalanced, BestConstantRebalancedPortfolio]
+    "factory",
+    [
+        BestAsset,
+        BestConstantRebalancedPortfolio,
+        lambda: ConstantRebalancedPortfolio(weights=None),
+    ],
 )
 @pytest.mark.parametrize(
     "returns", [[], [[np.nan, 0.0]], [[np.inf, 0.0]], [[-1.0, 0.0]], [0.1, 0.2]]

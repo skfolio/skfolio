@@ -306,7 +306,9 @@ def regret(
     X : array-like of shape (T, n)
         Net returns per period. Internally converted to gross relatives via `1 + r`.
     comparator : BaseOptimization, optional
-        For STATIC, fits the supplied comparator on a copy. If None, solves
+        For STATIC, fits the supplied comparator on a copy. Equal-weight
+        comparisons can use :class:`~skfolio.optimization.EqualWeighted` directly;
+        no ``partial_fit`` or wealth history is required. If None, solves
         the best fixed long-only, fully invested log-wealth portfolio.
         Dynamic modes use their own comparators and ignore this argument.
     regret_type : RegretType or str, default=RegretType.STATIC
