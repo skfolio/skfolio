@@ -6,19 +6,16 @@
 
 from __future__ import annotations
 
-import collections
-import functools
-import hashlib
-import threading
 import warnings
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import scipy.special as sp
 import sklearn as sk
 import sklearn.base as skb
 from sklearn.pipeline import Pipeline
@@ -62,24 +59,13 @@ __all__ = [
 _CALIBRATION_BINS = 10
 _LONG_SHORT_GROSS = 2.0
 _HAC_BANDWIDTH_RATIO = 0.1
-_N_BOOTSTRAP = 9_999
-_BOOTSTRAP_CHUNK_SIZE = 1_000
-_BOOTSTRAP_CHUNK_ELEMENTS = 2**22
+_N_BOOTSTRAP_SAMPLES = 9_999
 _BOOTSTRAP_SEED = 0
+_N_QUADRATURE_NODES = 64
 _MIN_INFERENCE_OBSERVATIONS = 20
 _MIN_INFERENCE_HORIZONS = 10
-_DEGENERATE_VARIANCE_RTOL = 1e-12  # relative to the magnitude of the values
+_CONSTANT_SERIES_RTOL = 1e-12  # relative to the magnitude of the values
 _INFERENCE_KEYS = ("t_stat", "p_value", "mean_ci_lower", "mean_ci_upper")
-_CORRELATION_STATS_COLUMNS_IR = [
-    "mean",
-    "std",
-    "ir",
-    "t_stat",
-    "p_value",
-    "mean_ci_lower",
-    "mean_ci_upper",
-    "hit_rate",
-]
 
 
 @dataclass(frozen=True, eq=False)
@@ -209,8 +195,8 @@ class AlphaForecastEvaluation:
 
     factor_correlation : ndarray of shape (n_observations, n_factors), optional
         Contemporaneous correlation between alpha forecasts and factor exposures.
-        The statistics use the evaluation dates only. Pearson correlations are
-        weighted by the cross-sectional weights resolved from `cs_weighting`. `None` when factor correlation diagnostics were
+        Pearson correlations are weighted by the cross-sectional weights resolved
+        from `cs_weighting`. `None` when factor correlation diagnostics were
         skipped.
 
     factor_correlation_method : CorrelationMethod, optional
@@ -225,39 +211,13 @@ class AlphaForecastEvaluation:
         field does not define groups.
 
     holding_period_diagnostics : DataFrame
-        Summary statistics by cumulative holding period, without the IC inference
-        columns that `holding_period_summary` adds.
+        Summary statistics by cumulative holding period.
 
     decay : DataFrame
-        Summary statistics by disjoint forward period, without the IC inference
-        columns that `decay_summary` adds.
+        Summary statistics by disjoint forward period.
 
     name : str, optional
         Display name for the evaluation.
-
-    evaluation_grid_size : int, optional
-        Number of dates of the evaluation grid, which runs from the first
-        evaluation date to the end of the panel with a spacing of
-        `evaluation_step`. Evaluation dates without a valid asset keep their
-        position as NaN gaps in the inference.
-
-    evaluation_origin : int, optional
-        Row of the panel of the first evaluation date, used with
-        `evaluation_positions` and `evaluation_step` to place `factor_correlation`
-        on the evaluation grid for the inference of `factor_correlation_summary`.
-
-    holding_period_ic, decay_ic : dict, optional
-        For each window of `holding_period_diagnostics` and `decay`, the Spearman
-        IC series on the evaluation grid, the Pearson IC series and the length of
-        the target window. They are used to compute the inference columns of
-        `holding_period_summary` and `decay_summary` on demand.
-
-    evaluation_positions : ndarray of shape (n_observations,), optional
-        Position of each evaluation date on the evaluation grid, which is spaced
-        by `evaluation_step`. Evaluation dates without a valid asset are left out
-        of `observations` but keep their position, so the gaps between positions
-        are preserved by the inference of the IC summary. `None` means the
-        evaluation dates are consecutive on the grid.
     """
 
     observations: FloatArray
@@ -291,78 +251,68 @@ class AlphaForecastEvaluation:
     holding_period_diagnostics: pd.DataFrame
     decay: pd.DataFrame
     name: str | None = None
-    evaluation_positions: IntArray | None = None
-    evaluation_origin: int | None = None
-    evaluation_grid_size: int | None = None
-    holding_period_ic: dict[int, tuple[FloatArray, FloatArray, int]] | None = None
-    decay_ic: dict[int, tuple[FloatArray, FloatArray, int]] | None = None
-
-    def __post_init__(self) -> None:
-        positions = self.evaluation_positions
-        if positions is None:
-            return
-        positions = np.asarray(positions)
-        if (
-            positions.ndim != 1
-            or not np.issubdtype(positions.dtype, np.integer)
-            or positions.size == 0
-            or positions.shape[0] != np.asarray(self.observations).shape[0]
-            or positions[0] < 0
-            or np.any(positions[1:].astype(np.int64) <= positions[:-1].astype(np.int64))
-        ):
-            raise ValueError(
-                "evaluation_positions must be a non-empty, strictly increasing, "
-                "non-negative integer array with one entry per observation."
-            )
+    # Keep the original spacing when dates with no usable forecasts or returns
+    # are dropped.
+    _evaluation_positions: IntArray | None = field(
+        default=None, repr=False, kw_only=True
+    )
 
     def ic_summary(self) -> pd.DataFrame:
         r"""Information Coefficient summary.
 
-        Returns one row for Spearman IC and one row for Pearson IC. The `icir`
-        column is :math:`\bar{IC} / \sigma_{IC}`.
+        Returns one row for Spearman IC and one row for Pearson IC. The mean,
+        standard deviation, `icir` and hit rate describe the observed IC values.
+        The `icir` is :math:`\bar{IC} / \sigma_{IC}`.
 
-        The `t_stat`, `p_value`, `mean_ci_lower` and `mean_ci_upper` columns test
-        the mean IC against zero and give a 95% confidence interval for it.
-        Forward windows of consecutive evaluation dates overlap when
-        `evaluation_step` is smaller than `holding_period`, and ICs are then
-        serially correlated, so the inference does not assume independent dates.
-        The `t_stat` is the mean IC divided by a quadratic-spectral
-        heteroskedasticity and autocorrelation consistent (HAC) standard error with
-        a bandwidth of 10% of the number of evaluation dates. Dates without a
-        valid IC are kept as gaps, so the spacing between observations is
-        preserved. Because the bandwidth is a fixed fraction of the sample, the
-        distribution of the t-statistic is not normal, so the `p_value` is
-        two-sided and comes from a Gaussian wild bootstrap of this same
-        statistic with 9,999 draws and a fixed internal seed. The multipliers are
-        serially dependent, so the bootstrap samples approximate the serial
-        dependence of the ICs, and the same data always gives the same result. The
-        confidence interval uses the same bootstrap distribution. A `p_value` below 0.05, or a
-        confidence interval that excludes zero, indicates a mean IC that is
-        statistically different from zero at the 5% level.
+        The `t_stat` divides the mean IC by a quadratic spectral HAC standard
+        error, which accounts for changing volatility and correlation between
+        dates, including overlapping forward returns. A Gaussian wild bootstrap
+        provides a two-sided `p_value` for testing whether the mean IC is zero,
+        and an approximate 95% confidence interval for the mean. Use the p-value
+        or confidence interval to assess significance at the 5% level: the
+        p-value is below 0.05 when the interval excludes zero.
 
-        The inference columns are NaN with fewer than 20 valid dates, with a
-        degenerate variance estimate, or when the evaluation history covers fewer
-        than 10 holding periods.
+        Returns
+        -------
+        summary : DataFrame
+            Rows are `spearman_ic` and `pearson_ic`. Columns are `mean`, `std`,
+            `icir`, `t_stat`, `p_value`, `mean_ci_lower`, `mean_ci_upper` and
+            `hit_rate`. The confidence interval bounds are in IC units.
+
+        Notes
+        -----
+        The fixed-b method in [1]_ keeps the bandwidth proportional to the
+        length of the history. We use 10% of the number of scheduled evaluation
+        dates from the first valid IC to the last, including missing dates in
+        between. The bootstrap uses 9,999 independent Gaussian multiplier draws
+        and a fixed internal seed for reproducible results.
+
+        The t-statistic, p-value and confidence interval are NaN with fewer than
+        20 valid IC values, with effectively constant IC values or a zero
+        estimated standard error, or when the history covers fewer than 10
+        holding periods. These history thresholds are library defaults. The
+        descriptive statistics are still returned.
+
+        References
+        ----------
+        .. [1] Demetrescu, Hanck and Kruse-Becher (2026), "Robust Fixed-b
+           Inference in the Presence of Time-Varying Volatility",
+           Econometrics and Statistics, 37, 154-173.
+           https://www.sciencedirect.com/science/article/abs/pii/S2452306223000357
         """
         return pd.DataFrame(
             {
                 "spearman_ic": _correlation_stats(
-                    _on_evaluation_grid(
-                        self.spearman_ic,
-                        self.evaluation_positions,
-                        self.evaluation_grid_size,
-                    ),
+                    self.spearman_ic,
                     ratio_name="icir",
+                    positions=self._evaluation_positions,
                     horizon=self.holding_period,
                     evaluation_step=self.evaluation_step,
                 ),
                 "pearson_ic": _correlation_stats(
-                    _on_evaluation_grid(
-                        self.pearson_ic,
-                        self.evaluation_positions,
-                        self.evaluation_grid_size,
-                    ),
+                    self.pearson_ic,
                     ratio_name="icir",
+                    positions=self._evaluation_positions,
                     horizon=self.holding_period,
                     evaluation_step=self.evaluation_step,
                 ),
@@ -433,14 +383,15 @@ class AlphaForecastEvaluation:
         Measures contemporaneous cross-sectional correlation between alpha
         forecasts and factor exposures. This helps assess whether the alpha
         forecast is cross-sectionally neutral to existing factors. The `ir`
-        column is :math:`\bar{\rho} / \sigma_{\rho}`. The `t_stat`, `p_value`,
-        `mean_ci_lower` and `mean_ci_upper` columns test the mean correlation
-        against zero and give a 95% confidence interval for it, using the same
-        HAC t-statistic and wild bootstrap as in :meth:`ic_summary`. A `p_value`
-        below 0.05, or a confidence interval that excludes zero, indicates a mean
-        correlation that is statistically different from zero at the 5% level.
-        Pearson correlations are weighted by the cross-sectional weights resolved
-        from `cs_weighting`.
+        column is :math:`\bar{\rho} / \sigma_{\rho}`. Pearson correlations use
+        the cross-sectional weights specified by `cs_weighting`.
+
+        The t-statistic, p-value and confidence interval use the method described
+        in :meth:`ic_summary`, using all forecast dates regardless of
+        `evaluation_step`. They require at least 20 valid correlations and enough
+        variation to estimate a nonzero standard error. The minimum history of
+        10 holding periods does not apply because these correlations compare
+        forecasts and exposures at the same date.
 
         Parameters
         ----------
@@ -456,7 +407,16 @@ class AlphaForecastEvaluation:
             Rows are factors and columns are `mean`, `std`, `ir`, `t_stat`,
             `p_value`, `mean_ci_lower`, `mean_ci_upper` and `hit_rate`.
         """
-        columns = _CORRELATION_STATS_COLUMNS_IR
+        columns = [
+            "mean",
+            "std",
+            "ir",
+            "t_stat",
+            "p_value",
+            "mean_ci_lower",
+            "mean_ci_upper",
+            "hit_rate",
+        ]
         if self.factor_correlation is None or len(self.factor_names) == 0:
             return pd.DataFrame(columns=columns)
 
@@ -468,46 +428,47 @@ class AlphaForecastEvaluation:
         )
         corr = self.factor_correlation[:, factor_indices]
         records = [
-            _correlation_stats(
-                self._factor_correlation_on_grid(corr[:, i]), ratio_name="ir"
-            )
+            _correlation_stats(corr[:, i], ratio_name="ir")
             for i in range(corr.shape[1])
         ]
         return pd.DataFrame(records, index=factor_names, columns=columns)
 
-    def _factor_correlation_on_grid(self, values: FloatArray) -> FloatArray:
-        """Select the evaluation dates of a series indexed by panel date.
-
-        The grid runs from the first evaluation date to the end of the panel with a
-        spacing of `evaluation_step`. Dates without a valid correlation stay as NaN
-        gaps.
-        """
-        if self.evaluation_origin is None:
-            return values
-        return values[self.evaluation_origin :: self.evaluation_step]
-
     def holding_period_summary(self) -> pd.DataFrame:
         """Alpha diagnostics by cumulative holding period.
 
-        The `t_stat`, `p_value`, `mean_ci_lower` and `mean_ci_upper` columns
-        follow :meth:`ic_summary`, with `spearman_ic_` and `pearson_ic_`
-        prefixes. They are NaN when the evaluation history covers fewer than 10
-        windows of the row's holding period.
+        All rows use the same forecast dates so that holding periods can be
+        compared. The IC t-statistics, p-values and confidence intervals use
+        the method described in :meth:`ic_summary`. The minimum history is
+        10 times the holding period of each row. For example, a 15-observation
+        holding period requires a history spanning at least 150 observations.
+
+        Returns
+        -------
+        summary : DataFrame
+            Copy of the diagnostics indexed by holding period. Includes mean
+            IC, ICIR, portfolio statistics and coverage. The IC inference
+            columns are `ic_t_stat`, `ic_p_value`, `mean_ic_ci_lower` and
+            `mean_ic_ci_upper`, each prefixed with `spearman_` or `pearson_`.
         """
-        return _add_window_inference(
-            self.holding_period_diagnostics,
-            self.holding_period_ic,
-            self.evaluation_step,
-        )
+        return self.holding_period_diagnostics.copy()
 
     def decay_summary(self) -> pd.DataFrame:
         """Alpha decay summary by disjoint forward period.
 
-        The `t_stat`, `p_value`, `mean_ci_lower` and `mean_ci_upper` columns
-        follow :meth:`ic_summary`, with `spearman_ic_` and `pearson_ic_`
-        prefixes.
+        All rows use the same forecast dates. Each row measures how well those
+        forecasts predict a later window of length `holding_period`.
+        The IC t-statistics, p-values and confidence intervals use the method
+        described in :meth:`ic_summary`. The minimum history is 10 times
+        `holding_period` for every row, regardless of how far ahead its window
+        starts.
+
+        Returns
+        -------
+        summary : DataFrame
+            Copy of the diagnostics indexed by forward period, starting at 1.
+            Columns follow :meth:`holding_period_summary`.
         """
-        return _add_window_inference(self.decay, self.decay_ic, self.evaluation_step)
+        return self.decay.copy()
 
     def plot_cumulative_ic(
         self, *, include_pearson: bool = True, title: str | None = None
@@ -938,10 +899,10 @@ def alpha_forecast_evaluation(
         for the main evaluation. `evaluation_step=1` evaluates every valid
         forecast date, which is common for signal research and creates
         overlapping forward targets when `holding_period > 1`. Values greater
-        than `holding_period` produce a sparse evaluation. When
-        `evaluation_step < holding_period`, summary means remain descriptive
-        diagnostics, and the IC inference accounts for the serial dependence
-        from overlapping targets.
+        than `holding_period` leave gaps between evaluated target windows.
+        IC t-statistics, p-values and confidence intervals account for the
+        dependence between dates, including overlapping targets. Means and
+        ICIR remain descriptive statistics of the observed IC values.
 
     n_forward_periods : int, default=10
         Number of consecutive forward periods used for holding-period and decay
@@ -1091,17 +1052,12 @@ def alpha_forecast_evaluation(
         method=factor_correlation_method,
         min_count=min_count,
     )
-    # The evaluation grid runs from the first evaluation date to the end of the
-    # panel. Evaluation dates without a valid asset, including the last ones that
-    # have no complete forward target, are not part of the main diagnostics but keep
-    # their position on the grid.
-    grid_idx = np.arange(eval_idx[0], X.n_observations, evaluation_step)
-    holding_period_diagnostics, holding_period_ic = _compute_holding_period_diagnostics(
+    holding_period_diagnostics = _compute_holding_period_diagnostics(
         evaluation_step=evaluation_step,
         alpha=alpha,
         X=X,
         target=target,
-        eval_idx=grid_idx,
+        eval_idx=eval_idx,
         holding_period=holding_period,
         signal_lag=signal_lag,
         n_forward_periods=n_forward_periods,
@@ -1109,12 +1065,12 @@ def alpha_forecast_evaluation(
         quantiles=quantiles,
         min_count=min_count,
     )
-    decay, decay_ic = _compute_decay(
+    decay = _compute_decay(
         evaluation_step=evaluation_step,
         alpha=alpha,
         X=X,
         target=target,
-        eval_idx=grid_idx,
+        eval_idx=eval_idx,
         holding_period=holding_period,
         signal_lag=signal_lag,
         n_forward_periods=n_forward_periods,
@@ -1136,11 +1092,7 @@ def alpha_forecast_evaluation(
         holding_period_diagnostics=holding_period_diagnostics,
         decay=decay,
         name=name or str(estimator),
-        evaluation_positions=(eval_idx - eval_idx[0]) // evaluation_step,
-        evaluation_origin=int(eval_idx[0]),
-        evaluation_grid_size=int(grid_idx.size),
-        holding_period_ic=holding_period_ic,
-        decay_ic=decay_ic,
+        _evaluation_positions=(eval_idx - eval_idx[0]) // evaluation_step,
         **diagnostics,
         **factor_diagnostics,
     )
@@ -1528,8 +1480,51 @@ def _compute_holding_period_diagnostics(
     cs_weights: FloatArray | None,
     quantiles: tuple[float, ...],
     min_count: int,
-) -> tuple[pd.DataFrame, dict[int, tuple[FloatArray, FloatArray, int]]]:
-    """Compute common-sample diagnostics by cumulative holding period."""
+) -> pd.DataFrame:
+    """Evaluate increasingly long return windows using the same forecast dates.
+
+    Parameters
+    ----------
+    evaluation_step : int
+        Number of input observations between scheduled forecast evaluations.
+
+    alpha : ndarray of shape (n_observations, n_assets)
+        Historical alpha forecasts aligned with `X`.
+
+    X : AssetPanel or AssetPanelView
+        Input panel containing target returns and the estimation mask.
+
+    target : str
+        Name of the return field in `X`.
+
+    eval_idx : ndarray of shape (n_steps,)
+        Input row indices selected for the main evaluation. Only dates with
+        enough valid assets in every return window are retained.
+
+    holding_period : int
+        Number of input observations added to each successive return window.
+
+    signal_lag : int
+        Number of input observations from the forecast to the window start.
+
+    n_forward_periods : int
+        Number of windows. Their lengths are `holding_period`,
+        `2 * holding_period`, and so on.
+
+    cs_weights : ndarray of shape (n_observations, n_assets) or None
+        Cross-sectional weights. `None` uses equal weights.
+
+    quantiles : tuple of float
+        Tail fractions used to form top-minus-bottom forecast portfolios.
+
+    min_count : int
+        Minimum number of valid assets required per date in every window.
+
+    Returns
+    -------
+    summary : DataFrame
+        Diagnostics indexed by the length of each return window.
+    """
     windows = tuple(
         (
             period * holding_period,
@@ -1565,8 +1560,51 @@ def _compute_decay(
     cs_weights: FloatArray | None,
     quantiles: tuple[float, ...],
     min_count: int,
-) -> tuple[pd.DataFrame, dict[int, tuple[FloatArray, FloatArray, int]]]:
-    """Compute common-sample diagnostics by disjoint forward period."""
+) -> pd.DataFrame:
+    """Evaluate successive return windows using the same forecast dates.
+
+    Parameters
+    ----------
+    evaluation_step : int
+        Number of input observations between scheduled forecast evaluations.
+
+    alpha : ndarray of shape (n_observations, n_assets)
+        Historical alpha forecasts aligned with `X`.
+
+    X : AssetPanel or AssetPanelView
+        Input panel containing target returns and the estimation mask.
+
+    target : str
+        Name of the return field in `X`.
+
+    eval_idx : ndarray of shape (n_steps,)
+        Input row indices selected for the main evaluation. Only dates with
+        enough valid assets in every return window are retained.
+
+    holding_period : int
+        Length of each return window in input observations. For a given forecast
+        date, the windows follow one another without overlapping.
+
+    signal_lag : int
+        Number of input observations from the forecast to the first window.
+
+    n_forward_periods : int
+        Number of successive return windows.
+
+    cs_weights : ndarray of shape (n_observations, n_assets) or None
+        Cross-sectional weights. `None` uses equal weights.
+
+    quantiles : tuple of float
+        Tail fractions used to form top-minus-bottom forecast portfolios.
+
+    min_count : int
+        Minimum number of valid assets required per date in every window.
+
+    Returns
+    -------
+    summary : DataFrame
+        Diagnostics indexed by forward period, starting at 1.
+    """
     windows = tuple(
         (
             period,
@@ -1601,317 +1639,360 @@ def _compute_forward_window_diagnostics(
     cs_weights: FloatArray | None,
     quantiles: tuple[float, ...],
     min_count: int,
-) -> tuple[pd.DataFrame, dict[int, tuple[FloatArray, FloatArray, int]]]:
-    """Compute common-sample diagnostics for a set of forward target windows."""
+) -> pd.DataFrame:
+    """Compare return windows using dates with enough data for every window.
+
+    Parameters
+    ----------
+    evaluation_step : int
+        Number of input observations between scheduled forecast evaluations.
+
+    alpha : ndarray of shape (n_observations, n_assets)
+        Historical alpha forecasts aligned with `X`.
+
+    X : AssetPanel or AssetPanelView
+        Input panel containing target returns and the estimation mask.
+
+    target : str
+        Name of the return field in `X`.
+
+    eval_idx : ndarray of shape (n_steps,)
+        Input row indices selected for the main evaluation.
+
+    windows : tuple of (int, int, int)
+        Each entry contains the output row label, the return window length and
+        the delay from the forecast to the window start. Lengths and delays
+        count input observations.
+
+    index_name : str
+        Name of the index in the returned DataFrame.
+
+    cs_weights : ndarray of shape (n_observations, n_assets) or None
+        Cross-sectional weights. `None` uses equal weights.
+
+    quantiles : tuple of float
+        Tail fractions used to form top-minus-bottom forecast portfolios.
+
+    min_count : int
+        Minimum number of eligible assets with finite forecasts and targets.
+        A date is retained only if every window meets this requirement.
+
+    Returns
+    -------
+    summary : DataFrame
+        One row per window. All statistics are NaN if no forecast dates meet
+        the data requirements for every window.
+    """
     targets = [
         _forward_mean_return(X[target], horizon=horizon, lag=lag)
         for _, horizon, lag in windows
     ]
-    # Dates outside the common sample are kept as gaps (all assets masked out) rather
-    # than dropped, so the spacing between observations used for the overlap
-    # correction is preserved.
-    common_dates = np.ones(eval_idx.size, dtype=bool)
+    common_eval_idx = eval_idx
     for target_forward in targets:
         valid = (
-            np.isfinite(alpha[eval_idx])
-            & np.isfinite(target_forward[eval_idx])
-            & X.estimation_mask[eval_idx]
+            np.isfinite(alpha[common_eval_idx])
+            & np.isfinite(target_forward[common_eval_idx])
+            & X.estimation_mask[common_eval_idx]
         )
-        common_dates &= np.sum(valid, axis=1) >= min_count
-    eligible_mask = X.estimation_mask[eval_idx] & common_dates[:, None]
+        common_eval_idx = common_eval_idx[np.sum(valid, axis=1) >= min_count]
 
+    index = pd.Index([index_value for index_value, _, _ in windows], name=index_name)
+    if common_eval_idx.size == 0:
+        return pd.DataFrame(_forward_window_record(), index=index)
+
+    # Keep the gaps left by dates excluded from the comparison.
+    positions = (common_eval_idx - common_eval_idx[0]) // evaluation_step
+    alpha_eval = alpha[common_eval_idx]
+    eligible_mask = X.estimation_mask[common_eval_idx]
+    weights = None if cs_weights is None else cs_weights[common_eval_idx]
     records = []
-    # IC series of each window, used for the inference of the summaries.
-    ic_series: dict[int, tuple[FloatArray, FloatArray, int]] = {}
-    if not common_dates.any():
-        records = [
-            _forward_window_record(index_name=index_name, index_value=index_value)
-            for index_value, _, _ in windows
-        ]
-        return pd.DataFrame.from_records(records).set_index(index_name), ic_series
-
-    for (index_value, horizon, _), target_forward in zip(windows, targets, strict=True):
+    for (_, horizon, _), target_forward in zip(windows, targets, strict=True):
         diagnostics = _compute_diagnostics(
-            alpha=alpha[eval_idx],
-            target=target_forward[eval_idx],
+            alpha=alpha_eval,
+            target=target_forward[common_eval_idx],
             eligible_mask=eligible_mask,
-            cs_weights=None if cs_weights is None else cs_weights[eval_idx],
+            cs_weights=weights,
             quantiles=quantiles,
             min_count=min_count,
         )
         records.append(
             _forward_window_record(
-                index_name=index_name,
-                index_value=index_value,
                 diagnostics=diagnostics,
+                positions=positions,
+                horizon=horizon,
+                evaluation_step=evaluation_step,
             )
         )
-        ic_series[index_value] = (
-            diagnostics["spearman_ic"],
-            diagnostics["pearson_ic"],
-            horizon,
-        )
-    return pd.DataFrame.from_records(records).set_index(index_name), ic_series
+    return pd.DataFrame(records, index=index)
 
 
 def _forward_window_record(
     *,
-    index_name: str,
-    index_value: int,
     diagnostics: dict[str, Any] | None = None,
+    positions: IntArray | None = None,
+    horizon: int | None = None,
+    evaluation_step: int = 1,
 ) -> dict[str, float]:
-    """Return one summary record for a forward target window."""
-    record = {index_name: index_value}
-    if diagnostics is None:
+    """Summarize IC, portfolio returns and coverage for one return window.
+
+    Parameters
+    ----------
+    diagnostics : dict[str, Any], optional
+        Output of `_compute_diagnostics` for the selected forecast dates.
+        `None` returns a record with NaN for every statistic.
+
+    positions : ndarray of shape (n_steps,), optional
+        Original evaluation positions of the selected dates, preserving any
+        gaps from omitted dates. `None` uses consecutive positions.
+
+    horizon : int, optional
+        Return window length in input observations. Used to check that the
+        history spans at least 10 such windows. `None` skips this check.
+
+    evaluation_step : int, default=1
+        Number of input observations per evaluation step.
+
+    Returns
+    -------
+    record : dict[str, float]
+        Spearman and Pearson IC statistics, portfolio means and information
+        ratios, and mean coverage. IC statistics include a t-statistic, p-value
+        and 95% confidence interval for the mean.
+    """
+    record = {}
+    for prefix in ("spearman", "pearson"):
+        stats = (
+            dict.fromkeys(("mean", "icir", *_INFERENCE_KEYS), np.nan)
+            if diagnostics is None
+            else _correlation_stats(
+                diagnostics[f"{prefix}_ic"],
+                ratio_name="icir",
+                positions=positions,
+                horizon=horizon,
+                evaluation_step=evaluation_step,
+            )
+        )
         record.update(
             {
-                "spearman_mean_ic": np.nan,
-                "spearman_icir": np.nan,
-                "pearson_mean_ic": np.nan,
-                "pearson_icir": np.nan,
-                "rank_weighted_portfolio_mean": np.nan,
-                "rank_weighted_portfolio_ir": np.nan,
-                "zscore_weighted_portfolio_mean": np.nan,
-                "zscore_weighted_portfolio_ir": np.nan,
-                "mean_coverage": np.nan,
+                f"{prefix}_mean_ic": stats["mean"],
+                f"{prefix}_icir": stats["icir"],
+                f"{prefix}_ic_t_stat": stats["t_stat"],
+                f"{prefix}_ic_p_value": stats["p_value"],
+                f"{prefix}_mean_ic_ci_lower": stats["mean_ci_lower"],
+                f"{prefix}_mean_ic_ci_upper": stats["mean_ci_upper"],
             }
         )
-        return record
-
-    spearman_ic = _correlation_stats(
-        diagnostics["spearman_ic"], ratio_name="icir", inference=False
-    )
-    pearson_ic = _correlation_stats(
-        diagnostics["pearson_ic"], ratio_name="icir", inference=False
-    )
-    rank_weighted_portfolio = _return_stats(
-        diagnostics["rank_weighted_portfolio_return"]
-    )
-    zscore_weighted_portfolio = _return_stats(
-        diagnostics["zscore_weighted_portfolio_return"]
-    )
+    for prefix in ("rank_weighted", "zscore_weighted"):
+        stats = (
+            dict.fromkeys(("mean", "ir"), np.nan)
+            if diagnostics is None
+            else _return_stats(diagnostics[f"{prefix}_portfolio_return"])
+        )
+        record[f"{prefix}_portfolio_mean"] = stats["mean"]
+        record[f"{prefix}_portfolio_ir"] = stats["ir"]
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
-        mean_coverage = float(np.nanmean(diagnostics["coverage"]))
-    record.update(
-        {
-            "spearman_mean_ic": spearman_ic["mean"],
-            "spearman_icir": spearman_ic["icir"],
-            "pearson_mean_ic": pearson_ic["mean"],
-            "pearson_icir": pearson_ic["icir"],
-            "rank_weighted_portfolio_mean": rank_weighted_portfolio["mean"],
-            "rank_weighted_portfolio_ir": rank_weighted_portfolio["ir"],
-            "zscore_weighted_portfolio_mean": zscore_weighted_portfolio["mean"],
-            "zscore_weighted_portfolio_ir": zscore_weighted_portfolio["ir"],
-            "mean_coverage": mean_coverage,
-        }
-    )
+        record["mean_coverage"] = (
+            np.nan
+            if diagnostics is None
+            else float(np.nanmean(diagnostics["coverage"]))
+        )
     return record
 
 
-def _qs_kernel(x: FloatArray) -> FloatArray:
-    """Quadratic-spectral kernel weights."""
-    weights = np.ones_like(x, dtype=float)
-    nonzero = x != 0
-    z = 6.0 * np.pi * x[nonzero] / 5.0
-    weights[nonzero] = (
-        25.0 / (12.0 * np.pi**2 * x[nonzero] ** 2) * (np.sin(z) / z - np.cos(z))
+def _quadratic_spectral_basis(positions: IntArray, span: int) -> FloatArray:
+    r"""Approximate quadratic spectral weights with sine and cosine functions.
+
+    A dot product between two rows gives the kernel weight for the distance
+    between those dates. This avoids building a full matrix of date pairs.
+
+    Parameters
+    ----------
+    positions : ndarray of shape (n_observations,)
+        Positions of the valid observations, starting at zero for the first
+        one. Gaps preserve the spacing of missing evaluation dates.
+
+    span : int
+        Last position plus one, including any gaps between observations.
+
+    Returns
+    -------
+    kernel_basis : ndarray of shape (n_observations, 64)
+        Sine and cosine basis values. `kernel_basis @ kernel_basis.T`
+        approximates the quadratic spectral kernel matrix with bandwidth
+        `0.1 * span`.
+
+    Notes
+    -----
+    The quadratic spectral kernel can be written as
+
+    .. math::
+
+        k(x) = \frac{3}{4} \int_{-1}^{1}
+        (1-u^2) \cos(6\pi x u / 5)\,du.
+
+    We approximate this integral with 64 Gauss-Legendre nodes. Symmetry lets
+    us use the 32 positive nodes to form paired sine and cosine functions.
+    Because the bandwidth grows with `span`, the same number of basis functions
+    remains accurate as the history grows.
+    """
+    nodes, weights = sp.roots_legendre(_N_QUADRATURE_NODES)
+    nodes = nodes[_N_QUADRATURE_NODES // 2 :]
+    weights = weights[_N_QUADRATURE_NODES // 2 :]
+    amplitudes = np.sqrt(1.5 * weights * (1.0 - nodes**2))
+    phase = (
+        6.0 * np.pi / (5.0 * _HAC_BANDWIDTH_RATIO) * (positions / span)[:, None] * nodes
     )
-    return weights
+    return np.column_stack((np.cos(phase) * amplitudes, np.sin(phase) * amplitudes))
 
 
-def _add_window_inference(
-    frame: pd.DataFrame,
-    ic_series: dict[int, tuple[FloatArray, FloatArray, int]] | None,
-    evaluation_step: int,
-) -> pd.DataFrame:
-    """Return a copy of `frame` with the IC inference columns of each window."""
-    frame = frame.copy()
-    if "spearman_icir" not in frame.columns:
-        return frame
-    ic_series = ic_series or {}
-    for position, prefix in ((0, "spearman"), (1, "pearson")):
-        stats = {
-            index_value: _correlation_stats(
-                series[position],
-                ratio_name="icir",
-                horizon=series[2],
-                evaluation_step=evaluation_step,
-            )
-            for index_value, series in ic_series.items()
-        }
-        location = frame.columns.get_loc(f"{prefix}_icir") + 1
-        for key in _INFERENCE_KEYS:
-            values = [
-                stats[index_value][key] if index_value in stats else np.nan
-                for index_value in frame.index
-            ]
-            frame.insert(location, f"{prefix}_ic_{key}", values)
-            location += 1
-    return frame
-
-
-def _on_evaluation_grid(
-    arr: FloatArray, positions: IntArray | None, grid_size: int | None
+def _wild_bootstrap_t_stats(
+    centered_values: FloatArray, kernel_basis: FloatArray
 ) -> FloatArray:
-    """Place values on the evaluation grid, leaving NaN where dates are missing."""
-    if positions is None:
-        return arr
-    size = int(positions[-1]) + 1 if grid_size is None else grid_size
-    grid = np.full(size, np.nan)
-    grid[positions] = arr
-    return grid
+    """Draw bootstrap t-statistics without simulating every observation.
 
+    This is equivalent to multiplying each centered observation by an
+    independent standard normal draw, then dividing each sample mean by its
+    own HAC standard error, subject to the numerical approximations below.
 
-def _hac_t_stats(
-    values: FloatArray, valid: BoolArray, weights: FloatArray
-) -> tuple[FloatArray, FloatArray, FloatArray]:
-    """Mean, standard error and t-statistic of the mean for each row of `values`.
+    Parameters
+    ----------
+    centered_values : ndarray of shape (n_observations,)
+        Finite observations with their mean removed. They may also be rescaled
+        by a common positive factor without changing the t-statistics.
 
-    Each row is indexed by evaluation date. Invalid dates are kept in place as
-    zero-weight gaps, so lag `k` only pairs dates that are exactly `k` positions
-    apart on the evaluation grid and pairs across a missing date are not shifted
-    together. `weights` are the kernel weights for lags `0, ..., n_dates - 1`. The
-    autocovariances are computed with FFTs. Rows with a non-positive variance
-    estimate, which the quadratic-spectral kernel can produce, get NaN.
+    kernel_basis : ndarray of shape (n_observations, 64)
+        Basis returned by `_quadratic_spectral_basis` for the same observations.
+
+    Returns
+    -------
+    t_stats : ndarray of shape (9999,)
+        Bootstrap t-statistics for a zero mean, using a fixed internal seed.
+
+    Notes
+    -----
+    Only the sample sum and the weighted sums of the basis columns are needed
+    to compute each t-statistic. These sums are jointly Gaussian, so we can
+    draw them directly to save time and memory.
+
+    Their covariance is `A.T @ diag(centered_values**2) @ A`, where `A` contains
+    a column of ones and the kernel basis with its column means removed.
+    Centering the basis columns accounts for removing each bootstrap sample's
+    mean when computing its standard error. The numerical approximations are
+    the basis from `_quadratic_spectral_basis` and the removal of covariance
+    eigenvalues that are negligible relative to the largest one.
     """
-    n_dates = values.shape[1]
-    n = int(np.sum(valid))
-    mean = np.sum(np.where(valid, values, 0.0), axis=1) / n
-    centered = np.where(valid, values - mean[:, None], 0.0)
-    n_fft = 1 << int(np.ceil(np.log2(2 * n_dates)))
-    spectrum = np.fft.rfft(centered, n_fft, axis=1)
-    autocov = np.fft.irfft(spectrum * np.conj(spectrum), n_fft, axis=1)[:, :n_dates]
-    long_run_var = (autocov[:, 0] + 2.0 * autocov[:, 1:] @ weights[1:]) / n
-    # A series whose dispersion is at rounding-error level relative to its
-    # magnitude, such as a constant, is degenerate. Smaller but real dispersion is
-    # not.
-    magnitude = np.max(np.abs(np.where(valid, values, 0.0)), axis=1)
-    dispersion = autocov[:, 0] / n
-    non_degenerate = dispersion > (_DEGENERATE_VARIANCE_RTOL * magnitude) ** 2
-    long_run_var = np.where(non_degenerate & (long_run_var > 0), long_run_var, np.nan)
-    std_err = np.sqrt(long_run_var / n)
-    return mean, std_err, mean / std_err
+    bootstrap_basis = np.column_stack(
+        (np.ones(centered_values.size), kernel_basis - kernel_basis.mean(axis=0))
+    )
+    weighted_basis = centered_values[:, None] * bootstrap_basis
+    eigenvalues, eigenvectors = np.linalg.eigh(weighted_basis.T @ weighted_basis)
+    # Discard directions with negligible variance to avoid numerical noise.
+    keep = eigenvalues > 1e-12 * eigenvalues[-1]
+    covariance_factor = eigenvectors[:, keep] * np.sqrt(eigenvalues[keep])
+    rng = np.random.default_rng(_BOOTSTRAP_SEED)
+    bootstrap_sums = (
+        rng.standard_normal((_N_BOOTSTRAP_SAMPLES, covariance_factor.shape[1]))
+        @ covariance_factor.T
+    )
+    return bootstrap_sums[:, 0] / np.linalg.norm(bootstrap_sums[:, 1:], axis=1)
 
 
-@functools.lru_cache(maxsize=32)
-def _multiplier_spectrum(n_dates: int, bandwidth: float) -> FloatArray:
-    """Square-root spectrum of the circulant embedding of the kernel covariance.
+def _mean_inference(
+    arr: FloatArray,
+    *,
+    positions: IntArray | None = None,
+    horizon: int | None = None,
+    evaluation_step: int = 1,
+) -> dict[str, float]:
+    """Compute a HAC t-statistic, bootstrap p-value and interval for the mean.
 
-    Negative eigenvalues of the embedding, which are at most about 1e-2 in
-    absolute value and shrink as `n_dates` grows, are set to zero. This moves the
-    covariance of the multipliers away from the kernel weights by less than 1e-3
-    at the sizes used in practice.
-    """
-    row = _qs_kernel(np.arange(n_dates) / bandwidth)
-    circulant = np.concatenate([row, [0.0], row[:0:-1]])
-    eigenvalues = np.clip(np.fft.rfft(circulant).real, 0.0, None)
-    return np.sqrt(eigenvalues)
+    Parameters
+    ----------
+    arr : ndarray of shape (n_steps,)
+        Observations in time order. Non-finite values are excluded from the
+        calculation, but their positions still count when measuring gaps.
 
+    positions : ndarray of shape (n_steps,), optional
+        Original position of each value in the evaluation sequence, in
+        increasing order. For example, `[0, 1, 4]` preserves two missing dates
+        between the second and third values. `None` uses the indices of `arr`.
 
-def _dependent_multipliers(
-    n_dates: int, n_draws: int, bandwidth: float, rng: np.random.Generator
-) -> FloatArray:
-    """Draw Gaussian multipliers with a quadratic-spectral serial covariance.
+    horizon : int, optional
+        Return window length in input observations. The history must span at
+        least 10 times this length. `None` skips this check, as used for
+        correlations with factor exposures at the same date.
 
-    The covariance between the multipliers of two dates is approximately the
-    kernel weight of their distance, so the bootstrap samples keep the serial
-    dependence of the original series. Draws are generated by circulant
-    embedding.
-    """
-    spectrum = _multiplier_spectrum(n_dates, bandwidth)
-    n_embedding = 2 * n_dates
-    noise = rng.standard_normal((n_draws, n_embedding))
-    draws = np.fft.irfft(spectrum * np.fft.rfft(noise, axis=1), n_embedding, axis=1)
-    return draws[:, :n_dates]
+    evaluation_step : int, default=1
+        Number of input observations per evaluation step. Used to express the
+        history length in the same units as `horizon`.
 
+    Returns
+    -------
+    stats : dict[str, float]
+        `t_stat`, two-sided `p_value`, and the 95% confidence interval bounds
+        `mean_ci_lower` and `mean_ci_upper`. All are NaN with fewer than 20
+        finite values, insufficient history, effectively constant values or
+        a zero estimated standard error.
 
-_INFERENCE_CACHE: collections.OrderedDict[tuple[bytes, int, int], dict[str, float]] = (
-    collections.OrderedDict()
-)
-_INFERENCE_CACHE_SIZE = 256
-_INFERENCE_CACHE_LOCK = threading.Lock()
+    Notes
+    -----
+    The quadratic spectral bandwidth is 10% of the number of evaluation steps
+    from the first finite value to the last, including both endpoints and any
+    gaps. Missing values before or after this range do not extend the history.
 
-
-def _hac_inference(arr: FloatArray) -> dict[str, float]:
-    """Cached `_hac_inference_uncached`.
-
-    The cache is keyed by a digest of the values of `arr`, so it holds only the
-    four statistics of each series and not the series themselves.
-    """
-    arr = np.ascontiguousarray(arr, dtype=float)
-    key = (hashlib.sha256(arr.tobytes()).digest(), arr.size, _N_BOOTSTRAP)
-    with _INFERENCE_CACHE_LOCK:
-        cached = _INFERENCE_CACHE.get(key)
-        if cached is not None:
-            _INFERENCE_CACHE.move_to_end(key)
-            return dict(cached)
-    result = _hac_inference_uncached(arr)
-    with _INFERENCE_CACHE_LOCK:
-        _INFERENCE_CACHE[key] = result
-        while len(_INFERENCE_CACHE) > _INFERENCE_CACHE_SIZE:
-            _INFERENCE_CACHE.popitem(last=False)
-    return dict(result)
-
-
-def _hac_inference_uncached(arr: FloatArray) -> dict[str, float]:
-    """t-statistic, p-value and 95% confidence interval of the mean of `arr`.
-
-    The t-statistic uses a quadratic-spectral HAC standard error with a bandwidth
-    proportional to the number of dates. Its sampling distribution therefore
-    depends on that proportion, so the p-value and the confidence interval come
-    from a Gaussian wild bootstrap of the same statistic rather than from normal
-    or Student critical values. The multipliers are serially dependent, so the
-    bootstrap samples approximate the serial dependence of the series. The generator is
-    local and seeded, so the same data always gives the same result.
+    The observed and bootstrap t-statistics use the same kernel and centering.
+    The p-value and confidence interval use the same bootstrap distribution,
+    with the interval chosen to exclude zero when `p_value < 0.05`. See
+    :meth:`AlphaForecastEvaluation.ic_summary` for the method and reference.
     """
     nan_result = dict.fromkeys(_INFERENCE_KEYS, np.nan)
     valid = np.isfinite(arr)
-    if int(np.sum(valid)) < _MIN_INFERENCE_OBSERVATIONS:
+    n_observations = np.count_nonzero(valid)
+    if n_observations < _MIN_INFERENCE_OBSERVATIONS:
         return nan_result
-    n_dates = arr.size
-    bandwidth = max(_HAC_BANDWIDTH_RATIO * n_dates, 1.0)
-    weights = _qs_kernel(np.arange(n_dates) / bandwidth)
-    mean, std_err, t_stat = (
-        float(x[0])
-        for x in _hac_t_stats(np.where(valid, arr, 0.0)[None, :], valid, weights)
+    observed_positions = (
+        np.flatnonzero(valid) if positions is None else positions[valid]
     )
-    if not np.isfinite(t_stat):
+    observed_positions = observed_positions - observed_positions[0]
+    span = int(observed_positions[-1]) + 1
+    if horizon is not None and (span - 1) * evaluation_step + 1 < (
+        _MIN_INFERENCE_HORIZONS * horizon
+    ):
         return nan_result
 
-    centered = np.where(valid, arr - mean, 0.0)
-    rng = np.random.default_rng(_BOOTSTRAP_SEED)
-    # Bandwidth rate of the dependent wild bootstrap (Shao, 2010). It is of smaller
-    # order than the bandwidth of the statistic, which is recomputed on every
-    # bootstrap sample.
-    multiplier_bandwidth = max(float(n_dates) ** (1.0 / 3.0), 1.0)
-    t_boot = []
-    chunk_size = max(
-        1, min(_BOOTSTRAP_CHUNK_SIZE, _BOOTSTRAP_CHUNK_ELEMENTS // n_dates)
+    values = arr[valid]
+    mean = float(np.mean(values))
+    centered_values = values - mean
+    scale = float(np.max(np.abs(centered_values)))
+    if scale <= _CONSTANT_SERIES_RTOL * np.max(np.abs(values)):
+        return nan_result
+    # Rescale to keep covariance calculations numerically stable.
+    centered_values = centered_values / scale
+    kernel_basis = _quadratic_spectral_basis(observed_positions, span)
+    standard_error = float(
+        scale * np.linalg.norm(centered_values @ kernel_basis) / n_observations
     )
-    for start in range(0, _N_BOOTSTRAP, chunk_size):
-        size = min(chunk_size, _N_BOOTSTRAP - start)
-        draws = centered * _dependent_multipliers(
-            n_dates, size, multiplier_bandwidth, rng
-        )
-        t_boot.append(_hac_t_stats(draws, valid, weights)[2])
-    abs_t_boot = np.abs(np.concatenate(t_boot))
-    abs_t_boot = abs_t_boot[np.isfinite(abs_t_boot)]
-    if abs_t_boot.size == 0:
+    if standard_error == 0:
         return nan_result
-    p_value = (1.0 + np.sum(abs_t_boot >= abs(t_stat))) / (1.0 + abs_t_boot.size)
-    # Critical value matched to the p-value rule: the confidence interval excludes
-    # zero exactly when `p_value < 0.05`. It is the inversion of the symmetric
-    # bootstrap-t test, whose p-value is based on |t|.
-    n_boot = abs_t_boot.size
-    if n_boot < 20:
-        return nan_result
-    critical_value = float(np.sort(abs_t_boot)[n_boot - n_boot // 20])
+    t_stat = mean / standard_error
+
+    abs_bootstrap_t_stats = np.abs(
+        _wild_bootstrap_t_stats(centered_values, kernel_basis)
+    )
+    n_bootstrap_samples = abs_bootstrap_t_stats.size
+    p_value = (1.0 + np.count_nonzero(abs_bootstrap_t_stats >= abs(t_stat))) / (
+        n_bootstrap_samples + 1.0
+    )
+    # Choose the cutoff so the interval excludes zero exactly when p < 0.05.
+    # Account for the extra count added to the bootstrap p-value above.
+    critical_index = n_bootstrap_samples - n_bootstrap_samples // 20
+    critical_value = float(np.sort(abs_bootstrap_t_stats)[critical_index])
     return {
         "t_stat": t_stat,
         "p_value": float(p_value),
-        "mean_ci_lower": mean - critical_value * std_err,
-        "mean_ci_upper": mean + critical_value * std_err,
+        "mean_ci_lower": mean - critical_value * standard_error,
+        "mean_ci_upper": mean + critical_value * standard_error,
     }
 
 
@@ -1919,38 +2000,50 @@ def _correlation_stats(
     arr: FloatArray,
     *,
     ratio_name: str,
+    positions: IntArray | None = None,
     horizon: int | None = None,
     evaluation_step: int = 1,
-    inference: bool = True,
 ) -> dict[str, float]:
-    """Compute summary statistics for correlation values.
+    """Summarize correlations and test whether their mean differs from zero.
 
-    `arr` is indexed by evaluation date. The inference statistics (`t_stat`,
-    `p_value` and the confidence interval of the mean) are NaN when there are fewer
-    than 20 valid dates or when the variance estimate is degenerate. For
-    forward-return correlations, `horizon` is the length of the target window
-    and they are also NaN when the evaluation history, `(arr.size - 1) *
-    evaluation_step + 1` periods, covers fewer than 10 windows. The inference statistics are left out
-    when `inference` is False.
+    Parameters
+    ----------
+    arr : ndarray of shape (n_steps,)
+        Correlations in time order. Missing values are represented by NaN.
+
+    ratio_name : str
+        Output key for the mean divided by the sample standard deviation,
+        typically `icir` or `ir`.
+
+    positions : ndarray of shape (n_steps,), optional
+        Original evaluation positions, preserving gaps from omitted dates.
+        `None` uses the indices of `arr`.
+
+    horizon : int, optional
+        Return window length in input observations. Used to check that the
+        history spans at least 10 such windows. `None` skips this check.
+
+    evaluation_step : int, default=1
+        Number of input observations per evaluation step.
+
+    Returns
+    -------
+    stats : dict[str, float]
+        Mean, sample standard deviation, ratio under `ratio_name`, fraction of
+        positive correlations (`hit_rate`), and the t-statistic, p-value and
+        confidence interval returned by `_mean_inference`.
     """
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
         mean = float(np.nanmean(arr))
         std = float(np.nanstd(arr, ddof=1))
-    ratio = safe_divide(mean, std, fill_value=np.nan)
-    if not inference:
-        inference_stats = {}
-    elif horizon is not None and (arr.size - 1) * evaluation_step + 1 < (
-        _MIN_INFERENCE_HORIZONS * horizon
-    ):
-        inference_stats = dict.fromkeys(_INFERENCE_KEYS, np.nan)
-    else:
-        inference_stats = _hac_inference(arr)
     return {
         "mean": mean,
         "std": std,
-        ratio_name: ratio,
-        **inference_stats,
+        ratio_name: safe_divide(mean, std, fill_value=np.nan),
+        **_mean_inference(
+            arr, positions=positions, horizon=horizon, evaluation_step=evaluation_step
+        ),
         "hit_rate": _hit_rate(arr),
     }
 
