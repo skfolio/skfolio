@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v1.8.6 (2026-10-14)
+
+### Bug Fixes
+
+- **alpha**: Account for overlapping windows in the IC t-statistic
+  ([#409](https://github.com/skfolio/skfolio/pull/409),
+  [`246176c`](https://github.com/skfolio/skfolio/commit/246176ccfbbb1faabe43d44a510a38ad7f5193d1))
+
+### Continuous Integration
+
+- Validate PR titles and require approval for major releases
+  ([#428](https://github.com/skfolio/skfolio/pull/428),
+  [`878bda1`](https://github.com/skfolio/skfolio/commit/878bda1a75cba1390f2f766dbd76378703b86912))
+
+
 ## v1.8.5 (2026-10-12)
 
 ### Bug Fixes
