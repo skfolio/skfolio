@@ -467,27 +467,11 @@ class FollowTheLoser(BaseOnlineOptimization):
                 raise ValueError(f"Unknown OLMAR predictor: {self.olmar_predictor}")
             self._predictor.reset(d)
 
-        if self._objective_fn is None:
-            self._objective_fn = create_mean_reversion_objective(
-                objective_type=self.objective,
-                epsilon=self.epsilon,
-                beta=self.beta,
-            )
-
-        if self.update_mode == UpdateMode.MD and self._engine is None:
-            self._engine = self._create_engine()
+        self._initialize_objective_and_engine()
 
     def _init_pamr_components(self, d: int) -> None:
         """Initialize PAMR-specific components."""
-        if self._objective_fn is None:
-            self._objective_fn = create_mean_reversion_objective(
-                objective_type=self.objective,
-                epsilon=self.epsilon,
-                beta=self.beta,
-            )
-
-        if self.update_mode == UpdateMode.MD and self._engine is None:
-            self._engine = self._create_engine()
+        self._initialize_objective_and_engine()
 
     def _init_cwmr_components(self, d: int) -> None:
         """Initialize CWMR-specific components."""
@@ -507,6 +491,10 @@ class FollowTheLoser(BaseOnlineOptimization):
             )
             self._predictor.reset(d)
 
+        self._initialize_objective_and_engine()
+
+    def _initialize_objective_and_engine(self) -> None:
+        """Create shared reversion components once, preserving learned state."""
         if self._objective_fn is None:
             self._objective_fn = create_mean_reversion_objective(
                 objective_type=self.objective,

@@ -428,30 +428,7 @@ class FollowTheWinner(BaseOnlineOptimization):
         self.demean_gradient = demean_gradient
         self.gradient_lookback = gradient_lookback
 
-        self.initial_weights = initial_weights
         self.grad_predictor = grad_predictor
-
-        # Costs and fees (public attributes preserved for predict())
-        self.transaction_costs = transaction_costs
-        self.management_fees = management_fees
-
-        # Projection parameters
-        self.min_weights = min_weights
-        self.max_weights = max_weights
-        self.budget = budget
-        self.previous_weights = previous_weights
-        self.max_turnover = max_turnover
-
-        # Rich constraints
-        self.groups = groups
-        self.linear_constraints = linear_constraints
-        self.left_inequality = left_inequality
-        self.right_inequality = right_inequality
-        self.X_tracking = X_tracking
-        self.tracking_error_benchmark = tracking_error_benchmark
-        self.max_tracking_error = max_tracking_error
-        self.covariance = covariance
-        self.max_variance = max_variance
         self.use_autograd = use_autograd
 
         # Internal state (initialized deterministically)

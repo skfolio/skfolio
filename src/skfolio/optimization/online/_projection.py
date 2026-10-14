@@ -163,8 +163,18 @@ class ConvexProjector(BaseProjector):
 
     def project(self, y: np.ndarray) -> np.ndarray:
         """Project candidate weights onto the configured feasible set."""
+        return self._solve(y)
+
+    def _solve(
+        self,
+        y: np.ndarray,
+        *,
+        objective: Callable[[cp.Variable], cp.Expression] | None = None,
+    ) -> np.ndarray:
+        """Solve with the same constraints for projection and mirror updates."""
         return project_convex(
             w_raw=y,
+            objective=objective,
             budget=self.config.budget,
             lower=self.config.lower,
             upper=self.config.upper,
@@ -257,37 +267,35 @@ class AutoProjector(BaseProjector):
             # The separable objective has derivative log(w) + 1 - dual.
             # Clip in log space at the upper bound to avoid exponential overflow.
             return np.exp(np.minimum(np.asarray(dual) - 1.0, 0.0))
-        return project_convex(
-            dual,
-            budget=config.budget,
-            lower=config.lower,
-            upper=config.upper,
-            min_budget=config.min_budget,
-            max_budget=config.max_budget,
-            max_short=config.max_short,
-            max_long=config.max_long,
-            groups=config.groups,
-            linear_constraints=config.linear_constraints,
-            return_distribution=config.return_distribution,
-            strict_linear_constraints=config.strict_linear_constraints,
-            left_inequality=config.left_inequality,
-            right_inequality=config.right_inequality,
-            X=config.X_tracking,
-            tracking_error_benchmark=config.tracking_error_benchmark,
-            max_tracking_error=config.max_tracking_error,
-            covariance=config.covariance,
-            variance_bound=config.variance_bound,
-            previous_weights=config.previous_weights,
-            max_turnover=config.max_turnover,
-            solver_params=config.solver_params,
-            objective=lambda w: potential(w) - dual @ w,
-        )
+        return self._cvx._solve(dual, objective=lambda w: potential(w) - dual @ w)
 
     def project(self, y: np.ndarray) -> np.ndarray:
         """Project candidate weights onto the configured feasible set."""
         if self._needs_cvx():
             return self._cvx.project(y)
         return self._fast.project(y)
+
+
+def _bound_array(
+    value: ArrayLike | float | None,
+    *,
+    n_assets: int,
+    default: float,
+    name: str,
+) -> np.ndarray:
+    """Expand projection bounds, preserving scalar dtype and array validation."""
+    if value is None:
+        return np.full(n_assets, default, dtype=float)
+    if np.isscalar(value):
+        return np.full(n_assets, value)
+    return input_to_array(
+        items=value,
+        n_assets=n_assets,
+        fill_value=default,
+        dim=1,
+        assets_names=None,
+        name=name,
+    )
 
 
 def project_box_and_sum(
@@ -328,33 +336,9 @@ def project_box_and_sum(
     """
     y_arr = np.asarray(y, dtype=float)
     n = int(y_arr.shape[0])
-    if lower is None:
-        lo_arr = np.full(n, 0.0, dtype=float)
-    elif np.isscalar(lower):
-        lo_arr = np.full(n, lower)
-    else:
-        lo_arr = input_to_array(
-            items=lower,
-            n_assets=n,
-            fill_value=0.0,
-            dim=1,
-            assets_names=None,
-            name="lower_bounds",
-        )
+    lo_arr = _bound_array(lower, n_assets=n, default=0.0, name="lower_bounds")
 
-    if upper is None:
-        up_arr = np.full(n, 1.0, dtype=float)
-    elif np.isscalar(upper):
-        up_arr = np.full(n, upper)
-    else:
-        up_arr = input_to_array(
-            items=upper,
-            n_assets=n,
-            fill_value=1.0,
-            dim=1,
-            assets_names=None,
-            name="upper_bounds",
-        )
+    up_arr = _bound_array(upper, n_assets=n, default=1.0, name="upper_bounds")
 
     if (
         not np.isfinite(y_arr).all()
@@ -420,33 +404,9 @@ def project_with_turnover(
     """
     y = np.asarray(w_raw, dtype=float)
     n = int(y.shape[0])
-    if lower is None:
-        lower_bounds = np.full(n, 0.0, dtype=float)
-    elif np.isscalar(lower):
-        lower_bounds = np.full(n, lower)
-    else:
-        lower_bounds = input_to_array(
-            items=lower,
-            n_assets=n,
-            fill_value=0.0,
-            dim=1,
-            assets_names=None,
-            name="lower_bounds",
-        )
+    lower_bounds = _bound_array(lower, n_assets=n, default=0.0, name="lower_bounds")
 
-    if upper is None:
-        u = np.full(n, 1.0, dtype=float)
-    elif np.isscalar(upper):
-        u = np.full(n, upper)
-    else:
-        u = input_to_array(
-            items=upper,
-            n_assets=n,
-            fill_value=1.0,
-            dim=1,
-            assets_names=None,
-            name="upper_bounds",
-        )
+    u = _bound_array(upper, n_assets=n, default=1.0, name="upper_bounds")
 
     # Iteratively enforce both box/budget and L1-turnover constraints
     w = project_box_and_sum(y=y, lower=lower_bounds, upper=u, budget=budget)
@@ -523,33 +483,9 @@ def project_convex(
         )
     w0 = np.asarray(w_raw, dtype=float)
     n = int(w0.shape[0])
-    if lower is None:
-        lower_bounds = np.full(n, 0.0, dtype=float)
-    elif np.isscalar(lower):
-        lower_bounds = np.full(n, lower)
-    else:
-        lower_bounds = input_to_array(
-            items=lower,
-            n_assets=n,
-            fill_value=0.0,
-            dim=1,
-            assets_names=None,
-            name="lower_bounds",
-        )
+    lower_bounds = _bound_array(lower, n_assets=n, default=0.0, name="lower_bounds")
 
-    if upper is None:
-        u = np.full(n, 1.0)
-    elif np.isscalar(upper):
-        u = np.full(n, upper)
-    else:
-        u = input_to_array(
-            items=upper,
-            n_assets=n,
-            fill_value=1.0,
-            dim=1,
-            assets_names=None,
-            name="upper_bounds",
-        )
+    u = _bound_array(upper, n_assets=n, default=1.0, name="upper_bounds")
 
     w = cp.Variable(n)
     minimization = cp.Minimize(
