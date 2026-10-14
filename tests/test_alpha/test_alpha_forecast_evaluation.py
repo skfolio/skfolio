@@ -524,6 +524,7 @@ class TestAlphaForecastEvaluation:
     def test_unavailable_diagnostic_plot_raises(
         self, method, evaluation_with_diagnostics
     ):
+        """Plots raise when their required diagnostics are unavailable."""
         evaluation = replace(
             evaluation_with_diagnostics,
             holding_period_diagnostics=pd.DataFrame(),
@@ -673,20 +674,54 @@ class TestAlphaForecastEvaluation:
         )
         assert evaluation.factor_correlation_method is CorrelationMethod.PEARSON
 
-    def test_factor_correlation_plot(self):
-        """Factor correlation plot shows top mean correlations as bars."""
+    @pytest.mark.parametrize(
+        "kwargs,expected_names,expected_values",
+        [
+            ({"top_n": 2}, ["Positive Factor", "Negative Factor"], [1.0, -1.0]),
+            (
+                {"families": "style", "top_n": None},
+                ["Positive Factor", "Negative Factor"],
+                [1.0, -1.0],
+            ),
+            (
+                {"factors": ["mixed_factor"], "families": "unknown"},
+                ["Mixed Factor"],
+                [np.nan],
+            ),
+            (
+                {},
+                ["Positive Factor", "Negative Factor", "Mixed Factor"],
+                [1.0, -1.0, np.nan],
+            ),
+        ],
+    )
+    def test_factor_correlation_plot(
+        self, monkeypatch, kwargs, expected_names, expected_values
+    ):
+        """Plot selected factor means, including missing data, without inference."""
         evaluation = alpha_forecast_evaluation(
             _fixed_signal_alpha(),
             _factor_correlation_panel(),
             holding_period=1,
             signal_lag=1,
         )
+        correlations = evaluation.factor_correlation.copy()
+        correlations[:2, 0] = np.nan
+        correlations[:, 2] = np.nan
+        evaluation = replace(evaluation, factor_correlation=correlations)
 
-        fig = evaluation.plot_factor_correlation(top_n=2)
+        def unexpected_inference(*args, **kwargs):
+            """Fail if plotting requests inference instead of only computing means."""
+            pytest.fail("Plotting factor means should not compute inference.")
+
+        monkeypatch.setattr(
+            "skfolio.alpha._evaluation._mean_inference", unexpected_inference
+        )
+        fig = evaluation.plot_factor_correlation(**kwargs)
 
         assert fig.data[0].orientation is None
-        assert len(fig.data[0].x) == 2
-        assert list(fig.data[0].x) == ["Positive Factor", "Negative Factor"]
+        assert list(fig.data[0].x) == expected_names
+        np.testing.assert_allclose(fig.data[0].y, expected_values, equal_nan=True)
         assert fig.layout.yaxis.range == (-1.0, 1.0)
 
     def test_perfect_forecast_calibration_slope(self):
@@ -1032,6 +1067,42 @@ class TestAlphaForecastEvaluation:
         assert np.isnan(stats["hit_rate"])
         assert stats["n_valid_assets"] == pytest.approx(4.0)
 
+    def test_window_summaries_return_copies_of_stored_frames(self):
+        """Editing returned summaries leaves the stored diagnostics unchanged."""
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            _noisy_forecast_panel(),
+            holding_period=2,
+            n_forward_periods=3,
+        )
+        for stored, method in (
+            (evaluation.holding_period_diagnostics, evaluation.holding_period_summary),
+            (evaluation.decay, evaluation.decay_summary),
+        ):
+            summary = method()
+            pd.testing.assert_frame_equal(stored, summary)
+            summary.iloc[0, 0] = 123.0
+            assert stored.iloc[0, 0] != 123.0
+            pd.testing.assert_frame_equal(stored, method())
+
+    def test_summary_without_common_sample_keeps_schema(
+        self, evaluation_with_diagnostics
+    ):
+        """Empty comparisons retain the normal summary columns and index."""
+        panel = _perfect_forecast_panel()
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            panel,
+            n_forward_periods=3,
+            min_count=panel.n_assets + 1,
+        )
+        for method in ("holding_period_summary", "decay_summary"):
+            summary = getattr(evaluation, method)()
+            reference = getattr(evaluation_with_diagnostics, method)()
+            pd.testing.assert_index_equal(summary.index, reference.index)
+            pd.testing.assert_index_equal(summary.columns, reference.columns)
+            assert summary.isna().all().all()
+
 
 class TestHacInference:
     """Check HAC statistics against direct kernel and bootstrap calculations."""
@@ -1075,6 +1146,7 @@ class TestHacInference:
 
     @pytest.mark.parametrize("span", [20, 250, 5000])
     def test_quadrature_matches_exact_kernel(self, span):
+        """The compact basis reproduces the full quadratic spectral kernel."""
         positions = np.unique(np.linspace(0, span - 1, min(span, 101), dtype=int))
         kernel_basis = _quadratic_spectral_basis(positions, span)
         np.testing.assert_allclose(
@@ -1086,6 +1158,7 @@ class TestHacInference:
 
     @pytest.mark.parametrize("gaps", [False, True])
     def test_t_stat_matches_quadratic_spectral_reference(self, gaps):
+        """The HAC statistic matches a direct calculation with or without gaps."""
         arr = self._overlapping_series(n=200, window=5, seed=2)
         if gaps:
             arr[[40, 41, 150]] = np.nan
@@ -1100,7 +1173,7 @@ class TestHacInference:
     def test_calibration_matches_direct_independent_wild_bootstrap(
         self, gaps, changing_variance
     ):
-        # Build full bootstrap samples as an independent check of the shortcut.
+        """Bootstrap calibration agrees with directly simulated observations."""
         arr = self._overlapping_series(n=80, window=5, mean=0.12, seed=21)
         if changing_variance:
             arr *= np.where(np.arange(arr.size) < 55, 0.2, 1.0)
@@ -1128,6 +1201,7 @@ class TestHacInference:
         assert half_width == pytest.approx(critical * standard_error, rel=0.06)
 
     def test_overlap_shrinks_t_stat_versus_independent_dates(self):
+        """Positive dependence reduces significance for this overlapping series."""
         arr = self._overlapping_series(n=2000, mean=0.1)
         t_stat = _mean_inference(arr)["t_stat"]
         iid = np.mean(arr) / (np.std(arr, ddof=1) / np.sqrt(arr.size))
@@ -1135,6 +1209,7 @@ class TestHacInference:
 
     @pytest.mark.parametrize("mean", [-0.3, 0.0, 0.3])
     def test_p_value_and_confidence_interval(self, mean):
+        """P-values and intervals agree on significance for either sign of mean."""
         arr = self._overlapping_series(mean=0.0)
         arr = arr - arr.mean() + mean
         stats = _mean_inference(arr)
@@ -1143,6 +1218,7 @@ class TestHacInference:
         assert excludes_zero == (stats["p_value"] < 0.05) == (mean != 0)
 
     def test_confidence_interval_matches_strict_p_value_boundary(self, monkeypatch):
+        """An interval touching zero corresponds to a p-value of exactly 0.05."""
         arr = np.tile([0.0, 2.0], 20)
         statistic = _mean_inference(arr)["t_stat"]
         bootstrap = statistic * np.r_[np.full(95, 0.5), 1.0, np.full(3, 2.0)]
@@ -1158,6 +1234,7 @@ class TestHacInference:
         assert stats["mean_ci_lower"] > 0
 
     def test_inference_is_reproducible_without_touching_global_random_state(self):
+        """Repeated calls agree without changing the global random state."""
         arr = self._overlapping_series()
         state = np.random.get_state()
         first = _mean_inference(arr)
@@ -1171,6 +1248,7 @@ class TestHacInference:
 
     @pytest.mark.parametrize("kind", ["iid", "overlap", "changing_variance"])
     def test_null_rejection_rate(self, monkeypatch, kind):
+        """False-positive rates stay near 5% across the tested null processes."""
         monkeypatch.setattr("skfolio.alpha._evaluation._N_BOOTSTRAP_SAMPLES", 999)
         rng = np.random.default_rng(11)
         n_trials, rejections = 300, 0
@@ -1188,9 +1266,11 @@ class TestHacInference:
 
     @pytest.mark.parametrize("value", [0.0, 0.1, np.nan])
     def test_nan_with_degenerate_series(self, value):
+        """Constant and entirely missing series have no inference results."""
         assert all(np.isnan(x) for x in _mean_inference(np.full(50, value)).values())
 
     def test_nan_with_fewer_than_20_valid_observations(self):
+        """Short histories retain descriptive statistics but have no inference."""
         arr = self._overlapping_series(n=30)
         arr[:11] = np.nan
         stats = _correlation_stats(arr, ratio_name="icir")
@@ -1200,6 +1280,7 @@ class TestHacInference:
 
     @pytest.mark.parametrize("scale", [1e-100, 1e-6, 1e6])
     def test_inference_is_scale_invariant(self, scale):
+        """Rescaling preserves significance and rescales the confidence interval."""
         arr = self._overlapping_series()
         reference = _mean_inference(arr)
         scaled = _mean_inference(scale * arr)
@@ -1209,6 +1290,7 @@ class TestHacInference:
             assert scaled[key] / scale == pytest.approx(reference[key], rel=0.02)
 
     def test_small_dispersion_around_nonzero_mean_is_not_degenerate(self):
+        """Small but meaningful variation still allows inference."""
         arr = 5.0 + 1e-6 * self._overlapping_series(n=100, window=5, mean=0, seed=8)
         stats = _mean_inference(arr)
         assert all(np.isfinite(value) for value in stats.values())
@@ -1227,6 +1309,7 @@ class TestHacInference:
         ],
     )
     def test_history_boundary_ignores_empty_ends(self, n, horizon, step, finite):
+        """Missing leading and trailing dates do not extend the usable history."""
         arr = self._overlapping_series(n=n, window=3)
         reference = _mean_inference(arr, horizon=horizon, evaluation_step=step)
         padded = _mean_inference(
@@ -1239,6 +1322,7 @@ class TestHacInference:
             assert padded[key] == pytest.approx(reference[key], nan_ok=True)
 
     def test_explicit_positions_match_nan_gaps(self):
+        """Stored positions and explicit missing values give the same inference."""
         arr = self._overlapping_series(n=200)
         arr[[35, 36, 81, 135]] = np.nan
         positions = np.flatnonzero(np.isfinite(arr))
@@ -1248,6 +1332,7 @@ class TestHacInference:
 
     @pytest.mark.parametrize("evaluation_step", [1, 2])
     def test_ic_summary_preserves_missing_dates_and_offset(self, evaluation_step):
+        """IC summaries preserve gaps when unusable forecast dates are dropped."""
         panel = _noisy_forecast_panel()
         target = panel[_IDIO_RETURNS].copy()
         target[:4] = np.nan
@@ -1278,6 +1363,7 @@ class TestHacInference:
             )
 
     def test_manually_constructed_evaluation_defaults_to_consecutive_positions(self):
+        """Evaluations without stored positions assume consecutive observations."""
         evaluation = alpha_forecast_evaluation(
             _fixed_signal_alpha(),
             _noisy_forecast_panel(),
@@ -1291,6 +1377,7 @@ class TestHacInference:
 
     @pytest.mark.parametrize("evaluation_step", [1, 2])
     def test_window_inference_uses_each_target_horizon(self, evaluation_step):
+        """Each window applies the history requirement for its own return horizon."""
         evaluation = alpha_forecast_evaluation(
             _fixed_signal_alpha(),
             _noisy_forecast_panel(),
@@ -1314,40 +1401,6 @@ class TestHacInference:
                 assert np.isnan(holding[column].iloc[2])
                 assert decay[column].notna().all()
 
-    def test_window_summaries_return_copies_of_stored_frames(self):
-        evaluation = alpha_forecast_evaluation(
-            _fixed_signal_alpha(),
-            _noisy_forecast_panel(),
-            holding_period=2,
-            n_forward_periods=3,
-        )
-        for stored, method in (
-            (evaluation.holding_period_diagnostics, evaluation.holding_period_summary),
-            (evaluation.decay, evaluation.decay_summary),
-        ):
-            summary = method()
-            pd.testing.assert_frame_equal(stored, summary)
-            summary.iloc[0, 0] = 123.0
-            assert stored.iloc[0, 0] != 123.0
-            pd.testing.assert_frame_equal(stored, method())
-
-    def test_summary_without_common_sample_keeps_schema(
-        self, evaluation_with_diagnostics
-    ):
-        panel = _perfect_forecast_panel()
-        evaluation = alpha_forecast_evaluation(
-            _fixed_signal_alpha(),
-            panel,
-            n_forward_periods=3,
-            min_count=panel.n_assets + 1,
-        )
-        for method in ("holding_period_summary", "decay_summary"):
-            summary = getattr(evaluation, method)()
-            reference = getattr(evaluation_with_diagnostics, method)()
-            pd.testing.assert_index_equal(summary.index, reference.index)
-            pd.testing.assert_index_equal(summary.columns, reference.columns)
-            assert summary.isna().all().all()
-
     @pytest.mark.parametrize("evaluation_step", [1, 3])
     @pytest.mark.parametrize(
         "summary_name", ["holding_period_summary", "decay_summary"]
@@ -1355,6 +1408,7 @@ class TestHacInference:
     def test_window_inference_preserves_common_sample_gaps(
         self, evaluation_step, summary_name
     ):
+        """Window inference retains gaps left by the shared date selection."""
         panel = _noisy_forecast_panel()
         target = panel[_IDIO_RETURNS].copy()
         target[:4] = np.nan
@@ -1417,6 +1471,7 @@ class TestHacInference:
     def test_factor_summary_preserves_all_dates_and_descriptive_statistics(
         self, evaluation_step
     ):
+        """Factor inference uses all dates and preserves descriptive statistics."""
         panel = _noisy_forecast_panel()
         target = panel[_IDIO_RETURNS].copy()
         target[:4] = np.nan

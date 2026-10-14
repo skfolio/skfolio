@@ -64,7 +64,8 @@ _BOOTSTRAP_SEED = 0
 _N_QUADRATURE_NODES = 64
 _MIN_INFERENCE_OBSERVATIONS = 20
 _MIN_INFERENCE_HORIZONS = 10
-_CONSTANT_SERIES_RTOL = 1e-12  # relative to the magnitude of the values
+_CONSTANT_SERIES_RTOL = 1e-12  # Relative to the magnitude of the values.
+_EIGENVALUE_RTOL = 1e-12
 _INFERENCE_KEYS = ("t_stat", "p_value", "mean_ci_lower", "mean_ci_upper")
 
 
@@ -264,13 +265,14 @@ class AlphaForecastEvaluation:
         standard deviation, `icir` and hit rate describe the observed IC values.
         The `icir` is :math:`\bar{IC} / \sigma_{IC}`.
 
-        The `t_stat` divides the mean IC by a quadratic spectral HAC standard
-        error, which accounts for changing volatility and correlation between
-        dates, including overlapping forward returns. A Gaussian wild bootstrap
-        provides a two-sided `p_value` for testing whether the mean IC is zero,
-        and an approximate 95% confidence interval for the mean. Use the p-value
-        or confidence interval to assess significance at the 5% level: the
-        p-value is below 0.05 when the interval excludes zero.
+        The `t_stat` divides the mean IC by a quadratic spectral
+        heteroskedasticity and autocorrelation consistent (HAC) standard error,
+        accounting for changing volatility and dependence between dates,
+        including overlapping forward returns. Its reference distribution comes
+        from a Gaussian wild bootstrap. The resulting two-sided `p_value` tests
+        whether the mean IC is zero, with an approximate 95% confidence interval
+        given by `mean_ci_lower` and `mean_ci_upper`. Significance at the 5% level
+        corresponds to a p-value below 0.05 and an interval that excludes zero.
 
         Returns
         -------
@@ -283,7 +285,7 @@ class AlphaForecastEvaluation:
         -----
         The method follows [1]_. The bandwidth is 10% of the evaluation history,
         including gaps between valid ICs. The bootstrap uses 9,999 independent
-        Gaussian draws and a fixed seed.
+        Gaussian draws and a fixed seed. The smallest reported p-value is 0.0001.
 
         The t-statistic, p-value and confidence interval require at least 20
         valid ICs spanning 10 holding periods. They are NaN if these conditions
@@ -298,20 +300,17 @@ class AlphaForecastEvaluation:
         """
         return pd.DataFrame(
             {
-                "spearman_ic": _correlation_stats(
-                    self.spearman_ic,
+                name: _correlation_stats(
+                    values,
                     ratio_name="icir",
                     positions=self._evaluation_positions,
                     horizon=self.holding_period,
                     evaluation_step=self.evaluation_step,
-                ),
-                "pearson_ic": _correlation_stats(
-                    self.pearson_ic,
-                    ratio_name="icir",
-                    positions=self._evaluation_positions,
-                    horizon=self.holding_period,
-                    evaluation_step=self.evaluation_step,
-                ),
+                )
+                for name, values in (
+                    ("spearman_ic", self.spearman_ic),
+                    ("pearson_ic", self.pearson_ic),
+                )
             }
         ).T
 
@@ -382,9 +381,9 @@ class AlphaForecastEvaluation:
         column is :math:`\bar{\rho} / \sigma_{\rho}`. Pearson correlations use
         the cross-sectional weights specified by `cs_weighting`.
 
-        The t-statistic, p-value and confidence interval use the method described
-        in :meth:`ic_summary`, using all forecast dates regardless of
-        `evaluation_step`. They require at least 20 valid correlations and enough
+        The t-statistic, p-value and confidence interval follow :meth:`ic_summary`
+        and use all forecast dates regardless of `evaluation_step`.
+        They require at least 20 valid correlations and enough
         variation to estimate a nonzero standard error. The minimum history of
         10 holding periods does not apply because these correlations compare
         forecasts and exposures at the same date.
@@ -403,16 +402,7 @@ class AlphaForecastEvaluation:
             Rows are factors and columns are `mean`, `std`, `ir`, `t_stat`,
             `p_value`, `mean_ci_lower`, `mean_ci_upper` and `hit_rate`.
         """
-        columns = [
-            "mean",
-            "std",
-            "ir",
-            "t_stat",
-            "p_value",
-            "mean_ci_lower",
-            "mean_ci_upper",
-            "hit_rate",
-        ]
+        columns = ["mean", "std", "ir", *_INFERENCE_KEYS, "hit_rate"]
         if self.factor_correlation is None or len(self.factor_names) == 0:
             return pd.DataFrame(columns=columns)
 
@@ -704,13 +694,25 @@ class AlphaForecastEvaluation:
         """Plot mean alpha-factor correlations."""
         if top_n is not None:
             _validate_positive_integer(top_n, "top_n")
-        summary = self.factor_correlation_summary(factors=factors, families=families)
-        if summary.empty:
+        if self.factor_correlation is None or len(self.factor_names) == 0:
             raise ValueError("No factor correlation diagnostics are available.")
-        order = summary["mean"].abs().sort_values(ascending=False).index
-        summary = summary.loc[order]
+        factor_indices, factor_names = _resolve_factor_subset(
+            factor_names=self.factor_names,
+            factor_families=self.factor_families,
+            factor_names_to_keep=factors,
+            family_names_to_keep=families,
+        )
+        if not factor_names:
+            raise ValueError("No factor correlation diagnostics are available.")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            means = pd.Series(
+                np.nanmean(self.factor_correlation[:, factor_indices], axis=0),
+                index=factor_names,
+            )
+        means = means.loc[means.abs().sort_values(ascending=False).index]
         if top_n is not None:
-            summary = summary.iloc[:top_n]
+            means = means.iloc[:top_n]
         method = self.factor_correlation_method
         method_label = (
             format_plot_label(method.value) if method is not None else "Correlation"
@@ -719,8 +721,8 @@ class AlphaForecastEvaluation:
         fig = go.Figure()
         fig.add_trace(
             go.Bar(
-                x=format_plot_labels(summary.index),
-                y=summary["mean"],
+                x=format_plot_labels(means.index),
+                y=means,
                 name="Mean Correlation",
             )
         )
@@ -899,6 +901,8 @@ def alpha_forecast_evaluation(
         IC t-statistics, p-values and confidence intervals account for the
         dependence between dates, including overlapping targets. Means and
         ICIR remain descriptive statistics of the observed IC values.
+        Portfolio and quantile statistics, including their information ratios,
+        are not adjusted for overlap.
 
     n_forward_periods : int, default=10
         Number of consecutive forward periods used for holding-period and decay
@@ -1699,8 +1703,8 @@ def _quadratic_spectral_basis(positions: IntArray, span: int) -> FloatArray:
         k(x) = \frac{3}{4} \int_{-1}^{1}
         (1-u^2) \cos(6\pi x u / 5)\,du.
 
-    We approximate this integral with 64 Gauss-Legendre nodes. Symmetry lets
-    us use the 32 positive nodes to form paired sine and cosine functions.
+    The integral is approximated with 64 Gauss-Legendre nodes. By symmetry,
+    only the 32 positive nodes are needed for the sine and cosine pairs.
     Because the bandwidth grows with `span`, the same number of basis functions
     remains accurate as the history grows.
     """
@@ -1734,14 +1738,14 @@ def _wild_bootstrap_t_stats(
 
     Returns
     -------
-    t_stats : ndarray of shape (9999,)
+    t_stats : ndarray of shape (n_bootstrap_samples,)
         Bootstrap t-statistics for a zero mean, using a fixed internal seed.
 
     Notes
     -----
     Only the sample sum and the weighted sums of the basis columns are needed
-    to compute each t-statistic. These sums are jointly Gaussian, so we can
-    draw them directly to save time and memory.
+    to compute each t-statistic. Drawing these jointly Gaussian sums directly
+    saves time and memory.
 
     Their covariance is `A.T @ diag(centered_values**2) @ A`, where `A` contains
     a column of ones and the kernel basis with its column means removed.
@@ -1756,7 +1760,7 @@ def _wild_bootstrap_t_stats(
     weighted_basis = centered_values[:, None] * bootstrap_basis
     eigenvalues, eigenvectors = np.linalg.eigh(weighted_basis.T @ weighted_basis)
     # Discard directions with negligible variance to avoid numerical noise.
-    keep = eigenvalues > 1e-12 * eigenvalues[-1]
+    keep = eigenvalues > _EIGENVALUE_RTOL * eigenvalues[-1]
     covariance_factor = eigenvectors[:, keep] * np.sqrt(eigenvalues[keep])
     rng = np.random.default_rng(_BOOTSTRAP_SEED)
     bootstrap_sums = (
