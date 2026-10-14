@@ -11,11 +11,11 @@ This short historical comparison illustrates the API, not a claim that one
 strategy consistently outperforms another. Costs are zero for all strategies.
 """
 
-import numpy as np
 from plotly.io import show
 
 from skfolio.datasets import load_sp500_dataset
 from skfolio.model_selection import online_predict
+from skfolio.optimization import EqualWeighted
 from skfolio.optimization.online import (
     AdaGrad,
     ExponentiatedGradient,
@@ -23,7 +23,6 @@ from skfolio.optimization.online import (
     PassiveAggressiveMeanReversion,
 )
 from skfolio.population import Population
-from skfolio.portfolio import Portfolio
 from skfolio.preprocessing import prices_to_returns
 
 # %%
@@ -50,12 +49,11 @@ for model in models:
     portfolios.append(portfolio)
 
 portfolios.append(
-    Portfolio(
-        X=X.iloc[warmup:],
-        weights=np.full(X.shape[1], 1 / X.shape[1]),
-        name="Daily equal weight",
-        weight_drift=False,
+    EqualWeighted(
+        portfolio_params={"name": "Daily equal weight", "weight_drift": False}
     )
+    .fit(X.iloc[:warmup])
+    .predict(X.iloc[warmup:])
 )
 population = Population(portfolios)
 print(population.summary())

@@ -17,6 +17,7 @@ from skfolio.optimization.online._mirror_maps import (
     DynamicMirrorMap,
 )
 from skfolio.optimization.online._projection import BaseProjector, IdentityProjector
+from skfolio.optimization.online._utils import evaluate_learning_rate
 
 Predictor = Callable[[int, np.ndarray | None, np.ndarray | None], np.ndarray]
 EtaSchedule = float | np.ndarray | Callable[[int], float]
@@ -85,13 +86,7 @@ class FirstOrderOCO:
 
     def _get_eta(self, t: int) -> float:
         """Evaluate the learning-rate schedule at observation t."""
-        if callable(self.eta):
-            return float(np.asarray(self.eta(t)))
-        if isinstance(self.eta, np.ndarray):
-            if t < len(self.eta):
-                return float(self.eta[t])
-            return float(self.eta[-1])
-        return float(self.eta)
+        return evaluate_learning_rate(self.eta, t)
 
     def _composite_update(
         self, eta_grad_term: np.ndarray, reg_center: np.ndarray | None

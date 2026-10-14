@@ -287,20 +287,7 @@ def compute_eg_learning_rate(
     ----------
     - Hazan (2016), "Introduction to Online Convex Optimization", Corollary 7.2
     """
-    match scale:
-        case "theory":
-            return np.sqrt(np.log(n_assets) / (t + 1))
-
-        case "moderate":
-            return np.sqrt(8.0 * np.log(n_assets) / (t + 1))
-
-        case "empirical":
-            return np.sqrt(2.0 * np.log(n_assets) / (t + 1))
-
-        case _:
-            raise ValueError(
-                f"Unknown scale '{scale}'. Choose 'theory', 'moderate', or 'empirical'."
-            )
+    return _multiplicative_learning_rate(t, n_assets, scale)
 
 
 def compute_prod_learning_rate(t: int, n_assets: int, scale: str = "theory") -> float:
@@ -329,20 +316,7 @@ def compute_prod_learning_rate(t: int, n_assets: int, scale: str = "theory") -> 
     PROD (Soft-Bayes Product algorithm) uses Burg entropy (log-barrier) mirror
     map. The optimal rate follows the same scaling as EG.
     """
-    match scale:
-        case "theory":
-            return np.sqrt(np.log(n_assets) / (t + 1))
-
-        case "moderate":
-            return np.sqrt(8.0 * np.log(n_assets) / (t + 1))
-
-        case "empirical":
-            return np.sqrt(2.0 * np.log(n_assets) / (t + 1))
-
-        case _:
-            raise ValueError(
-                f"Unknown scale '{scale}'. Choose 'theory', 'moderate', or 'empirical'."
-            )
+    return _multiplicative_learning_rate(t, n_assets, scale)
 
 
 def compute_adaptive_base_learning_rate(n_assets: int, diameter: float) -> float:
@@ -456,3 +430,21 @@ def get_auto_learning_rate(
         case _:
             base_rate = compute_adaptive_base_learning_rate(n_assets, diameter)
             return lambda t: base_rate
+
+
+def _multiplicative_learning_rate(t: int, n_assets: int, scale: str) -> float:
+    """Evaluate the schedule shared by EG and PROD."""
+    match scale:
+        case "theory":
+            return np.sqrt(np.log(n_assets) / (t + 1))
+
+        case "moderate":
+            return np.sqrt(8.0 * np.log(n_assets) / (t + 1))
+
+        case "empirical":
+            return np.sqrt(2.0 * np.log(n_assets) / (t + 1))
+
+        case _:
+            raise ValueError(
+                f"Unknown scale '{scale}'. Choose 'theory', 'moderate', or 'empirical'."
+            )

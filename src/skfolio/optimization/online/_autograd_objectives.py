@@ -49,6 +49,7 @@ from skfolio.measures import (
     log_wealth,
     mean,
     mean_absolute_deviation,
+    owa_gmd_weights,
     semi_deviation,
     semi_variance,
     standard_deviation,
@@ -540,9 +541,7 @@ def _analytical_gini_mean_difference_gradient(
     portfolio_returns = net_returns @ weights
     # Sort returns and get permutation
     sort_idx = np.argsort(portfolio_returns)
-    # Correct OWA weights: w_k = (4k - 2(T+1)) / (T(T-1))
-    # This matches skfolio.measures.owa_gmd_weights
-    owa_weights = (4.0 * np.arange(1, T + 1) - 2.0 * (T + 1)) / (T * (T - 1))
+    owa_weights = owa_gmd_weights(T)
     # Apply OWA weights to sorted returns
     sorted_returns = net_returns[sort_idx]
     grad = sorted_returns.T @ owa_weights
@@ -1376,12 +1375,12 @@ def _autograd_gini_mean_difference(returns: np.ndarray, **kwargs: Any) -> np.nda
     if returns.ndim == 1:
         if T == 1:
             return anp.abs(returns[0])
-        w = (4.0 * anp.arange(1, T + 1) - 2.0 * (T + 1)) / (T * (T - 1))
+        w = owa_gmd_weights(T)
         return anp.dot(w, anp.sort(returns))
     else:
         if T == 1:
             return anp.abs(returns[0])
-        w = (4.0 * anp.arange(1, T + 1) - 2.0 * (T + 1)) / (T * (T - 1))
+        w = owa_gmd_weights(T)
         sorted_rets = anp.sort(returns, axis=0)
         return anp.dot(w, sorted_rets)
 

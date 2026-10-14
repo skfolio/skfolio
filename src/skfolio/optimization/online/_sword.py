@@ -11,6 +11,7 @@ import numpy as np
 
 from skfolio.optimization.online._foco import EtaSchedule, FirstOrderOCO
 from skfolio.optimization.online._projection import BaseProjector
+from skfolio.optimization.online._utils import evaluate_learning_rate
 
 
 class SwordMeta:
@@ -45,13 +46,7 @@ class SwordMeta:
 
     def _get_eta_meta(self, t: int) -> float:
         """Evaluate the mixture learning-rate schedule at observation t."""
-        if callable(self.eta_meta):
-            return float(np.asarray(self.eta_meta(t)))
-        if isinstance(self.eta_meta, np.ndarray):
-            if t < len(self.eta_meta):
-                return float(self.eta_meta[t])
-            return float(self.eta_meta[-1])
-        return float(self.eta_meta)
+        return evaluate_learning_rate(self.eta_meta, t)
 
     def step(self, g: np.ndarray) -> np.ndarray:
         """Consume a gradient and return the next portfolio decision."""
