@@ -1380,11 +1380,12 @@ observations are not inferred from characteristic fields. Explicit covariance
 and a custom prior cannot both be supplied. Direct ``predict_weights`` still
 requires covariance when risk-constrained because it receives no return stream.
 
-The reproducible ``integration/issue_262/historical_walk_forward.py`` example
+The reproducible ``examples/parametric_portfolio_policy/historical_walk_forward.py`` example
 uses bundled equity prices, three yearly model refits, a constrained equal-weight
 baseline and an execution CSV. Its fixed historical universe is not a
 point-in-time constituent universe, and the example is not evidence of investment
-performance. See ``integration/issue_262/HISTORICAL_VALIDATION.rst`` for the run.
+performance. Run it with ``--output-dir`` to save the summary and execution
+reports; see the parametric portfolio policy examples for commands.
 
 Cash-funded execution and eligibility changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1455,7 +1456,7 @@ For example, a time-series factor prior receives
 ``prior_fit_params={"factors": factor_returns}``. Future factor rows may exist in
 the supplied table but are never passed to an earlier fit.
 
-``integration/issue_262/cash_execution_example.py`` combines historical prices,
+``examples/parametric_portfolio_policy/cash_execution_example.py`` combines historical prices,
 factor metadata, transaction costs, exits, re-entry and five all-cash periods.
 Its eligibility exclusions are synthetic validation scenarios, not claims about
 actual historical tradability.

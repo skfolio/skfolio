@@ -1,4 +1,13 @@
-"""Fit a nonlinear supervised policy and constrain subsequent allocations."""
+"""
+===========================
+Supervised Portfolio Policy
+===========================
+
+Fit a nonlinear regressor to portfolio-weight targets, then constrain predictions
+on later characteristics. This synthetic example illustrates the API, not
+investment performance. The historical walk-forward scripts in this directory
+use bundled equity prices for chronological evaluation.
+"""
 
 from __future__ import annotations
 
