@@ -17,6 +17,7 @@ from scipy.special import softmax
 import skfolio.typing as skt
 from skfolio.optimization._constraints import (
     budget_constraints,
+    call_custom_function,
     weight_constraints,
 )
 from skfolio.optimization._constraints import (
@@ -60,6 +61,10 @@ class ProjectionConfig:
         Causal factor information for named exposure constraints.
     distribution_config : DistributionConstraintConfig or None
         Minimum expected return and risk caps from the causal prior distribution.
+    add_constraints : callable or None
+        Custom convex constraints, rebuilt for the current weight variable.
+    constraint_estimator : object or None
+        Estimator passed to a two-argument custom callback.
     strict_linear_constraints : bool
         Raise for unknown asset, group or factor names when True.
     previous_weights, max_turnover : array-like or float or None
@@ -87,6 +92,8 @@ class ProjectionConfig:
     solver_params: dict[str, Any] | None = None
     return_distribution: ReturnDistribution | None = None
     distribution_config: DistributionConstraintConfig | None = None
+    add_constraints: skt.ConstraintFunction | None = None
+    constraint_estimator: object | None = None
     strict_linear_constraints: bool = True
 
 
@@ -186,6 +193,8 @@ class ConvexProjector(BaseProjector):
             linear_constraints=self.config.linear_constraints,
             return_distribution=self.config.return_distribution,
             distribution_config=self.config.distribution_config,
+            add_constraints=self.config.add_constraints,
+            constraint_estimator=self.config.constraint_estimator,
             strict_linear_constraints=self.config.strict_linear_constraints,
             left_inequality=self.config.left_inequality,
             right_inequality=self.config.right_inequality,
@@ -217,6 +226,7 @@ class AutoProjector(BaseProjector):
         return any(
             v is not None
             for v in [
+                self.config.add_constraints,
                 self.config.distribution_config,
                 self.config.groups,
                 self.config.linear_constraints,
@@ -500,6 +510,8 @@ def project_convex(
     objective: Callable[[cp.Variable], cp.Expression] | None = None,
     distribution_config: DistributionConstraintConfig | None = None,
     return_distribution: ReturnDistribution | None = None,
+    add_constraints: skt.ConstraintFunction | None = None,
+    constraint_estimator: object | None = None,
     strict_linear_constraints: bool = True,
 ) -> np.ndarray:
     r"""
@@ -596,6 +608,20 @@ def project_convex(
             )
         )
 
+    if add_constraints is not None:
+        custom = call_custom_function(
+            func=add_constraints,
+            w=w,
+            estimator=constraint_estimator,
+            name="add_constraints",
+        )
+        custom = custom if isinstance(custom, list) else [custom]
+        if any(not isinstance(item, cp.Constraint) for item in custom):
+            raise TypeError(
+                "add_constraints must return a CVXPY constraint or a list of constraints"
+            )
+        constraints.extend(custom)
+
     # Turnover L1 cap if requested
     if previous_weights is not None and max_turnover is not None:
         w_prev = np.asarray(previous_weights, dtype=float)
@@ -609,6 +635,7 @@ def project_convex(
         max_turnover == 0
         and previous_weights is not None
         and distribution_config is None
+        and add_constraints is None
     ):
         anchor = np.asarray(previous_weights, dtype=float)
         w.value = anchor
@@ -624,6 +651,13 @@ def project_convex(
         return anchor.copy()
 
     prob = cp.Problem(minimization, constraints)
+    if add_constraints is not None:
+        if not prob.is_dcp():
+            raise ValueError("add_constraints must define a convex DCP problem")
+        if prob.is_mixed_integer():
+            raise ValueError(
+                "Online custom constraints do not support integer variables"
+            )
     if solver_params is None:
         solver_params = dict(solver=cp.CLARABEL, verbose=False)
 

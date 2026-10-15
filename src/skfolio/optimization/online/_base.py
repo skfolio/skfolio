@@ -137,6 +137,10 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         Confidence level for the CDAR limit, between zero and one.
     edar_beta : float, default=0.95
         Confidence level for the EDAR limit, between zero and one.
+    add_constraints : callable, optional
+        Function accepting the CVXPY weight variable and optionally this estimator.
+        Return one convex CVXPY constraint or a list, rebuilt at each projection.
+        Prior-dependent callbacks require causal warmup before execution.
     prior_estimator : BasePrior, optional
         Incremental prior cloned and updated once per observed row.
     portfolio_params : dict, optional
@@ -222,6 +226,7 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         evar_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        add_constraints: skt.ConstraintFunction | None = None,
         prior_estimator: BasePrior | None = None,
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
@@ -273,6 +278,7 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         self.evar_beta = evar_beta
         self.cdar_beta = cdar_beta
         self.edar_beta = edar_beta
+        self.add_constraints = add_constraints
         self.prior_estimator = prior_estimator
         self.covariance = covariance
         self.max_variance = max_variance
@@ -429,6 +435,13 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
             linear_constraints=self.linear_constraints,
             return_distribution=distribution,
             distribution_config=distribution_config,
+            # The initial learning reference precedes the first prior observation.
+            add_constraints=(
+                self.add_constraints
+                if self.prior_estimator is None or distribution is not None
+                else None
+            ),
+            constraint_estimator=self if self.add_constraints is not None else None,
             # Initial learning references precede the first causal prior update.
             strict_linear_constraints=(
                 self.prior_estimator is None or distribution is not None
@@ -789,7 +802,11 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
             # This allocation will be executed before any prior observation.
             # Unknown factors must fail here, not be deferred as during fit.
             self._projector = AutoProjector(
-                replace(self._projector.config, strict_linear_constraints=True)
+                replace(
+                    self._projector.config,
+                    strict_linear_constraints=True,
+                    add_constraints=self.add_constraints,
+                )
             )
             self.weights_ = self._projector.project(self.weights_)
         if self.max_turnover is not None:

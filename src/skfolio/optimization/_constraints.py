@@ -6,6 +6,9 @@ Inputs are already aligned to the investable asset universe by the caller.
 # Copyright (c) 2023-2026 skfolio contributors (integration and modifications)
 # SPDX-License-Identifier: BSD-3-Clause
 
+from collections.abc import Callable
+from typing import TypeVar
+
 import cvxpy as cp
 import cvxpy.constraints as cpc
 import numpy as np
@@ -140,3 +143,38 @@ def linear_constraints(
             constraints.append(a_ineq @ w * scale - b_ineq * factor * scale <= 0)
 
     return constraints
+
+
+_ResultT = TypeVar("_ResultT")
+
+
+def call_custom_function(
+    *,
+    func: Callable[..., _ResultT],
+    w: cp.Variable,
+    estimator: object,
+    name: str = "custom_func",
+) -> _ResultT:
+    """Call the shared one- or two-argument optimization callback interface."""
+    try:
+        func_code = func.__code__  # ty: ignore[unresolved-attribute]
+    except AttributeError as err:
+        raise ValueError("Custom functions is invalid") from err
+
+    if func_code.co_argcount == 1:
+        args = (w,)
+    elif func_code.co_argcount == 2:
+        args = (w, estimator)
+    else:
+        raise ValueError(
+            "Custom functions must have 1 or 2 positional arguments, got"
+            f" {func_code.co_argcount}"
+        )
+    try:
+        return func(*args)
+    except Exception as err:
+        raise TypeError(
+            f"Error while calling {name}. "
+            f"{name} must be a function taking as argument "
+            "the weight variable OR the weight variable and the estimator object."
+        ) from err

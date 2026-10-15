@@ -171,6 +171,7 @@ class FollowTheWinner(BaseOnlineOptimization):
         evar_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        add_constraints: skt.ConstraintFunction | None = None,
         prior_estimator: BasePrior | None = None,
         use_autograd: bool = False,
         portfolio_params: dict | None = None,
@@ -434,6 +435,10 @@ class FollowTheWinner(BaseOnlineOptimization):
         Confidence level for the CDAR limit, between zero and one.
         edar_beta : float, default=0.95
         Confidence level for the EDAR limit, between zero and one.
+        add_constraints : callable, optional
+            Function accepting the CVXPY weight variable and optionally this estimator.
+            Return one convex CVXPY constraint or a list, rebuilt at each projection.
+            Prior-dependent callbacks require causal warmup before execution.
         prior_estimator : BasePrior or None, default=None
             Optional incremental statistical estimator. Each observed row is passed
             to ``partial_fit`` before computing the next decision. A variance bound
@@ -489,6 +494,7 @@ class FollowTheWinner(BaseOnlineOptimization):
             evar_beta=evar_beta,
             cdar_beta=cdar_beta,
             edar_beta=edar_beta,
+            add_constraints=add_constraints,
             prior_estimator=prior_estimator,
             portfolio_params=portfolio_params,
         )

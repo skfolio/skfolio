@@ -283,6 +283,10 @@ class FollowTheLoser(BaseOnlineOptimization):
         Confidence level for the CDAR limit, between zero and one.
     edar_beta : float, default=0.95
         Confidence level for the EDAR limit, between zero and one.
+    add_constraints : callable, optional
+        Function accepting the CVXPY weight variable and optionally this estimator.
+        Return one convex CVXPY constraint or a list, rebuilt at each projection.
+        Prior-dependent callbacks require causal warmup before execution.
     prior_estimator : BasePrior or None, default=None
         Optional incremental prior, updated once per observed return. Covariance
         is used only when a variance bound is requested. During warmup its moments
@@ -412,6 +416,7 @@ class FollowTheLoser(BaseOnlineOptimization):
         evar_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        add_constraints: skt.ConstraintFunction | None = None,
         prior_estimator: BasePrior | None = None,
         portfolio_params: dict | None = None,
     ) -> None:
@@ -458,6 +463,7 @@ class FollowTheLoser(BaseOnlineOptimization):
             evar_beta=evar_beta,
             cdar_beta=cdar_beta,
             edar_beta=edar_beta,
+            add_constraints=add_constraints,
             prior_estimator=prior_estimator,
             portfolio_params=portfolio_params,
         )

@@ -33,6 +33,7 @@ from skfolio.measures import RiskMeasure, owa_gmd_weights
 from skfolio.optimization._base import BaseOptimization
 from skfolio.optimization._constraints import (
     budget_constraints,
+    call_custom_function,
     linear_constraints,
     weight_constraints,
 )
@@ -728,28 +729,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         result : cvxpy Expression | list[cvxpy Expression]
             Result of calling the custom function.
         """
-        try:
-            func_code = func.__code__  # ty: ignore[unresolved-attribute]
-        except AttributeError as err:
-            raise ValueError("Custom functions is invalid") from err
-
-        if func_code.co_argcount == 1:
-            args = (w,)
-        elif func_code.co_argcount == 2:
-            args = (w, self)
-        else:
-            raise ValueError(
-                "Custom functions must have 1 or 2 positional arguments, got"
-                f" {func_code.co_argcount}"
-            )
-        try:
-            return func(*args)
-        except Exception as err:
-            raise TypeError(
-                f"Error while calling {name}. "
-                f"{name} must be a function taking as argument "
-                "the weight variable OR the weight variable and the estimator object."
-            ) from err
+        return call_custom_function(func=func, w=w, estimator=self, name=name)
 
     def _clear_models_cache(self) -> None:
         """Clear the cache of CVX models."""

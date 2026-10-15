@@ -140,6 +140,7 @@ class OnlineParameterConstraintsMixin:
         "evar_beta": [Interval(Real, 0, 1, closed="both")],
         "cdar_beta": [Interval(Real, 0, 1, closed="both")],
         "edar_beta": [Interval(Real, 0, 1, closed="both")],
+        "add_constraints": [callable, None],
         "prior_estimator": [BasePrior, None],
         "covariance": ["array-like", None],
         "max_variance": [Interval(Real, 0, None, closed="neither"), None],

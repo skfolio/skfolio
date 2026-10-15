@@ -93,6 +93,10 @@ class ExponentiatedGradient(FollowTheWinner):
         Confidence level for the CDAR limit, between zero and one.
     edar_beta : float, default=0.95
         Confidence level for the EDAR limit, between zero and one.
+    add_constraints : callable, optional
+        Function accepting the CVXPY weight variable and optionally this estimator.
+        Return one convex CVXPY constraint or a list, rebuilt at each projection.
+        Prior-dependent callbacks require causal warmup before execution.
     prior_estimator : BasePrior | None, default=None
         Optional incremental prior, cloned and updated once per observed row.
     transaction_costs : skt.MultiInput, default=0.0
@@ -193,6 +197,7 @@ class ExponentiatedGradient(FollowTheWinner):
         evar_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        add_constraints: skt.ConstraintFunction | None = None,
         prior_estimator: BasePrior | None = None,
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
@@ -238,6 +243,7 @@ class ExponentiatedGradient(FollowTheWinner):
             evar_beta=evar_beta,
             cdar_beta=cdar_beta,
             edar_beta=edar_beta,
+            add_constraints=add_constraints,
             prior_estimator=prior_estimator,
             transaction_costs=transaction_costs,
             management_fees=management_fees,
@@ -327,6 +333,10 @@ class AdaGrad(FollowTheWinner):
         Confidence level for the CDAR limit, between zero and one.
     edar_beta : float, default=0.95
         Confidence level for the EDAR limit, between zero and one.
+    add_constraints : callable, optional
+        Function accepting the CVXPY weight variable and optionally this estimator.
+        Return one convex CVXPY constraint or a list, rebuilt at each projection.
+        Prior-dependent callbacks require causal warmup before execution.
     prior_estimator : BasePrior | None, default=None
         Optional incremental prior, cloned and updated once per observed row.
     transaction_costs : skt.MultiInput, default=0.0
@@ -428,6 +438,7 @@ class AdaGrad(FollowTheWinner):
         evar_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        add_constraints: skt.ConstraintFunction | None = None,
         prior_estimator: BasePrior | None = None,
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
@@ -474,6 +485,7 @@ class AdaGrad(FollowTheWinner):
             evar_beta=evar_beta,
             cdar_beta=cdar_beta,
             edar_beta=edar_beta,
+            add_constraints=add_constraints,
             prior_estimator=prior_estimator,
             transaction_costs=transaction_costs,
             management_fees=management_fees,
@@ -561,6 +573,10 @@ class OnlineMovingAverageReversion(FollowTheLoser):
         Confidence level for the CDAR limit, between zero and one.
     edar_beta : float, default=0.95
         Confidence level for the EDAR limit, between zero and one.
+    add_constraints : callable, optional
+        Function accepting the CVXPY weight variable and optionally this estimator.
+        Return one convex CVXPY constraint or a list, rebuilt at each projection.
+        Prior-dependent callbacks require causal warmup before execution.
     prior_estimator : BasePrior | None, default=None
         Optional incremental prior, cloned and updated once per observed row.
     transaction_costs : skt.MultiInput, default=0.0
@@ -665,6 +681,7 @@ class OnlineMovingAverageReversion(FollowTheLoser):
         evar_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        add_constraints: skt.ConstraintFunction | None = None,
         prior_estimator: BasePrior | None = None,
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
@@ -711,6 +728,7 @@ class OnlineMovingAverageReversion(FollowTheLoser):
             evar_beta=evar_beta,
             cdar_beta=cdar_beta,
             edar_beta=edar_beta,
+            add_constraints=add_constraints,
             prior_estimator=prior_estimator,
             transaction_costs=transaction_costs,
             management_fees=management_fees,
@@ -810,6 +828,10 @@ class PassiveAggressiveMeanReversion(FollowTheLoser):
         Confidence level for the CDAR limit, between zero and one.
     edar_beta : float, default=0.95
         Confidence level for the EDAR limit, between zero and one.
+    add_constraints : callable, optional
+        Function accepting the CVXPY weight variable and optionally this estimator.
+        Return one convex CVXPY constraint or a list, rebuilt at each projection.
+        Prior-dependent callbacks require causal warmup before execution.
     prior_estimator : BasePrior | None, default=None
         Optional incremental prior, cloned and updated once per observed row.
     transaction_costs : skt.MultiInput, default=0.0
@@ -909,6 +931,7 @@ class PassiveAggressiveMeanReversion(FollowTheLoser):
         evar_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        add_constraints: skt.ConstraintFunction | None = None,
         prior_estimator: BasePrior | None = None,
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
@@ -956,6 +979,7 @@ class PassiveAggressiveMeanReversion(FollowTheLoser):
             evar_beta=evar_beta,
             cdar_beta=cdar_beta,
             edar_beta=edar_beta,
+            add_constraints=add_constraints,
             prior_estimator=prior_estimator,
             transaction_costs=transaction_costs,
             management_fees=management_fees,

@@ -1250,6 +1250,39 @@ limitations apply, including its transaction-cost relaxation for EVaR and EDaR.
 These constraints invoke a convex solver at each update and can materially
 increase runtime, particularly for scenario-heavy risk measures.
 
+**Custom constraints**
+
+The four online estimators accept ``add_constraints``, using the same callback
+interface as convex estimators. The function receives the CVXPY weight variable
+and optionally the online estimator, and returns a constraint or a list::
+
+    import cvxpy as cp
+    from skfolio.optimization.online import ExponentiatedGradient
+
+    estimator = ExponentiatedGradient(
+        add_constraints=lambda w: cp.sum_squares(w) <= 0.2,
+    )
+
+Constraints are rebuilt for each projection, including native mirror updates.
+A two-argument callback can read ``model.prior_estimator_.return_distribution_``
+after the current observation has updated the prior. It must use only information
+available at that decision and should not mutate the estimator or retain CVXPY
+variables between calls. It can run more than once per observation.
+
+When a prior is configured, callbacks are deferred for the initial learning
+reference before the first prior update. They run during subsequent warmup
+updates as well as execution decisions, so the callback must handle incomplete
+warmup statistics explicitly. Prior-dependent callbacks should be evaluated with
+``online_predict`` and a suitable ``warmup_size``. Without warmup, callbacks are
+still enforced on the first executed allocation; unavailable inputs raise rather
+than silently dropping constraints.
+
+Only continuous convex (DCP) constraints are supported. Invalid callback results,
+non-convex constraints and integer variables raise explicit errors. Infeasible
+constraints fail the update and require a fresh ``fit``, as with other numerical
+failures. Custom constraints invoke the convex solver rather than the fast
+simplex projection.
+
 Warmup may have incomplete statistics, but entry decisions require finite estimates.
 
 Use the existing evaluation interface::
