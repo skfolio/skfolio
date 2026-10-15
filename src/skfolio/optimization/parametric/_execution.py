@@ -235,6 +235,8 @@ def evaluate_execution(
         model.max_weights,
         model.groups,
         model.linear_constraints,
+        solver=model.projection_solver,
+        solver_params=model.projection_solver_params,
     )
     cash, wealth, previous_eligible = float(initial_cash), 1.0, None
     records, target_rows, trade_rows, ending_rows = [], [], [], []

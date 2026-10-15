@@ -22,7 +22,16 @@ class _WeightProjection:
         max_weights: float | ArrayLike | dict[str, float] | None,
         groups: ArrayLike | None,
         linear_constraints: list[str] | None,
+        *,
+        solver: str = "CLARABEL",
+        solver_params: dict | None = None,
     ) -> None:
+        self.solver = solver
+        self.solver_params = {} if solver_params is None else dict(solver_params)
+        if "solver" in self.solver_params:
+            raise ValueError(
+                "Set the solver with `projection_solver`, not solver parameters."
+            )
         n = len(asset_names)
         self.target = cp.Parameter(n)
         self.weights = cp.Variable(n)
@@ -110,7 +119,7 @@ class _WeightProjection:
                 if len(constraints) == len(self.constraints)
                 else cp.Problem(self.problem.objective, constraints)
             )
-            problem.solve(solver="CLARABEL")
+            problem.solve(solver=self.solver, **self.solver_params)
             if problem.status not in (cp.OPTIMAL, cp.OPTIMAL_INACCURATE):
                 raise ValueError(
                     f"Portfolio weight projection failed: {problem.status}."

@@ -100,3 +100,38 @@ def test_reused_projection_matches_fresh_solves():
     np.testing.assert_allclose(projection.project(proposals), expected, atol=1e-6)
     funded = projection.project(proposals, budget=0.8)
     np.testing.assert_allclose(funded.sum(axis=1), 0.8, atol=1e-6)
+
+
+def test_projection_solver_configuration(monkeypatch):
+    import cvxpy as cp
+    from sklearn.base import clone
+
+    seen = []
+    original = cp.Problem.solve
+
+    def recording_solve(problem, *args, **kwargs):
+        seen.append(kwargs.copy())
+        return original(problem, *args, **kwargs)
+
+    monkeypatch.setattr(cp.Problem, "solve", recording_solve)
+    settings = {"tol_gap_abs": 1e-9}
+    estimator = clone(
+        model(projection_solver="CLARABEL", projection_solver_params=settings)
+    )
+    X, panel = data()
+    estimator.fit(X, characteristics=panel)
+    _, future = data(n=4, offset=11)
+    estimator.predict_weights(future)
+    assert seen
+    assert all(
+        call["solver"] == "CLARABEL" and call["tol_gap_abs"] == 1e-9 for call in seen
+    )
+    assert settings == {"tol_gap_abs": 1e-9}
+
+
+def test_projection_invalid_solver_fails_without_fallback():
+    import cvxpy as cp
+
+    X, panel = data()
+    with pytest.raises(cp.error.SolverError):
+        model(projection_solver="NOT_A_SOLVER").fit(X, characteristics=panel)

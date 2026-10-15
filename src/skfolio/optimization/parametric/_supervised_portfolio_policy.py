@@ -113,6 +113,13 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         assets receive zero target weight; constraints are never silently relaxed.
         Newly named assets require explicit admission through expand_universe.
 
+    projection_solver : str, default="CLARABEL"
+        CVXPY solver used for allocation projection, independently of the label
+        optimizer. It must support the configured constraints.
+    projection_solver_params : dict, optional
+        Keyword arguments forwarded to the projection solver. Solver failures
+        propagate without an automatic fallback. Defaults to solver defaults.
+
     Attributes
     ----------
     coef_ : ndarray of shape (n_characteristics,)
@@ -158,6 +165,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         max_variance: float | None = None,
         max_turnover: float | None = None,
         allow_universe_changes: bool = False,
+        projection_solver: str = "CLARABEL",
+        projection_solver_params: dict | None = None,
     ) -> None:
         super().__init__(
             characteristics_exposures=characteristics_exposures,
@@ -176,6 +185,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
         self.max_variance = max_variance
         self.max_turnover = max_turnover
         self.allow_universe_changes = allow_universe_changes
+        self.projection_solver = projection_solver
+        self.projection_solver_params = projection_solver_params
 
     def fit(
         self,
@@ -250,6 +261,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             max_weights=self.max_weights,
             groups=self.groups,
             linear_constraints=self.linear_constraints,
+            solver=self.projection_solver,
+            solver_params=self.projection_solver_params,
         )
         # Check feasibility before fitting label optimizers.
         projection.project(inputs.benchmark[-1:], eligible=inputs.holdable[-1:])
@@ -435,6 +448,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             max_weights=worker.max_weights,
             groups=worker.groups,
             linear_constraints=worker.linear_constraints,
+            solver=worker.projection_solver,
+            solver_params=worker.projection_solver_params,
         )
         final_inputs = _PolicyInputs(
             tilt=inputs.tilt[-1:],
@@ -762,6 +777,8 @@ class SupervisedPortfolioPolicy(ParametricPortfolioPolicy):
             self.max_weights,
             self.groups,
             self.linear_constraints,
+            solver=self.projection_solver,
+            solver_params=self.projection_solver_params,
         )
         assert held is not None
         holdings = held[0]
