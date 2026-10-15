@@ -22,6 +22,10 @@ from sklearn.utils.validation import _check_sample_weight, validate_data
 
 import skfolio.typing as skt
 from skfolio.optimization._base import BaseOptimization, _has_transaction_cost
+from skfolio.optimization.online._distribution_constraints import (
+    RISK_LIMITS,
+    DistributionConstraintConfig,
+)
 from skfolio.optimization.online._mixins import (
     OnlineParameterConstraintsMixin,
 )
@@ -91,6 +95,48 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         Fixed covariance matrix for a risk constraint; exclusive with prior_estimator.
     max_variance : float, optional
         Maximum portfolio variance using fixed or causal prior covariance.
+    min_return : float, optional
+        Minimum expected return after costs and fees, using a causal prior.
+    max_standard_deviation : float, optional
+        Upper standard deviation limit using the causal prior and MeanRisk definition.
+    max_semi_variance : float, optional
+        Upper semi variance limit using the causal prior and MeanRisk definition.
+    max_semi_deviation : float, optional
+        Upper semi deviation limit using the causal prior and MeanRisk definition.
+    max_mean_absolute_deviation : float, optional
+        Upper mean absolute deviation limit using the causal prior and MeanRisk definition.
+    max_first_lower_partial_moment : float, optional
+        Upper first lower partial moment limit using the causal prior and MeanRisk definition.
+    max_worst_realization : float, optional
+        Upper worst realization limit using the causal prior and MeanRisk definition.
+    max_cvar : float, optional
+        Upper cvar limit using the causal prior and MeanRisk definition.
+    max_evar : float, optional
+        Upper evar limit using the causal prior and MeanRisk definition.
+    max_max_drawdown : float, optional
+        Upper max drawdown limit using the causal prior and MeanRisk definition.
+    max_average_drawdown : float, optional
+        Upper average drawdown limit using the causal prior and MeanRisk definition.
+    max_cdar : float, optional
+        Upper cdar limit using the causal prior and MeanRisk definition.
+    max_edar : float, optional
+        Upper edar limit using the causal prior and MeanRisk definition.
+    max_ulcer_index : float, optional
+        Upper ulcer index limit using the causal prior and MeanRisk definition.
+    max_gini_mean_difference : float, optional
+        Upper gini mean difference limit using the causal prior and MeanRisk definition.
+    min_acceptable_return : float, optional
+        Downside threshold per asset; None uses the causal prior mean.
+    risk_free_rate : float, default=0.0
+        Risk-free return used by the shared lower-partial-moment expression.
+    cvar_beta : float, default=0.95
+        Confidence level for the CVAR limit, between zero and one.
+    evar_beta : float, default=0.95
+        Confidence level for the EVAR limit, between zero and one.
+    cdar_beta : float, default=0.95
+        Confidence level for the CDAR limit, between zero and one.
+    edar_beta : float, default=0.95
+        Confidence level for the EDAR limit, between zero and one.
     prior_estimator : BasePrior, optional
         Incremental prior cloned and updated once per observed row.
     portfolio_params : dict, optional
@@ -155,6 +201,27 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         max_tracking_error: float | None = None,
         covariance: npt.ArrayLike | None = None,
         max_variance: float | None = None,
+        min_return: float | None = None,
+        max_standard_deviation: float | None = None,
+        max_semi_variance: float | None = None,
+        max_semi_deviation: float | None = None,
+        max_mean_absolute_deviation: float | None = None,
+        max_first_lower_partial_moment: float | None = None,
+        max_worst_realization: float | None = None,
+        max_cvar: float | None = None,
+        max_evar: float | None = None,
+        max_max_drawdown: float | None = None,
+        max_average_drawdown: float | None = None,
+        max_cdar: float | None = None,
+        max_edar: float | None = None,
+        max_ulcer_index: float | None = None,
+        max_gini_mean_difference: float | None = None,
+        min_acceptable_return: float | None = None,
+        risk_free_rate: float = 0.0,
+        cvar_beta: float = 0.95,
+        evar_beta: float = 0.95,
+        cdar_beta: float = 0.95,
+        edar_beta: float = 0.95,
         prior_estimator: BasePrior | None = None,
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
@@ -185,6 +252,27 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         self.X_tracking = X_tracking
         self.tracking_error_benchmark = tracking_error_benchmark
         self.max_tracking_error = max_tracking_error
+        self.min_return = min_return
+        self.max_standard_deviation = max_standard_deviation
+        self.max_semi_variance = max_semi_variance
+        self.max_semi_deviation = max_semi_deviation
+        self.max_mean_absolute_deviation = max_mean_absolute_deviation
+        self.max_first_lower_partial_moment = max_first_lower_partial_moment
+        self.max_worst_realization = max_worst_realization
+        self.max_cvar = max_cvar
+        self.max_evar = max_evar
+        self.max_max_drawdown = max_max_drawdown
+        self.max_average_drawdown = max_average_drawdown
+        self.max_cdar = max_cdar
+        self.max_edar = max_edar
+        self.max_ulcer_index = max_ulcer_index
+        self.max_gini_mean_difference = max_gini_mean_difference
+        self.min_acceptable_return = min_acceptable_return
+        self.risk_free_rate = risk_free_rate
+        self.cvar_beta = cvar_beta
+        self.evar_beta = evar_beta
+        self.cdar_beta = cdar_beta
+        self.edar_beta = edar_beta
         self.prior_estimator = prior_estimator
         self.covariance = covariance
         self.max_variance = max_variance
@@ -227,6 +315,32 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
             if value is not None and (not np.isfinite(value) or value < 0):
                 raise ValueError(f"{name} must be finite and nonnegative, or None")
 
+    def _distribution_config(self) -> DistributionConstraintConfig | None:
+        """Collect distribution limits without consuming observations."""
+        limits = {
+            m: getattr(self, f"max_{m.value}")
+            for m in RISK_LIMITS
+            if getattr(self, f"max_{m.value}") is not None
+        }
+        if self.min_return is None and not limits:
+            return None
+        config = DistributionConstraintConfig(
+            min_return=self.min_return,
+            risk_limits=limits,
+            min_acceptable_return=self.min_acceptable_return,
+            risk_free_rate=self.risk_free_rate,
+            cvar_beta=self.cvar_beta,
+            evar_beta=self.evar_beta,
+            cdar_beta=self.cdar_beta,
+            edar_beta=self.edar_beta,
+        )
+        config.validate()
+        if self.prior_estimator is None:
+            raise ValueError(
+                "Distribution constraints require a causal prior_estimator"
+            )
+        return config
+
     def _initialize_projector(self) -> AutoProjector:
         """Build the projector from aligned constraints and available causal estimates."""
         n_assets = self.n_features_in_
@@ -248,6 +362,38 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
             if hasattr(self, "prior_estimator_")
             else None
         )
+        distribution_config = self._distribution_config()
+        if distribution_config is not None:
+            ready = distribution is not None and distribution_config.ready(
+                distribution, n_assets
+            )
+            if not ready:
+                if (distribution is None and not self._weights_initialized) or getattr(
+                    self, "_prior_warmup", False
+                ):
+                    distribution_config = None
+                else:
+                    raise ValueError(
+                        "The causal prior must be ready before an execution decision"
+                    )
+            else:
+                distribution_config.management_fees = self._clean_input(
+                    value=self.management_fees,
+                    n_assets=n_assets,
+                    fill_value=0.0,
+                    name="management_fees",
+                )
+                distribution_config.transaction_costs = (
+                    0.0
+                    if getattr(self, "_prior_warmup", False)
+                    else self._clean_input(
+                        value=self.transaction_costs,
+                        n_assets=n_assets,
+                        fill_value=0.0,
+                        name="transaction_costs",
+                    )
+                )
+                distribution_config.previous_weights = self._execution_anchor
         covariance = self.covariance
         if self.max_variance is not None and hasattr(self, "prior_estimator_"):
             distribution = self.prior_estimator_.return_distribution_
@@ -282,6 +428,7 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
             groups=groups,
             linear_constraints=self.linear_constraints,
             return_distribution=distribution,
+            distribution_config=distribution_config,
             # Initial learning references precede the first causal prior update.
             strict_linear_constraints=(
                 self.prior_estimator is None or distribution is not None
@@ -373,6 +520,7 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
                 "A previous update failed; call fit to reset before reuse"
             )
         self._validate_params()
+        self._distribution_config()
         if (self.left_inequality is None) != (self.right_inequality is None):
             raise ValueError(
                 "left_inequality and right_inequality must be provided together"
@@ -616,6 +764,10 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
 
     def _initialize_for_evaluation(self, X: npt.ArrayLike) -> None:
         """Initialize before the first return without consuming that observation."""
+        if self._distribution_config() is not None:
+            raise ValueError(
+                "Distribution constraints require causal warmup; use online_predict with warmup_size"
+            )
         self._validate_params()
         if (self.left_inequality is None) != (self.right_inequality is None):
             raise ValueError(

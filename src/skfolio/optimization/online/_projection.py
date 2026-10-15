@@ -22,6 +22,10 @@ from skfolio.optimization._constraints import (
 from skfolio.optimization._constraints import (
     linear_constraints as build_linear_constraints,
 )
+from skfolio.optimization.online._distribution_constraints import (
+    DistributionConstraintConfig,
+    distribution_constraints,
+)
 from skfolio.optimization.online._geometry import mirror_potential
 from skfolio.optimization.online._mirror_maps import (
     BaseMirrorMap,
@@ -54,6 +58,8 @@ class ProjectionConfig:
         Variance-style quadratic bound.
     return_distribution : ReturnDistribution or None
         Causal factor information for named exposure constraints.
+    distribution_config : DistributionConstraintConfig or None
+        Minimum expected return and risk caps from the causal prior distribution.
     strict_linear_constraints : bool
         Raise for unknown asset, group or factor names when True.
     previous_weights, max_turnover : array-like or float or None
@@ -80,6 +86,7 @@ class ProjectionConfig:
     max_turnover: float | None = None
     solver_params: dict[str, Any] | None = None
     return_distribution: ReturnDistribution | None = None
+    distribution_config: DistributionConstraintConfig | None = None
     strict_linear_constraints: bool = True
 
 
@@ -178,6 +185,7 @@ class ConvexProjector(BaseProjector):
             groups=self.config.groups,
             linear_constraints=self.config.linear_constraints,
             return_distribution=self.config.return_distribution,
+            distribution_config=self.config.distribution_config,
             strict_linear_constraints=self.config.strict_linear_constraints,
             left_inequality=self.config.left_inequality,
             right_inequality=self.config.right_inequality,
@@ -209,6 +217,7 @@ class AutoProjector(BaseProjector):
         return any(
             v is not None
             for v in [
+                self.config.distribution_config,
                 self.config.groups,
                 self.config.linear_constraints,
                 self.config.left_inequality,
@@ -489,6 +498,7 @@ def project_convex(
     max_turnover: float | None = None,
     solver_params: dict[str, Any] | None = None,
     objective: Callable[[cp.Variable], cp.Expression] | None = None,
+    distribution_config: DistributionConstraintConfig | None = None,
     return_distribution: ReturnDistribution | None = None,
     strict_linear_constraints: bool = True,
 ) -> np.ndarray:
@@ -579,6 +589,13 @@ def project_convex(
         Sigma = np.asarray(covariance, dtype=float)
         constraints.append(cp.quad_form(w, Sigma) <= float(variance_bound))
 
+    if distribution_config is not None:
+        constraints.extend(
+            distribution_constraints(
+                w=w, distribution=return_distribution, config=distribution_config
+            )
+        )
+
     # Turnover L1 cap if requested
     if previous_weights is not None and max_turnover is not None:
         w_prev = np.asarray(previous_weights, dtype=float)
@@ -588,7 +605,11 @@ def project_convex(
 
     # Zero turnover leaves a singleton feasible set. Preserve the supplied
     # holdings exactly instead of introducing solver-sized artificial trades.
-    if max_turnover == 0 and previous_weights is not None:
+    if (
+        max_turnover == 0
+        and previous_weights is not None
+        and distribution_config is None
+    ):
         anchor = np.asarray(previous_weights, dtype=float)
         w.value = anchor
         if any(np.max(constraint.violation()) > 1e-10 for constraint in constraints):
@@ -613,4 +634,6 @@ def project_convex(
 
     if w.value is None:
         raise RuntimeError("Convex projection failed to converge.")
+    if max_turnover == 0 and previous_weights is not None:
+        return np.asarray(previous_weights, dtype=float).copy()
     return w.value

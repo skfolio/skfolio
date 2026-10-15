@@ -51,6 +51,48 @@ class ExponentiatedGradient(FollowTheWinner):
         Maximum variance, using covariance or the optional causal prior.
     covariance : skt.ArrayLike | None, default=None
         Fixed covariance matrix. Mutually exclusive with prior_estimator.
+    min_return : float, optional
+        Minimum expected return after costs and fees, using a causal prior.
+    max_standard_deviation : float, optional
+        Upper standard deviation limit using the causal prior and MeanRisk definition.
+    max_semi_variance : float, optional
+        Upper semi variance limit using the causal prior and MeanRisk definition.
+    max_semi_deviation : float, optional
+        Upper semi deviation limit using the causal prior and MeanRisk definition.
+    max_mean_absolute_deviation : float, optional
+        Upper mean absolute deviation limit using the causal prior and MeanRisk definition.
+    max_first_lower_partial_moment : float, optional
+        Upper first lower partial moment limit using the causal prior and MeanRisk definition.
+    max_worst_realization : float, optional
+        Upper worst realization limit using the causal prior and MeanRisk definition.
+    max_cvar : float, optional
+        Upper cvar limit using the causal prior and MeanRisk definition.
+    max_evar : float, optional
+        Upper evar limit using the causal prior and MeanRisk definition.
+    max_max_drawdown : float, optional
+        Upper max drawdown limit using the causal prior and MeanRisk definition.
+    max_average_drawdown : float, optional
+        Upper average drawdown limit using the causal prior and MeanRisk definition.
+    max_cdar : float, optional
+        Upper cdar limit using the causal prior and MeanRisk definition.
+    max_edar : float, optional
+        Upper edar limit using the causal prior and MeanRisk definition.
+    max_ulcer_index : float, optional
+        Upper ulcer index limit using the causal prior and MeanRisk definition.
+    max_gini_mean_difference : float, optional
+        Upper gini mean difference limit using the causal prior and MeanRisk definition.
+    min_acceptable_return : float, optional
+        Downside threshold per asset; None uses the causal prior mean.
+    risk_free_rate : float, default=0.0
+        Risk-free return used by the shared lower-partial-moment expression.
+    cvar_beta : float, default=0.95
+        Confidence level for the CVAR limit, between zero and one.
+    evar_beta : float, default=0.95
+        Confidence level for the EVAR limit, between zero and one.
+    cdar_beta : float, default=0.95
+        Confidence level for the CDAR limit, between zero and one.
+    edar_beta : float, default=0.95
+        Confidence level for the EDAR limit, between zero and one.
     prior_estimator : BasePrior | None, default=None
         Optional incremental prior, cloned and updated once per observed row.
     transaction_costs : skt.MultiInput, default=0.0
@@ -130,6 +172,27 @@ class ExponentiatedGradient(FollowTheWinner):
         max_turnover: float | None = None,
         max_variance: float | None = None,
         covariance: skt.ArrayLike | None = None,
+        min_return: float | None = None,
+        max_standard_deviation: float | None = None,
+        max_semi_variance: float | None = None,
+        max_semi_deviation: float | None = None,
+        max_mean_absolute_deviation: float | None = None,
+        max_first_lower_partial_moment: float | None = None,
+        max_worst_realization: float | None = None,
+        max_cvar: float | None = None,
+        max_evar: float | None = None,
+        max_max_drawdown: float | None = None,
+        max_average_drawdown: float | None = None,
+        max_cdar: float | None = None,
+        max_edar: float | None = None,
+        max_ulcer_index: float | None = None,
+        max_gini_mean_difference: float | None = None,
+        min_acceptable_return: float | None = None,
+        risk_free_rate: float = 0.0,
+        cvar_beta: float = 0.95,
+        evar_beta: float = 0.95,
+        cdar_beta: float = 0.95,
+        edar_beta: float = 0.95,
         prior_estimator: BasePrior | None = None,
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
@@ -154,6 +217,27 @@ class ExponentiatedGradient(FollowTheWinner):
             max_turnover=max_turnover,
             max_variance=max_variance,
             covariance=covariance,
+            min_return=min_return,
+            max_standard_deviation=max_standard_deviation,
+            max_semi_variance=max_semi_variance,
+            max_semi_deviation=max_semi_deviation,
+            max_mean_absolute_deviation=max_mean_absolute_deviation,
+            max_first_lower_partial_moment=max_first_lower_partial_moment,
+            max_worst_realization=max_worst_realization,
+            max_cvar=max_cvar,
+            max_evar=max_evar,
+            max_max_drawdown=max_max_drawdown,
+            max_average_drawdown=max_average_drawdown,
+            max_cdar=max_cdar,
+            max_edar=max_edar,
+            max_ulcer_index=max_ulcer_index,
+            max_gini_mean_difference=max_gini_mean_difference,
+            min_acceptable_return=min_acceptable_return,
+            risk_free_rate=risk_free_rate,
+            cvar_beta=cvar_beta,
+            evar_beta=evar_beta,
+            cdar_beta=cdar_beta,
+            edar_beta=edar_beta,
             prior_estimator=prior_estimator,
             transaction_costs=transaction_costs,
             management_fees=management_fees,
@@ -201,6 +285,48 @@ class AdaGrad(FollowTheWinner):
         Maximum variance, using covariance or the optional causal prior.
     covariance : skt.ArrayLike | None, default=None
         Fixed covariance matrix. Mutually exclusive with prior_estimator.
+    min_return : float, optional
+        Minimum expected return after costs and fees, using a causal prior.
+    max_standard_deviation : float, optional
+        Upper standard deviation limit using the causal prior and MeanRisk definition.
+    max_semi_variance : float, optional
+        Upper semi variance limit using the causal prior and MeanRisk definition.
+    max_semi_deviation : float, optional
+        Upper semi deviation limit using the causal prior and MeanRisk definition.
+    max_mean_absolute_deviation : float, optional
+        Upper mean absolute deviation limit using the causal prior and MeanRisk definition.
+    max_first_lower_partial_moment : float, optional
+        Upper first lower partial moment limit using the causal prior and MeanRisk definition.
+    max_worst_realization : float, optional
+        Upper worst realization limit using the causal prior and MeanRisk definition.
+    max_cvar : float, optional
+        Upper cvar limit using the causal prior and MeanRisk definition.
+    max_evar : float, optional
+        Upper evar limit using the causal prior and MeanRisk definition.
+    max_max_drawdown : float, optional
+        Upper max drawdown limit using the causal prior and MeanRisk definition.
+    max_average_drawdown : float, optional
+        Upper average drawdown limit using the causal prior and MeanRisk definition.
+    max_cdar : float, optional
+        Upper cdar limit using the causal prior and MeanRisk definition.
+    max_edar : float, optional
+        Upper edar limit using the causal prior and MeanRisk definition.
+    max_ulcer_index : float, optional
+        Upper ulcer index limit using the causal prior and MeanRisk definition.
+    max_gini_mean_difference : float, optional
+        Upper gini mean difference limit using the causal prior and MeanRisk definition.
+    min_acceptable_return : float, optional
+        Downside threshold per asset; None uses the causal prior mean.
+    risk_free_rate : float, default=0.0
+        Risk-free return used by the shared lower-partial-moment expression.
+    cvar_beta : float, default=0.95
+        Confidence level for the CVAR limit, between zero and one.
+    evar_beta : float, default=0.95
+        Confidence level for the EVAR limit, between zero and one.
+    cdar_beta : float, default=0.95
+        Confidence level for the CDAR limit, between zero and one.
+    edar_beta : float, default=0.95
+        Confidence level for the EDAR limit, between zero and one.
     prior_estimator : BasePrior | None, default=None
         Optional incremental prior, cloned and updated once per observed row.
     transaction_costs : skt.MultiInput, default=0.0
@@ -281,6 +407,27 @@ class AdaGrad(FollowTheWinner):
         max_turnover: float | None = None,
         max_variance: float | None = None,
         covariance: skt.ArrayLike | None = None,
+        min_return: float | None = None,
+        max_standard_deviation: float | None = None,
+        max_semi_variance: float | None = None,
+        max_semi_deviation: float | None = None,
+        max_mean_absolute_deviation: float | None = None,
+        max_first_lower_partial_moment: float | None = None,
+        max_worst_realization: float | None = None,
+        max_cvar: float | None = None,
+        max_evar: float | None = None,
+        max_max_drawdown: float | None = None,
+        max_average_drawdown: float | None = None,
+        max_cdar: float | None = None,
+        max_edar: float | None = None,
+        max_ulcer_index: float | None = None,
+        max_gini_mean_difference: float | None = None,
+        min_acceptable_return: float | None = None,
+        risk_free_rate: float = 0.0,
+        cvar_beta: float = 0.95,
+        evar_beta: float = 0.95,
+        cdar_beta: float = 0.95,
+        edar_beta: float = 0.95,
         prior_estimator: BasePrior | None = None,
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
@@ -306,6 +453,27 @@ class AdaGrad(FollowTheWinner):
             max_turnover=max_turnover,
             max_variance=max_variance,
             covariance=covariance,
+            min_return=min_return,
+            max_standard_deviation=max_standard_deviation,
+            max_semi_variance=max_semi_variance,
+            max_semi_deviation=max_semi_deviation,
+            max_mean_absolute_deviation=max_mean_absolute_deviation,
+            max_first_lower_partial_moment=max_first_lower_partial_moment,
+            max_worst_realization=max_worst_realization,
+            max_cvar=max_cvar,
+            max_evar=max_evar,
+            max_max_drawdown=max_max_drawdown,
+            max_average_drawdown=max_average_drawdown,
+            max_cdar=max_cdar,
+            max_edar=max_edar,
+            max_ulcer_index=max_ulcer_index,
+            max_gini_mean_difference=max_gini_mean_difference,
+            min_acceptable_return=min_acceptable_return,
+            risk_free_rate=risk_free_rate,
+            cvar_beta=cvar_beta,
+            evar_beta=evar_beta,
+            cdar_beta=cdar_beta,
+            edar_beta=edar_beta,
             prior_estimator=prior_estimator,
             transaction_costs=transaction_costs,
             management_fees=management_fees,
@@ -351,6 +519,48 @@ class OnlineMovingAverageReversion(FollowTheLoser):
         Maximum variance, using covariance or the optional causal prior.
     covariance : skt.ArrayLike | None, default=None
         Fixed covariance matrix. Mutually exclusive with prior_estimator.
+    min_return : float, optional
+        Minimum expected return after costs and fees, using a causal prior.
+    max_standard_deviation : float, optional
+        Upper standard deviation limit using the causal prior and MeanRisk definition.
+    max_semi_variance : float, optional
+        Upper semi variance limit using the causal prior and MeanRisk definition.
+    max_semi_deviation : float, optional
+        Upper semi deviation limit using the causal prior and MeanRisk definition.
+    max_mean_absolute_deviation : float, optional
+        Upper mean absolute deviation limit using the causal prior and MeanRisk definition.
+    max_first_lower_partial_moment : float, optional
+        Upper first lower partial moment limit using the causal prior and MeanRisk definition.
+    max_worst_realization : float, optional
+        Upper worst realization limit using the causal prior and MeanRisk definition.
+    max_cvar : float, optional
+        Upper cvar limit using the causal prior and MeanRisk definition.
+    max_evar : float, optional
+        Upper evar limit using the causal prior and MeanRisk definition.
+    max_max_drawdown : float, optional
+        Upper max drawdown limit using the causal prior and MeanRisk definition.
+    max_average_drawdown : float, optional
+        Upper average drawdown limit using the causal prior and MeanRisk definition.
+    max_cdar : float, optional
+        Upper cdar limit using the causal prior and MeanRisk definition.
+    max_edar : float, optional
+        Upper edar limit using the causal prior and MeanRisk definition.
+    max_ulcer_index : float, optional
+        Upper ulcer index limit using the causal prior and MeanRisk definition.
+    max_gini_mean_difference : float, optional
+        Upper gini mean difference limit using the causal prior and MeanRisk definition.
+    min_acceptable_return : float, optional
+        Downside threshold per asset; None uses the causal prior mean.
+    risk_free_rate : float, default=0.0
+        Risk-free return used by the shared lower-partial-moment expression.
+    cvar_beta : float, default=0.95
+        Confidence level for the CVAR limit, between zero and one.
+    evar_beta : float, default=0.95
+        Confidence level for the EVAR limit, between zero and one.
+    cdar_beta : float, default=0.95
+        Confidence level for the CDAR limit, between zero and one.
+    edar_beta : float, default=0.95
+        Confidence level for the EDAR limit, between zero and one.
     prior_estimator : BasePrior | None, default=None
         Optional incremental prior, cloned and updated once per observed row.
     transaction_costs : skt.MultiInput, default=0.0
@@ -434,6 +644,27 @@ class OnlineMovingAverageReversion(FollowTheLoser):
         max_turnover: float | None = None,
         max_variance: float | None = None,
         covariance: skt.ArrayLike | None = None,
+        min_return: float | None = None,
+        max_standard_deviation: float | None = None,
+        max_semi_variance: float | None = None,
+        max_semi_deviation: float | None = None,
+        max_mean_absolute_deviation: float | None = None,
+        max_first_lower_partial_moment: float | None = None,
+        max_worst_realization: float | None = None,
+        max_cvar: float | None = None,
+        max_evar: float | None = None,
+        max_max_drawdown: float | None = None,
+        max_average_drawdown: float | None = None,
+        max_cdar: float | None = None,
+        max_edar: float | None = None,
+        max_ulcer_index: float | None = None,
+        max_gini_mean_difference: float | None = None,
+        min_acceptable_return: float | None = None,
+        risk_free_rate: float = 0.0,
+        cvar_beta: float = 0.95,
+        evar_beta: float = 0.95,
+        cdar_beta: float = 0.95,
+        edar_beta: float = 0.95,
         prior_estimator: BasePrior | None = None,
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
@@ -459,6 +690,27 @@ class OnlineMovingAverageReversion(FollowTheLoser):
             max_turnover=max_turnover,
             max_variance=max_variance,
             covariance=covariance,
+            min_return=min_return,
+            max_standard_deviation=max_standard_deviation,
+            max_semi_variance=max_semi_variance,
+            max_semi_deviation=max_semi_deviation,
+            max_mean_absolute_deviation=max_mean_absolute_deviation,
+            max_first_lower_partial_moment=max_first_lower_partial_moment,
+            max_worst_realization=max_worst_realization,
+            max_cvar=max_cvar,
+            max_evar=max_evar,
+            max_max_drawdown=max_max_drawdown,
+            max_average_drawdown=max_average_drawdown,
+            max_cdar=max_cdar,
+            max_edar=max_edar,
+            max_ulcer_index=max_ulcer_index,
+            max_gini_mean_difference=max_gini_mean_difference,
+            min_acceptable_return=min_acceptable_return,
+            risk_free_rate=risk_free_rate,
+            cvar_beta=cvar_beta,
+            evar_beta=evar_beta,
+            cdar_beta=cdar_beta,
+            edar_beta=edar_beta,
             prior_estimator=prior_estimator,
             transaction_costs=transaction_costs,
             management_fees=management_fees,
@@ -516,6 +768,48 @@ class PassiveAggressiveMeanReversion(FollowTheLoser):
         Maximum variance, using covariance or the optional causal prior.
     covariance : skt.ArrayLike | None, default=None
         Fixed covariance matrix. Mutually exclusive with prior_estimator.
+    min_return : float, optional
+        Minimum expected return after costs and fees, using a causal prior.
+    max_standard_deviation : float, optional
+        Upper standard deviation limit using the causal prior and MeanRisk definition.
+    max_semi_variance : float, optional
+        Upper semi variance limit using the causal prior and MeanRisk definition.
+    max_semi_deviation : float, optional
+        Upper semi deviation limit using the causal prior and MeanRisk definition.
+    max_mean_absolute_deviation : float, optional
+        Upper mean absolute deviation limit using the causal prior and MeanRisk definition.
+    max_first_lower_partial_moment : float, optional
+        Upper first lower partial moment limit using the causal prior and MeanRisk definition.
+    max_worst_realization : float, optional
+        Upper worst realization limit using the causal prior and MeanRisk definition.
+    max_cvar : float, optional
+        Upper cvar limit using the causal prior and MeanRisk definition.
+    max_evar : float, optional
+        Upper evar limit using the causal prior and MeanRisk definition.
+    max_max_drawdown : float, optional
+        Upper max drawdown limit using the causal prior and MeanRisk definition.
+    max_average_drawdown : float, optional
+        Upper average drawdown limit using the causal prior and MeanRisk definition.
+    max_cdar : float, optional
+        Upper cdar limit using the causal prior and MeanRisk definition.
+    max_edar : float, optional
+        Upper edar limit using the causal prior and MeanRisk definition.
+    max_ulcer_index : float, optional
+        Upper ulcer index limit using the causal prior and MeanRisk definition.
+    max_gini_mean_difference : float, optional
+        Upper gini mean difference limit using the causal prior and MeanRisk definition.
+    min_acceptable_return : float, optional
+        Downside threshold per asset; None uses the causal prior mean.
+    risk_free_rate : float, default=0.0
+        Risk-free return used by the shared lower-partial-moment expression.
+    cvar_beta : float, default=0.95
+        Confidence level for the CVAR limit, between zero and one.
+    evar_beta : float, default=0.95
+        Confidence level for the EVAR limit, between zero and one.
+    cdar_beta : float, default=0.95
+        Confidence level for the CDAR limit, between zero and one.
+    edar_beta : float, default=0.95
+        Confidence level for the EDAR limit, between zero and one.
     prior_estimator : BasePrior | None, default=None
         Optional incremental prior, cloned and updated once per observed row.
     transaction_costs : skt.MultiInput, default=0.0
@@ -594,6 +888,27 @@ class PassiveAggressiveMeanReversion(FollowTheLoser):
         max_turnover: float | None = None,
         max_variance: float | None = None,
         covariance: skt.ArrayLike | None = None,
+        min_return: float | None = None,
+        max_standard_deviation: float | None = None,
+        max_semi_variance: float | None = None,
+        max_semi_deviation: float | None = None,
+        max_mean_absolute_deviation: float | None = None,
+        max_first_lower_partial_moment: float | None = None,
+        max_worst_realization: float | None = None,
+        max_cvar: float | None = None,
+        max_evar: float | None = None,
+        max_max_drawdown: float | None = None,
+        max_average_drawdown: float | None = None,
+        max_cdar: float | None = None,
+        max_edar: float | None = None,
+        max_ulcer_index: float | None = None,
+        max_gini_mean_difference: float | None = None,
+        min_acceptable_return: float | None = None,
+        risk_free_rate: float = 0.0,
+        cvar_beta: float = 0.95,
+        evar_beta: float = 0.95,
+        cdar_beta: float = 0.95,
+        edar_beta: float = 0.95,
         prior_estimator: BasePrior | None = None,
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
@@ -620,6 +935,27 @@ class PassiveAggressiveMeanReversion(FollowTheLoser):
             max_turnover=max_turnover,
             max_variance=max_variance,
             covariance=covariance,
+            min_return=min_return,
+            max_standard_deviation=max_standard_deviation,
+            max_semi_variance=max_semi_variance,
+            max_semi_deviation=max_semi_deviation,
+            max_mean_absolute_deviation=max_mean_absolute_deviation,
+            max_first_lower_partial_moment=max_first_lower_partial_moment,
+            max_worst_realization=max_worst_realization,
+            max_cvar=max_cvar,
+            max_evar=max_evar,
+            max_max_drawdown=max_max_drawdown,
+            max_average_drawdown=max_average_drawdown,
+            max_cdar=max_cdar,
+            max_edar=max_edar,
+            max_ulcer_index=max_ulcer_index,
+            max_gini_mean_difference=max_gini_mean_difference,
+            min_acceptable_return=min_acceptable_return,
+            risk_free_rate=risk_free_rate,
+            cvar_beta=cvar_beta,
+            evar_beta=evar_beta,
+            cdar_beta=cdar_beta,
+            edar_beta=edar_beta,
             prior_estimator=prior_estimator,
             transaction_costs=transaction_costs,
             management_fees=management_fees,

@@ -1220,6 +1220,36 @@ An optional ``prior_estimator`` must implement ``partial_fit``. It is cloned and
 updated once per observed row, with metadata sliced to that row. No prior is
 created by default. ``max_variance`` uses either this prior's covariance or a fixed
 ``covariance``; gradient curvature is never interpreted as return covariance.
+
+**Minimum return and distribution risk limits**
+
+``min_return`` constrains expected return after transaction costs and management
+fees. In addition to ``max_variance``, online estimators support
+``max_standard_deviation``, ``max_semi_variance``, ``max_semi_deviation``,
+``max_mean_absolute_deviation``, ``max_first_lower_partial_moment``,
+``max_worst_realization``, ``max_cvar``, ``max_evar``, ``max_max_drawdown``,
+``max_average_drawdown``, ``max_cdar``, ``max_edar``, ``max_ulcer_index`` and
+``max_gini_mean_difference``. These scalar limits reuse the convex expressions
+from :class:`~skfolio.optimization.MeanRisk`, including scenario probabilities
+and its additive drawdown convention. They constrain the next target; they do
+not change the algorithm's learning objective or guarantee future realized risk.
+
+These additional limits require an incremental ``prior_estimator``. Its return
+distribution contains only observations available at the decision time.
+Historical warmup can defer constraints until statistics become finite, but the
+final warmup target and every subsequent decision require usable statistics.
+Scenario-based limits require at least two observations in the prior's history.
+Use :func:`~skfolio.model_selection.online_predict` with ``warmup_size`` for
+out-of-sample evaluation; ``fit_predict`` cannot execute an initial allocation
+before the required prior is ready. Cost-aware constraints also require explicit
+previous holdings at each decision; historical warmup does not incur trades.
+
+The ``*_beta`` parameters set tail confidence levels; ``min_acceptable_return``
+and ``risk_free_rate`` retain their MeanRisk meanings. The same MeanRisk
+limitations apply, including its transaction-cost relaxation for EVaR and EDaR.
+These constraints invoke a convex solver at each update and can materially
+increase runtime, particularly for scenario-heavy risk measures.
+
 Warmup may have incomplete statistics, but entry decisions require finite estimates.
 
 Use the existing evaluation interface::
