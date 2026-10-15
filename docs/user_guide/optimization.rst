@@ -1250,6 +1250,12 @@ limitations apply, including its transaction-cost relaxation for EVaR and EDaR.
 These constraints invoke a convex solver at each update and can materially
 increase runtime, particularly for scenario-heavy risk measures.
 
+The internal tracking-error projector uses the same uncentred active-return
+norm as ``MeanRisk``: ``norm(X @ weights - benchmark) / sqrt(n_observations - 1)``.
+A constant nonzero active return therefore consumes the tracking-error limit.
+Inputs must be finite, aligned, and contain at least two observations. Public
+causal benchmark routing remains a separate API task.
+
 **Cardinality constraints**
 
 ``cardinality`` limits the number of nonzero positions. ``group_cardinalities``

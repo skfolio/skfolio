@@ -35,6 +35,7 @@ from skfolio.optimization._constraints import (
     budget_constraints,
     call_custom_function,
     linear_constraints,
+    tracking_error_expression,
     weight_constraints,
 )
 from skfolio.prior import BasePrior, ReturnDistribution
@@ -1662,12 +1663,10 @@ class ConvexOptimization(BaseOptimization, ABC):
         expression : cvxpy Expression
             The CVXPY Expression the portfolio tracking error.
         """
-        n_observations = return_distribution.returns.shape[0]
         ptf_returns = self._cvx_returns(return_distribution=return_distribution, w=w)
-        tracking_error = cp.norm(ptf_returns - y * factor, "fro") / cp.sqrt(
-            n_observations - 1
+        return tracking_error_expression(
+            returns=ptf_returns, benchmark=y, factor=factor
         )
-        return tracking_error
 
     # Risk Measures risk models
     # They need to be named f'_{risk_measure}_risk' as they are loaded dynamically in

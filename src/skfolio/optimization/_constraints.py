@@ -178,3 +178,13 @@ def call_custom_function(
             f"{name} must be a function taking as argument "
             "the weight variable OR the weight variable and the estimator object."
         ) from err
+
+
+def tracking_error_expression(
+    *,
+    returns: cp.Expression,
+    benchmark: np.ndarray,
+    factor: skt.Factor | float = 1.0,
+) -> cp.Expression:
+    """Return the uncentred active-return norm used by convex optimizers."""
+    return cp.norm(returns - benchmark * factor, "fro") / cp.sqrt(returns.shape[0] - 1)

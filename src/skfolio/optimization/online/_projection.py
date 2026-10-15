@@ -18,6 +18,7 @@ import skfolio.typing as skt
 from skfolio.optimization._constraints import (
     budget_constraints,
     call_custom_function,
+    tracking_error_expression,
     weight_constraints,
 )
 from skfolio.optimization._constraints import (
@@ -613,19 +614,17 @@ def project_convex(
         and tracking_error_benchmark is not None
         and max_tracking_error is not None
     ):
-        # Tracking error as sample standard deviation of active returns:
-        # std(R w - y) = ||(R w - y) - mean(R w - y)||_2 / sqrt(T-1)
         Rt = np.asarray(X, dtype=float)
         y = np.asarray(tracking_error_benchmark, dtype=float)
         if Rt.ndim != 2 or y.ndim != 1 or Rt.shape[0] != y.shape[0] or Rt.shape[1] != n:
             raise ValueError("Invalid shapes for TE: X (T,n), benchmark (T,)")
-        T = Rt.shape[0]
-        ones = np.ones((T, 1))
-        resid = Rt @ w - y
-        mean_resid = (1.0 / T) * (ones.T @ resid)
-        centered = resid - ones @ mean_resid
+        if Rt.shape[0] < 2:
+            raise ValueError("Tracking error requires at least two observations")
+        if not np.isfinite(Rt).all() or not np.isfinite(y).all():
+            raise ValueError("Tracking-error returns and benchmark must be finite")
         constraints.append(
-            cp.norm(centered, 2) / np.sqrt(max(T - 1, 1)) <= float(max_tracking_error)
+            tracking_error_expression(returns=Rt @ w, benchmark=y)
+            <= float(max_tracking_error)
         )
     if covariance is not None and variance_bound is not None:
         # Variance-style bound alternative
