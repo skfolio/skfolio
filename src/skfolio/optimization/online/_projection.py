@@ -23,12 +23,18 @@ from skfolio.optimization._constraints import (
 from skfolio.optimization._constraints import (
     linear_constraints as build_linear_constraints,
 )
+from skfolio.optimization.online._discrete_constraints import (
+    discrete_constraints,
+    has_discrete_constraints,
+    validate_discrete_solver,
+)
 from skfolio.optimization.online._distribution_constraints import (
     DistributionConstraintConfig,
     distribution_constraints,
 )
 from skfolio.optimization.online._geometry import mirror_potential
 from skfolio.optimization.online._mirror_maps import (
+    AdaptiveMahalanobisMap,
     BaseMirrorMap,
     EntropyMirrorMap,
     EuclideanMirrorMap,
@@ -61,6 +67,8 @@ class ProjectionConfig:
         Causal factor information for named exposure constraints.
     distribution_config : DistributionConstraintConfig or None
         Minimum expected return and risk caps from the causal prior distribution.
+    cardinality, group_cardinalities : int or dict or None
+        Global and named-group support limits requiring a mixed-integer solver.
     add_constraints : callable or None
         Custom convex constraints, rebuilt for the current weight variable.
     constraint_estimator : object or None
@@ -92,6 +100,8 @@ class ProjectionConfig:
     solver_params: dict[str, Any] | None = None
     return_distribution: ReturnDistribution | None = None
     distribution_config: DistributionConstraintConfig | None = None
+    cardinality: int | None = None
+    group_cardinalities: dict[str, int] | None = None
     add_constraints: skt.ConstraintFunction | None = None
     constraint_estimator: object | None = None
     strict_linear_constraints: bool = True
@@ -193,6 +203,8 @@ class ConvexProjector(BaseProjector):
             linear_constraints=self.config.linear_constraints,
             return_distribution=self.config.return_distribution,
             distribution_config=self.config.distribution_config,
+            cardinality=self.config.cardinality,
+            group_cardinalities=self.config.group_cardinalities,
             add_constraints=self.config.add_constraints,
             constraint_estimator=self.config.constraint_estimator,
             strict_linear_constraints=self.config.strict_linear_constraints,
@@ -226,6 +238,8 @@ class AutoProjector(BaseProjector):
         return any(
             v is not None
             for v in [
+                self.config.cardinality,
+                self.config.group_cardinalities,
                 self.config.add_constraints,
                 self.config.distribution_config,
                 self.config.groups,
@@ -255,6 +269,14 @@ class AutoProjector(BaseProjector):
         Work with the dual vector directly: projecting a normalized inverse can
         lose information for free budgets, barriers and adaptive/composite maps.
         """
+        if has_discrete_constraints(
+            n_assets=len(dual),
+            cardinality=self.config.cardinality,
+            group_cardinalities=self.config.group_cardinalities,
+        ) and not isinstance(mirror, (EuclideanMirrorMap, AdaptiveMahalanobisMap)):
+            raise ValueError(
+                "Discrete constraints require Euclidean or adaptive quadratic geometry; entropy updates are unsupported"
+            )
         if type(mirror) is EuclideanMirrorMap:
             return self.project(dual)
         config = self.config
@@ -510,6 +532,8 @@ def project_convex(
     objective: Callable[[cp.Variable], cp.Expression] | None = None,
     distribution_config: DistributionConstraintConfig | None = None,
     return_distribution: ReturnDistribution | None = None,
+    cardinality: int | None = None,
+    group_cardinalities: dict[str, int] | None = None,
     add_constraints: skt.ConstraintFunction | None = None,
     constraint_estimator: object | None = None,
     strict_linear_constraints: bool = True,
@@ -622,6 +646,22 @@ def project_convex(
             )
         constraints.extend(custom)
 
+    discrete = has_discrete_constraints(
+        n_assets=n, cardinality=cardinality, group_cardinalities=group_cardinalities
+    )
+    if discrete:
+        validate_discrete_solver(solver_params)
+        constraints.extend(
+            discrete_constraints(
+                w=w,
+                lower=lower_bounds,
+                upper=u,
+                cardinality=cardinality,
+                group_cardinalities=group_cardinalities,
+                groups=None if groups is None else np.asarray(groups),
+            )
+        )
+
     # Turnover L1 cap if requested
     if previous_weights is not None and max_turnover is not None:
         w_prev = np.asarray(previous_weights, dtype=float)
@@ -636,6 +676,7 @@ def project_convex(
         and previous_weights is not None
         and distribution_config is None
         and add_constraints is None
+        and not discrete
     ):
         anchor = np.asarray(previous_weights, dtype=float)
         w.value = anchor
@@ -654,17 +695,29 @@ def project_convex(
     if add_constraints is not None:
         if not prob.is_dcp():
             raise ValueError("add_constraints must define a convex DCP problem")
-        if prob.is_mixed_integer():
+        if cp.Problem(cp.Minimize(0), custom).is_mixed_integer():
             raise ValueError(
                 "Online custom constraints do not support integer variables"
             )
     if solver_params is None:
         solver_params = dict(solver=cp.CLARABEL, verbose=False)
 
-    try:
-        prob.solve(**solver_params)
-    except Exception:
-        prob.solve(verbose=False)
+    if discrete:
+        try:
+            prob.solve(**solver_params)
+        except cp.SolverError as err:
+            raise ValueError(
+                "The selected mixed-integer solver cannot solve this projection; check its cone support and options"
+            ) from err
+        if prob.status != cp.OPTIMAL:
+            raise RuntimeError(
+                f"Discrete projection failed to reach an optimal solution: {prob.status}"
+            )
+    else:
+        try:
+            prob.solve(**solver_params)
+        except Exception:
+            prob.solve(verbose=False)
 
     if w.value is None:
         raise RuntimeError("Convex projection failed to converge.")

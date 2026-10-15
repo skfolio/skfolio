@@ -1250,6 +1250,28 @@ limitations apply, including its transaction-cost relaxation for EVaR and EDaR.
 These constraints invoke a convex solver at each update and can materially
 increase runtime, particularly for scenario-heavy risk measures.
 
+**Cardinality constraints**
+
+``cardinality`` limits the number of nonzero positions. ``group_cardinalities``
+limits the number within each named group and requires ``groups``; unknown group
+names raise. Both reuse the batch mixed-integer constraint formulation and require
+finite weight bounds. They can be combined with the other projection constraints.
+
+Select a mixed-integer solver explicitly, for example ``solver="SCIP"`` (install
+with ``pip install cvxpy[SCIP]``). ``solver_params`` supplies additional solver
+options. The solver must support every cone in the complete problem: being a
+mixed-integer solver alone is insufficient. Unsupported solvers and cones raise;
+there is no fallback to a continuous relaxation. A discrete update requires an
+optimal solver status, so an interrupted or time-limited solve is not accepted.
+
+Discrete updates are supported for AdaGrad, OnlineMovingAverageReversion and
+PassiveAggressiveMeanReversion through their quadratic geometries. Entropy and
+other nonquadratic mirror updates are explicitly rejected, including active
+cardinality constraints on ExponentiatedGradient. These non-convex feasible sets
+remove the usual convex-domain online-update guarantees. Solves may also be much
+slower and tied optima can select different supports. These are opt-in constraints,
+not a change to the default algorithms.
+
 **Custom constraints**
 
 The four online estimators accept ``add_constraints``, using the same callback

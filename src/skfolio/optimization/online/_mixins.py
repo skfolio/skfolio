@@ -6,7 +6,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 from enum import auto
-from numbers import Real
+from numbers import Integral, Real
 from typing import ClassVar
 
 from sklearn.utils._param_validation import Interval
@@ -140,6 +140,10 @@ class OnlineParameterConstraintsMixin:
         "evar_beta": [Interval(Real, 0, 1, closed="both")],
         "cdar_beta": [Interval(Real, 0, 1, closed="both")],
         "edar_beta": [Interval(Real, 0, 1, closed="both")],
+        "cardinality": [Interval(Integral, 0, None, closed="left"), None],
+        "group_cardinalities": [dict, None],
+        "solver": [str],
+        "solver_params": [dict, None],
         "add_constraints": [callable, None],
         "prior_estimator": [BasePrior, None],
         "covariance": ["array-like", None],

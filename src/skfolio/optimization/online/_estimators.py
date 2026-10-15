@@ -93,6 +93,14 @@ class ExponentiatedGradient(FollowTheWinner):
         Confidence level for the CDAR limit, between zero and one.
     edar_beta : float, default=0.95
         Confidence level for the EDAR limit, between zero and one.
+    cardinality : int, optional
+        Maximum number of invested assets; requires a mixed-integer solver.
+    group_cardinalities : dict[str, int], optional
+        Maximum invested assets per named group. Unknown groups raise.
+    solver : str, default="CLARABEL"
+        CVXPY solver. Use a compatible mixed-integer solver for discrete constraints.
+    solver_params : dict, optional
+        Additional solver options, excluding the solver name.
     add_constraints : callable, optional
         Function accepting the CVXPY weight variable and optionally this estimator.
         Return one convex CVXPY constraint or a list, rebuilt at each projection.
@@ -197,6 +205,10 @@ class ExponentiatedGradient(FollowTheWinner):
         evar_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        cardinality: int | None = None,
+        group_cardinalities: dict[str, int] | None = None,
+        solver: str = "CLARABEL",
+        solver_params: dict | None = None,
         add_constraints: skt.ConstraintFunction | None = None,
         prior_estimator: BasePrior | None = None,
         transaction_costs: skt.MultiInput = 0.0,
@@ -243,6 +255,10 @@ class ExponentiatedGradient(FollowTheWinner):
             evar_beta=evar_beta,
             cdar_beta=cdar_beta,
             edar_beta=edar_beta,
+            cardinality=cardinality,
+            group_cardinalities=group_cardinalities,
+            solver=solver,
+            solver_params=solver_params,
             add_constraints=add_constraints,
             prior_estimator=prior_estimator,
             transaction_costs=transaction_costs,
@@ -333,6 +349,14 @@ class AdaGrad(FollowTheWinner):
         Confidence level for the CDAR limit, between zero and one.
     edar_beta : float, default=0.95
         Confidence level for the EDAR limit, between zero and one.
+    cardinality : int, optional
+        Maximum number of invested assets; requires a mixed-integer solver.
+    group_cardinalities : dict[str, int], optional
+        Maximum invested assets per named group. Unknown groups raise.
+    solver : str, default="CLARABEL"
+        CVXPY solver. Use a compatible mixed-integer solver for discrete constraints.
+    solver_params : dict, optional
+        Additional solver options, excluding the solver name.
     add_constraints : callable, optional
         Function accepting the CVXPY weight variable and optionally this estimator.
         Return one convex CVXPY constraint or a list, rebuilt at each projection.
@@ -438,6 +462,10 @@ class AdaGrad(FollowTheWinner):
         evar_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        cardinality: int | None = None,
+        group_cardinalities: dict[str, int] | None = None,
+        solver: str = "CLARABEL",
+        solver_params: dict | None = None,
         add_constraints: skt.ConstraintFunction | None = None,
         prior_estimator: BasePrior | None = None,
         transaction_costs: skt.MultiInput = 0.0,
@@ -485,6 +513,10 @@ class AdaGrad(FollowTheWinner):
             evar_beta=evar_beta,
             cdar_beta=cdar_beta,
             edar_beta=edar_beta,
+            cardinality=cardinality,
+            group_cardinalities=group_cardinalities,
+            solver=solver,
+            solver_params=solver_params,
             add_constraints=add_constraints,
             prior_estimator=prior_estimator,
             transaction_costs=transaction_costs,
@@ -573,6 +605,14 @@ class OnlineMovingAverageReversion(FollowTheLoser):
         Confidence level for the CDAR limit, between zero and one.
     edar_beta : float, default=0.95
         Confidence level for the EDAR limit, between zero and one.
+    cardinality : int, optional
+        Maximum number of invested assets; requires a mixed-integer solver.
+    group_cardinalities : dict[str, int], optional
+        Maximum invested assets per named group. Unknown groups raise.
+    solver : str, default="CLARABEL"
+        CVXPY solver. Use a compatible mixed-integer solver for discrete constraints.
+    solver_params : dict, optional
+        Additional solver options, excluding the solver name.
     add_constraints : callable, optional
         Function accepting the CVXPY weight variable and optionally this estimator.
         Return one convex CVXPY constraint or a list, rebuilt at each projection.
@@ -681,6 +721,10 @@ class OnlineMovingAverageReversion(FollowTheLoser):
         evar_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        cardinality: int | None = None,
+        group_cardinalities: dict[str, int] | None = None,
+        solver: str = "CLARABEL",
+        solver_params: dict | None = None,
         add_constraints: skt.ConstraintFunction | None = None,
         prior_estimator: BasePrior | None = None,
         transaction_costs: skt.MultiInput = 0.0,
@@ -728,6 +772,10 @@ class OnlineMovingAverageReversion(FollowTheLoser):
             evar_beta=evar_beta,
             cdar_beta=cdar_beta,
             edar_beta=edar_beta,
+            cardinality=cardinality,
+            group_cardinalities=group_cardinalities,
+            solver=solver,
+            solver_params=solver_params,
             add_constraints=add_constraints,
             prior_estimator=prior_estimator,
             transaction_costs=transaction_costs,
@@ -828,6 +876,14 @@ class PassiveAggressiveMeanReversion(FollowTheLoser):
         Confidence level for the CDAR limit, between zero and one.
     edar_beta : float, default=0.95
         Confidence level for the EDAR limit, between zero and one.
+    cardinality : int, optional
+        Maximum number of invested assets; requires a mixed-integer solver.
+    group_cardinalities : dict[str, int], optional
+        Maximum invested assets per named group. Unknown groups raise.
+    solver : str, default="CLARABEL"
+        CVXPY solver. Use a compatible mixed-integer solver for discrete constraints.
+    solver_params : dict, optional
+        Additional solver options, excluding the solver name.
     add_constraints : callable, optional
         Function accepting the CVXPY weight variable and optionally this estimator.
         Return one convex CVXPY constraint or a list, rebuilt at each projection.
@@ -931,6 +987,10 @@ class PassiveAggressiveMeanReversion(FollowTheLoser):
         evar_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        cardinality: int | None = None,
+        group_cardinalities: dict[str, int] | None = None,
+        solver: str = "CLARABEL",
+        solver_params: dict | None = None,
         add_constraints: skt.ConstraintFunction | None = None,
         prior_estimator: BasePrior | None = None,
         transaction_costs: skt.MultiInput = 0.0,
@@ -979,6 +1039,10 @@ class PassiveAggressiveMeanReversion(FollowTheLoser):
             evar_beta=evar_beta,
             cdar_beta=cdar_beta,
             edar_beta=edar_beta,
+            cardinality=cardinality,
+            group_cardinalities=group_cardinalities,
+            solver=solver,
+            solver_params=solver_params,
             add_constraints=add_constraints,
             prior_estimator=prior_estimator,
             transaction_costs=transaction_costs,
