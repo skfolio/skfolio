@@ -129,13 +129,6 @@ class FastProjector(BaseProjector):
 
     def project(self, y: np.ndarray) -> np.ndarray:
         """Project candidate weights onto the configured feasible set."""
-        if self.config.previous_weights is None or self.config.max_turnover is None:
-            return project_box_and_sum(
-                y=y,
-                lower=0.0 if self.config.lower is None else self.config.lower,
-                upper=1.0 if self.config.upper is None else self.config.upper,
-                budget=self.config.budget,
-            )
         return project_with_turnover(
             w_raw=y,
             previous_weights=self.config.previous_weights,
@@ -373,6 +366,36 @@ def project_box_and_sum(
     return np.clip(y_arr - 0.5 * (lo + hi), lo_arr, up_arr)
 
 
+def _validate_constraint_inputs(
+    *,
+    max_turnover: float | None = None,
+    previous_weights: ArrayLike | None = None,
+    variance_bound: float | None = None,
+    covariance: ArrayLike | None = None,
+    max_tracking_error: float | None = None,
+    X: ArrayLike | None = None,
+    tracking_error_benchmark: ArrayLike | None = None,
+) -> None:
+    """Reject active caps with invalid values or missing supporting inputs."""
+    for name, value in (
+        ("max_turnover", max_turnover),
+        ("variance_bound", variance_bound),
+        ("max_tracking_error", max_tracking_error),
+    ):
+        if value is not None and (
+            np.ndim(value) != 0 or not np.isfinite(value) or value < 0
+        ):
+            raise ValueError(f"{name} must be a finite nonnegative scalar")
+    if max_turnover is not None and previous_weights is None:
+        raise ValueError("max_turnover requires previous_weights")
+    if variance_bound is not None and covariance is None:
+        raise ValueError("variance_bound requires covariance")
+    if max_tracking_error is not None and (
+        X is None or tracking_error_benchmark is None
+    ):
+        raise ValueError("max_tracking_error requires X and tracking_error_benchmark")
+
+
 def project_with_turnover(
     w_raw: ArrayLike,
     previous_weights: ArrayLike | None,
@@ -402,6 +425,9 @@ def project_with_turnover(
     w : ndarray of shape (n,)
         Projected weights.
     """
+    _validate_constraint_inputs(
+        max_turnover=max_turnover, previous_weights=previous_weights
+    )
     y = np.asarray(w_raw, dtype=float)
     n = int(y.shape[0])
     lower_bounds = _bound_array(lower, n_assets=n, default=0.0, name="lower_bounds")
@@ -414,8 +440,6 @@ def project_with_turnover(
     if previous_weights is None or max_turnover is None:
         return w
 
-    if max_turnover < 0 or not np.isfinite(max_turnover):
-        raise ValueError("max_turnover must be finite and nonnegative")
     prev = np.asarray(previous_weights, dtype=float)
     if prev.shape != y.shape or not np.isfinite(prev).all():
         raise ValueError("previous_weights must be finite and match candidate weights")
@@ -475,8 +499,20 @@ def project_convex(
     sum(w) = budget
     lower <= w <= upper
     group_min <= G @ w <= group_max  (if provided)
-    w' Sigma w <= max_tracking_error^2 (if provided)
+    w' Sigma w <= variance_bound (if provided)
+
+    Active turnover, variance and tracking-error caps require their supporting
+    inputs. Supplying data without a cap does not activate a constraint.
     """
+    _validate_constraint_inputs(
+        max_turnover=max_turnover,
+        previous_weights=previous_weights,
+        variance_bound=variance_bound,
+        covariance=covariance,
+        max_tracking_error=max_tracking_error,
+        X=X,
+        tracking_error_benchmark=tracking_error_benchmark,
+    )
     if (left_inequality is None) != (right_inequality is None):
         raise ValueError(
             "left_inequality and right_inequality must be provided together"
@@ -546,10 +582,8 @@ def project_convex(
     # Turnover L1 cap if requested
     if previous_weights is not None and max_turnover is not None:
         w_prev = np.asarray(previous_weights, dtype=float)
-        if w_prev.shape != (n,):
-            raise ValueError("previous_weights must have shape (n,)")
-        if max_turnover < 0:
-            raise ValueError("max_turnover must be nonnegative")
+        if w_prev.shape != (n,) or not np.isfinite(w_prev).all():
+            raise ValueError("previous_weights must be finite and have shape (n,)")
         constraints.append(cp.norm1(w - w_prev) <= float(max_turnover))
 
     # Zero turnover leaves a singleton feasible set. Preserve the supplied
