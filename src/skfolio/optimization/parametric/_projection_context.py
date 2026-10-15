@@ -42,8 +42,17 @@ def projection_context(
         if not np.allclose(cov, cov.swapaxes(1, 2), rtol=0, atol=1e-12):
             raise ValueError("Covariance must be symmetric.")
         cov = (cov + cov.swapaxes(1, 2)) / 2
-        if (np.linalg.eigvalsh(cov) < 0).any():
+        eigenvalues, eigenvectors = np.linalg.eigh(cov)
+        # Singular sample covariances can have negative eigenvalues from roundoff.
+        scale = np.max(np.abs(eigenvalues), axis=-1, keepdims=True)
+        tolerance = 10 * n * np.finfo(float).eps * scale
+        if (eigenvalues < -tolerance).any():
             raise ValueError("Covariance must be positive semidefinite.")
+        for i in np.flatnonzero((eigenvalues < 0).any(axis=-1)):
+            cov[i] = (eigenvectors[i] * np.maximum(eigenvalues[i], 0)) @ eigenvectors[
+                i
+            ].T
+            cov[i] = (cov[i] + cov[i].T) / 2
     if holdings is not None:
         if isinstance(holdings, pd.DataFrame):
             if (
