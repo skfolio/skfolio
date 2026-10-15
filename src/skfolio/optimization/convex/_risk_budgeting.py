@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import cvxpy as cp
 import numpy as np
 import sklearn.utils.metadata_routing as skm
@@ -16,9 +18,9 @@ import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
-from skfolio.optimization.convex._base import ConvexOptimization
+from skfolio.optimization.convex._base import ConvexOptimization, _gmd_reported_risk
 from skfolio.prior import BasePrior, EmpiricalPrior
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import ArrayLike
 from skfolio.utils.tools import args_names, check_estimator
 
 
@@ -63,7 +65,7 @@ class RiskBudgeting(ConvexOptimization):
     Limitations are imposed on some constraints including long only weights to ensure
     convexity.
 
-    The assets expected returns, covariance matrix and returns are estimated from the
+    The expected asset returns, covariance matrix and returns are estimated from the
     :ref:`prior estimator <prior>`.
 
     Parameters
@@ -101,7 +103,7 @@ class RiskBudgeting(ConvexOptimization):
     prior_estimator : BasePrior, optional
         :ref:`Prior estimator <prior>`.
         The prior estimator is used to estimate the :class:`~skfolio.prior.ReturnDistribution`
-        containing the estimation of assets expected returns, covariance matrix,
+        containing estimates of expected asset returns, covariance matrix,
         returns and Cholesky decomposition of the covariance.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
@@ -158,6 +160,12 @@ class RiskBudgeting(ConvexOptimization):
         with :math:`\mu` the vector of assets' expected returns and :math:`w` the
         vector of assets weights.
 
+        For positions in `previous_weights` whose assets are no longer in the
+        investment universe, transaction costs are calculated assuming full
+        liquidation. These costs are included in both the optimization and
+        `Portfolio.total_cost`. For assets absent from `X`, `transaction_costs`
+        must be a single rate applied to all assets or a dictionary keyed by asset name.
+
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset cost) and the input `X` of the `fit` method must be a
@@ -167,10 +175,14 @@ class RiskBudgeting(ConvexOptimization):
         .. warning::
 
             Based on the above formula, the periodicity of the transaction costs
-            needs to be homogenous to the periodicity of :math:`\mu`. For example, if
-            the input `X` is composed of **daily** returns, the `transaction_costs` need
-            to be expressed as **daily** costs.
-            (See :ref:`sphx_glr_auto_examples_mean_risk_plot_6_transaction_costs.py`)
+            must match the periodicity of :math:`\mu`. For example, if the input
+            `X` is composed of **daily** returns, the `transaction_costs` need to be
+            expressed as **daily** costs. A transaction cost is paid once per
+            rebalancing while a position earns its expected return on every period it
+            is held, so the one-off cost is converted by dividing it by the expected
+            investment duration (e.g. `0.001 / 21` for a 10 bps cost with daily
+            returns and a one-month expected holding period).
+            (See :ref:`Periodicity Convention <periodicity_convention>`)
 
     management_fees : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Management fees of the assets. It is used to add linear management fees to the
@@ -194,10 +206,13 @@ class RiskBudgeting(ConvexOptimization):
 
         .. warning::
 
-            Based on the above formula, the periodicity of the management fees needs to
-            be homogenous to the periodicity of :math:`\mu`. For example, if the input
+            Based on the above formula, the periodicity of the management fees
+            must match the periodicity of :math:`\mu`. For example, if the input
             `X` is composed of **daily** returns, the `management_fees` need to be
-            expressed in **daily** fees.
+            expressed in **daily** fees. Unlike transaction costs, management fees
+            accrue with holding time, so a stated annual fee converts directly to the
+            return periodicity (e.g. `0.02 / 252` for a 2% annual fee on daily
+            returns).
 
         .. note::
 
@@ -210,6 +225,8 @@ class RiskBudgeting(ConvexOptimization):
     previous_weights : float | dict[str, float] | array-like of shape (n_assets, ), optional
         Previous weights of the assets. Previous weights are used to compute the
         portfolio cost and the portfolio turnover.
+        For named positions in assets absent from `X`, these calculations assume
+        full liquidation.
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset previous weight) and the input `X` of the `fit` method must
@@ -219,26 +236,37 @@ class RiskBudgeting(ConvexOptimization):
         these weights if provided.
 
     linear_constraints : array-like of shape (n_constraints,), optional
-        Linear constraints.
-        The linear constraints must match any of following patterns:
+        Linear constraints on portfolio weights or factor exposures.
 
-           * `"2.5 * ref1 + 0.10 * ref2 + 0.0013 <= 2.5 * ref3"`
-           * `"ref1 >= 2.9 * ref2"`
-           * `"ref1 == ref2"`
-           * `"ref1 >= ref1"`
+        Constraint names can reference:
 
-        With `"ref1"`, `"ref2"` ... the assets names or the groups names provided
-        in the parameter `groups`. Assets names can be referenced without the need of
-        `groups` if the input `X` of the `fit` method is a DataFrame with these
-        assets names in columns.
+            * Asset names: individual asset weights (e.g. `"SPX"`, `"AAPL"`)
+            * Group names: sums of weights in groups defined by `groups`
+            * Factor names: portfolio factor exposure (requires factor model prior)
+            * Factor families: sum of portfolio exposures to all factors in one family
+
+        Supported equation patterns include:
+
+            * `"name <= value"` or `"name >= value"`
+            * `"name == value"`
+            * `"a * name1 + b * name2 <= c * name3 + d"`
 
         For example:
 
-            * `"SPX >= 0.10"` --> SPX weight must be greater than 10% (note that you can also use `min_weights`)
-            * `"SX5E + TLT >= 0.2"` --> the sum of SX5E and TLT weights must be greater than 20%
-            * `"US == 0.7"` --> the sum of all US weights must be equal to 70%
-            * `"Equity == 3 * Bond"` --> the sum of all Equity weights must be equal to 3 times the sum of all Bond weights.
-            * `"2*SPX + 3*Europe <= Bond + 0.05"` --> mixing assets and group constraints
+            * `"SPX >= 0.10"` --> SPX weight >= 10%
+            * `"SX5E + SPX >= 0.2"` --> sum of SX5E and SPX weights >= 20%
+            * `"US == 0.7"` --> sum of weights in US group == 70%
+            * `"Equity == 3 * Bond"` --> sum of weights in Equity group == 3x sum of weights in Bond group
+            * `"Momentum <= 0.30"` --> portfolio Momentum exposure <= 30%
+            * `"style <= 0.50"` --> sum of all style factor exposures (Momentum, Value, Size, etc.) <= 50%
+
+        Factor constraints require a prior estimator (e.g.
+        :class:`~skfolio.prior.TimeSeriesFactorModel`,
+        :class:`~skfolio.prior.CharacteristicsFactorModel`)
+        that provides `loading_matrix`, `factor_names` and optionally `factor_families`
+        in its :class:`~skfolio.prior.FactorModel`.
+
+        Asset, group, factor, and factor family names must be unique.
 
     groups : dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional
         The assets groups referenced in `linear_constraints`.
@@ -260,7 +288,8 @@ class RiskBudgeting(ConvexOptimization):
         constraint :math:`A \cdot w \leq b`.
 
     risk_free_rate : float, default=0.0
-        Risk-free interest rate.
+        Risk-free rate, expressed in the same frequency as the returns `X` (for
+        example, :math:`0.04 / 252` for a 4% annual rate with daily returns).
         The default value is `0.0`.
 
     min_return : float | array-like of shape (n_optimization), optional
@@ -277,46 +306,69 @@ class RiskBudgeting(ConvexOptimization):
         The default (`None`) is to use the mean.
 
     cvar_beta : float, default=0.95
-        CVaR (Conditional Value at Risk) confidence level.
-        The default value is `0.95`.
+        CVaR (Conditional Value at Risk) confidence level in [0, 1].
+        At 1, CVaR equals the largest loss with positive sample weight.
 
     evar_beta : float, default=0.95
-        EVaR (Entropic Value at Risk) confidence level.
-        The default value is `0.95`.
+        EVaR (Entropic Value at Risk) confidence level in [0, 1].
+        At 1, EVaR equals the largest loss with positive sample weight.
 
     cdar_beta : float, default=0.95
-        CDaR (Conditional Drawdown at Risk) confidence level.
-        The default value is `0.95`.
+        CDaR (Conditional Drawdown at Risk) confidence level in [0, 1].
+        At 1, CDaR equals the largest drawdown magnitude with positive sample weight.
 
     edar_beta : float, default=0.95
-        EDaR (Entropic Drawdown at Risk) confidence level.
-        The default value is `0.95`.
+        EDaR (Entropic Drawdown at Risk) confidence level in [0, 1].
+        At 1, EDaR equals the largest drawdown magnitude with positive sample weight.
 
     add_objective : Callable[[cp.Variable], cp.Expression], optional
         Add a custom objective to the existing objective expression.
         It is a function that must take as argument the weights `w` and returns a
         CVXPY expression.
 
-    add_constraints : Callable[[cp.Variable], cp.Expression | list[cp.Expression]] | Callable[[cp.Variable, ConvexOptimization], cp.Expression | list[cp.Expression]], optional
+    add_constraints : Callable[[cp.Variable], cp.Expression | list[cp.Expression]], optional
         Add a custom constraint or a list of constraints to the existing constraints.
-        The callable must accept the weights as its first argument. It can optionally
-        accept the estimator instance as its second argument, allowing access to the
-        estimator's attributes. It must return a CVXPY expression or a list of CVXPY
-        expressions.
+        It must be a function taking the CVXPY weight variable `w` as its first
+        positional argument and, optionally, the estimator instance as its second.
+        It must return a CVXPY expression or a list of CVXPY expressions, evaluated
+        when `fit` is called.
 
-        For example, the estimator instance can provide its `budget` attribute:
+        For example, to require an effective number of assets of at least 20:
 
-        >>> from skfolio.optimization import MeanRisk
-        >>> def custom_constraints(weights, estimator):
-        ...     return [weights >= estimator.budget / 20]
-        >>> model = MeanRisk(add_constraints=custom_constraints)
+        >>> import cvxpy as cp
+        >>> from skfolio.optimization import RiskBudgeting
+        >>> model = RiskBudgeting(add_constraints=lambda w: cp.sum_squares(w) <= 1 / 20)
 
-        The custom constraint is evaluated when `fit` is called.
+        The optional second argument gives access to the estimator's attributes,
+        including quantities estimated during `fit`. For example, to cap each
+        position size in risk units at 20 bps, using the volatilities estimated
+        by the prior:
+
+        >>> import numpy as np
+        >>> def position_risk_cap(w, model):
+        ...     covariance = model.prior_estimator_.return_distribution_.covariance
+        ...     vols = np.sqrt(np.diag(covariance))
+        ...     return cp.multiply(vols, w) <= 0.002
+        >>> model = RiskBudgeting(add_constraints=position_risk_cap)
 
     overwrite_expected_return : Callable[[cp.Variable], cp.Expression], optional
-        Overwrite the expected return :math:`\mu \cdot w` with a custom expression.
-        It is a function that must take as argument the weights `w` and returns a
-        CVXPY expression.
+        Overwrite the expected return :math:`\mu \cdot w` with a custom CVXPY
+        expression. It must be a function taking the CVXPY weight variable `w` as
+        its first positional argument and, optionally, the estimator instance as
+        its second. It must return a concave CVXPY expression, evaluated when
+        `fit` is called. The custom expression replaces the expected return in the
+        objective function and in the constraints where the expected return is
+        used.
+
+        For example, to adjust the expected return for volatility drag,
+        approximating the portfolio geometric mean return:
+
+        >>> import cvxpy as cp
+        >>> from skfolio.optimization import RiskBudgeting
+        >>> def geometric_expected_return(w, model):
+        ...     dist = model.prior_estimator_.return_distribution_
+        ...     return dist.mu @ w - 0.5 * cp.quad_form(w, dist.covariance)
+        >>> model = RiskBudgeting(overwrite_expected_return=geometric_expected_return)
 
     solver : str, default="CLARABEL"
         The solver to use. The default is "CLARABEL" which is written in Rust and has
@@ -354,21 +406,23 @@ class RiskBudgeting(ConvexOptimization):
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
         Fallback estimator or a list of estimators to try, in order, when the primary
-        optimization raises during `fit`. Alternatively, use `"previous_weights"` 
-        (alone or in a list) to fall back to the estimator's `previous_weights`.
-        When a fallback succeeds, its fitted `weights_` are copied back to the primary 
-        estimator so that `fit` still returns the original instance. For traceability, 
+        optimization raises during `fit`. Alternatively, use `"previous_weights"` (alone
+        or in a list) to fall back to the estimator's `previous_weights`. When a
+        fallback succeeds, its fitted `weights_` are copied back to the primary
+        estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
-        and `fallback_chain_` stores each attempt with the associated outcome.
+        and `fallback_chain_` stores each attempt with the associated outcome. See
+        :ref:`optimization_fallbacks`.
 
     raise_on_failure : bool, default=True
-        Controls error handling when fitting fails.
-        If True, any failure during `fit` is raised immediately, no `weights_` are
-        set and subsequent calls to `predict` will raise a `NotFittedError`.
-        If False, errors are not raised; instead, a warning is emitted, `weights_`
-        is set to `None` and subsequent calls to `predict` will return a
-        `FailedPortfolio`. When fallbacks are specified, this behavior applies only
-        after all fallbacks have been exhausted.
+        Controls error handling when fitting fails and no fallback succeeds. If True,
+        the estimator raises the final error. If False, the estimator emits a warning
+        and sets `weights_` to None, so subsequent calls to `predict` return a
+        :class:`~skfolio.portfolio.FailedPortfolio`. During `fit`, `raise_on_failure`
+        applies to any fitting error, including errors raised by the prior estimator.
+        See :ref:`optimization_failure_handling`. When computing multiple portfolios,
+        setting `raise_on_failure=False` preserves successful allocations and records
+        each failure separately. See :ref:`optimization_multiple_results`.
 
     Attributes
     ----------
@@ -404,9 +458,11 @@ class RiskBudgeting(ConvexOptimization):
         a valid solution, otherwise the stringified error message. For successful
         fits without any fallback, this is `None`.
 
-    error_ : str | list[str] | None
-        Captured error message(s) when `fit` fails. For multi-portfolio outputs
-        (`weights_` is 2D), this is a list aligned with portfolios.
+    error_ : str | list[str | None] | None
+        For a single portfolio, this is the recorded error message, or None after a
+        successful allocation or fallback. For multiple portfolios, it is a list with
+        one entry per row of `weights_`, containing an error message for each failed
+        portfolio and None for each successful portfolio.
 
     Notes
     -----
@@ -430,7 +486,9 @@ class RiskBudgeting(ConvexOptimization):
     >>> # Variance risk parity optimization
     >>> model = RiskBudgeting(risk_measure=RiskMeasure.VARIANCE)
     >>> model.fit(X)
+    RiskBudgeting()
     >>> print(model.weights_)
+    [0.0422 0.0314 0.0343 ... 0.0473 0.0603 0.0565]
     >>>
     >>> # CVaR risk budgeting with custom asset budgets
     >>> risk_budget = {asset: 1.0 for asset in X.columns}
@@ -442,10 +500,13 @@ class RiskBudgeting(ConvexOptimization):
     ...     risk_budget=risk_budget,
     ... )
     >>> model.fit(X)
+    RiskBudgeting(...)
     >>> print(model.weights_)
+    [0.0623 0.0319 0.0347 ... 0.0502 0.0659 0.0595]
     >>>
     >>> portfolio = model.predict(X)
     >>> print(portfolio.cvar)
+    0.0251...
 
     References
     ----------
@@ -459,7 +520,7 @@ class RiskBudgeting(ConvexOptimization):
     def __init__(
         self,
         risk_measure: RiskMeasure = RiskMeasure.VARIANCE,
-        risk_budget: FloatArray | None = None,
+        risk_budget: dict[str, float] | ArrayLike | None = None,
         prior_estimator: BasePrior | None = None,
         min_weights: skt.MultiInput | None = 0.0,
         max_weights: skt.MultiInput | None = 1.0,
@@ -484,11 +545,11 @@ class RiskBudgeting(ConvexOptimization):
         save_problem: bool = False,
         raise_on_failure: bool = True,
         add_objective: skt.ExpressionFunction | None = None,
-        add_constraints: skt.ExpressionFunction | None = None,
+        add_constraints: skt.ConstraintFunction | None = None,
         overwrite_expected_return: skt.ExpressionFunction | None = None,
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
-    ):
+    ) -> None:
         super().__init__(
             risk_measure=risk_measure,
             prior_estimator=prior_estimator,
@@ -523,7 +584,9 @@ class RiskBudgeting(ConvexOptimization):
         self.min_return = min_return
         self.risk_budget = risk_budget
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> RiskBudgeting:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> RiskBudgeting:
         """Fit the Risk Budgeting Optimization estimator.
 
         Parameters
@@ -543,7 +606,9 @@ class RiskBudgeting(ConvexOptimization):
         routed_params = skm.process_routing(self, "fit", **fit_params)
 
         # `X` is unchanged and only `feature_names_in_` is performed
-        _ = skv.validate_data(self, X, skip_check_array=True)
+        _ = skv.validate_data(
+            self, X, skip_check_array=True, ensure_all_finite="allow-nan"
+        )
 
         if not isinstance(self.risk_measure, RiskMeasure):
             raise TypeError("risk_measure must be of type `RiskMeasure`")
@@ -556,7 +621,9 @@ class RiskBudgeting(ConvexOptimization):
             check_type=BasePrior,
         )
         self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
-        return_distribution = self.prior_estimator_.return_distribution_
+        return_distribution = self._prepare_investable_distribution(
+            self.prior_estimator_.return_distribution_, slim=True
+        )
         _, n_assets = return_distribution.returns.shape
 
         # set solvers params
@@ -580,7 +647,7 @@ class RiskBudgeting(ConvexOptimization):
                 fill_value=1e-10,
                 name="risk_budget",
             )
-            risk_budget[risk_budget == 0] = 1e-10
+            risk_budget = np.where(risk_budget == 0, 1e-10, risk_budget)
 
         # Variables
         w = cp.Variable(n_assets)
@@ -600,7 +667,11 @@ class RiskBudgeting(ConvexOptimization):
 
         # weight constraints
         constraints += self._get_weight_constraints(
-            n_assets=n_assets, w=w, factor=factor, allow_negative_weights=False
+            n_assets=n_assets,
+            w=w,
+            factor=factor,
+            allow_negative_weights=False,
+            return_distribution=return_distribution,
         )
 
         parameters_values = []
@@ -631,6 +702,12 @@ class RiskBudgeting(ConvexOptimization):
                 args[arg_name] = getattr(self, arg_name)
         risk, constraints_i = risk_func(**args)
         constraints += constraints_i
+        if self.risk_measure == RiskMeasure.GINI_MEAN_DIFFERENCE:
+            reported_risk = _gmd_reported_risk(return_distribution.returns, w / factor)
+        elif self.risk_measure in [RiskMeasure.VARIANCE, RiskMeasure.SEMI_VARIANCE]:
+            reported_risk = risk / factor / factor
+        else:
+            reported_risk = risk / factor
 
         # custom objectives and constraints
         custom_objective = self._get_custom_objective(w=w)
@@ -641,7 +718,6 @@ class RiskBudgeting(ConvexOptimization):
         )
 
         # problem
-        # noinspection PyTypeChecker
         problem = cp.Problem(objective, constraints)
 
         # results
@@ -651,8 +727,8 @@ class RiskBudgeting(ConvexOptimization):
             factor=factor,
             parameters_values=parameters_values,
             expressions={
-                "expected_return": expected_return,
-                "risk": risk,
+                "expected_return": expected_return / factor,
+                "risk": reported_risk,
                 "factor": factor,
             },
         )

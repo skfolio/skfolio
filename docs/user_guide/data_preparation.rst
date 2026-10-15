@@ -8,6 +8,8 @@ Data Preparation
 
 Most `fit` methods of `skfolio` estimators take the assets returns as input `X`.
 Therefore, the choice of methodology to convert prices to returns is left to the user.
+For datasets with missing returns or a changing asset universe, see
+:ref:`Missing Data and Changing Universes <missing_data>`.
 
 There are two different notions of return:
 
@@ -17,13 +19,13 @@ Linear return (or simple return) is defined as:
 
 .. math:: R^{Lin}_{t} = \frac{S_{t}}{S_{t-1}} - 1
 
-**Linear returns aggregates across securities**, meaning that the linear return
+**Linear returns aggregate across securities**, meaning that the linear return
 of a portfolio is the sum of the weighted linear returns of its components:
 
 .. math:: R^{Lin}_{t} = \sum_{i=1}^{N} w_{i} \times  R^{Lin}_{i,t}
 
 
-This property is needed to properly compute portfolio return and risk ([5]_).
+This property is needed to properly compute portfolio return and risk [1]_.
 However, linear returns cannot be aggregated across time.
 
 Logarithmic return
@@ -32,7 +34,7 @@ Logarithmic return (or continuously compounded return) is defined as:
 
 .. math:: R^{Log}_{t} = ln\Biggl(\frac{S_{t}}{S_{t-1}}\Biggr)
 
-**Logarithmic returns aggregates across time**, meaning that the logarithmic return over
+**Logarithmic returns aggregate across time**, meaning that the logarithmic return over
 k periods is the sum of all single-period logarithmic returns:
 
 .. math:: R^{Log}_{t..k} = ln\Biggl(\frac{S_{t+k}}{S_{t}}\Biggr) = \sum_{j=1}^{k} ln\Biggl(\frac{S_{t+j}}{S_{t+j-1}}\Biggr)= \sum_{j=1}^{k-1} R^{Log}_{t+j}
@@ -47,7 +49,7 @@ Pitfall in Portfolio Optimization
 =================================
 Given the similarities of linear and logarithmic returns in the short run, they are
 sometimes used interchangeably.
-It is not uncommon to witness the following steps ([1]_, [2]_, [3]_):
+It is not uncommon to witness the following steps [2]_, [3]_, [4]_:
 
 #. Take the daily prices :math:`S_{t}, S_{t+1}, ...,` for all the n securities
 #. Transform the daily prices to daily logarithmic returns
@@ -59,7 +61,7 @@ It is not uncommon to witness the following steps ([1]_, [2]_, [3]_):
 The above approach is incorrect. First, the square-root rule in (5) only applies under
 the assumption that the logarithmic returns are invariants (they behave identically and
 independently across time). It is approximately true for stocks; long-term dependence
-requires additional care in optimization ([6]_). It is not true for bonds nor most
+requires additional care in optimization [5]_. It is not true for bonds nor most
 derivatives like options.
 Secondly, even for stocks, the optimization (6) is ill-posed: :math:`w^T \mu`
 is not the expected return of the portfolio over the horizon and :math:`w^T \Sigma w`
@@ -83,7 +85,7 @@ Example for stocks
 #. Take the prices :math:`S_{t}, S_{t+1}, ...,` (for example daily) for all the n securities
 #. Transform the daily prices to daily logarithmic returns. Note that linear return is also a market invariant for stock, however logarithmic return is going to simplify step 3) and 4).
 #. Estimate the joint distribution of market invariants by fitting parametrically the daily logarithmic returns to a multivariate normal distribution: estimate the joint distribution parameters :math:`\mu^{Log}_{daily}` and :math:`\Sigma^{Log}_{daily}`
-#. Project the distribution of invariants to the time period of investment (for example one year i.e. 252 business days). Because logarithmic returns are additive across time, we have ([4]_, [7]_):
+#. Project the distribution of invariants to the time period of investment (for example one year i.e. 252 business days). Because logarithmic returns are additive across time, we have [6]_, [7]_:
 
         * .. math:: \mu^{Log}_{yearly} = 252 \times \mu^{Log}_{daily}
         * .. math:: \Sigma^{Log}_{yearly} = 252 \times \Sigma^{Log}_{daily}
@@ -127,20 +129,57 @@ to logarithmic returns should be reformed inside the estimator.
 For bonds and options, the general procedure will be implemented in a future release. In the meantime
 you can use your own custom :ref:`prior estimator <prior>`.
 
+.. _periodicity_convention:
+
+Periodicity Convention
+======================
+skfolio estimators work in the periodicity of the input `X`. With daily returns,
+moment estimators produce daily expected returns and covariance, prior estimators
+produce daily return scenarios, and optimizers consume these per-period inputs
+directly. Nothing is projected to the investment horizon inside the optimization.
+When horizon projection is needed, it is performed inside the prior estimator (see
+:class:`~skfolio.prior.EmpiricalPrior` with `investment_horizon` above), not by
+scaling the optimization inputs.
+
+This convention has several benefits:
+
+* It avoids the incorrect moment projection described in the pitfall above.
+* Variance-based and scenario-based risk measures stay consistent within a single
+  optimization: scenario-based measures (e.g. CVaR, CDaR) consume the return
+  scenarios directly, and scenarios have no meaningful horizon-scaled equivalent.
+* For ratio objectives such as maximizing the Sharpe ratio, consistent scaling of
+  the return-based inputs changes the objective value but not the optimal weights,
+  so projecting the inputs adds conversion risk without changing the solution.
+* Walk-forward and online evaluation rebalance in units of observations, so
+  per-period inputs compose with any rebalancing frequency without rescaling.
+
+Quantities that are paid once rather than earned per period must be converted to
+the periodicity of `X`. A transaction cost is paid once per rebalancing while a
+position earns its expected return on every period it is held, so the one-off cost
+is divided by the expected investment duration: for a 10 basis point cost, daily
+returns and a one-month expected holding period, `transaction_costs=0.001 / 21`
+(see :ref:`sphx_glr_auto_examples_mean_risk_plot_6_transaction_costs.py`).
+Management fees accrue with holding time, so a stated annual fee converts directly
+to the return periodicity (e.g. `0.02 / 252` for a 2% annual fee on daily returns).
+
+Annualization happens only at reporting time. :class:`~skfolio.portfolio.Portfolio`
+computes measures on the per-observation return series and scales them for display
+in the annualized variants (e.g. `annualized_sharpe_ratio`), using its
+`annualization_factor` parameter.
 
 
 .. rubric:: References
 
-.. [1] Quant nugget 2: linear vs. compounded returns – common pitfalls in portfolio management, GARP Risk Professional, Meucci (2010)
+.. [1] Note on simple and logarithmic return, Panna Miskolczi (2017)
 
-.. [2] Quant nugget 4: annualization and general projection of skewness, kurtosis and all summary statistics, GARP Risk Professional, Meucci (2010)
+.. [2] Quant nugget 2: linear vs. compounded returns – common pitfalls in portfolio management, GARP Risk Professional, Meucci (2010)
 
-.. [3] Quant nugget 5: return calculations for leveraged securities and portfolios, GARP Risk Professional, Meucci (2010)
+.. [3] Quant nugget 4: annualization and general projection of skewness, kurtosis and all summary statistics, GARP Risk Professional, Meucci (2010)
 
-.. [4] Efficient Asset Management: A Practical Guide to Stock Portfolio Optimization and Asset Allocation, Oxford University Press, Richard Michaud and Robert Michaud.
+.. [4] Quant nugget 5: return calculations for leveraged securities and portfolios, GARP Risk Professional, Meucci (2010)
 
-.. [5] Note on simple and logarithmic return, Panna Miskolczi (2017)
+.. [5] Portfolio optimization and long-term dependence, Carlos León and Alejandro Reveiz
 
-.. [6] Portfolio optimization and long-term dependence, Carlos León and Alejandro Reveiz
+.. [6] Efficient Asset Management: A Practical Guide to Stock Portfolio Optimization and Asset Allocation, Oxford University Press, Richard Michaud and Robert Michaud.
 
 .. [7] Portfolio Optimization Cookbook, Mosek

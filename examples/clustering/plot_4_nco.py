@@ -10,7 +10,7 @@ Nested Clusters Optimization (NCO) is a portfolio optimization method developed 
 Marcos Lopez de Prado.
 
 It uses a distance matrix to compute clusters using a clustering algorithm (
-Hierarchical Tree Clustering, KMeans, etc..). For each cluster, the inner-cluster
+Hierarchical Tree Clustering, KMeans, etc.). For each cluster, the inner-cluster
 weights are computed by fitting the inner-estimator on each cluster using the whole
 training data. Then the outer-cluster weights are computed by training the
 outer-estimator using out-of-sample estimates of the inner-estimators with
@@ -21,7 +21,7 @@ inner-weights and outer-weights.
 
     The original paper uses KMeans as the clustering algorithm, minimum Variance for
     the inner-estimator and equal-weight for the outer-estimator. Here we generalize
-    it to all `sklearn` and `skfolio` clustering algorithm (Hierarchical Tree
+    it to all `sklearn` and `skfolio` clustering algorithms (Hierarchical Tree
     Clustering, KMeans, etc.), all portfolio optimizations (Mean-Variance, HRP, etc.)
     and risk measures (variance, CVaR, etc.).
     To avoid data leakage at the outer-estimator, we use out-of-sample estimates to
@@ -58,7 +58,7 @@ X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 # %%
 # Model
 # =====
-# We create a NCO model that maximizes the Sharpe Ratio intra-cluster and uses a CVaR
+# We create an NCO model that maximizes the Sharpe Ratio intra-cluster and uses a CVaR
 # Risk Parity inter-cluster. By default, the inter-cluster optimization
 # uses `KFolds` out-of-sample estimates of the inner-estimator to avoid data leakage.
 # and the :class:`~skfolio.cluster.HierarchicalClustering` estimator
@@ -87,7 +87,7 @@ model1.weights_
 model1.clustering_estimator_.plot_dendrogram(heatmap=False)
 
 # %%
-# The horizontal axis represent the assets. The links between clusters are represented
+# The horizontal axis represents the assets. The links between clusters are represented
 # as upside-down U-shaped lines. The height of the U indicates the distance between the
 # clusters. For example, the link representing the cluster containing Assets HD and WMT
 # has a distance of 0.5 (called cophenetic distance).
@@ -123,7 +123,7 @@ model2.clustering_estimator_.plot_dendrogram(heatmap=True)
 # %%
 # Distance Estimator
 # ==================
-# The distance metric used has also an important effect on the clustering.
+# The distance metric used also has an important effect on the clustering.
 # The default is to use the distance of the pearson correlation matrix.
 # This can be changed using the :ref:`distance estimators <distance>`.
 #

@@ -273,7 +273,7 @@ class TestOnlineCovarianceForecastEvaluation:
 
         with config_context(enable_metadata_routing=True):
             ev_routed = online_covariance_forecast_evaluation(
-                EWCovariance(half_life=30).set_partial_fit_request(active_mask=True),
+                EWCovariance(half_life=30),
                 X_masked,
                 warmup_size=100,
                 test_size=5,
@@ -296,7 +296,7 @@ class TestOnlineCovarianceForecastEvaluation:
         )
 
     def test_metadata_routing_requires_request(self, X_array):
-        """online_covariance_forecast_evaluation raises without a request."""
+        """Covariance evaluation respects an explicit None request."""
         X_masked, active_mask = _make_inactive_block(X_array, start=120, stop=180)
 
         with config_context(enable_metadata_routing=True):
@@ -305,7 +305,9 @@ class TestOnlineCovarianceForecastEvaluation:
                 match="online_covariance_forecast_evaluation",
             ):
                 online_covariance_forecast_evaluation(
-                    EWCovariance(half_life=30),
+                    EWCovariance(half_life=30).set_partial_fit_request(
+                        active_mask=None
+                    ),
                     X_masked,
                     warmup_size=100,
                     test_size=5,
@@ -479,3 +481,22 @@ class TestMultiPortfolioEvaluation:
             ev_1d.portfolio_variance_qlike_loss,
             ev_2d.portfolio_variance_qlike_loss,
         )
+
+
+def test_online_covariance_forecast_evaluation_skips_fully_inactive_window(X_array):
+    ev_clean = online_covariance_forecast_evaluation(
+        EWCovariance(half_life=30), X_array, warmup_size=100, test_size=5
+    )
+    X_nan = X_array.copy()
+    # Last test window (indices 495:500) has no finite observation for any asset.
+    X_nan[495:, :] = np.nan
+    ev = online_covariance_forecast_evaluation(
+        EWCovariance(half_life=30), X_nan, warmup_size=100, test_size=5
+    )
+    assert (
+        ev.mahalanobis_calibration_ratio.shape[0]
+        == ev_clean.mahalanobis_calibration_ratio.shape[0] - 1
+    )
+    np.testing.assert_allclose(
+        ev.mahalanobis_calibration_ratio, ev_clean.mahalanobis_calibration_ratio[:-1]
+    )

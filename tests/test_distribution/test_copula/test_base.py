@@ -35,7 +35,7 @@ def test_validate_X_wrong_shape():
     cop = GaussianCopula()
 
     # 3 columns -> should fail
-    with pytest.raises(ValueError, match="X must contains two columns"):
+    with pytest.raises(ValueError, match="X must contain two columns"):
         data_3cols = np.random.rand(10, 3)
         cop._validate_X(data_3cols, reset=True)
 
@@ -52,3 +52,12 @@ def test_n_params():
     """Check _validate_X raises error if values are out of [0,1]."""
     cop = GaussianCopula()
     assert cop.n_params == 1
+
+
+def test_plot_tail_concentration_with_X_default_title(random_data):
+    cop = GaussianCopula().fit(random_data)
+    fig = cop.plot_tail_concentration(X=random_data)
+    assert fig.layout.title.text == (
+        "Tail Concentration of Bivariate GaussianCopula vs Empirical"
+    )
+    assert {trace.name for trace in fig.data} == {"GaussianCopula", "Empirical"}

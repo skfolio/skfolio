@@ -4,4 +4,3 @@ Risk Budgeting
 --------------
 
 Examples concerning the :class:`~skfolio.optimization.RiskBudgeting` optimization.
-

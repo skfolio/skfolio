@@ -102,12 +102,13 @@ def prices_to_returns(
 
     _, n_assets = X.shape
 
-    # Remove observations with missing X above threshold
+    # Remove observations whose missing asset prices exceed the threshold;
+    # X occupies the first n_assets columns, so missing values in y are excluded.
     if nan_threshold is not None:
         nan_threshold = float(nan_threshold)
         if not 0 < nan_threshold <= 1:
             raise ValueError("`nan_threshold` must be between 0 and 1")
-        count_nan = df.isna().sum(axis=1)
+        count_nan = df.iloc[:, :n_assets].isna().sum(axis=1)
         to_drop = count_nan[count_nan > n_assets * nan_threshold].index
         if len(to_drop) > 0:
             df.drop(to_drop, axis=0, inplace=True)
@@ -116,7 +117,6 @@ def prices_to_returns(
     if fill_nan:
         df.ffill(inplace=True)
     # Drop rows according to drop_inceptions_nan
-    # noinspection PyTypeChecker
     df.dropna(how="any" if drop_inceptions_nan else "all", inplace=True)
     # Drop column if all its values are missing
     df.dropna(axis=1, how="all", inplace=True)

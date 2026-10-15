@@ -51,7 +51,7 @@ model1.weights_
 # %%
 # Pipeline
 # ========
-# Then, we create a maximum Sharpe ratio model with pre-selection using `Pipepline` and
+# Then, we create a maximum Sharpe ratio model with pre-selection using `Pipeline` and
 # fit it on the training set:
 set_config(transform_output="pandas")
 
@@ -111,7 +111,7 @@ pred_1 = cross_val_predict(
     X_test,
     cv=cv,
     n_jobs=-1,
-    portfolio_params=dict(annualized_factor=252, tag="model1"),
+    portfolio_params=dict(annualization_factor=252, tag="model1"),
 )
 
 pred_2 = cross_val_predict(
@@ -119,7 +119,7 @@ pred_2 = cross_val_predict(
     X_test,
     cv=cv,
     n_jobs=-1,
-    portfolio_params=dict(annualized_factor=252, tag="model2"),
+    portfolio_params=dict(annualization_factor=252, tag="model2"),
 )
 
 # %%

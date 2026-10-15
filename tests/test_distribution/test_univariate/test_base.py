@@ -99,3 +99,21 @@ def test_qq_plot(dummy_model):
     assert len(fig.data) >= 1
     # Check that layout title matches
     assert "Test Q-Q Plot" in fig.layout.title.text
+
+
+def test_validate_X_wrong_shape(dummy_model):
+    with pytest.raises(ValueError, match="X should contain a single column"):
+        dummy_model._validate_X(np.zeros((3, 2)), reset=True)
+
+
+def test_plot_pdf_with_X_default_title(dummy_model):
+    X = np.linspace(-2, 2, 30).reshape(-1, 1)
+    fig = dummy_model.plot_pdf(X=X)
+    assert fig.layout.title.text == "PDF of DummyUnivariate vs Empirical KDE"
+    assert len(fig.data) == 2
+    assert fig.data[1].name == "Empirical KDE"
+
+
+def test_qq_plot_default_title(dummy_model):
+    fig = dummy_model.qq_plot(X=np.array([1, 2, 3, 4]).reshape(-1, 1))
+    assert fig.layout.title.text == "Q-Q Plot of DummyUnivariate vs Sample Data"

@@ -35,7 +35,12 @@ from skfolio.model_selection._online._validation import (
     _validate_scoring,
     _validate_sizes,
 )
-from skfolio.model_selection._validation import _is_portfolio_optimization_estimator
+from skfolio.model_selection._validation import (
+    _is_portfolio_optimization_estimator,
+    _validate_entry_rebalancing_params,
+)
+from skfolio.population import Population
+from skfolio.portfolio import Portfolio
 from skfolio.typing import ArrayLike, FloatArray, IntArray
 
 __all__ = ["OnlineGridSearch", "OnlineRandomizedSearch"]
@@ -119,7 +124,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         * A callable receives `cv_results_` and must return the best
           candidate index.
 
-    n_jobs : int or None, default=None
+    n_jobs : int, optional
         Number of parallel jobs. `None` means 1.
 
     verbose : int, default=0
@@ -130,9 +135,41 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         If set to `"raise"`, the error is raised.
 
     portfolio_params : dict, optional
-        Parameters forwarded to
-        :class:`~skfolio.portfolio.MultiPeriodPortfolio` when scoring
-        portfolio estimators.
+        Portfolio parameters for the evaluation of each candidate parameter set.
+
+        Parameters shared by :class:`~skfolio.portfolio.Portfolio` and
+        :class:`~skfolio.portfolio.MultiPeriodPortfolio` (`compounded`,
+        `risk_free_rate`, `annualization_factor`, `fitness_measures` and the risk
+        measure parameters) are applied to the `MultiPeriodPortfolio` scored for each
+        parameter set and to each `Portfolio` it contains. A value passed here takes
+        precedence over the optimizer's `portfolio_params`. When omitted here, it is
+        inherited from the optimizer's `portfolio_params`. When omitted from both,
+        `risk_free_rate` falls back to the optimizer's `risk_free_rate` parameter when
+        it has one. These parameters only affect how the portfolios are measured, not
+        the optimization, so they can change the scores and the ranking of the
+        parameter sets.
+
+        `weight_drift` applies to each `Portfolio` of the path. With
+        `weight_drift=True`, the weights held within each test window drift with the
+        asset returns, and the path runs sequentially: the `ending_weights` of each
+        portfolio are passed as `previous_weights` to the next update. A value passed
+        here overrides the optimizer's `portfolio_params`. When refitting is enabled,
+        `weight_drift` is retained in `best_estimator_`. The other parameters are not.
+
+        Optimizer parameters such as `transaction_costs`, `management_fees` and
+        `previous_weights` are not accepted here. Set them on the optimizer.
+
+        `name`, `tag`, `sample_weight` and `check_observations_order` apply to the
+        scored `MultiPeriodPortfolio` only.
+
+    entry_rebalancing_params : dict, optional
+        Portfolio optimizer parameters applied only while constructing the first
+        portfolio in the online path for each candidate parameter set. This is useful
+        when the strategy starts with no existing position, while later portfolios
+        represent regular rebalancing from the previously predicted weights. For
+        example, the entry rebalancing can use lower `transaction_costs` or require a
+        valid initial solution with `fallback=None`. Only supported for portfolio
+        optimization estimators.
 
     return_predictions : bool, default=False
         If `True`, store
@@ -180,7 +217,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
     """
 
     cv_results_: dict[str, FloatArray]
-    best_estimator_: skb.BaseEstimator
+    best_estimator_: Any
     best_score_: float
     best_params_: dict
     best_index_: int
@@ -191,7 +228,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         self,
         estimator: skb.BaseEstimator,
         *,
-        scoring=None,
+        scoring: skt.Scoring = None,
         warmup_size: int = 252,
         test_size: int = 1,
         freq: str | pd.offsets.BaseOffset | None = None,
@@ -200,12 +237,13 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         purged_size: int = 0,
         reduce_test: bool = False,
         refit: bool | str | Callable[[dict[str, Any]], int] = True,
-        error_score=np.nan,
+        error_score: float | Literal["raise"] = np.nan,
         return_predictions: bool = False,
         portfolio_params: dict | None = None,
+        entry_rebalancing_params: dict | None = None,
         n_jobs: int | None = None,
         verbose: int = 0,
-    ):
+    ) -> None:
         self.estimator = estimator
         self.scoring = scoring
         self.warmup_size = warmup_size
@@ -219,6 +257,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         self.error_score = error_score
         self.return_predictions = return_predictions
         self.portfolio_params = portfolio_params
+        self.entry_rebalancing_params = entry_rebalancing_params
         self.n_jobs = n_jobs
         self.verbose = verbose
 
@@ -230,7 +269,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         """Return the metric name used to select the best candidate."""
         if not self.multimetric_:
             return "score"
-        _check_refit_for_multimetric(self.refit, self.scoring)
+        _check_refit_for_multimetric(self.refit, self.scoring)  # ty: ignore[invalid-argument-type]
         if isinstance(self.refit, str):
             return self.refit
         return None
@@ -239,8 +278,8 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         self,
         X: ArrayLike,
         y: ArrayLike | None = None,
-        **fit_params,
-    ):
+        **fit_params: Any,
+    ) -> BaseOnlineSearch:
         """Run the online search over all candidate parameter combinations.
 
         Parameters
@@ -271,6 +310,14 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         )
         self.multimetric_ = isinstance(self.scoring, dict)
         _validate_scoring(self.scoring, self.is_portfolio_estimator_)
+        if (
+            self.entry_rebalancing_params is not None
+            and not self.is_portfolio_estimator_
+        ):
+            raise ValueError(
+                "`entry_rebalancing_params` is only supported for portfolio "
+                "optimization estimators."
+            )
 
         routed_params = _route_params(
             self.estimator,
@@ -299,6 +346,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
                 return_predictions=self.return_predictions,
                 error_score=self.error_score,
                 portfolio_params=self.portfolio_params,
+                entry_rebalancing_params=self.entry_rebalancing_params,
             )
             for candidate_params in candidate_params_list
         )
@@ -317,7 +365,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         }
 
         if self.multimetric_:
-            for name in self.scoring:
+            for name in self.scoring:  # ty: ignore[not-iterable]
                 scores = np.asarray(
                     [res["score"][name] for res in results],
                     dtype=np.float64,
@@ -369,7 +417,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
             else:
                 self.best_estimator_ = best_candidate
 
-    def predict(self, X: ArrayLike):
+    def predict(self, X: ArrayLike) -> Portfolio | Population:
         """Predict using the best estimator found during search.
 
         Parameters
@@ -384,7 +432,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         skv.check_is_fitted(self, "best_estimator_")
         return self.best_estimator_.predict(X)
 
-    def score(self, X: ArrayLike, y=None):
+    def score(self, X: ArrayLike, y: None = None) -> float:
         """Score using the best estimator found during search.
 
         Parameters
@@ -502,11 +550,43 @@ class OnlineGridSearch(BaseOnlineSearch):
         portfolio optimization estimators.
 
     portfolio_params : dict, optional
-        Parameters forwarded to
-        :class:`~skfolio.portfolio.MultiPeriodPortfolio` when scoring
-        portfolio estimators.
+        Portfolio parameters for the evaluation of each candidate parameter set.
 
-    n_jobs : int or None, default=None
+        Parameters shared by :class:`~skfolio.portfolio.Portfolio` and
+        :class:`~skfolio.portfolio.MultiPeriodPortfolio` (`compounded`,
+        `risk_free_rate`, `annualization_factor`, `fitness_measures` and the risk
+        measure parameters) are applied to the `MultiPeriodPortfolio` scored for each
+        parameter set and to each `Portfolio` it contains. A value passed here takes
+        precedence over the optimizer's `portfolio_params`. When omitted here, it is
+        inherited from the optimizer's `portfolio_params`. When omitted from both,
+        `risk_free_rate` falls back to the optimizer's `risk_free_rate` parameter when
+        it has one. These parameters only affect how the portfolios are measured, not
+        the optimization, so they can change the scores and the ranking of the
+        parameter sets.
+
+        `weight_drift` applies to each `Portfolio` of the path. With
+        `weight_drift=True`, the weights held within each test window drift with the
+        asset returns, and the path runs sequentially: the `ending_weights` of each
+        portfolio are passed as `previous_weights` to the next update. A value passed
+        here overrides the optimizer's `portfolio_params`. When refitting is enabled,
+        `weight_drift` is retained in `best_estimator_`. The other parameters are not.
+
+        Optimizer parameters such as `transaction_costs`, `management_fees` and
+        `previous_weights` are not accepted here. Set them on the optimizer.
+
+        `name`, `tag`, `sample_weight` and `check_observations_order` apply to the
+        scored `MultiPeriodPortfolio` only.
+
+    entry_rebalancing_params : dict, optional
+        Portfolio optimizer parameters applied only while constructing the first
+        portfolio in the online path for each candidate parameter set. This is useful
+        when the strategy starts with no existing position, while later portfolios
+        represent regular rebalancing from the previously predicted weights. For
+        example, the entry rebalancing can use lower `transaction_costs` or require a
+        valid initial solution with `fallback=None`. Only supported for portfolio
+        optimization estimators.
+
+    n_jobs : int, optional
         Number of parallel jobs. `None` means 1.
 
     verbose : int, default=0
@@ -567,7 +647,7 @@ class OnlineGridSearch(BaseOnlineSearch):
     >>> from skfolio.prior import EmpiricalPrior
     >>>
     >>> prices = load_sp500_dataset()
-    >>> X = prices_to_returns(prices)
+    >>> X = prices_to_returns(prices).tail(504)
     >>>
     >>> model = MeanRisk(
     ...     prior_estimator=EmpiricalPrior(
@@ -575,7 +655,7 @@ class OnlineGridSearch(BaseOnlineSearch):
     ...         covariance_estimator=EWCovariance(),
     ...     ),
     ... )
-    >>> search = OnlineGridSearch(  # doctest: +SKIP
+    >>> search = OnlineGridSearch(
     ...     model,
     ...     param_grid={
     ...         "prior_estimator__mu_estimator__half_life": [20, 40, 60],
@@ -585,9 +665,13 @@ class OnlineGridSearch(BaseOnlineSearch):
     ...     test_size=5,
     ...     n_jobs=-1,
     ... )
-    >>> search.fit(X)  # doctest: +SKIP
-    >>> search.best_params_  # doctest: +SKIP
-    >>> search.best_estimator_  # doctest: +SKIP
+    >>> search.fit(X)
+    OnlineGridSearch(...)
+    >>> search.best_params_
+    {'prior_estimator__covariance_estimator__half_life': 60,
+     'prior_estimator__mu_estimator__half_life': 20}
+    >>> search.best_estimator_
+    MeanRisk(...)
     """
 
     def __init__(
@@ -595,7 +679,7 @@ class OnlineGridSearch(BaseOnlineSearch):
         estimator: skb.BaseEstimator,
         param_grid: dict | list[dict],
         *,
-        scoring=None,
+        scoring: skt.Scoring = None,
         warmup_size: int = 252,
         test_size: int = 1,
         freq: str | pd.offsets.BaseOffset | None = None,
@@ -604,12 +688,13 @@ class OnlineGridSearch(BaseOnlineSearch):
         purged_size: int = 0,
         reduce_test: bool = False,
         refit: bool | str | Callable[[dict[str, Any]], int] = True,
-        error_score=np.nan,
+        error_score: float | Literal["raise"] = np.nan,
         return_predictions: bool = False,
         portfolio_params: dict | None = None,
+        entry_rebalancing_params: dict | None = None,
         n_jobs: int | None = None,
         verbose: int = 0,
-    ):
+    ) -> None:
         super().__init__(
             estimator=estimator,
             scoring=scoring,
@@ -624,17 +709,19 @@ class OnlineGridSearch(BaseOnlineSearch):
             error_score=error_score,
             return_predictions=return_predictions,
             portfolio_params=portfolio_params,
+            entry_rebalancing_params=entry_rebalancing_params,
             n_jobs=n_jobs,
             verbose=verbose,
         )
         self.param_grid = param_grid
 
     def _get_candidate_params(self) -> Iterable[dict]:
+        """Return every parameter combination of `param_grid`."""
         return ParameterGrid(self.param_grid)
 
 
 class OnlineRandomizedSearch(BaseOnlineSearch):
-    """Online randomized search on hyper parameters.
+    """Online randomized search on hyperparameters.
 
     Each sampled parameter combination is evaluated by running a full online
     walk-forward pass. Unlike :class:`OnlineGridSearch`, not all parameters are tried
@@ -733,7 +820,7 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
         * A callable receives `cv_results_` and must return the best
           candidate index.
 
-    random_state : int, RandomState instance or None, default=None
+    random_state : int, RandomState instance, optional
         Pseudo random number generator state used for random uniform sampling
         from lists of possible values instead of scipy.stats distributions.
         Pass an int for reproducible output across multiple function calls.
@@ -749,11 +836,43 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
         portfolio optimization estimators.
 
     portfolio_params : dict, optional
-        Parameters forwarded to
-        :class:`~skfolio.portfolio.MultiPeriodPortfolio` when scoring
-        portfolio estimators.
+        Portfolio parameters for the evaluation of each candidate parameter set.
 
-    n_jobs : int or None, default=None
+        Parameters shared by :class:`~skfolio.portfolio.Portfolio` and
+        :class:`~skfolio.portfolio.MultiPeriodPortfolio` (`compounded`,
+        `risk_free_rate`, `annualization_factor`, `fitness_measures` and the risk
+        measure parameters) are applied to the `MultiPeriodPortfolio` scored for each
+        parameter set and to each `Portfolio` it contains. A value passed here takes
+        precedence over the optimizer's `portfolio_params`. When omitted here, it is
+        inherited from the optimizer's `portfolio_params`. When omitted from both,
+        `risk_free_rate` falls back to the optimizer's `risk_free_rate` parameter when
+        it has one. These parameters only affect how the portfolios are measured, not
+        the optimization, so they can change the scores and the ranking of the
+        parameter sets.
+
+        `weight_drift` applies to each `Portfolio` of the path. With
+        `weight_drift=True`, the weights held within each test window drift with the
+        asset returns, and the path runs sequentially: the `ending_weights` of each
+        portfolio are passed as `previous_weights` to the next update. A value passed
+        here overrides the optimizer's `portfolio_params`. When refitting is enabled,
+        `weight_drift` is retained in `best_estimator_`. The other parameters are not.
+
+        Optimizer parameters such as `transaction_costs`, `management_fees` and
+        `previous_weights` are not accepted here. Set them on the optimizer.
+
+        `name`, `tag`, `sample_weight` and `check_observations_order` apply to the
+        scored `MultiPeriodPortfolio` only.
+
+    entry_rebalancing_params : dict, optional
+        Portfolio optimizer parameters applied only while constructing the first
+        portfolio in the online path for each candidate parameter set. This is useful
+        when the strategy starts with no existing position, while later portfolios
+        represent regular rebalancing from the previously predicted weights. For
+        example, the entry rebalancing can use lower `transaction_costs` or require a
+        valid initial solution with `fallback=None`. Only supported for portfolio
+        optimization estimators.
+
+    n_jobs : int, optional
         Number of parallel jobs. `None` means 1.
 
     verbose : int, default=0
@@ -813,7 +932,7 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
     >>> from skfolio.prior import EmpiricalPrior
     >>>
     >>> prices = load_sp500_dataset()
-    >>> X = prices_to_returns(prices)
+    >>> X = prices_to_returns(prices).tail(504)
     >>>
     >>> model = MeanRisk(
     ...     prior_estimator=EmpiricalPrior(
@@ -821,7 +940,7 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
     ...         covariance_estimator=EWCovariance(),
     ...     ),
     ... )
-    >>> search = OnlineRandomizedSearch(  # doctest: +SKIP
+    >>> search = OnlineRandomizedSearch(
     ...     model,
     ...     param_distributions={
     ...         "prior_estimator__mu_estimator__half_life": uniform(10, 90),
@@ -833,9 +952,13 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
     ...     n_jobs=-1,
     ...     random_state=42,
     ... )
-    >>> search.fit(X)  # doctest: +SKIP
-    >>> search.best_params_  # doctest: +SKIP
-    >>> search.best_estimator_  # doctest: +SKIP
+    >>> search.fit(X)
+    OnlineRandomizedSearch(...)
+    >>> search.best_params_
+    {'prior_estimator__covariance_estimator__half_life': 63.31...,
+     'prior_estimator__mu_estimator__half_life': 14.18...}
+    >>> search.best_estimator_
+    MeanRisk(...)
     """
 
     def __init__(
@@ -844,7 +967,7 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
         param_distributions: dict,
         *,
         n_iter: int = 10,
-        scoring=None,
+        scoring: skt.Scoring = None,
         warmup_size: int = 252,
         test_size: int = 1,
         freq: str | pd.offsets.BaseOffset | None = None,
@@ -854,12 +977,13 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
         reduce_test: bool = False,
         refit: bool | str | Callable[[dict[str, Any]], int] = True,
         random_state: int | None = None,
-        error_score=np.nan,
+        error_score: float | Literal["raise"] = np.nan,
         return_predictions: bool = False,
         portfolio_params: dict | None = None,
+        entry_rebalancing_params: dict | None = None,
         n_jobs: int | None = None,
         verbose: int = 0,
-    ):
+    ) -> None:
         super().__init__(
             estimator=estimator,
             scoring=scoring,
@@ -874,6 +998,7 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
             error_score=error_score,
             return_predictions=return_predictions,
             portfolio_params=portfolio_params,
+            entry_rebalancing_params=entry_rebalancing_params,
             n_jobs=n_jobs,
             verbose=verbose,
         )
@@ -882,6 +1007,7 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
         self.random_state = random_state
 
     def _get_candidate_params(self) -> Iterable[dict]:
+        """Return `n_iter` parameter settings sampled from `param_distributions`."""
         return ParameterSampler(
             self.param_distributions,
             n_iter=self.n_iter,
@@ -906,6 +1032,7 @@ def _evaluate_candidate(
     reduce_test: bool,
     return_predictions: bool,
     portfolio_params: dict | None,
+    entry_rebalancing_params: dict | None,
     error_score: float | Literal["raise"],
 ) -> dict[str, Any]:
     """Evaluate a single parameter combination.
@@ -915,6 +1042,7 @@ def _evaluate_candidate(
     """
     candidate = sk.clone(estimator)
     candidate.set_params(**candidate_params)
+    _validate_entry_rebalancing_params(candidate, entry_rebalancing_params)
 
     result: dict[str, Any] = {"params": candidate_params}
     start = time.perf_counter()
@@ -934,6 +1062,7 @@ def _evaluate_candidate(
             reduce_test=reduce_test,
             refit_last=True,
             portfolio_params=portfolio_params,
+            entry_rebalancing_params=entry_rebalancing_params,
         )
     except Exception as e:
         if error_score != "raise":
@@ -1002,9 +1131,10 @@ def _select_best_index(
         best_index = refit(cv_results)
         if not isinstance(best_index, numbers.Integral):
             raise TypeError("best_index_ returned is not an integer")
+        best_index = int(best_index)
         if best_index < 0 or best_index >= len(cv_results["params"]):
             raise IndexError("best_index_ index out of range")
-        return int(best_index)
+        return best_index
     rank_key = "rank" if refit_metric == "score" else f"rank_{refit_metric}"
     return int(cv_results[rank_key].argmin())
 

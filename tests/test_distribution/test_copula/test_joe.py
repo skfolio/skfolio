@@ -367,3 +367,10 @@ def test_fitted_repr(fitted_model):
     )
     rotation_str = str(fitted_model.rotation_)
     assert rotation_str in rep, f"fitted_repr does not include rotation: {rotation_str}"
+
+
+def test_itau_lower_bound(random_data):
+    """A Kendall's tau below the copula's minimum snaps theta to the lower bound."""
+    m = JoeCopula(itau=True, kendall_tau=0.0).fit(random_data)
+    assert m.theta_ == _THETA_BOUNDS[0]
+    assert not np.isnan(m.score(random_data))

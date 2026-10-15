@@ -966,3 +966,26 @@ class TestRegimeAdjustedEWVarianceBiasCorrection:
         assert model.regime_multiplier_ == pytest.approx(
             2.0 / np.sqrt(2.0 / np.pi), rel=1e-12
         )
+
+
+class TestRegimeAdjustedEWVarianceDegenerateInputs:
+    def test_invalid_regime_min_observations(self, X):
+        model = RegimeAdjustedEWVariance(regime_min_observations=0)
+        with pytest.raises(
+            ValueError, match=r"regime_min_observations must be >= 1 \(got 0\)"
+        ):
+            model.fit(X)
+
+    def test_zero_variance_assets_skip_regime_update(self):
+        """Ready assets with null variance produce no finite z-scores."""
+        model = RegimeAdjustedEWVariance(half_life=5)
+        model.fit(np.zeros((30, 3)))
+        np.testing.assert_array_equal(model.variance_, np.zeros(3))
+        assert model.regime_multiplier_ == 1.0
+
+    def test_refit_resets_state(self, X):
+        model = RegimeAdjustedEWVariance(half_life=11)
+        model.fit(X)
+        first = model.variance_.copy()
+        model.fit(X)
+        np.testing.assert_allclose(model.variance_, first)

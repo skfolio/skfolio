@@ -26,6 +26,10 @@ smoothly interpolates from the heuristic divide-and-conquer allocation of HRP
     even in the presence of ill-conditioned covariance matrices. Additionally, you can
     apply shrinkage or other conditioning techniques via the `prior_estimator` parameter
     to improve numerical stability and estimation accuracy.
+
+For online updates with spectral seriation, late listings, delistings, holidays
+and asset warm-up, see
+:ref:`sphx_glr_auto_examples_online_learning_plot_online_schur_changing_universe.py`.
 """
 
 # %%
@@ -258,7 +262,7 @@ print(summary.loc[["Annualized Sharpe Ratio", "CDaR Ratio at 95%"]])
 # Multiple Randomized Cross-Validation
 # ====================================
 # Using the :class:`~skfolio.model_selection.MultipleRandomizedCV` methodology of
-# Palomar in [2]_, we perform resampling-based cross-validation by drawing 800
+# Palomar in [2]_, we perform resampling-based cross-validation by drawing 200
 # subsamples of 10 distinct assets from the 20-asset universe and contiguous 5-year
 # windows (5 x 252 trading days). We then apply our walk-forward split to each
 # subsample. This approach captures both temporal and cross-sectional variability:
@@ -266,7 +270,7 @@ X_train, X_test = train_test_split(X, test_size=0.3, shuffle=False)
 
 cv_mc = MultipleRandomizedCV(
     walk_forward=walk_forward,
-    n_subsamples=800,
+    n_subsamples=200,
     asset_subset_size=10,
     window_size=5 * 252,
     random_state=0,

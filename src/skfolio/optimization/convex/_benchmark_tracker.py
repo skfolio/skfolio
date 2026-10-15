@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import sklearn.utils.validation as skv
@@ -16,6 +18,7 @@ from skfolio.optimization.convex._base import ObjectiveFunction
 from skfolio.optimization.convex._mean_risk import MeanRisk
 from skfolio.prior import BasePrior
 from skfolio.typing import ArrayLike
+from skfolio.utils.tools import get_feature_names
 
 
 class BenchmarkTracker(MeanRisk):
@@ -135,7 +138,7 @@ class BenchmarkTracker(MeanRisk):
         See :class:`~skfolio.optimization.MeanRisk` for details.
 
     risk_free_rate : float, default=0.0
-        Risk-free interest rate.
+        Risk-free rate, expressed in the same frequency as the returns `X`.
         See :class:`~skfolio.optimization.MeanRisk` for details.
 
     solver : str, default="CLARABEL"
@@ -162,33 +165,34 @@ class BenchmarkTracker(MeanRisk):
         Add a custom objective to the existing objective expression.
         See :class:`~skfolio.optimization.MeanRisk` for details.
 
-    add_constraints : Callable[[cp.Variable], cp.Expression | list[cp.Expression]] | Callable[[cp.Variable, ConvexOptimization], cp.Expression | list[cp.Expression]], optional
+    add_constraints : Callable[[cp.Variable], cp.Expression | list[cp.Expression]], optional
         Add a custom constraint or a list of constraints to the existing constraints.
-        The callable must accept the weights as its first argument. It can optionally
-        accept the estimator instance as its second argument, allowing access to the
-        estimator's attributes. It must return a CVXPY expression or a list of CVXPY
-        expressions.
-
-        For example, the estimator instance can provide its `budget` attribute:
-
-        >>> from skfolio.optimization import MeanRisk
-        >>> def custom_constraints(weights, estimator):
-        ...     return [weights >= estimator.budget / 20]
-        >>> model = MeanRisk(add_constraints=custom_constraints)
-
-        The custom constraint is evaluated when `fit` is called.
+        See :class:`~skfolio.optimization.MeanRisk` for details.
 
     portfolio_params : dict, optional
         Portfolio parameters.
         See :class:`~skfolio.optimization.MeanRisk` for details.
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
-        Fallback estimator or list of estimators.
-        See :class:`~skfolio.optimization.MeanRisk` for details.
+        Fallback estimator, `"previous_weights"`, or a list of either. Fallback
+        estimators are fitted on the original asset returns and benchmark returns. Use a
+        `BenchmarkTracker` fallback to keep a benchmark-relative objective. With
+        `partial_fit`, only None or `"previous_weights"` is supported because fallback
+        estimators have not accumulated the primary model's online history. See
+        :ref:`optimization_fallbacks` and :class:`~skfolio.optimization.MeanRisk` for
+        details.
 
     raise_on_failure : bool, default=True
-        Controls error handling when fitting fails.
-        See :class:`~skfolio.optimization.MeanRisk` for details.
+        Controls error handling when fitting fails and no fallback succeeds. If True,
+        the estimator raises the final error. If False, the estimator emits a warning
+        and sets `weights_` to None, so subsequent calls to `predict` return a
+        :class:`~skfolio.portfolio.FailedPortfolio`. During `fit`, `raise_on_failure`
+        applies to any fitting error, including errors raised by the prior estimator.
+        During `partial_fit`, `raise_on_failure` applies only to optimization failures
+        after learning completes. Input validation failures and errors from the prior or
+        other learning estimators are always raised. See
+        :ref:`optimization_failure_handling` for batch recovery and
+        :ref:`online_failure_handling` for online continuation and restart rules.
 
     Attributes
     ----------
@@ -218,7 +222,8 @@ class BenchmarkTracker(MeanRisk):
         Sequence describing the optimization fallback attempts.
 
     error_ : str | None
-        Captured error message when `fit` fails.
+        The recorded error message. This is None after a successful allocation or
+        fallback.
 
     References
     ----------
@@ -254,11 +259,11 @@ class BenchmarkTracker(MeanRisk):
         scale_constraints: float | None = None,
         save_problem: bool = False,
         add_objective: skt.ExpressionFunction | None = None,
-        add_constraints: skt.ExpressionFunction | None = None,
+        add_constraints: skt.ConstraintFunction | None = None,
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             objective_function=ObjectiveFunction.MINIMIZE_RISK,
             risk_measure=risk_measure,
@@ -296,8 +301,8 @@ class BenchmarkTracker(MeanRisk):
             raise_on_failure=raise_on_failure,
         )
 
-    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params) -> BenchmarkTracker:
-        """Fit the Return-Based Tracker estimator.
+    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params: Any) -> BenchmarkTracker:
+        """Fit the Benchmark Tracker estimator.
 
         Parameters
         ----------
@@ -310,7 +315,7 @@ class BenchmarkTracker(MeanRisk):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 
@@ -319,6 +324,52 @@ class BenchmarkTracker(MeanRisk):
         self : BenchmarkTracker
            Fitted estimator.
         """
+        super().fit(X, y, **fit_params)
+        return self
+
+    def partial_fit(
+        self, X: ArrayLike, y: ArrayLike, **fit_params: Any
+    ) -> BenchmarkTracker:
+        """Incrementally fit the Benchmark Tracker estimator.
+
+        Each call receives new asset returns and the corresponding benchmark
+        returns. The prior estimator must implement `partial_fit`. It updates
+        from benchmark excess returns before the optimization is solved again.
+
+        See :ref:`Updates and Failure Handling <online_failure_handling>` for
+        continuation and restart rules.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            New price returns of the assets.
+
+        y : array-like of shape (n_observations, 1) or (n_observations,)
+            Corresponding price returns of the benchmark.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
+        Returns
+        -------
+        self : BenchmarkTracker
+            Fitted estimator.
+        """
+        super().partial_fit(X, y, **fit_params)
+        return self
+
+    def _fit(
+        self,
+        X: ArrayLike,
+        y: ArrayLike | None = None,
+        method: str = "fit",
+        **fit_params: Any,
+    ) -> BenchmarkTracker:
+        """Fit on benchmark excess returns using the requested fitting method."""
         if y is None:
             raise ValueError(
                 "y (benchmark returns) must be provided for BenchmarkTracker"
@@ -336,16 +387,14 @@ class BenchmarkTracker(MeanRisk):
                 f"DataFrame/array, got shape {y.shape}."
             )
 
-        X, y = skv.validate_data(self, X, y)
-
+        feature_names = get_feature_names(X)
+        index = X.index if isinstance(X, pd.DataFrame) else None
+        X, y = skv.check_X_y(X, y, ensure_all_finite="allow-nan")
         excess_returns = X - y[:, np.newaxis]
 
-        # Wrap as DataFrame to preserve feature_names_in_ through the super().fit() call
-        if hasattr(self, "feature_names_in_") and self.feature_names_in_ is not None:
+        if feature_names is not None or index is not None:
             excess_returns = pd.DataFrame(
-                excess_returns, columns=self.feature_names_in_
+                excess_returns, columns=feature_names, index=index
             )
-
-        super().fit(excess_returns, y=None, **fit_params)
-
+        super()._fit(excess_returns, y=None, method=method, **fit_params)
         return self

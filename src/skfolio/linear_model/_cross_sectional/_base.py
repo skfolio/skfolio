@@ -9,6 +9,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import numpy as np
+import sklearn.utils as sku
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.utils.validation import check_is_fitted
 
@@ -60,7 +61,7 @@ class BaseCSLinearModel(BaseEstimator, RegressorMixin, ABC):
         X: ArrayLike,
         y: ArrayLike,
         cs_weights: ArrayLike | None = None,
-    ):
+    ) -> BaseCSLinearModel:
         """Fit one cross-sectional linear model per observation.
 
         Parameters
@@ -80,7 +81,7 @@ class BaseCSLinearModel(BaseEstimator, RegressorMixin, ABC):
         self : BaseCSLinearModel
             Fitted estimator.
         """
-        pass
+        ...
 
     def predict(self, X: ArrayLike) -> FloatArray:
         r"""Predict using the cross-sectional linear model.
@@ -196,7 +197,7 @@ class BaseCSLinearModel(BaseEstimator, RegressorMixin, ABC):
         )
         return float(np.nanmean(r2))
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> sku.Tags:
         tags = super().__sklearn_tags__()
         tags.target_tags.required = True
         return tags

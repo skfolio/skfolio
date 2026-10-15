@@ -102,7 +102,7 @@ class CSPercentileRankScaler(BaseCSTransformer):
            [0.25      , 0.75      ,        nan, 0.83333333]])
     """
 
-    def __init__(self, *, min_group_size: int = 8):
+    def __init__(self, *, min_group_size: int = 8) -> None:
         self.min_group_size = min_group_size
 
     def _validate_params(self) -> None:
@@ -156,8 +156,7 @@ class CSPercentileRankScaler(BaseCSTransformer):
         ------
         ValueError
             If `min_group_size` is not an integer `>= 1`, `X` is not a non-empty 2D
-            array, `cs_weights` is invalid, `cs_groups` is invalid, or any observation
-            has no estimation asset.
+            array, `cs_weights` is invalid, or `cs_groups` is invalid.
         """
         self._validate_params()
 

@@ -157,7 +157,7 @@ population_test.plot_measures(
 # return under a volatility constraint of 30% p.a.
 #
 # We use `GridSearchCV` to select the optimal L1 and L2 regularization coefficients on
-# the training set using cross-validation that achieve the highest
+# the training set using cross-validation that achieves the highest
 # mean test score. We use the default score, which is the Sharpe ratio.
 # Finally, we evaluate the model on the test set and compare it with the equal-weighted
 # benchmark and a reference model without regularization:
@@ -209,7 +209,8 @@ randomized_search = RandomizedSearchCV(
     param_distributions={
         "l2_coef": loguniform(1e-3, 1e-1),
     },
-    n_iter=100,
+    n_iter=30,
+    random_state=0,
     return_train_score=True,
     scoring=make_scorer(RatioMeasure.ANNUALIZED_SHARPE_RATIO),
 )
@@ -297,11 +298,9 @@ show(fig)
 # %%
 # |
 #
-# The highest mean out-of-sample Sharpe Ratio is 1.55 and is achieved for a L2 coef of
-# 0.023.
-# Also note that without regularization, the mean train Sharpe Ratio is around
-# six time higher than the mean test Sharpe Ratio. That would be a clear indiction of
-# overfitting.
+# The dashed line identifies the L2 coefficient with the highest mean out-of-sample
+# Sharpe ratio. The gap between the train and test scores without regularization is a
+# clear indication of overfitting.
 #
 # Now, we analyze all three models on the test set. By using `cross_val_predict` with
 # `WalkForward`, we are able to compute efficiently the `MultiPeriodPortfolio`

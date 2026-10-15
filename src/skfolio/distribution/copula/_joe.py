@@ -68,7 +68,7 @@ class JoeCopula(BaseBivariateCopula):
         Rotation are needed for archimedean copulas (e.g., Joe, Gumbel, Clayton)
         because their parameters only model positive dependence, and they exhibit
         asymmetric tail behavior. To model negative dependence, one uses rotations
-        to “flip” the copula's tail dependence.
+        to "flip" the copula's tail dependence.
 
     Parameters
     ----------
@@ -114,14 +114,15 @@ class JoeCopula(BaseBivariateCopula):
     >>>
     >>> # Fit the model to the data.
     >>> model.fit(X)
+    JoeCopula(...)
     >>>
     >>> # Display the fitted parameter and tail dependence coefficients
     >>> print(model.fitted_repr)
     JoeCopula(theta=1.48, rot=180°)
     >>> print(model.lower_tail_dependence)
-    0.4021
+    0.402...
     >>> print(model.upper_tail_dependence)
-    0.0
+    0
     >>>
     >>> # Compute the log-likelihood, total log-likelihood, CDF, Partial Derivative,
     >>> # Inverse Partial Derivative, AIC, and BIC
@@ -138,15 +139,12 @@ class JoeCopula(BaseBivariateCopula):
     >>>
     >>> # Plot the tail concentration function.
     >>> fig = model.plot_tail_concentration()
-    >>> fig.show()
     >>>
     >>> # Plot a 2D contour of the estimated PDF.
     >>> fig = model.plot_pdf_2d()
-    >>> fig.show()
     >>>
     >>> # Plot a 3D surface of the estimated PDF.
     >>> fig = model.plot_pdf_3d()
-    >>> fig.show()
 
     References
     ----------
@@ -176,13 +174,13 @@ class JoeCopula(BaseBivariateCopula):
         kendall_tau: float | None = None,
         tolerance: float = 1e-4,
         random_state: int | None = None,
-    ):
+    ) -> None:
         super().__init__(random_state=random_state)
         self.itau = itau
         self.kendall_tau = kendall_tau
         self.tolerance = tolerance
 
-    def fit(self, X: ArrayLike, y=None) -> JoeCopula:
+    def fit(self, X: ArrayLike, y: None = None) -> JoeCopula:
         r"""Fit the Bivariate Joe Copula.
 
         If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.
@@ -224,7 +222,6 @@ class JoeCopula(BaseBivariateCopula):
                 else:
                     self.theta_ = _THETA_BOUNDS[1]
             else:
-                # noinspection PyTypeChecker
                 self.theta_ = so.brentq(
                     _tau_diff,
                     args=(abs_kendall_tau,),

@@ -11,7 +11,7 @@ Lopez de Prado.
 
 This algorithm uses a distance matrix to compute hierarchical clusters using the
 Hierarchical Tree Clustering algorithm. It then employs seriation to rearrange the
-assets in the dendrogram, minimizing the distance between leafs.
+assets in the dendrogram, minimizing the distance between leaves.
 
 The final step is the recursive bisection where each cluster is split between two
 sub-clusters by starting with the topmost cluster and traversing in a top-down
@@ -28,6 +28,10 @@ which is used to update the cluster weight.
     than the single-linkage method.
 
 In this example, we will use the CVaR risk measure.
+
+For online updates with late listings, delistings, holidays and asset warm-up, see
+:ref:`sphx_glr_auto_examples_online_learning_plot_online_schur_changing_universe.py`.
+That example uses Schur, and the same online setup applies to HRP.
 """
 
 # %%
@@ -35,7 +39,7 @@ In this example, we will use the CVaR risk measure.
 # ====
 # We load the S&P 500 :ref:`dataset <datasets>` composed of the daily prices of 20
 # assets from the SPX Index composition and the Factors dataset composed of the daily
-# prices of 5 ETF representing common factors:
+# prices of 5 ETFs representing common factors:
 from plotly.io import show
 from sklearn.model_selection import train_test_split
 
@@ -46,6 +50,7 @@ from skfolio.distance import KendallDistance
 from skfolio.optimization import EqualWeighted, HierarchicalRiskParity
 from skfolio.preprocessing import prices_to_returns
 from skfolio.prior import TimeSeriesFactorModel
+from skfolio.seriation import HierarchicalSeriation
 
 prices = load_sp500_dataset()
 factor_prices = load_factors_dataset()
@@ -53,8 +58,10 @@ factor_prices = load_factors_dataset()
 prices = prices["2014":]
 factor_prices = factor_prices["2014":]
 
-X, y = prices_to_returns(prices, factor_prices)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
+X, factors = prices_to_returns(prices, factor_prices)
+X_train, X_test, factors_train, factors_test = train_test_split(
+    X, factors, test_size=0.33, shuffle=False
+)
 
 # %%
 # Model
@@ -79,7 +86,9 @@ ptf1.plot_contribution(measure=RiskMeasure.CVAR)
 # To analyze the clusters structure, we plot the dendrogram.
 # The blue lines represent distinct clusters composed of a single asset.
 # The remaining colors represent clusters of more than one asset:
-model1.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=False)
+model1.seriation_estimator_.hierarchical_clustering_estimator_.plot_dendrogram(
+    heatmap=False
+)
 
 # %%
 # The horizontal axis represents the assets. The links between clusters are represented
@@ -90,7 +99,7 @@ model1.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=False)
 # %%
 #  When `heatmap` is set to True, the heatmap of the reordered distance matrix is
 #  displayed below the dendrogram and clusters are outlined with yellow squares:
-fig = model1.hierarchical_clustering_estimator_.plot_dendrogram()
+fig = model1.seriation_estimator_.hierarchical_clustering_estimator_.plot_dendrogram()
 show(fig)
 
 # %%
@@ -103,31 +112,35 @@ show(fig)
 # linkage method is set to the Ward variance minimization algorithm, which is more
 # stable and has better properties than the single-linkage method.
 #
-# However, since the HRP optimization doesn’t utilize the full cluster structure but
+# However, since the HRP optimization doesn't utilize the full cluster structure but
 # only their orders, the allocation remains relatively stable regardless of the chosen
 # linkage method.
 
 # To show this effect, let's create a second model with the single-linkage method:
 model2 = HierarchicalRiskParity(
     risk_measure=RiskMeasure.CVAR,
-    hierarchical_clustering_estimator=HierarchicalClustering(
-        linkage_method=LinkageMethod.SINGLE,
+    seriation_estimator=HierarchicalSeriation(
+        hierarchical_clustering_estimator=HierarchicalClustering(
+            linkage_method=LinkageMethod.SINGLE,
+        ),
     ),
     portfolio_params=dict(name="HRP-CVaR-Single-Pearson"),
 )
 model2.fit(X_train)
 
-model2.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=True)
+model2.seriation_estimator_.hierarchical_clustering_estimator_.plot_dendrogram(
+    heatmap=True
+)
 
 # %%
 # We can see that the clustering has been greatly affected by the change of the linkage
-# method. However, you will see bellow that the weights remain relatively stable for the
+# method. However, you will see below that the weights remain relatively stable for the
 # reason explained earlier.
 
 # %%
 # Distance Estimator
 # ==================
-# The choice of distance metric has also an important effect on the clustering.
+# The choice of distance metric also has an important effect on the clustering.
 # The default is to use the distance from the pearson correlation matrix.
 # This can be changed using the :ref:`distance estimators <distance>`.
 #
@@ -140,7 +153,9 @@ model3 = HierarchicalRiskParity(
 )
 model3.fit(X_train)
 
-model3.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=True)
+model3.seriation_estimator_.hierarchical_clustering_estimator_.plot_dendrogram(
+    heatmap=True
+)
 
 # %%
 # Prior Estimator
@@ -156,9 +171,11 @@ model4 = HierarchicalRiskParity(
     prior_estimator=TimeSeriesFactorModel(),
     portfolio_params=dict(name="HRP-CVaR-Factor-Model"),
 )
-model4.fit(X_train, y_train)
+model4.fit(X_train, factors=factors_train)
 
-model4.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=True)
+model4.seriation_estimator_.hierarchical_clustering_estimator_.plot_dendrogram(
+    heatmap=True
+)
 
 # %%
 # To compare the models, we use an equal weighted benchmark using
@@ -181,7 +198,7 @@ population_test.plot_cumulative_returns()
 # Composition
 # ===========
 # From the below composition, we notice that all models are relatively close to each
-# others as explain earlier:
+# other, as explained earlier:
 population_test.plot_composition()
 
 # %%

@@ -8,33 +8,52 @@
 
 from __future__ import annotations
 
+import functools
 import warnings
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from enum import auto
+from typing import Any, TypeVar
 
 import cvxpy as cp
 import cvxpy.constraints.constraint as cpc
 import numpy as np
-import scipy as sc
-import scipy.sparse.linalg as scl
+import scipy.sparse as sp
+import scipy.sparse.linalg as sla
 import sklearn.utils.metadata_routing as skm
 from cvxpy.reductions.solvers.defines import MI_SOLVERS
 
 import skfolio.typing as skt
-from skfolio._constants import _ParamKey
+from skfolio._constants import (
+    _MANAGEMENT_FEES,
+    _TRANSACTION_COSTS,
+)
+from skfolio.exceptions import ConvexOptimizationError, OptimizationError
 from skfolio.measures import RiskMeasure, owa_gmd_weights
 from skfolio.optimization._base import BaseOptimization
 from skfolio.prior import BasePrior, ReturnDistribution
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import AnyArray, ArrayLike, BoolArray, FloatArray, StrArray
 from skfolio.uncertainty_set import (
     BaseCovarianceUncertaintySet,
     BaseMuUncertaintySet,
+    CompactCovarianceUncertaintySet,
     UncertaintySet,
 )
 from skfolio.utils.equations import equations_to_matrix, group_cardinalities_to_matrix
-from skfolio.utils.tools import AutoEnum, cache_method, input_to_array
+from skfolio.utils.tools import (
+    AutoEnum,
+    _get_liquidation_turnover_and_cost,
+    _validate_positive_real,
+    cache_method,
+    input_to_array,
+)
 
 INSTALLED_SOLVERS = cp.installed_solvers()
+# Conic residuals can represent an equality-constrained zero as a tiny positive
+# value. Dividing homogeneous weights by such a value is unsafe.
+_MIN_HOMOGENIZATION_FACTOR = 1e-12
+
+_ResultT = TypeVar("_ResultT")
 
 
 class ObjectiveFunction(AutoEnum):
@@ -99,7 +118,7 @@ class ConvexOptimization(BaseOptimization, ABC):
     prior_estimator : BasePrior, optional
         :ref:`Prior estimator <prior>`.
         The prior estimator is used to estimate the :class:`~skfolio.prior.ReturnDistribution`
-        containing the estimation of assets expected returns, covariance matrix,
+        containing estimates of expected asset returns, covariance matrix,
         returns and Cholesky decomposition of the covariance.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
@@ -217,6 +236,12 @@ class ConvexOptimization(BaseOptimization, ABC):
         with :math:`\mu` the vector of assets' expected returns and :math:`w` the
         vector of assets weights.
 
+        For positions in `previous_weights` whose assets are no longer in the
+        investment universe, transaction costs are calculated assuming full
+        liquidation. These costs are included in both the optimization and
+        `Portfolio.total_cost`. For assets absent from `X`, `transaction_costs`
+        must be a single rate applied to all assets or a dictionary keyed by asset name.
+
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset cost) and the input `X` of the `fit` method must be a
@@ -226,10 +251,14 @@ class ConvexOptimization(BaseOptimization, ABC):
         .. warning::
 
             Based on the above formula, the periodicity of the transaction costs
-            needs to be homogenous to the periodicity of :math:`\mu`. For example, if
-            the input `X` is composed of **daily** returns, the `transaction_costs` need
-            to be expressed as **daily** costs.
-            (See :ref:`sphx_glr_auto_examples_mean_risk_plot_6_transaction_costs.py`)
+            must match the periodicity of :math:`\mu`. For example, if the input
+            `X` is composed of **daily** returns, the `transaction_costs` need to be
+            expressed as **daily** costs. A transaction cost is paid once per
+            rebalancing while a position earns its expected return on every period it
+            is held, so the one-off cost is converted by dividing it by the expected
+            investment duration (e.g. `0.001 / 21` for a 10 bps cost with daily
+            returns and a one-month expected holding period).
+            (See :ref:`Periodicity Convention <periodicity_convention>`)
 
     management_fees : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Management fees of the assets. It is used to add linear management fees to the
@@ -253,10 +282,13 @@ class ConvexOptimization(BaseOptimization, ABC):
 
         .. warning::
 
-            Based on the above formula, the periodicity of the management fees needs to
-            be homogenous to the periodicity of :math:`\mu`. For example, if the input
+            Based on the above formula, the periodicity of the management fees
+            must match the periodicity of :math:`\mu`. For example, if the input
             `X` is composed of **daily** returns, the `management_fees` need to be
-            expressed in **daily** fees.
+            expressed in **daily** fees. Unlike transaction costs, management fees
+            accrue with holding time, so a stated annual fee converts directly to the
+            return periodicity (e.g. `0.02 / 252` for a 2% annual fee on daily
+            returns).
 
         .. note::
 
@@ -269,6 +301,8 @@ class ConvexOptimization(BaseOptimization, ABC):
     previous_weights : float | dict[str, float] | array-like of shape (n_assets, ), optional
         Previous weights of the assets. Previous weights are used to compute the
         portfolio cost and the portfolio turnover.
+        For named positions in assets absent from `X`, these calculations assume
+        full liquidation.
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset previous weight) and the input `X` of the `fit` method must
@@ -299,47 +333,61 @@ class ConvexOptimization(BaseOptimization, ABC):
 
     mu_uncertainty_set_estimator : BaseMuUncertaintySet, optional
         :ref:`Mu Uncertainty set estimator <uncertainty_set_estimator>`.
-        If provided, the assets expected returns are modelled with an ellipsoidal
+        If provided, the expected asset returns are modelled with a norm-ball
         uncertainty set. It is called worst-case optimization and is a class of robust
         optimization. It reduces the instability that arises from the estimation errors
         of the expected returns.
-        The worst case portfolio expect return is:
+        The worst-case portfolio expected return is:
 
-        .. math:: w^T\hat{\mu} - \kappa_{\mu}\lVert S_{\mu}^\frac{1}{2}w\rVert_{2}
+        .. math:: w^T\hat{\mu} - \kappa_{\mu}\lVert L_{\mu}^Tw\rVert_{q}
 
-        with :math:`\kappa` the size of the ellipsoid (confidence region) and
-        :math:`S` its shape.
+        with :math:`\kappa` the radius of the uncertainty set (confidence region),
+        :math:`L` its linear geometry map and :math:`q` the dual norm. For an
+        ellipsoidal set with shape matrix :math:`S`, :math:`L` is a square-root factor
+        satisfying :math:`S = L L^T` and :math:`q` is :math:`2`.
         The default (`None`) means that no uncertainty set is used.
 
     covariance_uncertainty_set_estimator : BaseCovarianceUncertaintySet, optional
         :ref:`Covariance Uncertainty set estimator <uncertainty_set_estimator>`.
-        If provided, the assets covariance matrix is modelled with an ellipsoidal
-        uncertainty set. It is called worst-case optimization and is a class of robust
-        optimization. It reduces the instability that arises from the estimation errors
-        of the covariance matrix.
+        If provided, covariance estimation uncertainty is included in the optimized
+        variance. This approach is known as worst-case optimization, a form of robust
+        optimization. It reduces sensitivity to covariance estimation errors.
+        Covariance uncertainty is applied when `risk_measure=RiskMeasure.VARIANCE` or
+        when `max_variance` is set.
         The default (`None`) means that no uncertainty set is used.
 
     linear_constraints : array-like of shape (n_constraints,), optional
-        Linear constraints.
-        The linear constraints must match any of following patterns:
+        Linear constraints on portfolio weights or factor exposures.
 
-            * `"ref1 >= a"`
-            * `"ref1 == b"`
-            * `"ref1 >= ref1"`
-            * `"a * ref1 + b * ref2 + c <= d * ref3"`
+        Constraint names can reference:
 
-        With `"ref1"`, `"ref2"` ... the assets names or the groups names provided
-        in the parameter `groups`. Assets names can be referenced without the need of
-        `groups` if the input `X` of the `fit` method is a DataFrame with these
-        assets names in columns.
+            * Asset names: individual asset weights (e.g. `"SPX"`, `"AAPL"`)
+            * Group names: sums of weights in groups defined by `groups`
+            * Factor names: portfolio factor exposure (requires factor model prior)
+            * Factor families: sum of portfolio exposures to all factors in one family
+
+        Supported equation patterns include:
+
+            * `"name <= value"` or `"name >= value"`
+            * `"name == value"`
+            * `"a * name1 + b * name2 <= c * name3 + d"`
 
         For example:
 
-            * `"SPX >= 0.10"` --> SPX weight must be greater than 10% (note that you can also use `min_weights`)
-            * `"SX5E + TLT >= 0.2"` --> the sum of SX5E and TLT weights must be greater than 20%
-            * `"US == 0.7"` --> the sum of all US weights must be equal to 70%
-            * `"Equity == 3 * Bond"` --> the sum of all Equity weights must be equal to 3 times the sum of all Bond weights.
-            * `"2*SPX + 3*Europe <= Bond + 0.05"` --> mixing assets and group constraints
+            * `"SPX >= 0.10"` --> SPX weight >= 10%
+            * `"SX5E + SPX >= 0.2"` --> sum of SX5E and SPX weights >= 20%
+            * `"US == 0.7"` --> sum of weights in US group == 70%
+            * `"Equity == 3 * Bond"` --> sum of weights in Equity group == 3x sum of weights in Bond group
+            * `"Momentum <= 0.30"` --> portfolio Momentum exposure <= 30%
+            * `"style <= 0.50"` --> sum of all style factor exposures (Momentum, Value, Size, etc.) <= 50%
+
+        Factor constraints require a prior estimator (e.g.
+        :class:`~skfolio.prior.TimeSeriesFactorModel`,
+        :class:`~skfolio.prior.CharacteristicsFactorModel`)
+        that provides `loading_matrix`, `factor_names` and optionally `factor_families`
+        in its :class:`~skfolio.prior.FactorModel`.
+
+        Asset, group, factor, and factor family names must be unique.
 
     groups : dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional
         The assets groups referenced in `linear_constraints`.
@@ -361,7 +409,8 @@ class ConvexOptimization(BaseOptimization, ABC):
         constraint :math:`A \cdot w \leq b`.
 
     risk_free_rate : float, default=0.0
-        Risk-free interest rate.
+        Risk-free rate, expressed in the same frequency as the returns `X` (for
+        example, :math:`0.04 / 252` for a 4% annual rate with daily returns).
         The default value is `0.0`.
 
     min_acceptable_return : float, optional
@@ -375,46 +424,69 @@ class ConvexOptimization(BaseOptimization, ABC):
         The default (`None`) is to use the mean.
 
     cvar_beta : float, default=0.95
-        CVaR (Conditional Value at Risk) confidence level.
-        The default value is `0.95`.
+        CVaR (Conditional Value at Risk) confidence level in [0, 1].
+        At 1, CVaR equals the largest loss with positive sample weight.
 
-    evar_beta : float, default=0
-        EVaR (Entropic Value at Risk) confidence level.
-        The default value is `0.95`.
+    evar_beta : float, default=0.95
+        EVaR (Entropic Value at Risk) confidence level in [0, 1].
+        At 1, EVaR equals the largest loss with positive sample weight.
 
     cdar_beta : float, default=0.95
-        CDaR (Conditional Drawdown at Risk) confidence level.
-        The default value is `0.95`.
+        CDaR (Conditional Drawdown at Risk) confidence level in [0, 1].
+        At 1, CDaR equals the largest drawdown magnitude with positive sample weight.
 
     edar_beta : float, default=0.95
-        EDaR (Entropic Drawdown at Risk) confidence level.
-        The default value is `0.95`.
+        EDaR (Entropic Drawdown at Risk) confidence level in [0, 1].
+        At 1, EDaR equals the largest drawdown magnitude with positive sample weight.
 
     add_objective : Callable[[cp.Variable], cp.Expression], optional
         Add a custom objective to the existing objective expression.
         It is a function that must take as argument the weights `w` and returns a
         CVXPY expression.
 
-    add_constraints : Callable[[cp.Variable], cp.Expression | list[cp.Expression]] | Callable[[cp.Variable, ConvexOptimization], cp.Expression | list[cp.Expression]], optional
+    add_constraints : Callable[[cp.Variable], cp.Expression | list[cp.Expression]], optional
         Add a custom constraint or a list of constraints to the existing constraints.
-        The callable must accept the weights as its first argument. It can optionally
-        accept the estimator instance as its second argument, allowing access to the
-        estimator's attributes. It must return a CVXPY expression or a list of CVXPY
-        expressions.
+        It must be a function taking the CVXPY weight variable `w` as its first
+        positional argument and, optionally, the estimator instance as its second.
+        It must return a CVXPY expression or a list of CVXPY expressions, evaluated
+        when `fit` is called.
 
-        For example, the estimator instance can provide its `budget` attribute:
+        For example, to require an effective number of assets of at least 20:
 
+        >>> import cvxpy as cp
         >>> from skfolio.optimization import MeanRisk
-        >>> def custom_constraints(weights, estimator):
-        ...     return [weights >= estimator.budget / 20]
-        >>> model = MeanRisk(add_constraints=custom_constraints)
+        >>> model = MeanRisk(add_constraints=lambda w: cp.sum_squares(w) <= 1 / 20)
 
-        The custom constraint is evaluated when `fit` is called.
+        The optional second argument gives access to the estimator's attributes,
+        including quantities estimated during `fit`. For example, to cap each
+        position size in risk units at 20 bps, using the volatilities estimated
+        by the prior:
+
+        >>> import numpy as np
+        >>> def position_risk_cap(w, model):
+        ...     covariance = model.prior_estimator_.return_distribution_.covariance
+        ...     vols = np.sqrt(np.diag(covariance))
+        ...     return cp.multiply(vols, w) <= 0.002
+        >>> model = MeanRisk(add_constraints=position_risk_cap)
 
     overwrite_expected_return : Callable[[cp.Variable], cp.Expression], optional
-        Overwrite the expected return :math:`\mu \cdot w` with a custom expression.
-        It is a function that must take as argument the weights `w` and returns a
-        CVXPY expression.
+        Overwrite the expected return :math:`\mu \cdot w` with a custom CVXPY
+        expression. It must be a function taking the CVXPY weight variable `w` as
+        its first positional argument and, optionally, the estimator instance as
+        its second. It must return a concave CVXPY expression, evaluated when
+        `fit` is called. The custom expression replaces the expected return in the
+        objective function and in the constraints where the expected return is
+        used.
+
+        For example, to adjust the expected return for volatility drag,
+        approximating the portfolio geometric mean return:
+
+        >>> import cvxpy as cp
+        >>> from skfolio.optimization import MeanRisk
+        >>> def geometric_expected_return(w, model):
+        ...     dist = model.prior_estimator_.return_distribution_
+        ...     return dist.mu @ w - 0.5 * cp.quad_form(w, dist.covariance)
+        >>> model = MeanRisk(overwrite_expected_return=geometric_expected_return)
 
     solver : str, default="CLARABEL"
         The solver to use. The default is "CLARABEL" which is written in Rust and has
@@ -452,21 +524,23 @@ class ConvexOptimization(BaseOptimization, ABC):
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
         Fallback estimator or a list of estimators to try, in order, when the primary
-        optimization raises during `fit`. Alternatively, use `"previous_weights"`
-        (alone or in a list) to fall back to the estimator's `previous_weights`.
-        When a fallback succeeds, its fitted `weights_` are copied back to the primary
+        optimization raises during `fit`. Alternatively, use `"previous_weights"` (alone
+        or in a list) to fall back to the estimator's `previous_weights`. When a
+        fallback succeeds, its fitted `weights_` are copied back to the primary
         estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
-        and `fallback_chain_` stores each attempt with the associated outcome.
+        and `fallback_chain_` stores each attempt with the associated outcome. See
+        :ref:`optimization_fallbacks`.
 
     raise_on_failure : bool, default=True
-        Controls error handling when fitting fails.
-        If True, any failure during `fit` is raised immediately, no `weights_` are
-        set and subsequent calls to `predict` will raise a `NotFittedError`.
-        If False, errors are not raised; instead, a warning is emitted, `weights_`
-        is set to `None` and subsequent calls to `predict` will return a
-        `FailedPortfolio`. When fallbacks are specified, this behavior applies only
-        after all fallbacks have been exhausted.
+        Controls error handling when fitting fails and no fallback succeeds. If True,
+        the estimator raises the final error. If False, the estimator emits a warning
+        and sets `weights_` to None, so subsequent calls to `predict` return a
+        :class:`~skfolio.portfolio.FailedPortfolio`. During `fit`, `raise_on_failure`
+        applies to any fitting error, including errors raised by the prior estimator.
+        See :ref:`optimization_failure_handling`. When computing multiple portfolios,
+        setting `raise_on_failure=False` preserves successful allocations and records
+        each failure separately. See :ref:`optimization_multiple_results`.
 
     Attributes
     ----------
@@ -501,9 +575,11 @@ class ConvexOptimization(BaseOptimization, ABC):
         a valid solution, otherwise the stringified error message. For successful
         fits without any fallback, this is `None`.
 
-    error_ : str | list[str] | None
-        Captured error message(s) when `fit` fails. For multi-portfolio outputs
-        (`weights_` is 2D), this is a list aligned with portfolios.
+    error_ : str | list[str | None] | None
+        For a single portfolio, this is the recorded error message, or None after a
+        successful allocation or fallback. For multiple portfolios, it is a list with
+        one entry per row of `weights_`, containing an error message for each failed
+        portfolio and None for each successful portfolio.
 
     Notes
     -----
@@ -517,7 +593,7 @@ class ConvexOptimization(BaseOptimization, ABC):
     _cvx_cache: dict
 
     problem_: cp.Problem
-    problem_values_: dict[str, float] | list[dict[str, float]]
+    problem_values_: dict[str, float] | list[dict[str, float] | None] | None
     prior_estimator_: BasePrior
     mu_uncertainty_set_estimator_: BaseMuUncertaintySet
     covariance_uncertainty_set_estimator_: BaseCovarianceUncertaintySet
@@ -564,12 +640,12 @@ class ConvexOptimization(BaseOptimization, ABC):
         scale_constraints: float | None = None,
         save_problem: bool = False,
         add_objective: skt.ExpressionFunction | None = None,
-        add_constraints: skt.ExpressionFunction | None = None,
+        add_constraints: skt.ConstraintFunction | None = None,
         overwrite_expected_return: skt.ExpressionFunction | None = None,
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             previous_weights=previous_weights,
             portfolio_params=portfolio_params,
@@ -625,8 +701,11 @@ class ConvexOptimization(BaseOptimization, ABC):
         self._clear_models_cache()
 
     def _call_custom_func(
-        self, func: skt.ExpressionFunction, w: cp.Variable, name: str = "custom_func"
-    ) -> cp.Expression | list[cp.Expression]:
+        self,
+        func: Callable[..., _ResultT],
+        w: cp.Variable,
+        name: str = "custom_func",
+    ) -> _ResultT:
         """Call a user specific function, infer arguments and perform validation.
 
         Parameters
@@ -645,8 +724,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             Result of calling the custom function.
         """
         try:
-            # noinspection PyUnresolvedReferences
-            func_code = func.__code__
+            func_code = func.__code__  # ty: ignore[unresolved-attribute]
         except AttributeError as err:
             raise ValueError("Custom functions is invalid") from err
 
@@ -668,7 +746,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 "the weight variable OR the weight variable and the estimator object."
             ) from err
 
-    def _clear_models_cache(self):
+    def _clear_models_cache(self) -> None:
         """Clear the cache of CVX models."""
         self._cvx_cache = {}
 
@@ -678,19 +756,27 @@ class ConvexOptimization(BaseOptimization, ABC):
         w: cp.Variable,
         factor: skt.Factor,
         allow_negative_weights: bool = True,
+        return_distribution: ReturnDistribution | None = None,
     ) -> list[cpc.Constraint]:
         """Compute weight constraints from input parameters.
 
         Parameters
         ----------
         n_assets : int
-            Number of assets.
+            Number of investable assets.
 
         w : cvxpy Variable
             The CVXPY Variable representing assets weights.
 
         factor : cvxpy Variable | cvxpy Constant
             Cvxpy variable or constant.
+
+        allow_negative_weights : bool, default=True
+            Whether to allow negative weights.
+
+        return_distribution : ReturnDistribution, optional
+            The return distribution containing the factor model data (loading_matrix,
+            factor_names, factor_families) for factor constraints.
 
         Returns
         -------
@@ -705,6 +791,8 @@ class ConvexOptimization(BaseOptimization, ABC):
         threshold_long = self.threshold_long
         threshold_short = self.threshold_short
         groups = self.groups
+        assets_names = getattr(self, "feature_names_in_", None)
+        investable_mask = getattr(self, "investable_mask_", None)
 
         if min_weights is not None:
             min_weights = self._clean_input(
@@ -748,19 +836,16 @@ class ConvexOptimization(BaseOptimization, ABC):
                 n_assets=n_assets,
                 fill_value="",
                 dim=2,
-                assets_names=(
-                    self.feature_names_in_
-                    if hasattr(self, "feature_names_in_")
-                    else None
-                ),
+                assets_names=assets_names,
+                investable_mask=investable_mask,
                 name="groups",
             )
 
         is_mip = (
             (self.cardinality is not None and self.cardinality < n_assets)
             or (self.group_cardinalities is not None)
-            or self.threshold_long is not None
-            or self.threshold_short is not None
+            or threshold_long is not None
+            or threshold_short is not None
         )
 
         if is_mip and self.solver not in MI_SOLVERS:
@@ -772,7 +857,54 @@ class ConvexOptimization(BaseOptimization, ABC):
                 "solvers, supported options include MOSEK, GUROBI, or CPLEX."
             )
 
-        # Constraints
+        constraints += self._weight_and_exposure_constraints(
+            w=w,
+            factor=factor,
+            min_weights=min_weights,
+            max_weights=max_weights,
+            allow_negative_weights=allow_negative_weights,
+        )
+        constraints += self._budget_constraints(w=w, factor=factor)
+
+        if is_mip:
+            constraints += self._mixed_integer_constraints(
+                n_assets=n_assets,
+                w=w,
+                factor=factor,
+                min_weights=min_weights,
+                max_weights=max_weights,
+                threshold_long=threshold_long,
+                threshold_short=threshold_short,
+                groups=groups,
+            )
+
+        constraints += self._linear_constraints(
+            w=w,
+            factor=factor,
+            groups=groups,
+            assets_names=assets_names,
+            investable_mask=investable_mask,
+            return_distribution=return_distribution,
+        )
+        constraints += self._matrix_inequality_constraints(
+            n_assets=n_assets, w=w, factor=factor, investable_mask=investable_mask
+        )
+
+        return constraints
+
+    def _weight_and_exposure_constraints(
+        self,
+        w: cp.Variable,
+        factor: skt.Factor,
+        min_weights: float | FloatArray | None,
+        max_weights: float | FloatArray | None,
+        allow_negative_weights: bool,
+    ) -> list[cpc.Constraint]:
+        """Constrain individual asset weights and total long and short exposure.
+
+        Weight bounds must already be aligned with the investable assets.
+        """
+        constraints = []
         if min_weights is not None:
             if not allow_negative_weights and np.any(min_weights < 0):
                 raise ValueError(
@@ -808,6 +940,13 @@ class ConvexOptimization(BaseOptimization, ABC):
                 <= max_short * factor * self._scale_constraints
             )
 
+        return constraints
+
+    def _budget_constraints(
+        self, w: cp.Variable, factor: skt.Factor
+    ) -> list[cpc.Constraint]:
+        """Constrain the sum of weights using the configured budget or limits."""
+        constraints = []
         if self.min_budget is not None:
             constraints.append(
                 cp.sum(w) * self._scale_constraints
@@ -834,84 +973,136 @@ class ConvexOptimization(BaseOptimization, ABC):
                 == float(self.budget) * factor * self._scale_constraints
             )
 
-        if is_mip:
-            is_short = np.any(min_weights < 0)
+        return constraints
 
-            if max_weights is None or min_weights is None:
-                raise ValueError(
-                    "'max_weights' and 'min_weights' must be provided with cardinality "
-                    "constraint"
-                )
-            if np.all(min_weights > 0):
-                raise ValueError(
-                    "Cardinality and Threshold constraint can only be applied "
-                    "if 'min_weights' are not all strictly positive (you allow some "
-                    "weights to be 0)"
-                )
+    def _mixed_integer_constraints(
+        self,
+        n_assets: int,
+        w: cp.Variable,
+        factor: skt.Factor,
+        min_weights: float | FloatArray | None,
+        max_weights: float | FloatArray | None,
+        threshold_long: float | FloatArray | None,
+        threshold_short: float | FloatArray | None,
+        groups: AnyArray | None,
+    ) -> list[cpc.Constraint]:
+        """Build cardinality and position-threshold constraints.
 
-            if self.group_cardinalities is not None and groups is None:
-                raise ValueError(
-                    "When 'group_cardinalities' is provided, you must also "
-                    "also provide 'groups'"
-                )
+        Bounds, thresholds, and groups must already be aligned with the investable
+        assets. All-zero thresholds must be converted to `None`. The caller checks
+        that the solver supports mixed-integer problems.
+        """
+        if max_weights is None or min_weights is None:
+            raise ValueError(
+                "'max_weights' and 'min_weights' must be provided with cardinality "
+                "constraint"
+            )
+        is_short = np.any(min_weights < 0)
 
-            if (
-                self.threshold_long is not None
-                and self.threshold_short is None
-                and is_short
-            ):
-                raise ValueError(
-                    "When 'threshold_long' is provided and 'min_weights' can be negative "
-                    "(short position are allowed), then 'threshold_short' must also be "
-                    "provided"
-                )
+        if np.all(min_weights > 0):
+            raise ValueError(
+                "Cardinality and Threshold constraint can only be applied "
+                "if 'min_weights' are not all strictly positive (you allow some "
+                "weights to be 0)"
+            )
 
-            if threshold_short is not None and threshold_long is None:
-                raise ValueError(
-                    "When 'threshold_short' is provided, 'threshold_long' must also be "
-                    "provided"
-                )
+        if self.group_cardinalities is not None and groups is None:
+            raise ValueError(
+                "When 'group_cardinalities' is provided, you must also "
+                "also provide 'groups'"
+            )
 
-            if self.threshold_short is not None and is_short:
-                constraints += _mip_weight_constraints_threshold_short(
-                    n_assets=n_assets,
-                    w=w,
-                    factor=factor,
-                    scale_constraints=self._scale_constraints,
-                    cardinality=self.cardinality,
-                    group_cardinalities=self.group_cardinalities,
-                    max_weights=max_weights,
-                    groups=groups,
-                    min_weights=min_weights,
-                    threshold_long=threshold_long,
-                    threshold_short=threshold_short,
-                )
-            else:
-                constraints += _mip_weight_constraints_no_short_threshold(
-                    n_assets=n_assets,
-                    w=w,
-                    factor=factor,
-                    scale_constraints=self._scale_constraints,
-                    cardinality=self.cardinality,
-                    group_cardinalities=self.group_cardinalities,
-                    max_weights=max_weights,
-                    groups=groups,
-                    min_weights=min_weights,
-                    threshold_long=threshold_long,
-                )
+        if threshold_long is not None and threshold_short is None and is_short:
+            raise ValueError(
+                "When 'threshold_long' is provided and 'min_weights' can be negative "
+                "(short positions are allowed), then 'threshold_short' must also be "
+                "provided"
+            )
 
+        if threshold_short is not None and threshold_long is None:
+            raise ValueError(
+                "When 'threshold_short' is provided, 'threshold_long' must also be "
+                "provided"
+            )
+
+        if threshold_short is not None and is_short:
+            return _mip_weight_constraints_threshold_short(
+                n_assets=n_assets,
+                w=w,
+                factor=factor,
+                scale_constraints=self._scale_constraints,
+                cardinality=self.cardinality,
+                group_cardinalities=self.group_cardinalities,
+                max_weights=max_weights,
+                groups=groups,
+                min_weights=min_weights,
+                threshold_long=threshold_long,  # ty: ignore[invalid-argument-type]
+                threshold_short=threshold_short,
+            )
+
+        return _mip_weight_constraints_no_short_threshold(
+            n_assets=n_assets,
+            w=w,
+            factor=factor,
+            scale_constraints=self._scale_constraints,
+            cardinality=self.cardinality,
+            group_cardinalities=self.group_cardinalities,
+            max_weights=max_weights,
+            groups=groups,
+            min_weights=min_weights,
+            threshold_long=threshold_long,
+        )
+
+    def _linear_constraints(
+        self,
+        w: cp.Variable,
+        factor: skt.Factor,
+        groups: AnyArray | None,
+        assets_names: StrArray | None,
+        investable_mask: BoolArray | None,
+        return_distribution: ReturnDistribution | None,
+    ) -> list[cpc.Constraint]:
+        """Build equalities and inequalities from `linear_constraints`.
+
+        Supplied groups must already be aligned with the investable assets.
+        Factor constraints use the factor model from `return_distribution`.
+        """
+        constraints = []
         if self.linear_constraints is not None:
             if groups is None:
-                if not hasattr(self, "feature_names_in_"):
+                if assets_names is None:
                     raise ValueError(
                         "If `linear_constraints` is provided you must provide either"
                         " `groups` or `X` as a DataFrame with asset names in columns"
                     )
-                groups = np.asarray([self.feature_names_in_])
+                if investable_mask is None:
+                    groups = np.asarray([assets_names])
+                else:
+                    groups = np.asarray([assets_names[investable_mask]])
+
+            # Extract factor info from return_distribution for factor constraints
+            loading_matrix = None
+            factor_groups = None
+            if return_distribution is not None:
+                factor_model = return_distribution.factor_model
+                if factor_model is not None:
+                    loading_matrix = factor_model.loading_matrix
+                    if factor_model.factor_families is not None:
+                        factor_groups = np.array(
+                            [
+                                factor_model.factor_names,
+                                factor_model.factor_families,
+                            ]
+                        )
+                    else:
+                        factor_groups = np.array([factor_model.factor_names])
+
             a_eq, b_eq, a_ineq, b_ineq = equations_to_matrix(
                 groups=groups,
                 equations=self.linear_constraints,
                 raise_if_group_missing=False,
+                loading_matrix=loading_matrix,
+                factor_groups=factor_groups,
             )
             if len(a_eq) != 0:
                 constraints.append(
@@ -926,6 +1117,21 @@ class ConvexOptimization(BaseOptimization, ABC):
                     <= 0
                 )
 
+        return constraints
+
+    def _matrix_inequality_constraints(
+        self,
+        n_assets: int,
+        w: cp.Variable,
+        factor: skt.Factor,
+        investable_mask: BoolArray | None,
+    ) -> list[cpc.Constraint]:
+        """Build `left_inequality @ w <= right_inequality * factor` constraints.
+
+        When `investable_mask` is provided, the matrix must include all original
+        assets, including non-investable ones.
+        """
+        constraints = []
         if self.left_inequality is not None and self.right_inequality is not None:
             left_inequality = np.asarray(self.left_inequality)
             right_inequality = np.asarray(self.right_inequality)
@@ -939,6 +1145,14 @@ class ConvexOptimization(BaseOptimization, ABC):
                     "`right_inequality` must be a 1D array, got"
                     f" {right_inequality.ndim}D array"
                 )
+            if investable_mask is not None:
+                n_total_assets = len(investable_mask)
+                if left_inequality.shape[1] != n_total_assets:
+                    raise ValueError(
+                        "`left_inequality` must be of shape (n_inequalities, n_total_assets) "
+                        f"with n_total_assets={n_total_assets}, got {left_inequality.shape[1]}"
+                    )
+                left_inequality = left_inequality[:, investable_mask]
             if left_inequality.shape[1] != n_assets:
                 raise ValueError(
                     "`left_inequality` must be of shape (n_inequalities, n_assets) "
@@ -1021,7 +1235,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             func=self.add_objective, w=w, name="add_objective"
         )
 
-    def _get_custom_constraints(self, w: cp.Variable) -> list[cp.Expression]:
+    def _get_custom_constraints(self, w: cp.Variable) -> list[cpc.Constraint]:
         """Return the list of CVXPY expressions evaluated by calling the
         `add_constraint`s function if provided, otherwise returns an empty list.
 
@@ -1066,32 +1280,54 @@ class ConvexOptimization(BaseOptimization, ABC):
         problem: cp.Problem,
         w: cp.Variable,
         factor: skt.Factor,
-        parameters_values: skt.ParametersValues = None,
+        parameters_values: skt.ParametersValues | None = None,
         expressions: dict[str, cp.Expression] | None = None,
     ) -> None:
-        """Solve the CVXPY Problem and save the results in `weights_`, `problem_values_`
-        and `problem_`.
+        """Solve the CVXPY problem and store `weights_` and `problem_values_`.
+
+        Reuse the problem across parameter values when solving a sweep. Save it in
+        `problem_` when `save_problem` is enabled.
 
         Parameters
         ----------
         problem : cvxpy Problem
-            The CVXPY Problem.
+            Optimization problem containing the objective and constraints.
 
-        w : cvxpy Variable
-            The CVXPY Variable representing assets weights.
+        w : cvxpy Variable of shape (n_assets,)
+            Weights of the investable assets in optimization units.
+
+        factor : cvxpy Variable | cvxpy Constant
+            Scalar homogenization factor. Final portfolio weights are `w / factor`.
+
+        parameters_values : list[tuple[cvxpy Parameter, float | ndarray]], optional
+            Parameters and the values to assign before solving. Arrays are paired by
+            index and must be nonempty with the same length. Scalar values are reused
+            for every solve. None gives a single solve with the current parameters.
 
         expressions : dict[str, cvxpy Expression] | None, optional
-            Dictionary of CVXPY Expressions from which values are retrieved and saved
-            in `expression_values_`. It is used to save additional information about
-            the problem.
+            CVXPY expressions in reporting units, evaluated after each solve and saved
+            in `problem_values_`. The `"objective"` entry contains the solver objective
+            divided by `_scale_objective`.
 
-        parameters_values: list[tuple[cvxpy Parameter, float | ndarray]], optional
-            A list of tuple of CVXPY Parameter and their values.
-            If The values are ndarray instead of float, the optimization is solved for
-            each element in the array.
+        Raises
+        ------
+        ValueError
+            If the solver is unavailable or parameter arrays are empty or have
+            different lengths.
+        ConvexOptimizationError
+            If a single solve fails, all targets in a sweep fail, or a target fails
+            while `raise_on_failure` is True.
 
-        factor: cvxpy Variable | cvxpy Constant
-           CVXPY Variable or Constant used for RatioMeasure optimization problems.
+        Warns
+        -----
+        UserWarning
+            If a solution may be inaccurate or a sweep continues after a failed target.
+
+        Notes
+        -----
+        With `raise_on_failure=False`, a failed target in a sweep has NaN weights,
+        None for its reported values, and an error message in `error_`. The saved
+        problem retains the state left by the last solve attempt.
         """
         if self.solver not in INSTALLED_SOLVERS:
             raise ValueError(f"The solver {self.solver} is not installed.")
@@ -1099,88 +1335,97 @@ class ConvexOptimization(BaseOptimization, ABC):
         if parameters_values is None:
             parameters_values = []
 
-        if expressions is None:
-            expressions = {}
+        expressions = {
+            **(expressions or {}),
+            "objective": problem.objective.expr / self._scale_objective,
+        }
 
-        n_optimizations = 1
-        if len(parameters_values) != 0:
-            # If the parameter value is a list, each element is the parameter value of
-            # a distinct optimization. Therefore, each list must have same length.
-            sizes = [len(v) for p, v in parameters_values if not np.isscalar(v)]
-            if not np.all(sizes):
-                raise ValueError(
-                    "All list elements from `parameters_values` should have same length"
-                )
-            if len(sizes) != 0:
-                n_optimizations = sizes[0]
-            # Scalar parameter values will be used in each optimization, therefore we
-            # transform them to a list.
-            parameters_values = [
-                (p, [v] * n_optimizations) if np.isscalar(v) else (p, v)
-                for p, v in parameters_values
-            ]
-
-        if n_optimizations == 1:
-            for parameter, values in parameters_values:
-                parameter.value = values[0]
-
-            self.weights_, self.problem_values_ = _solve(
-                w=w,
-                factor=factor,
-                expressions=expressions,
-                problem=problem,
-                solver=self.solver,
-                solver_params=self._solver_params,
-                risk_measure=self.risk_measure,
-                scale_objective=self._scale_objective,
+        # If the parameter value is a list, each element is the parameter value of
+        # a distinct optimization. Therefore, each list must have same length.
+        values_by_parameter = [
+            (parameter, np.asarray(values, dtype=float))
+            for parameter, values in parameters_values
+        ]
+        sizes = [len(values) for _, values in values_by_parameter if values.ndim != 0]
+        n_optimizations = sizes[0] if sizes else 1
+        if n_optimizations == 0 or any(size != n_optimizations for size in sizes):
+            raise ValueError(
+                "Array values in `parameters_values` must be nonempty and have the same length."
             )
-        else:
-            all_weights = []
-            all_problem_values = []
-            all_errors = []
-            with warnings.catch_warnings():
-                warnings.simplefilter("once", UserWarning)
-                for i in range(n_optimizations):
-                    for parameter, values in parameters_values:
-                        parameter.value = values[i]
+        # Scalar parameter values will be used in each optimization, therefore we
+        # broadcast them.
+        values_by_parameter = [
+            (
+                parameter,
+                np.full(n_optimizations, values) if values.ndim == 0 else values,
+            )
+            for parameter, values in values_by_parameter
+        ]
 
-                    try:
-                        weights, problem_values = _solve(
-                            w=w,
-                            factor=factor,
-                            expressions=expressions,
-                            problem=problem,
-                            solver=self.solver,
-                            solver_params=self._solver_params,
-                            risk_measure=self.risk_measure,
-                            scale_objective=self._scale_objective,
-                        )
-                        error = None
-                    except cp.SolverError as solver_error:
-                        if self.raise_on_failure:
-                            raise
-                        error = str(solver_error)
-                        warnings.warn(error, stacklevel=2)
-                        problem_values = None
-                        weights = np.full(w.shape, np.nan, dtype=float)
+        self.problem_values_ = None
+        try:
+            if n_optimizations == 1:
+                for parameter, values in values_by_parameter:
+                    parameter.value = values[0]
 
-                    all_problem_values.append(problem_values)
-                    all_weights.append(weights)
-                    all_errors.append(error)
-
-            all_weights = np.array(all_weights, dtype=float)
-            if np.isnan(all_weights).all():
-                raise cp.SolverError(
-                    f"All {n_optimizations} optimizations failed, with last optimization error {all_errors[-1]}"
+                weights, self.problem_values_ = _solve(
+                    w=w,
+                    factor=factor,
+                    expressions=expressions,
+                    problem=problem,
+                    solver=self.solver,
+                    solver_params=self._solver_params,
                 )
-            self.weights_ = all_weights
-            self.problem_values_ = all_problem_values
-            self.error_ = all_errors
+                self.weights_ = self._expand_weights_to_full_universe(weights=weights)
+            else:
+                all_weights = []
+                all_problem_values = []
+                all_errors = []
+                with warnings.catch_warnings():
+                    warnings.simplefilter("once", UserWarning)
+                    for i in range(n_optimizations):
+                        for parameter, values in values_by_parameter:
+                            parameter.value = values[i]
 
-        if self.save_problem:
-            self.problem_ = problem
+                        try:
+                            weights, problem_values = _solve(
+                                w=w,
+                                factor=factor,
+                                expressions=expressions,
+                                problem=problem,
+                                solver=self.solver,
+                                solver_params=self._solver_params,
+                            )
+                            error = None
+                        except OptimizationError as optimization_error:
+                            if self.raise_on_failure:
+                                raise
+                            error = str(optimization_error)
+                            warnings.warn(error, stacklevel=2)
+                            problem_values = None
+                            weights = np.full(w.shape, np.nan, dtype=float)
 
-        self._clear_models_cache()
+                        all_problem_values.append(problem_values)
+                        all_weights.append(weights)
+                        all_errors.append(error)
+
+                all_weights = np.array(all_weights, dtype=float)
+                failed = np.array([error is not None for error in all_errors])
+                if failed.all():
+                    raise ConvexOptimizationError(
+                        f"All {n_optimizations} optimizations failed, with last optimization error {all_errors[-1]}"
+                    )
+                self.weights_ = self._expand_weights_to_full_universe(
+                    weights=all_weights
+                )
+                # Failed portfolios remain all-NaN, including unavailable assets.
+                self.weights_[failed] = np.nan
+                self.problem_values_ = all_problem_values
+                self.error_ = all_errors
+        finally:
+            if self.save_problem:
+                self.problem_ = problem
+            self._clear_models_cache()
 
     @cache_method("_cvx_cache")
     def _cvx_mu_uncertainty_set(
@@ -1201,8 +1446,10 @@ class ConvexOptimization(BaseOptimization, ABC):
         expression : cvxpy Expression
             The CVXPY Expression of the uncertainty set of expected returns.
         """
-        return mu_uncertainty_set.k * cp.pnorm(
-            sc.linalg.sqrtm(mu_uncertainty_set.sigma) @ w, 2
+        # cvxpy annotates `p` as int or str but accepts any float, including inf.
+        return mu_uncertainty_set.radius * cp.pnorm(
+            mu_uncertainty_set.geometry.T @ w,
+            mu_uncertainty_set.dual_norm,  # ty: ignore[invalid-argument-type]
         )
 
     @cache_method("_cvx_cache")
@@ -1265,19 +1512,28 @@ class ConvexOptimization(BaseOptimization, ABC):
             self.transaction_costs,
             n_assets=n_assets,
             fill_value=0,
-            name=_ParamKey.TRANSACTION_COSTS.value,
+            name=_TRANSACTION_COSTS,
         )
         if np.all(transaction_costs == 0):
-            return cp.Constant(0)
+            cost = cp.Constant(0)
+        else:
+            previous_weights = self._clean_previous_weights(n_assets=n_assets)
+            if np.isscalar(transaction_costs):
+                cost = transaction_costs * cp.norm(previous_weights * factor - w, 1)
+            else:
+                cost = cp.norm(
+                    cp.multiply(transaction_costs, (previous_weights * factor - w)), 1
+                )
 
-        previous_weights = self._clean_previous_weights(n_assets=n_assets)
-
-        if np.isscalar(transaction_costs):
-            return transaction_costs * cp.norm(previous_weights * factor - w, 1)
-        return cp.norm(
-            cp.multiply(transaction_costs, (previous_weights * factor - w)),
-            1,
+        _, liquidation_cost = _get_liquidation_turnover_and_cost(
+            previous_weights=self.previous_weights,
+            transaction_costs=self.transaction_costs,
+            assets_names=getattr(self, "feature_names_in_", None),
+            investable_mask=getattr(self, "investable_mask_", None),
         )
+        if liquidation_cost:
+            cost += liquidation_cost * factor
+        return cost
 
     @cache_method("_cvx_cache")
     def _cvx_management_fee(
@@ -1304,7 +1560,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             self.management_fees,
             n_assets=n_assets,
             fill_value=0,
-            name=_ParamKey.MANAGEMENT_FEES.value,
+            name=_MANAGEMENT_FEES,
         )
         if np.all(management_fees == 0):
             return cp.Constant(0)
@@ -1339,12 +1595,12 @@ class ConvexOptimization(BaseOptimization, ABC):
     def _turnover(
         self, n_assets: int, w: cp.Variable, factor: skt.Factor
     ) -> cp.Expression:
-        """Expression of the portfolio turnover.
+        """Per-asset turnover in the investable optimization universe.
 
         Parameters
         ----------
         n_assets : int
-            The number of assets.
+            The number of investable assets.
 
         w : cvxpy Variable
             The CVXPY Variable representing assets weights.
@@ -1358,19 +1614,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         expression : cvxpy Expression
             The CVXPY Expression the portfolio turnover.
         """
-        if self.previous_weights is None:
-            raise ValueError(
-                "If you provide `max_turnover`, you must also provide "
-                " `previous_weights`"
-            )
-        previous_weights = self._clean_input(
-            self.previous_weights,
-            n_assets=n_assets,
-            fill_value=0,
-            name=_ParamKey.PREVIOUS_WEIGHTS.value,
-        )
-        if np.isscalar(previous_weights):
-            previous_weights *= np.ones(n_assets)
+        previous_weights = self._clean_previous_weights(n_assets=n_assets)
         turnover = cp.abs(w - previous_weights * factor)
         return turnover
 
@@ -1379,7 +1623,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         self,
         return_distribution: ReturnDistribution,
         w: cp.Variable,
-        min_acceptable_return: skt.Target = None,
+        min_acceptable_return: skt.Target | None = None,
     ) -> cp.Expression:
         """Expression of the portfolio Minimum Acceptable Returns.
 
@@ -1402,10 +1646,9 @@ class ConvexOptimization(BaseOptimization, ABC):
         """
         if min_acceptable_return is None:
             min_acceptable_return = return_distribution.mu
-        if not np.isscalar(min_acceptable_return) and min_acceptable_return.shape != (
-            len(min_acceptable_return),
-            1,
-        ):
+        if isinstance(
+            min_acceptable_return, np.ndarray
+        ) and min_acceptable_return.shape != (len(min_acceptable_return), 1):
             min_acceptable_return = min_acceptable_return[np.newaxis, :]
         mar = (return_distribution.returns - min_acceptable_return) @ w
         return mar
@@ -1416,7 +1659,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         return_distribution: ReturnDistribution,
         w: cp.Variable,
         factor: skt.Factor,
-    ) -> tuple[cp.Variable, list[cp.Expression]]:
+    ) -> tuple[cp.Variable, list[cpc.Constraint]]:
         """Expression of the portfolio drawdown.
 
         Parameters
@@ -1461,7 +1704,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         return_distribution: ReturnDistribution,
         w: cp.Variable,
         factor: skt.Factor,
-    ) -> tuple[cp.Variable, list[cp.Expression]]:
+    ) -> tuple[cp.Variable, list[cpc.Constraint]]:
         """Expression of the portfolio drawdown.
         Wrapper around __cvx_drawdown to avoid re-adding the constraints when they
         have already been included in the problem.
@@ -1554,7 +1797,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints of the Mean Absolute Deviation risk
+            CVXPY expression and constraints of the mean absolute deviation risk
             measure.
         """
         n_observations = return_distribution.returns.shape[0]
@@ -1604,7 +1847,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints of the First Lower Partial Moment risk
+            CVXPY expression and constraints of the first lower partial moment risk
             measure.
         """
         n_observations = return_distribution.returns.shape[0]
@@ -1630,51 +1873,50 @@ class ConvexOptimization(BaseOptimization, ABC):
     def _standard_deviation_risk(
         self, return_distribution: ReturnDistribution, w: cp.Variable
     ) -> skt.RiskResult:
-        """Expression and Constraints of the Standard Deviation risk measure.
+        """Expression and constraints of the standard deviation risk measure.
 
         Parameters
         ----------
         return_distribution : ReturnDistribution
-            asset returns distribution DataModel.
+            Asset return distribution.
 
         w : cvxpy Variable
-            The CVXPY Variable representing assets weights.
+            CVXPY variable representing the asset weights.
 
         Returns
         -------
-        expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints of the Standard Deviation risk measure.
+        expression : tuple[cvxpy Expression, list[cvxpy Expression]]
+            CVXPY expression and constraints of the standard deviation risk measure.
         """
-        v = cp.Variable(
-            nonneg=True
-        )  # nonneg=True instead of constraint v>=0 is preferred for better DCP analysis
-        if return_distribution.cholesky is not None:
-            z = return_distribution.cholesky
-        else:
-            z = np.linalg.cholesky(return_distribution.covariance)
-        risk = v
-        constraints = [
-            cp.SOC(v * self._scale_constraints, z.T @ w * self._scale_constraints)
-        ]
+        # nonneg=True instead of a separate constraint improves DCP analysis.
+        risk = cp.Variable(nonneg=True)
+        scale = self._scale_constraints
+        covariance_sqrt = return_distribution.covariance_sqrt
+
+        terms = [component.T @ w for component in covariance_sqrt.components]
+        if covariance_sqrt.diagonal is not None:
+            terms.append(cp.multiply(covariance_sqrt.diagonal, w))
+
+        constraints = [cp.SOC(risk * scale, cp.hstack(terms) * scale)]
         return risk, constraints
 
     def _variance_risk(
         self, return_distribution: ReturnDistribution, w: cp.Variable
     ) -> skt.RiskResult:
-        """Expression and Constraints of the Variance risk measure.
+        """Expression and constraints of the variance risk measure.
 
         Parameters
         ----------
         return_distribution : ReturnDistribution
-           asset returns distribution DataModel.
+            Asset return distribution.
 
         w : cvxpy Variable
-           The CVXPY Variable representing assets weights.
+            CVXPY variable representing the asset weights.
 
         Returns
         -------
-        expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-           CVXPY Expression and Constraints the Variance risk measure.
+        expression : tuple[cvxpy Expression, list[cvxpy Expression]]
+            CVXPY expression and constraints of the variance risk measure.
         """
         risk, constraints = self._standard_deviation_risk(
             return_distribution=return_distribution, w=w
@@ -1685,32 +1927,55 @@ class ConvexOptimization(BaseOptimization, ABC):
     def _worst_case_variance_risk(
         self,
         return_distribution: ReturnDistribution,
-        covariance_uncertainty_set: UncertaintySet,
+        covariance_uncertainty_set: UncertaintySet | CompactCovarianceUncertaintySet,
         w: cp.Variable,
         factor: skt.Factor,
     ) -> skt.RiskResult:
-        """Expression and Constraints of the Worst Case Variance.
+        r"""Expression and constraints of the worst-case variance.
+
+        A :class:`~skfolio.uncertainty_set.CompactCovarianceUncertaintySet`
+        adds the reduced quadratic penalty
+
+        .. math::
+
+            \kappa \min_z \lVert Cw - Qz \rVert_2^2
+
+        to the nominal variance. A generic
+        :class:`~skfolio.uncertainty_set.UncertaintySet` uses a lifted semidefinite
+        formulation.
 
         Parameters
         ----------
         return_distribution : ReturnDistribution
-           asset returns distribution DataModel.
+            Asset return distribution.
 
-        covariance_uncertainty_set : UncertaintySet
-             :ref:`Covariance Uncertainty set estimator <uncertainty_set_estimator>`.
+        covariance_uncertainty_set : UncertaintySet | CompactCovarianceUncertaintySet
+            Fitted :ref:`covariance uncertainty set <uncertainty_set_estimator>`.
 
         w : cvxpy Variable
-           The CVXPY Variable representing assets weights.
+            CVXPY variable representing the asset weights.
 
         factor : cvxpy Variable | cvxpy Constant
-           Additional variable used for the optimization of some objective function
-           like the ratio maximization.
+            Homogenization factor used by the generic lifted formulation for ratio
+            optimization.
 
         Returns
         -------
-        expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-           CVXPY Expression and Constraints the Worst Case Variance.
+        expression : tuple[cvxpy Expression, list[cvxpy Expression]]
+            CVXPY expression and constraints of the worst-case variance.
         """
+        if isinstance(covariance_uncertainty_set, CompactCovarianceUncertaintySet):
+            # The compact representation avoids lifted matrix variables.
+            risk, constraints = self._variance_risk(return_distribution, w)
+            residual = cp.multiply(covariance_uncertainty_set.metric_sqrt, w)
+            rank = covariance_uncertainty_set.basis.shape[1]
+            if rank > 0:
+                projection_coefficients = cp.Variable(rank)
+                residual -= covariance_uncertainty_set.basis @ projection_coefficients
+            risk += covariance_uncertainty_set.radius * cp.sum_squares(residual)
+            return risk, constraints
+
+        # Generic covariance uncertainty uses a lifted semidefinite formulation.
         n_assets = return_distribution.returns.shape[1]
         x = cp.Variable((n_assets, n_assets), symmetric=True)
         y = cp.Variable((n_assets, n_assets), symmetric=True)
@@ -1719,12 +1984,12 @@ class ConvexOptimization(BaseOptimization, ABC):
         z1 = cp.vstack([x, w_reshaped.T])
         z2 = cp.vstack([w_reshaped, factor_reshaped])
 
-        risk = covariance_uncertainty_set.k * cp.pnorm(
-            sc.linalg.sqrtm(covariance_uncertainty_set.sigma)
+        # cvxpy annotates `p` as int or str but accepts any float, including inf.
+        risk = covariance_uncertainty_set.radius * cp.pnorm(
+            covariance_uncertainty_set.geometry.T
             @ (cp.vec(x, order="F") + cp.vec(y, order="F")),
-            2,
+            covariance_uncertainty_set.dual_norm,  # ty: ignore[invalid-argument-type]
         ) + cp.trace(return_distribution.covariance @ (x + y))
-        # semi-definite positive constraints
         constraints = [
             cp.hstack([z1, z2]) * self._scale_constraints >> 0,
             y * self._scale_constraints >> 0,
@@ -1735,7 +2000,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         self,
         return_distribution: ReturnDistribution,
         w: cp.Variable,
-        min_acceptable_return: skt.Target = None,
+        min_acceptable_return: skt.Target | None = None,
     ) -> skt.RiskResult:
         """Expression and Constraints of the Semi Variance risk measure.
 
@@ -1754,7 +2019,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the Semi Variance risk measure.
+            CVXPY expression and constraints of the semi variance risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         ptf_min_acceptable_return = self._cvx_min_acceptable_return(
@@ -1767,9 +2032,13 @@ class ConvexOptimization(BaseOptimization, ABC):
         if return_distribution.sample_weight is None:
             risk = cp.sum_squares(v) / (n_observations - 1)
         else:
-            risk = cp.sum_squares(
-                cp.multiply(np.sqrt(return_distribution.sample_weight), v)
+            sample_weight = return_distribution.sample_weight
+            # Match the sample correction used by the numerical semi-variance.
+            correction = 1 - sample_weight @ sample_weight
+            _validate_positive_real(
+                float(correction), "semi-variance correction 1 - sum(sample_weight**2)"
             )
+            risk = cp.sum_squares(cp.multiply(np.sqrt(sample_weight), v)) / correction
 
         constraints = [
             ptf_min_acceptable_return * self._scale_constraints
@@ -1781,7 +2050,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         self,
         return_distribution: ReturnDistribution,
         w: cp.Variable,
-        min_acceptable_return: skt.Target = None,
+        min_acceptable_return: skt.Target | None = None,
     ) -> skt.RiskResult:
         """Expression and Constraints of the Semi Standard Deviation risk measure.
 
@@ -1800,7 +2069,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the Semi Standard Deviation risk measure.
+            CVXPY expression and constraints of the semi standard deviation risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         ptf_min_acceptable_return = self._cvx_min_acceptable_return(
@@ -1813,8 +2082,14 @@ class ConvexOptimization(BaseOptimization, ABC):
         if return_distribution.sample_weight is None:
             risk = cp.norm(v, 2) / np.sqrt(n_observations - 1)
         else:
-            risk = cp.norm(
-                cp.multiply(np.sqrt(return_distribution.sample_weight), v), 2
+            sample_weight = return_distribution.sample_weight
+            # Match the sample correction used by the numerical semi-deviation.
+            correction = 1 - sample_weight @ sample_weight
+            _validate_positive_real(
+                float(correction), "semi-deviation correction 1 - sum(sample_weight**2)"
+            )
+            risk = cp.norm(cp.multiply(np.sqrt(sample_weight), v), 2) / np.sqrt(
+                correction
             )
 
         constraints = [
@@ -1823,10 +2098,16 @@ class ConvexOptimization(BaseOptimization, ABC):
         ]
         return risk, constraints
 
-    def _fourth_central_moment_risk(self, w: cp.Variable, factor: skt.Factor):
+    def _fourth_central_moment_risk(
+        self, w: cp.Variable, factor: skt.Factor
+    ) -> skt.RiskResult:
+        """Fourth central moment risk, not supported in convex optimization."""
         raise NotImplementedError
 
-    def _fourth_lower_partial_moment_risk(self, w: cp.Variable, factor: skt.Factor):
+    def _fourth_lower_partial_moment_risk(
+        self, w: cp.Variable, factor: skt.Factor
+    ) -> skt.RiskResult:
+        """Fourth lower partial moment risk, not supported in convex optimization."""
         raise NotImplementedError
 
     def _worst_realization_risk(
@@ -1852,7 +2133,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the Worst Realization risk measure.
+            CVXPY expression and constraints of the worst realization risk measure.
         """
         ptf_returns = self._cvx_returns(return_distribution=return_distribution, w=w)
         ptf_transaction_cost = self._cvx_transaction_cost(
@@ -1894,7 +2175,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the CVaR risk measure.
+            CVXPY expression and constraints of the CVaR risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         ptf_returns = self._cvx_returns(return_distribution=return_distribution, w=w)
@@ -1904,6 +2185,11 @@ class ConvexOptimization(BaseOptimization, ABC):
         ptf_management_fee = self._cvx_management_fee(
             return_distribution=return_distribution, w=w
         )
+        if self.cvar_beta == 1:
+            return _cvx_worst_loss(
+                -ptf_returns + ptf_transaction_cost + ptf_management_fee,
+                sample_weight=return_distribution.sample_weight,
+            ), []
         alpha = cp.Variable()
         v = cp.Variable(n_observations, nonneg=True)
         if return_distribution.sample_weight is None:
@@ -1946,9 +2232,8 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the EVaR risk measure.
+            CVXPY expression and constraints of the EVaR risk measure.
         """
-        n_observations = return_distribution.returns.shape[0]
         ptf_returns = self._cvx_returns(return_distribution=return_distribution, w=w)
         ptf_transaction_cost = self._cvx_transaction_cost(
             return_distribution=return_distribution, w=w, factor=factor
@@ -1966,21 +2251,12 @@ class ConvexOptimization(BaseOptimization, ABC):
                 stacklevel=2,
             )
 
-        x = cp.Variable()
-        y = cp.Variable(nonneg=True)
-        z = cp.Variable(n_observations)
-        risk = x + y * np.log(1 / (n_observations * (1 - self.evar_beta)))
-        constraints = [
-            cp.sum(z) * self._scale_constraints <= y * self._scale_constraints,
-            cp.constraints.ExpCone(
-                -ptf_returns * self._scale_constraints
-                + ptf_management_fee * self._scale_constraints
-                - x * self._scale_constraints,
-                np.ones(n_observations) * y * self._scale_constraints,
-                z * self._scale_constraints,
-            ),
-        ]
-        return risk, constraints
+        return _cvx_entropic_risk(
+            losses=-ptf_returns + ptf_management_fee,
+            beta=self.evar_beta,
+            sample_weight=return_distribution.sample_weight,
+            scale_constraints=self._scale_constraints,
+        )
 
     def _max_drawdown_risk(
         self,
@@ -1988,7 +2264,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         w: cp.Variable,
         factor: skt.Factor,
     ) -> skt.RiskResult:
-        """Expression and Constraints of the EVaR risk measure.
+        """Expression and Constraints of the Maximum Drawdown risk measure.
 
         Parameters
         ----------
@@ -2005,7 +2281,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the EVaR risk measure.
+            CVXPY expression and constraints of the maximum drawdown risk measure.
         """
         v, constraints = self._cvx_drawdown(
             return_distribution=return_distribution, w=w, factor=factor
@@ -2038,13 +2314,16 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the Average Drawdown risk measure.
+            CVXPY expression and constraints of the average drawdown risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         v, constraints = self._cvx_drawdown(
             return_distribution=return_distribution, w=w, factor=factor
         )
-        risk = cp.sum(v[1:]) / n_observations
+        if return_distribution.sample_weight is None:
+            risk = cp.sum(v[1:]) / n_observations
+        else:
+            risk = return_distribution.sample_weight @ v[1:]
         return risk, constraints
 
     def _cdar_risk(
@@ -2070,15 +2349,23 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the CDaR risk measure.
+            CVXPY expression and constraints of the CDaR risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         v, constraints = self._cvx_drawdown(
             return_distribution=return_distribution, w=w, factor=factor
         )
+        if self.cdar_beta == 1:
+            return _cvx_worst_loss(
+                v[1:], sample_weight=return_distribution.sample_weight
+            ), constraints
         alpha = cp.Variable()
         z = cp.Variable(n_observations, nonneg=True)
-        risk = alpha + 1.0 / (n_observations * (1 - self.cdar_beta)) * cp.sum(z)
+        if return_distribution.sample_weight is None:
+            tail_average = cp.sum(z) / n_observations
+        else:
+            tail_average = return_distribution.sample_weight @ z
+        risk = alpha + tail_average / (1 - self.cdar_beta)
         constraints += [
             z * self._scale_constraints
             >= v[1:] * self._scale_constraints - alpha * self._scale_constraints
@@ -2108,25 +2395,18 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the EDaR risk measure.
+            CVXPY expression and constraints of the EDaR risk measure.
         """
-        n_observations = return_distribution.returns.shape[0]
         v, constraints = self._cvx_drawdown(
             return_distribution=return_distribution, w=w, factor=factor
         )
-        x = cp.Variable()
-        y = cp.Variable(nonneg=True)
-        z = cp.Variable(n_observations)
-        risk = x + y * np.log(1 / (n_observations * (1 - self.edar_beta)))
-        constraints += [
-            cp.sum(z) * self._scale_constraints <= y * self._scale_constraints,
-            cp.constraints.ExpCone(
-                v[1:] * self._scale_constraints - x * self._scale_constraints,
-                np.ones(n_observations) * y * self._scale_constraints,
-                z * self._scale_constraints,
-            ),
-        ]
-        return risk, constraints
+        risk, risk_constraints = _cvx_entropic_risk(
+            losses=v[1:],
+            beta=self.edar_beta,
+            sample_weight=return_distribution.sample_weight,
+            scale_constraints=self._scale_constraints,
+        )
+        return risk, constraints + risk_constraints
 
     def _ulcer_index_risk(
         self,
@@ -2151,75 +2431,92 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the Ulcer Index risk measure.
+            CVXPY expression and constraints of the Ulcer Index risk measure.
         """
         v, constraints = self._cvx_drawdown(
             return_distribution=return_distribution, w=w, factor=factor
         )
         n_observations = return_distribution.returns.shape[0]
-        risk = cp.norm(v[1:], 2) / (np.sqrt(n_observations))
+        if return_distribution.sample_weight is None:
+            risk = cp.norm(v[1:], 2) / np.sqrt(n_observations)
+        else:
+            risk = cp.norm(
+                cp.multiply(np.sqrt(return_distribution.sample_weight), v[1:]), 2
+            )
         return risk, constraints
 
     def _gini_mean_difference_risk(
         self,
         return_distribution: ReturnDistribution,
-        w: cp.Variable,
-        factor: skt.Factor,
+        w: cp.Expression,
     ) -> skt.RiskResult:
-        """Expression and Constraints of the Gini Mean Difference risk measure.
+        r"""Build the Gini mean difference risk expression and its constraints.
 
-        The Gini mean difference (GMD) is a measure of dispersion introduced in the
-        context of portfolio optimization by Yitzhaki (1982).
-        The initial formulation was not used by practitioners due to the high number of
-        variables that increases proportional to T(T-1)/2 ,
-
-        Cajas (2021) proposed an alternative reformulation based on the ordered weighted
-        averaging (OWA) operator for monotonic weights proposed by Chassein and
-        Goerigk (2015). We implement this formulation which is more efficient for large
-        scale problems.
+        A sparse sorting network represents an upper bound on portfolio GMD with
+        :math:`O(T \log^2 T)` variables and constraints for :math:`T` observations.
+        Minimizing the risk expression makes this bound exact.
 
         Parameters
         ----------
         return_distribution : ReturnDistribution
-           asset returns distribution DataModel.
+            Fitted distribution containing asset returns with at least two
+            observations.
 
-        w : cvxpy Variable
-           The CVXPY Variable representing assets weights.
-
-        factor : cvxpy Variable | cvxpy Constant
-           Additional variable used for the optimization of some objective function
-           like the ratio maximization.
+        w : cvxpy Expression of shape (n_assets,)
+            Portfolio weights in optimization units. For ratio objectives, these
+            are the weights before division by the homogenization factor. To model
+            risk relative to a target, subtract target weights in those same units.
 
         Returns
         -------
-        expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the Ulcer Index risk measure.
-        """
-        ptf_returns = self._cvx_returns(return_distribution=return_distribution, w=w)
-        ptf_transaction_cost = self._cvx_transaction_cost(
-            return_distribution=return_distribution, w=w, factor=factor
-        )
-        ptf_management_fee = self._cvx_management_fee(
-            return_distribution=return_distribution, w=w
-        )
-        observation_nb = return_distribution.returns.shape[0]
-        x = cp.Variable((observation_nb, 1))
-        y = cp.Variable((observation_nb, 1))
-        z = cp.Variable((observation_nb, 1))
-        ones = np.ones((observation_nb, 1))
-        risk = 2 * cp.sum(x + y)
-        gmd_w = np.array(owa_gmd_weights(observation_nb) / 2).reshape(-1, 1)
-        # noinspection PyTypeChecker
-        constraints = [
-            ptf_returns * self._scale_constraints
-            - ptf_transaction_cost * self._scale_constraints
-            - ptf_management_fee * self._scale_constraints
-            == cp.reshape(z, (observation_nb,), order="F") * self._scale_constraints,
-            z @ gmd_w.T <= ones @ x.T + y @ ones.T,
-        ]
-        return risk, constraints
+        risk : cvxpy Expression
+            Scalar upper bound on the GMD of `return_distribution.returns @ w`.
+        constraints : list[cvxpy Constraint]
+            Linear constraints linking portfolio returns to the sorting network.
 
-    def get_metadata_routing(self):
+        Raises
+        ------
+        ValueError
+            If the return distribution contains fewer than two observations.
+
+        Notes
+        -----
+        Asset returns are centered and scaled to improve numerical conditioning.
+        The risk expression restores the original return units. When GMD is only
+        upper bounded, the expression can exceed the empirical GMD of the final
+        weights. Use `_gmd_reported_risk` to report that empirical value.
+        """
+        returns = return_distribution.returns
+        n_observations = returns.shape[0]
+        equality, inequality, risk_coefficients = _gmd_sorting_network(n_observations)
+        z = cp.Variable(equality.shape[1], name="gmd_network")
+        # GMD is translation invariant. Centering returns and omitting costs and
+        # fees remove observation-independent shifts without changing the risk.
+        centered_returns = returns - returns.mean(axis=0)
+        # Keep network coefficients near one, including when ratio optimization
+        # produces small homogeneous weights. Restore return units in the risk.
+        return_scale = np.max(np.abs(centered_returns))
+        if return_scale == 0:
+            return_scale = 1.0
+        constraints = [
+            z[:n_observations] * self._scale_constraints
+            == (centered_returns / return_scale) @ w * self._scale_constraints,
+            equality @ z * self._scale_constraints == 0,
+            inequality @ z * self._scale_constraints <= 0,
+        ]
+        return return_scale * (risk_coefficients @ z), constraints
+
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` and `partial_fit` to the matching method of
+        `prior_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             prior_estimator=self.prior_estimator,
             method_mapping=skm.MethodMapping()
@@ -2229,8 +2526,33 @@ class ConvexOptimization(BaseOptimization, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params):
-        pass
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> ConvexOptimization:
+        """Fit the Convex Optimization estimator.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : array-like of shape (n_observations, n_targets), optional
+            Price returns of factors or a target benchmark.
+            The default is `None`.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
+        Returns
+        -------
+        self : ConvexOptimization
+            Fitted estimator.
+        """
+        ...
 
 
 def _mip_weight_constraints_no_short_threshold(
@@ -2240,11 +2562,11 @@ def _mip_weight_constraints_no_short_threshold(
     scale_constraints: cp.Constant,
     cardinality: int | None,
     group_cardinalities: dict[str, int] | None,
-    max_weights: FloatArray | None,
-    groups: FloatArray | None,
-    min_weights: FloatArray | None,
-    threshold_long: FloatArray | None,
-) -> list[cp.Expression]:
+    max_weights: float | FloatArray,
+    groups: AnyArray | None,
+    min_weights: float | FloatArray,
+    threshold_long: float | FloatArray | None,
+) -> list[cpc.Constraint]:
     """
     Create a list of MIP constraints for cardinality and threshold conditions
     when no short threshold is present. This only requires the creation of a single
@@ -2313,14 +2635,14 @@ def _mip_weight_constraints_threshold_short(
     w: cp.Variable,
     factor: skt.Factor,
     scale_constraints: cp.Constant,
-    max_weights: FloatArray,
-    min_weights: FloatArray,
-    threshold_long: FloatArray,
-    threshold_short: FloatArray,
+    max_weights: float | FloatArray,
+    min_weights: float | FloatArray,
+    threshold_long: float | FloatArray,
+    threshold_short: float | FloatArray,
     cardinality: int | None,
     group_cardinalities: dict[str, int] | None,
-    groups: FloatArray | None,
-) -> list[cp.Expression]:
+    groups: AnyArray | None,
+) -> list[cpc.Constraint]:
     """
     Create a list of MIP constraints for cardinality and threshold constraints
     when a short threshold is allowed. This requires the creation of two boolean
@@ -2392,15 +2714,54 @@ def _mip_weight_constraints_threshold_short(
 
 
 def _solve(
-    w,
-    factor,
-    expressions,
-    problem,
-    solver,
-    solver_params,
-    risk_measure,
-    scale_objective,
-):
+    w: cp.Variable,
+    factor: skt.Factor,
+    expressions: dict[str, cp.Expression],
+    problem: cp.Problem,
+    solver: str,
+    solver_params: dict,
+) -> tuple[FloatArray, dict[str, float]]:
+    """Solve `problem` and return normalized weights and reported values.
+
+    Parameters
+    ----------
+    w : cvxpy Variable of shape (n_assets,)
+        Portfolio weights in optimization units.
+
+    factor : cvxpy Variable | cvxpy Constant
+        Scalar normalization factor. Its solved value must be finite and greater
+        than 1e-12.
+
+    expressions : dict[str, cvxpy Expression]
+        Named scalar expressions in reporting units, evaluated after solving.
+
+    problem : cvxpy Problem
+        Optimization problem containing `w` and its supporting constraints.
+
+    solver : str
+        Name of the CVXPY solver to use.
+
+    solver_params : dict
+        Additional keyword arguments passed to `problem.solve`.
+
+    Returns
+    -------
+    weights : ndarray of shape (n_assets,)
+        Final portfolio weights, computed as `w.value / factor.value`.
+    problem_values : dict[str, float]
+        Values of the supplied reporting expressions.
+
+    Raises
+    ------
+    ConvexOptimizationError
+        If solving fails, weights are unavailable, the factor is invalid, or the
+        normalized weights or reported values are non-finite.
+
+    Warns
+    -----
+    UserWarning
+        If the solver returns a usable solution with a status other than `optimal`.
+    """
     try:
         # We suppress cvxpy warning as it is redundant with our warning
         with warnings.catch_warnings():
@@ -2410,30 +2771,7 @@ def _solve(
         if w.value is None:
             raise cp.SolverError("No solution found")
 
-        weights = w.value / factor.value
-        problem_values = {
-            name: expression.value / factor.value
-            if name != "factor"
-            else expression.value
-            for name, expression in expressions.items()
-        }
-        problem_values["objective"] = problem.value / scale_objective.value
-
-        if (
-            risk_measure in [RiskMeasure.VARIANCE, RiskMeasure.SEMI_VARIANCE]
-            and "risk" in problem_values
-        ):
-            problem_values["risk"] /= factor.value
-
-        weights = np.array(weights, dtype=float)
-        if not problem.status == cp.OPTIMAL:
-            warnings.warn(
-                "Solution may be inaccurate. Try changing the solver params or the"
-                " scale. For more details, set `solver_params=dict(verbose=True)`",
-                stacklevel=2,
-            )
-        return weights, problem_values
-    except (cp.SolverError, scl.ArpackNoConvergence):
+    except (cp.SolverError, sla.ArpackNoConvergence) as solver_error:
         params_string = " ".join([f"{p.value:0g}" for p in problem.parameters()])
         if len(params_string) != 0:
             params_string = f" with parameters {params_string}"
@@ -2442,4 +2780,284 @@ def _solve(
             " solver, or solve with solver_params=dict(verbose=True) for more"
             " information"
         )
-        raise cp.SolverError(error) from None
+        raise ConvexOptimizationError(error) from solver_error
+
+    factor_value = factor.value
+    if (
+        factor_value is None
+        or not np.isfinite(factor_value)
+        or factor_value <= _MIN_HOMOGENIZATION_FACTOR
+    ):
+        raise ConvexOptimizationError(
+            "The optimization returned an invalid homogeneous normalization factor"
+        )
+    factor_value = float(factor_value)
+
+    with np.errstate(over="ignore", invalid="ignore"):
+        weights = w.value / factor_value
+    if not np.isfinite(weights).all():
+        raise ConvexOptimizationError("Allocation produced non-finite weights.")
+    with np.errstate(over="ignore", invalid="ignore"):
+        problem_values = {
+            name: expression.value for name, expression in expressions.items()
+        }
+
+    for name, value in problem_values.items():
+        if not np.isfinite(value).all():
+            raise ConvexOptimizationError(
+                f"Optimization produced a non-finite '{name}' value."
+            )
+
+    weights = np.array(weights, dtype=float)
+    if not problem.status == cp.OPTIMAL:
+        warnings.warn(
+            "Solution may be inaccurate. Try changing the solver params or the"
+            " scale. For more details, set `solver_params=dict(verbose=True)`",
+            stacklevel=2,
+        )
+    return weights, problem_values  # ty: ignore[invalid-return-type]
+
+
+def _cvx_worst_loss(
+    losses: cp.Expression, *, sample_weight: FloatArray | None
+) -> cp.Expression:
+    """Return the largest loss with positive probability.
+
+    Parameters
+    ----------
+    losses : cvxpy Expression of shape (n_observations,)
+        Losses or drawdown magnitudes for all observations.
+
+    sample_weight : ndarray of shape (n_observations,) or None
+        Validated scenario probabilities. None gives every observation equal weight.
+
+    Returns
+    -------
+    risk : cvxpy Expression
+        Maximum over observations with positive probability.
+    """
+    if sample_weight is not None:
+        positive = sample_weight > 0
+        if not positive.all():
+            losses = losses[positive]
+    return cp.max(losses)
+
+
+def _cvx_entropic_risk(
+    losses: cp.Expression,
+    *,
+    beta: float,
+    sample_weight: FloatArray | None,
+    scale_constraints: cp.Constant,
+) -> skt.RiskResult:
+    """Create the CVXPY expression and constraints for EVaR.
+
+    Pass portfolio losses to model EVaR, or nonnegative drawdown magnitudes
+    to model EDaR.
+
+    Parameters
+    ----------
+    losses : cvxpy Expression of shape (n_observations,)
+        Loss at each observation. For EDaR, pass nonnegative drawdown
+        magnitudes computed from the full return path, including dates
+        whose sample weight is zero.
+
+    beta : float
+        Confidence level between 0 and 1, inclusive. At zero, the risk equals
+        the mean loss. At one, it equals the largest loss with positive weight.
+
+    sample_weight : ndarray of shape (n_observations,) or None
+        Finite, nonnegative probabilities from the return distribution,
+        summing to one. If None, use equal probabilities.
+
+    scale_constraints : cvxpy Constant
+        Positive factor used to scale the constraints for the solver.
+
+    Returns
+    -------
+    expression : tuple[cvxpy Expression, list[cvxpy Expression]]
+        Risk expression and its constraints.
+
+    Notes
+    -----
+    Nonuniform probabilities enter the exponential cone as logarithms.
+    This avoids using very small probabilities as constraint coefficients,
+    which solvers can treat as zero. Only exactly zero probabilities are
+    excluded from the losses.
+    """
+    if beta == 1:
+        return _cvx_worst_loss(losses, sample_weight=sample_weight), []
+    if sample_weight is not None:
+        positive = sample_weight > 0
+        if not positive.all():
+            losses = losses[positive]
+            sample_weight = sample_weight[positive]
+        if np.all(sample_weight == sample_weight[0]):
+            sample_weight = None
+    n_observations = losses.shape[0]
+    if beta == 0:
+        if sample_weight is None:
+            risk = cp.sum(losses) / n_observations
+        else:
+            risk = sample_weight @ losses
+        return risk, []
+
+    location = cp.Variable()
+    temperature = cp.Variable(nonneg=True)
+    exponential = cp.Variable(n_observations)
+    cone_losses = losses - location
+    if sample_weight is None:
+        # Keep the existing equal-weight formulation and its solver scaling.
+        log_tail = np.log(n_observations * (1 - beta))
+    else:
+        cone_losses += temperature * np.log(sample_weight)
+        log_tail = np.log1p(-beta)
+    risk = location - temperature * log_tail
+    constraints = [
+        cp.sum(exponential) * scale_constraints <= temperature * scale_constraints,
+        cp.constraints.ExpCone(
+            cone_losses * scale_constraints,
+            np.ones(n_observations) * temperature * scale_constraints,
+            exponential * scale_constraints,
+        ),
+    ]
+    return risk, constraints
+
+
+def _gmd_reported_risk(returns: FloatArray, w: cp.Expression) -> cp.Expression:
+    """Build an empirical GMD expression for evaluation after solving.
+
+    The expression computes GMD directly from portfolio returns when its value
+    is read after solving.
+
+    Parameters
+    ----------
+    returns : ndarray of shape (n_observations, n_assets)
+        Asset returns with at least two observations.
+
+    w : cvxpy Expression of shape (n_assets,)
+        Portfolio weights after division by the homogenization factor. Subtract
+        target weights to report the GMD relative to a target portfolio.
+
+    Returns
+    -------
+    risk : cvxpy Expression
+        Scalar empirical GMD expression for reporting after solving.
+    """
+    centered_returns = returns - returns.mean(axis=0)
+    return cp.dotsort(centered_returns @ w, owa_gmd_weights(len(returns)))
+
+
+def _odd_even_merge_sort_comparators(n: int) -> list[tuple[int, int]]:
+    """Generate the compare-and-swap operations for a Batcher sorting network.
+
+    Parameters
+    ----------
+    n : int
+        Number of input values to sort. Counts that are not powers of two are
+        supported by omitting comparisons involving positions beyond the input.
+
+    Returns
+    -------
+    comparators : list[tuple[int, int]]
+        Pairs of zero-based positions in execution order. For each pair `(i, j)`,
+        place the smaller value at position `i` and the larger value at position
+        `j`. Applying all pairs sorts the input in ascending order.
+    """
+    comparators = []
+    p = 1
+    while p < n:
+        k = p
+        while k >= 1:
+            for j in range(k % p, n - k, 2 * k):
+                for i in range(min(k, n - j - k)):
+                    if (i + j) // (2 * p) == (i + j + k) // (2 * p):
+                        comparators.append((i + j, i + j + k))
+            k //= 2
+        p *= 2
+    return comparators
+
+
+@functools.lru_cache(maxsize=8)
+def _gmd_sorting_network(
+    n_observations: int,
+) -> tuple[sp.csr_matrix, sp.csr_matrix, FloatArray]:
+    r"""Build cached sparse matrices for the GMD sorting network.
+
+    For fixed input observations, minimizing the network's linear risk expression
+    under these constraints gives their empirical GMD.
+
+    Parameters
+    ----------
+    n_observations : int
+        Number of input observations. Must be at least two.
+
+    Returns
+    -------
+    equality : scipy.sparse.csr_matrix of shape (n_comparators, n_variables)
+        Coefficients of the comparator equalities `equality @ z == 0`.
+
+    inequality : scipy.sparse.csr_matrix of shape (2 * n_comparators, n_variables)
+        Coefficients of the comparator inequalities `inequality @ z <= 0`.
+
+    risk_coefficients : ndarray of shape (n_variables,)
+        Ordered weighted average coefficients on the final network outputs. The
+        risk expression is `risk_coefficients @ z`.
+
+    Raises
+    ------
+    ValueError
+        If `n_observations` is less than two.
+
+    Notes
+    -----
+    The variable vector `z` starts with `n_observations` inputs, followed by two
+    output variables for each comparator. Thus, `n_variables` equals
+    `n_observations + 2 * n_comparators`. The caller binds the inputs to portfolio
+    returns. The returned matrices and coefficients are cached and read-only.
+
+    Each comparator with inputs `u` and `v` has outputs `lo` and `hi` constrained
+    by `lo + hi = u + v`, `hi >= u` and `hi >= v`. These constraints relax sorting,
+    so feasible auxiliary values may be unsorted. Minimizing the weighted final
+    outputs yields the exact GMD.
+
+    The formulation uses :math:`O(T \log^2 T)` variables and constraints for
+    :math:`T` observations. It is the linear programming dual of Goemans' (2015)
+    permutahedron formulation:
+    https://doi.org/10.1007/s10107-014-0757-1
+    """
+    if n_observations < 2:
+        raise ValueError("GMD requires at least two observations")
+
+    comparators = _odd_even_merge_sort_comparators(n_observations)
+    n_comparators = len(comparators)
+    n_variables = n_observations + 2 * n_comparators
+    source = np.arange(n_observations)
+    lo = n_observations + 2 * np.arange(n_comparators)
+    hi = lo + 1
+    u = np.empty(n_comparators, dtype=int)
+    v = np.empty(n_comparators, dtype=int)
+    for k, (i, j) in enumerate(comparators):
+        u[k], v[k] = source[i], source[j]
+        source[i], source[j] = lo[k], hi[k]
+
+    rows = np.repeat(np.arange(n_comparators), 4)
+    cols = np.column_stack([lo, hi, u, v]).ravel()
+    vals = np.tile([1.0, 1.0, -1.0, -1.0], n_comparators)
+    equality = sp.csr_matrix((vals, (rows, cols)), shape=(n_comparators, n_variables))
+
+    rows = np.repeat(np.arange(2 * n_comparators), 2)
+    cols = np.column_stack([u, hi, v, hi]).ravel()
+    vals = np.tile([1.0, -1.0], 2 * n_comparators)
+    inequality = sp.csr_matrix(
+        (vals, (rows, cols)), shape=(2 * n_comparators, n_variables)
+    )
+
+    risk_coefficients = np.zeros(n_variables)
+    risk_coefficients[source] = owa_gmd_weights(n_observations)
+    # Cached arrays are shared by independent fits. Keep them immutable.
+    for matrix in (equality, inequality):
+        for values in (matrix.data, matrix.indices, matrix.indptr):
+            values.flags.writeable = False
+    risk_coefficients.flags.writeable = False
+    return equality, inequality, risk_coefficients

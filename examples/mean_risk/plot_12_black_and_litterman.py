@@ -12,7 +12,7 @@ weight, Cholesky decomposition).
 
 The term "prior" is used in a general optimization sense, not confined to Bayesian
 priors. It denotes any **a priori** assumption or estimation method for the return
-distribution before optimization, unifying both **Frequentist**, **Bayesian** and
+distribution before optimization, unifying **Frequentist**, **Bayesian** and
 **Information-theoretic** approaches into a single cohesive framework:
 
 1. Frequentist:
@@ -74,7 +74,7 @@ X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 # market. We estimate that Apple will have an expected return of 25% p.a. (absolute
 # view) and will outperform General Electric by 22% p.a. (relative view). We also
 # estimate that JPMorgan will outperform General Electric by 15% p.a (relative view).
-# By converting these annualized estimates into daily estimates to be homogenous with
+# By converting these annualized estimates into daily estimates to be homogeneous with
 # the input `X`, we get:
 analyst_views = [
     "AAPL == 0.00098",

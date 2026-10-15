@@ -4,5 +4,3 @@ Data Preparation
 ----------------
 
 Examples about data preparation.
-
-

@@ -1,28 +1,142 @@
+# This workflow publishes skfolio after CI passes on main.
+#
+# 1. Read the commit history to decide whether a release is needed and calculate
+#    its version. This is only a preview.
+# 2. Continue automatically for patch and minor releases. For a major release,
+#    wait for a maintainer to approve the proposed version in GitHub.
+# 3. Before publishing, check that main still points to the tested commit and
+#    that the proposed version is unchanged. Stop if either has changed.
+# 4. Create the version commit, tag and GitHub release, then upload the package
+#    distributions to PyPI and attach them to the GitHub release.
+#
+# GitHub environments control the approval step: release has no required
+# reviewers, while major-release requires a maintainer's approval.
 name: Semantic Release
 
 on:
   workflow_run:
     workflows: ["CI"]
-    types:
-      - completed
-    branches:
-      - main
+    types: [completed]
+    branches: [main]
 
+# Serialize releases and retain queued runs while approval is pending.
+concurrency:
+  group: release
+  queue: max
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CI_SHA: ${{ github.event.workflow_run.head_sha }}
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  release:
+  plan:
+    name: Preview release
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success'
+          && github.event.workflow_run.event == 'push'
+          && github.repository == 'skfolio/skfolio' }}
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    concurrency: release
-    permissions:
-      id-token: write
-      contents: write
-
+    timeout-minutes: 15
+    outputs:
+      released: ${{ steps.preview.outputs.released }}
+      version: ${{ steps.preview.outputs.version }}
+      environment: ${{ steps.plan.outputs.environment }}
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: main
           fetch-depth: 0
           persist-credentials: false
+
+      # Stop obsolete queued runs before they can request approval.
+      - name: Check the tested commit is still current
+        run: |
+          if [[ "$(git rev-parse HEAD)" != "$CI_SHA" ]]; then
+            echo "::error::main changed. Wait for CI on the latest commit."
+            exit 1
+          fi
+
+      - uses: python-semantic-release/python-semantic-release@v10.7.0
+        id: preview
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          no_operation_mode: true
+
+      - name: Select release environment
+        id: plan
+        if: steps.preview.outputs.released == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PREVIOUS_VERSION: ${{ steps.preview.outputs.previous_version }}
+          NEXT_VERSION: ${{ steps.preview.outputs.version }}
+        run: |
+          environment=release
+          if [[ "${NEXT_VERSION%%.*}" != "${PREVIOUS_VERSION%%.*}" ]]; then
+            environment=major-release
+            # GitHub creates missing environments without protection rules.
+            if ! protected=$(gh api "repos/$GITHUB_REPOSITORY/environments/major-release" \
+              --jq '.protection_rules | any(.type == "required_reviewers" and (.reviewers | length > 0))') || [[ "$protected" != true ]]; then
+              echo "::error::Cannot confirm required reviewers for major-release. Check the environment and its required reviewers."
+              exit 1
+            fi
+          fi
+          echo "environment=$environment" >> "$GITHUB_OUTPUT"
+          printf '## Release %s → %s\n\nTested commit: `%s`\n\n[Changes](%s/%s/compare/v%s...%s)\n' \
+            "$PREVIOUS_VERSION" "$NEXT_VERSION" "$CI_SHA" "$GITHUB_SERVER_URL" \
+            "$GITHUB_REPOSITORY" "$PREVIOUS_VERSION" "$CI_SHA" >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: Publish v${{ needs.plan.outputs.version }}
+    needs: plan
+    if: needs.plan.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # GitHub applies the environment's approval rules before this job starts.
+    environment:
+      name: ${{ needs.plan.outputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      # main may have advanced while this run awaited approval.
+      - name: Check the tested commit is still current
+        run: |
+          if [[ "$(git rev-parse HEAD)" != "$CI_SHA" ]]; then
+            echo "::error::main changed. Wait for CI on the latest commit."
+            exit 1
+          fi
+
+      # Tags may also have changed, so recompute the version before publishing.
+      - uses: python-semantic-release/python-semantic-release@v10.7.0
+        id: preview
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          no_operation_mode: true
+
+      - name: Check the proposed version
+        env:
+          EXPECTED_VERSION: ${{ needs.plan.outputs.version }}
+          NEXT_VERSION: ${{ steps.preview.outputs.version }}
+          RELEASE_PLANNED: ${{ steps.preview.outputs.released }}
+        run: |
+          if [[ "$RELEASE_PLANNED" != true || "$NEXT_VERSION" != "$EXPECTED_VERSION" ]]; then
+            echo "::error::Release version changed. Re-run all jobs for a fresh preview."
+            exit 1
+          fi
 
       - name: Generate a token
         id: generate_token
@@ -33,22 +147,16 @@ jobs:
 
       - name: Python Semantic Release
         id: release
-        uses: python-semantic-release/python-semantic-release@v10.6.1
+        uses: python-semantic-release/python-semantic-release@v10.7.0
         with:
           github_token: ${{ steps.generate_token.outputs.token }}
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        # NOTE: DO NOT wrap the conditional in ${{ }} as it will always evaluate to true.
-        # See https://github.com/actions/runner/issues/1173
         if: steps.release.outputs.released == 'true'
-        # with:
-        #  repository-url: https://test.pypi.org/legacy/
 
       - name: Publish package distributions to GitHub Releases
         uses: python-semantic-release/upload-to-gh-release@v9.8.6
-        # NOTE: DO NOT wrap the conditional in ${{ }} as it will always evaluate to true.
-        # See https://github.com/actions/runner/issues/1173
         if: steps.release.outputs.released == 'true'
         with:
           github_token: ${{ steps.generate_token.outputs.token }}

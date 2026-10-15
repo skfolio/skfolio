@@ -29,12 +29,12 @@ if "%1" == "clean" (
 	for /d %%i in (%BUILDDIR%\*) do rmdir /q /s %%i
 	for /d %%i in (auto_examples\*) do rmdir /q /s %%i
 	for /d %%i in (generated\*) do rmdir /q /s %%i
-	for /d %%i in (jupyterlite_contents\*) do rmdir /q /s %%i
+	for /d %%i in (_contents\*) do rmdir /q /s %%i
 	for /d %%i in (modules\*) do rmdir /q /s %%i
 	del %BUILDDIR%\*
 	del auto_examples\*
 	del generated\*
-	del jupyterlite_contents\*
+	del _contents\*
 	del modules\*
 	goto end
 )

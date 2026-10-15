@@ -13,7 +13,7 @@ from abc import ABC, abstractmethod
 
 import sklearn.base as skb
 
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 
 
 class BaseMu(skb.BaseEstimator, ABC):
@@ -22,16 +22,32 @@ class BaseMu(skb.BaseEstimator, ABC):
     Notes
     -----
     All estimators should specify all the parameters that can be set
-    at the class level in their ``__init__`` as explicit keyword
-    arguments (no ``*args`` or ``**kwargs``).
+    at the class level in their `__init__` as explicit keyword
+    arguments (no `*args` or `**kwargs`).
     """
 
     mu_: FloatArray
+    n_features_in_: int
+    feature_names_in_: StrArray
 
     @abstractmethod
-    def __init__(self):
-        pass
+    def __init__(self) -> None: ...
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None):
-        pass
+    def fit(self, X: ArrayLike, y: None = None) -> BaseMu:
+        """Fit the expected returns estimator.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : Ignored
+            Not used, present for API consistency by convention.
+
+        Returns
+        -------
+        self : BaseMu
+            Fitted estimator.
+        """
+        ...

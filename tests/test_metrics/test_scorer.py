@@ -15,7 +15,7 @@ from skfolio.metrics import (
 )
 from skfolio.metrics._scorer import _BaseScorer, _EstimatorScorer, _PortfolioScorer
 from skfolio.moments import EWCovariance
-from skfolio.optimization import MeanRisk, ObjectiveFunction
+from skfolio.optimization import EqualWeighted, MeanRisk, ObjectiveFunction
 
 
 def test_default_score(X):
@@ -188,8 +188,58 @@ def test_measure_score_custom(X):
 # ---------------------------------------------------------------------------
 
 
+class TestScorerInputKeywords:
+    @pytest.fixture(params=["predict", None])
+    def scoring_case(self, request):
+        X = np.random.default_rng(0).normal(scale=0.01, size=(100, 3))
+        X_train, X_test = X[:80], X[80:]
+        if request.param == "predict":
+            estimator = EqualWeighted().fit(X_train)
+            scorer = make_scorer(RiskMeasure.VARIANCE)
+            expected = -estimator.predict(X_test).variance
+        else:
+            estimator = EWCovariance().fit(X_train)
+            weights = np.array([0.5, 0.3, 0.2])
+            scorer = make_scorer(
+                portfolio_variance_qlike_loss,
+                greater_is_better=False,
+                response_method=None,
+                portfolio_weights=weights,
+            )
+            expected = -portfolio_variance_qlike_loss(
+                estimator, X_test, portfolio_weights=weights
+            )
+        assert np.isfinite(expected)
+        return scorer, estimator, X_test, expected
+
+    def test_input_keywords(self, scoring_case):
+        scorer, estimator, X, expected = scoring_case
+        assert scorer(estimator, X) == expected
+        assert scorer(estimator, X, None) == expected
+        assert scorer(estimator=estimator, X=X, y=None) == expected
+        with pytest.warns(FutureWarning, match="`X_test` is deprecated") as record:
+            result = scorer(estimator=estimator, X_test=X, y=None)
+        assert result == expected
+        assert len(record) == 1
+        assert record[0].filename == __file__
+
+    @pytest.mark.parametrize("positional", [False, True])
+    def test_conflicting_input_keywords(self, scoring_case, positional):
+        scorer, estimator, X, _ = scoring_case
+        with pytest.raises(ValueError, match="pass only `X`"):
+            if positional:
+                scorer(estimator, X, X_test=X)
+            else:
+                scorer(estimator, X=X, X_test=X)
+
+    def test_missing_input(self, scoring_case):
+        scorer, estimator, _, _ = scoring_case
+        with pytest.raises(TypeError, match="`X`"):
+            scorer(estimator)
+
+
 class TestMakeScorerResponseMethod:
-    """Validate the ``response_method`` parameter."""
+    """Validate the `response_method` parameter."""
 
     def test_default_response_method_is_predict(self):
         scorer = make_scorer(lambda pred: 1.0)
@@ -231,7 +281,7 @@ class TestBaseScorerInheritance:
 
 
 class TestEstimatorScorerCall:
-    """Test that ``_EstimatorScorer`` calls score_func correctly."""
+    """Test that `_EstimatorScorer` calls score_func correctly."""
 
     def test_passes_estimator_and_x(self):
         received = {}
@@ -278,7 +328,7 @@ class TestEstimatorScorerCall:
         assert result == 5.0
 
     def test_accepts_y_parameter(self):
-        """Scorer accepts ``y`` for sklearn protocol compatibility."""
+        """Scorer accepts `y` for sklearn protocol compatibility."""
 
         def fn(estimator, X_test):
             return 1.0

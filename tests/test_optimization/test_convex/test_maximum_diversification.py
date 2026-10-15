@@ -2,13 +2,51 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from sklearn import config_context
+from sklearn import clone, config_context
 
-from skfolio.moments import ImpliedCovariance
+from skfolio.measures import RiskMeasure
+from skfolio.moments import EWCovariance, EWMu, ImpliedCovariance
 from skfolio.optimization.convex import (
     MaximumDiversification,
+    MeanRisk,
+    ObjectiveFunction,
 )
 from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel
+
+
+@pytest.mark.parametrize("first_method", ["fit", "partial_fit"])
+def test_partial_fit_maximizes_diversification(first_method):
+    rng = np.random.default_rng(9)
+    X = rng.normal(-0.03, 0.01, (120, 4)) * [1, 2, 3, 4]
+    prior = EmpiricalPrior(mu_estimator=EWMu(), covariance_estimator=EWCovariance())
+    model = MaximumDiversification(prior_estimator=prior)
+    original_params = model.get_params()
+    original_callback = model.overwrite_expected_return
+
+    def weighted_volatilities(w, estimator):
+        covariance = estimator.prior_estimator_.return_distribution_.covariance
+        return np.sqrt(np.diag(covariance)) @ w
+
+    reference = MeanRisk(
+        prior_estimator=clone(prior),
+        objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
+        risk_measure=RiskMeasure.STANDARD_DEVIATION,
+        overwrite_expected_return=weighted_volatilities,
+    )
+    getattr(model, first_method)(X[:60])
+    getattr(reference, first_method)(X[:60])
+    fitted_prior = model.prior_estimator_
+    model.partial_fit(X[60:])
+    reference.partial_fit(X[60:])
+    assert model.prior_estimator_ is fitted_prior
+    assert model.get_params() == original_params
+    assert model.overwrite_expected_return is original_callback
+    assert clone(model).overwrite_expected_return is original_callback
+    np.testing.assert_array_equal(fitted_prior.return_distribution_.returns, X)
+    np.testing.assert_allclose(model.weights_, reference.weights_, atol=1e-6)
+    covariance = fitted_prior.return_distribution_.covariance
+    numerator = np.sqrt(np.diag(covariance)) @ model.weights_
+    np.testing.assert_allclose(model.problem_values_["expected_return"], numerator)
 
 
 def test_maximum_diversification(X):
@@ -21,16 +59,48 @@ def test_maximum_diversification(X):
     np.testing.assert_almost_equal(ptf.diversification, diversification, 3)
 
 
-def test_maximum_diversification_factor(X, y):
+def test_maximum_diversification_factor(X, factors):
     model = MaximumDiversification(prior_estimator=TimeSeriesFactorModel())
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     ptf = model.predict(X)
     diversification = (
         model.problem_values_["expected_return"] / model.problem_values_["risk"]
     )
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match="Arrays are not almost equal"):
         np.testing.assert_almost_equal(ptf.diversification, diversification, 3)
+
+
+def test_maximum_diversification_factor_constraint(X, factors):
+    factor_returns = factors.rename(columns={"MTUM": "Momentum"})
+    model = MaximumDiversification(
+        prior_estimator=TimeSeriesFactorModel(),
+        linear_constraints=["Momentum == 0"],
+    )
+    model.fit(X, factors=factor_returns)
+
+    factor_model = model.prior_estimator_.return_distribution_.factor_model
+    momentum_exposure = model.weights_ @ factor_model.loading_matrix[:, 0]
+
+    np.testing.assert_almost_equal(momentum_exposure, 0.0)
+
+
+def test_maximum_diversification_factor_family_constraint(X, factors):
+    factor_returns = factors.rename(columns={"MTUM": "Momentum"})
+    factor_families = ["style", "quality", "style", "defensive", "style"]
+    model = MaximumDiversification(
+        prior_estimator=TimeSeriesFactorModel(factor_families=factor_families),
+        linear_constraints=["style <= -0.05"],
+    )
+    model.fit(X, factors=factor_returns)
+
+    factor_model = model.prior_estimator_.return_distribution_.factor_model
+    style_mask = factor_model.factor_families == "style"
+    family_exposure = (
+        model.weights_ @ factor_model.loading_matrix[:, style_mask]
+    ).sum()
+
+    assert family_exposure <= -0.05
 
 
 def test_metadata_routing(X, implied_vol):
@@ -43,10 +113,35 @@ def test_metadata_routing(X, implied_vol):
             )
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             model.fit(X)
 
         model.fit(X, implied_vol=implied_vol)
 
-    # noinspection PyUnresolvedReferences
     assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
+
+
+def test_maximum_diversification_non_investable_nan_assets(
+    nan_investable_test_data, fixed_return_distribution_prior
+):
+    X, mu, covariance, investable_mask = nan_investable_test_data
+
+    model = MaximumDiversification(
+        prior_estimator=fixed_return_distribution_prior(mu=mu, covariance=covariance),
+    )
+    model.fit(X)
+
+    return_distribution = model.prior_estimator_.return_distribution_
+    assert return_distribution.n_assets == X.shape[1]
+    assert return_distribution.n_investable_assets == np.count_nonzero(investable_mask)
+    np.testing.assert_array_equal(model.investable_mask_, investable_mask)
+    assert model.weights_.shape == (X.shape[1],)
+    assert np.isfinite(model.weights_).all()
+    np.testing.assert_allclose(model.weights_[~investable_mask], 0)
+    np.testing.assert_allclose(model.weights_.sum(), 1)
+
+    portfolio = model.predict(X)
+    expected_returns = (
+        X.iloc[:, investable_mask].to_numpy() @ model.weights_[investable_mask]
+    )
+    np.testing.assert_allclose(portfolio.returns, expected_returns)

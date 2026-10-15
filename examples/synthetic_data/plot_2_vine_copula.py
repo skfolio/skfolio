@@ -29,7 +29,7 @@ multivariate cumulative distribution function :math:`F(x_1, \dots, x_d)` with ma
 .. math::
     F(x_1, \dots, x_d) = C\left(F_1(x_1), \dots, F_d(x_d)\right).
 
-A **Regular Vine copula** applies Sklar’s Theorem **recursively**
+A **Regular Vine copula** applies Sklar's Theorem **recursively**
 to factorize the joint density of :math:`(x_1,\dots,x_d)` into marginal densities and
 bivariate copula densities arranged in a vine (tree) structure. Formally:
 
@@ -119,7 +119,7 @@ assets, enhancing conditional sampling and stress testing.
 Key features include:
 
 - **Inference Methods:**
-  The implementation supports both inverse Kendall’s tau (itau) and Maximum Likelihood
+  The implementation supports both inverse Kendall's tau (itau) and Maximum Likelihood
   Estimation (MLE) approaches to estimate both optimal marginal distributions and pair
   copula parameters.
 

@@ -4,7 +4,7 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 
-from skfolio.utils._array_buffer import _ArrayBuffer
+from skfolio.utils._array_buffer import _ArrayBuffer, _update_buffer
 
 
 class TestArrayBufferInit:
@@ -12,6 +12,35 @@ class TestArrayBufferInit:
         g = _ArrayBuffer()
         assert len(g) == 0
         assert g.array is None
+
+    def test_init_with_values(self):
+        data = np.arange(12.0).reshape(3, 4)
+        g = _ArrayBuffer(data)
+        assert len(g) == 3
+        npt.assert_array_equal(g.array, data)
+
+    def test_init_with_values_copies_input(self):
+        data = np.array([[1.0, 2.0]])
+        g = _ArrayBuffer(data)
+        data[0, 0] = 99.0
+        npt.assert_array_equal(g.array, np.array([[1.0, 2.0]]))
+
+    def test_init_with_1d_input_preserves_shape(self):
+        g = _ArrayBuffer(np.array([1.0, 2.0, 3.0]))
+        assert len(g) == 3
+        assert g.array.shape == (3,)
+        npt.assert_array_equal(g.array, [1.0, 2.0, 3.0])
+
+    def test_init_with_empty_input(self):
+        g = _ArrayBuffer(np.empty((0, 2)))
+        assert len(g) == 0
+        assert g.array is None
+
+    def test_init_with_values_then_append(self):
+        g = _ArrayBuffer(np.array([[1.0, 2.0]]))
+        g.append(np.array([[3.0, 4.0]]))
+        assert len(g) == 2
+        npt.assert_array_equal(g.array, np.array([[1.0, 2.0], [3.0, 4.0]]))
 
     def test_repr_empty(self):
         g = _ArrayBuffer()
@@ -92,11 +121,18 @@ class TestArrayBufferAppend:
         with pytest.raises(ValueError, match="dtype mismatch"):
             g.append(np.array([[1.5, 2.5]], dtype=np.float64))
 
-    def test_1d_input_promoted_to_2d(self):
+    def test_1d_input_preserves_shape(self):
         g = _ArrayBuffer()
         g.append(np.array([1.0, 2.0, 3.0]))
-        assert g.array.shape == (1, 3)
-        npt.assert_array_equal(g.array, [[1.0, 2.0, 3.0]])
+        assert len(g) == 3
+        assert g.array.shape == (3,)
+        npt.assert_array_equal(g.array, [1.0, 2.0, 3.0])
+
+    def test_1d_chunks_append_along_axis_0(self):
+        g = _ArrayBuffer(np.arange(99))
+        g.append(np.arange(99, 199))
+        assert len(g) == 199
+        npt.assert_array_equal(g.array, np.arange(199))
 
 
 class TestArrayBufferView:
@@ -161,6 +197,18 @@ class TestArrayBufferTruncate:
         g.append(np.array([[99.0]]))
         assert len(g) == 3
         npt.assert_array_equal(g.array, np.array([[8], [9], [99]], dtype=float))
+
+    def test_truncate_preserves_existing_views(self):
+        g = _ArrayBuffer()
+        g.append(np.arange(12.0).reshape(6, 2))
+        view = g.array
+        expected = view.copy()
+
+        g.truncate_to_last(2)
+        g.append(np.array([[99.0, 100.0]]))
+
+        npt.assert_array_equal(view, expected)
+        assert view.tobytes() == expected.tobytes()
 
     def test_truncate_to_one(self):
         g = _ArrayBuffer()
@@ -235,3 +283,9 @@ class TestArrayBufferEdgeCases:
         data = np.zeros((100, 5))
         g.append(data)
         assert g._buffer.shape[0] == 100
+
+
+def test_update_buffer_with_no_observations_keeps_buffer():
+    buffer = np.arange(6.0).reshape(3, 2)
+    _update_buffer(buffer, np.empty((0, 2)), lag=3)
+    npt.assert_array_equal(buffer, np.arange(6.0).reshape(3, 2))

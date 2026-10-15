@@ -9,9 +9,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+from typing import Any
+
 import sklearn.covariance as skc
+import sklearn.model_selection as sks
 
 from skfolio.moments.covariance._base import BaseCovariance
+from skfolio.typing import ArrayLike
 
 
 class GraphicalLassoCV(BaseCovariance, skc.GraphicalLassoCV):
@@ -142,20 +147,20 @@ class GraphicalLassoCV(BaseCovariance, skc.GraphicalLassoCV):
 
     def __init__(
         self,
-        alphas=4,
-        n_refinements=4,
-        cv=None,
-        tol=1e-4,
-        enet_tol=1e-4,
-        max_iter=100,
-        mode="cd",
-        n_jobs=None,
-        verbose=False,
-        assume_centered=False,
+        alphas: int | ArrayLike = 4,
+        n_refinements: int = 4,
+        cv: int | sks.BaseCrossValidator | Iterable | None = None,
+        tol: float = 1e-4,
+        enet_tol: float = 1e-4,
+        max_iter: int = 100,
+        mode: str = "cd",
+        n_jobs: int | None = None,
+        verbose: bool = False,
+        assume_centered: bool = False,
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
-    ):
+    ) -> None:
         super().__init__(
             nearest=nearest,
             higham=higham,
@@ -175,7 +180,7 @@ class GraphicalLassoCV(BaseCovariance, skc.GraphicalLassoCV):
             assume_centered=assume_centered,
         )
 
-    def fit(self, X, y=None, **fit_params) -> GraphicalLassoCV:
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> GraphicalLassoCV:
         """Fit the GraphicalLasso covariance model to X.
 
         Parameters

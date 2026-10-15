@@ -12,7 +12,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-import numpy as np
 import sklearn.utils.metadata_routing as skm
 
 import skfolio.typing as skt
@@ -20,14 +19,20 @@ from skfolio.cluster import HierarchicalClustering
 from skfolio.distance import BaseDistance
 from skfolio.measures import ExtraRiskMeasure, RiskMeasure
 from skfolio.optimization._base import BaseOptimization
-from skfolio.portfolio import Portfolio
-from skfolio.prior import BasePrior, ReturnDistribution
+from skfolio.optimization.hierarchical._utils import (
+    _PortfolioRiskMixin,
+    _convert_weight_bounds,
+)
+from skfolio.prior import BasePrior
 from skfolio.typing import ArrayLike, FloatArray
-from skfolio.utils.tools import input_to_array
 
 
-class BaseHierarchicalOptimization(BaseOptimization, ABC):
+# TODO remove BaseHierarchicalOptimization and its compatibility methods in v2.0
+class BaseHierarchicalOptimization(_PortfolioRiskMixin, BaseOptimization, ABC):
     r"""Base Hierarchical Clustering Optimization estimator.
+
+    Deprecated and scheduled for removal in version 2.0. Custom optimizers should
+    inherit from :class:`~skfolio.optimization.BaseOptimization`.
 
     Parameters
     ----------
@@ -60,7 +65,7 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
     prior_estimator : BasePrior, optional
         :ref:`Prior estimator <prior>`.
         The prior estimator is used to estimate the :class:`~skfolio.prior.ReturnDistribution`
-        containing the estimation of assets expected returns, covariance matrix and
+        containing estimates of expected asset returns, covariance matrix and
         returns. The moments and returns estimations are used for the risk computation
         and the returns estimation are used by the distance matrix estimator.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
@@ -83,7 +88,7 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         selling). Negative weights are not allowed. If a float is provided, it is
         applied to each asset. `None` is equivalent to the default `0.0`. If a
         dictionary is provided, its (key/value) pair must be the (asset name/asset
-        minium weight) and the input `X` of the `fit` methods must be a DataFrame with
+        minimum weight) and the input `X` of the `fit` methods must be a DataFrame with
         the asset names in columns. When using a dictionary, assets values that are not
         provided are assigned the default  minimum weight of `0.0`.
 
@@ -133,10 +138,14 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         .. warning::
 
             Based on the above formula, the periodicity of the transaction costs
-            needs to be homogeneous to the periodicity of :math:`\mu`. For example, if
-            the input `X` is composed of **daily** returns, the `transaction_costs` need
-            to be expressed as **daily** costs.
-            (See :ref:`sphx_glr_auto_examples_mean_risk_plot_6_transaction_costs.py`)
+            must match the periodicity of :math:`\mu`. For example, if the input
+            `X` is composed of **daily** returns, the `transaction_costs` need to be
+            expressed as **daily** costs. A transaction cost is paid once per
+            rebalancing while a position earns its expected return on every period it
+            is held, so the one-off cost is converted by dividing it by the expected
+            investment duration (e.g. `0.001 / 21` for a 10 bps cost with daily
+            returns and a one-month expected holding period).
+            (See :ref:`Periodicity Convention <periodicity_convention>`)
 
     management_fees : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Management fees of the assets. It is used to add linear management fees to the
@@ -160,10 +169,13 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
 
         .. warning::
 
-            Based on the above formula, the periodicity of the management fees needs to
-            be homogeneous to the periodicity of :math:`\mu`. For example, if the input
+            Based on the above formula, the periodicity of the management fees
+            must match the periodicity of :math:`\mu`. For example, if the input
             `X` is composed of **daily** returns, the `management_fees` need to be
-            expressed in **daily** fees.
+            expressed in **daily** fees. Unlike transaction costs, management fees
+            accrue with holding time, so a stated annual fee converts directly to the
+            return periodicity (e.g. `0.02 / 252` for a 2% annual fee on daily
+            returns).
 
         .. note::
 
@@ -191,21 +203,21 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
         Fallback estimator or a list of estimators to try, in order, when the primary
-        optimization raises during `fit`. Alternatively, use `"previous_weights"`
-        (alone or in a list) to fall back to the estimator's `previous_weights`.
-        When a fallback succeeds, its fitted `weights_` are copied back to the primary
+        optimization raises during `fit`. Alternatively, use `"previous_weights"` (alone
+        or in a list) to fall back to the estimator's `previous_weights`. When a
+        fallback succeeds, its fitted `weights_` are copied back to the primary
         estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
-        and `fallback_chain_` stores each attempt with the associated outcome.
+        and `fallback_chain_` stores each attempt with the associated outcome. See
+        :ref:`optimization_fallbacks`.
 
     raise_on_failure : bool, default=True
-        Controls error handling when fitting fails.
-        If True, any failure during `fit` is raised immediately, no `weights_` are
-        set and subsequent calls to `predict` will raise a `NotFittedError`.
-        If False, errors are not raised; instead, a warning is emitted, `weights_`
-        is set to `None` and subsequent calls to `predict` will return a
-        `FailedPortfolio`. When fallbacks are specified, this behavior applies only
-        after all fallbacks have been exhausted.
+        Controls error handling when fitting fails and no fallback succeeds. If True,
+        the estimator raises the final error. If False, the estimator emits a warning
+        and sets `weights_` to None, so subsequent calls to `predict` return a
+        :class:`~skfolio.portfolio.FailedPortfolio`. During `fit`, `raise_on_failure`
+        applies to any fitting error, including errors raised by the prior estimator.
+        See :ref:`optimization_failure_handling`.
 
     Attributes
     ----------
@@ -240,9 +252,11 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         a valid solution, otherwise the stringified error message. For successful
         fits without any fallback, this is `None`.
 
-    error_ : str | list[str] | None
-        Captured error message(s) when `fit` fails. For multi-portfolio outputs
-        (`weights_` is 2D), this is a list aligned with portfolios.
+    error_ : str | list[str | None] | None
+        For a single portfolio, this is the recorded error message, or None after a
+        successful allocation or fallback. For multiple portfolios, it is a list with
+        one entry per row of `weights_`, containing an error message for each failed
+        portfolio and None for each successful portfolio.
 
     Notes
     -----
@@ -269,7 +283,7 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             portfolio_params=portfolio_params,
             fallback=fallback,
@@ -284,121 +298,18 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         self.max_weights = max_weights
         self.transaction_costs = transaction_costs
         self.management_fees = management_fees
-        self._seriated = False
-
-    def _clean_input(
-        self,
-        value: float | dict | FloatArray | list,
-        n_assets: int,
-        fill_value: Any,
-        name: str,
-    ) -> FloatArray:
-        """Convert input to cleaned 1D array
-         value : float, dict, array-like or None.
-            Input value to clean and convert.
-
-        Parameters
-        ----------
-        value : float, dict or array-like.
-            Input value to clean.
-
-        n_assets : int
-            Number of assets. Used to verify the shape of the converted array.
-
-        fill_value : Any
-            When `items` is a dictionary, elements that are not in `asset_names` are
-            filled with `fill_value` in the converted array.
-
-        name : str
-            Name used for error messages.
-
-        Returns
-        -------
-        value :  ndarray of shape (n_assets,)
-            The cleaned float or 1D array.
-        """
-        if value is None:
-            raise ValueError("Cannot convert None to array")
-        if np.isscalar(value):
-            return value * np.ones(n_assets)
-        return input_to_array(
-            items=value,
-            n_assets=n_assets,
-            fill_value=fill_value,
-            dim=1,
-            assets_names=(
-                self.feature_names_in_ if hasattr(self, "feature_names_in_") else None
-            ),
-            name=name,
-        )
-
-    def _risk(
-        self,
-        weights: FloatArray,
-        return_distribution: ReturnDistribution,
-    ) -> float:
-        """Compute the risk measure of a theoretical portfolio defined by the weights
-        vector.
-
-        Parameters
-        ----------
-        weights : ndarray of shape (n_assets,)
-           The vector of weights.
-
-        return_distribution : ReturnDistribution
-            The assets return distribution.
-
-        Returns
-        -------
-        risk: float
-            The risk measure of a theoretical portfolio defined by the weights
-            vector.
-        """
-        ptf = Portfolio(
-            X=return_distribution.returns,
-            sample_weight=return_distribution.sample_weight,
-            weights=weights,
-            transaction_costs=self.transaction_costs,
-            management_fees=self.management_fees,
-            previous_weights=self.previous_weights,
-        )
-        if self.risk_measure in [RiskMeasure.VARIANCE, RiskMeasure.STANDARD_DEVIATION]:
-            risk = ptf.variance_from_assets(
-                assets_covariance=return_distribution.covariance
-            )
-            if self.risk_measure == RiskMeasure.STANDARD_DEVIATION:
-                risk = np.sqrt(risk)
-        else:
-            risk = getattr(ptf, str(self.risk_measure.value))
-        return risk
-
-    def _unitary_risks(self, return_distribution: ReturnDistribution) -> FloatArray:
-        """Compute the vector of risk measure for each single assets.
-
-        Parameters
-        ----------
-        return_distribution : ReturnDistribution
-            The asset returns distribution.
-
-        Returns
-        -------
-        values: ndarray of shape (n_assets,)
-            The risk measure of each asset.
-        """
-        n_assets = return_distribution.returns.shape[1]
-        risks = [
-            self._risk(weights=weights, return_distribution=return_distribution)
-            for weights in np.identity(n_assets)
-        ]
-        return np.array(risks)
 
     def _convert_weights_bounds(self, n_assets: int) -> tuple[FloatArray, FloatArray]:
-        """Convert the input weights lower and upper bounds to two 1D arrays.
+        """Convert weight bounds for the full input universe to two 1D arrays.
+
+        Online updates validate bounds for all input assets before updating the prior.
+        Allocation then uses the bounds for the currently investable assets.
+        Bound sums allow an absolute tolerance of 1e-8 around one.
 
         Parameters
         ----------
         n_assets : int
-            Number of assets.
+            Number of assets in the full input universe.
 
         Returns
         -------
@@ -407,50 +318,35 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         max_weights : ndarray of shape (n_assets,)
             The weight upper bound 1D array.
         """
-        if self.min_weights is None:
-            min_weights = np.zeros(n_assets)
-        else:
-            min_weights = self._clean_input(
+        return _convert_weight_bounds(
+            min_weights=self._clean_input(
                 self.min_weights,
                 n_assets=n_assets,
                 fill_value=0,
                 name="min_weights",
-            )
-            if np.any(min_weights < 0):
-                raise ValueError("`min_weights` must be strictly positive")
-            if min_weights.sum() >= 1.00001:
-                raise ValueError(
-                    f"Invalid `min_weights`: sum is {min_weights.sum():.4f}, "
-                    f"but it must be less than 1.0."
-                )
-
-        if self.max_weights is None:
-            max_weights = np.ones(n_assets)
-        else:
-            max_weights = self._clean_input(
+                apply_investable_mask=False,
+            ),
+            max_weights=self._clean_input(
                 self.max_weights,
                 n_assets=n_assets,
                 fill_value=1,
                 name="max_weights",
-            )
-            if np.any(max_weights > 1):
-                raise ValueError("`max_weights` must be less than or equal to 1.0")
-            if max_weights.sum() < 1:
-                raise ValueError(
-                    f"Invalid `max_weights`: sum is {max_weights.sum():.4f}, "
-                    f"but it must be at least 1.0."
-                )
+                apply_investable_mask=False,
+            ),
+            n_assets=n_assets,
+        )
 
-        if np.any(min_weights > max_weights):
-            raise NameError(
-                "Items of `min_weights` must be less than or equal to items of"
-                " `max_weights`"
-            )
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
 
-        return min_weights, max_weights
+        Routes metadata passed to `fit` to the `fit` method of `prior_estimator`,
+        `distance_estimator` and `hierarchical_clustering_estimator`.
 
-    def get_metadata_routing(self):
-        # noinspection PyTypeChecker
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = (
             skm.MetadataRouter(owner=self.__class__.__name__)
             .add(
@@ -469,5 +365,29 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: None = None, **fit_params):
-        pass
+    def fit(
+        self, X: ArrayLike, y: None = None, **fit_params: Any
+    ) -> BaseHierarchicalOptimization:
+        """Fit the Hierarchical Optimization estimator.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : Ignored
+            Not used, present for API consistency by convention.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
+        Returns
+        -------
+        self : BaseHierarchicalOptimization
+            Fitted estimator.
+        """
+        ...

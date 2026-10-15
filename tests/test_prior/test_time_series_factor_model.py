@@ -1,28 +1,152 @@
-from __future__ import annotations
-
 import numpy as np
+import pandas as pd
 import pytest
 from sklearn import config_context
-from sklearn.linear_model import LassoCV
+from sklearn.linear_model import LassoCV, LinearRegression
 
-from skfolio.moments import ImpliedCovariance
+from skfolio.moments import EWCovariance, EWMu, ImpliedCovariance
 from skfolio.prior import (
+    BaseLoadingMatrix,
     BlackLitterman,
     EmpiricalPrior,
     LoadingMatrixRegression,
     TimeSeriesFactorModel,
 )
+from skfolio.utils.stats import safe_cholesky
 
 
-def test_factor_model(X, y):
+@pytest.fixture
+def small_factor_data():
+    rng = np.random.default_rng(0)
+    index = pd.date_range("2020-01-01", periods=60, name="date")
+    factors = pd.DataFrame(
+        rng.normal(0, 0.01, (60, 2)), index=index, columns=["market", "style"]
+    )
+    X = pd.DataFrame(
+        factors.to_numpy() @ np.array([[1.0, 0.5, 0.2], [0.2, 0.8, -0.3]])
+        + rng.normal(0, 0.002, (60, 3)),
+        index=index,
+        columns=["A", "B", "C"],
+    )
+    return X, factors
+
+
+@pytest.mark.parametrize("asset_input", ["dataframe", "numpy", "list"])
+@pytest.mark.parametrize("factor_input", ["dataframe", "numpy", "list"])
+def test_factor_model_array_like_inputs(small_factor_data, asset_input, factor_input):
+    X, factors = small_factor_data
+    model = TimeSeriesFactorModel(
+        loading_matrix_estimator=LoadingMatrixRegression(
+            linear_regressor=LinearRegression()
+        )
+    ).fit(X, factors=factors)
+    expected_mu = model.return_distribution_.mu.copy()
+    expected_covariance = model.return_distribution_.covariance.copy()
+    asset_inputs = {
+        "dataframe": X,
+        "numpy": X.to_numpy(),
+        "list": X.to_numpy().tolist(),
+    }
+    factor_inputs = {
+        "dataframe": factors,
+        "numpy": factors.to_numpy(),
+        "list": factors.to_numpy().tolist(),
+    }
+
+    assert (
+        model.fit(asset_inputs[asset_input], factors=factor_inputs[factor_input])
+        is model
+    )
+
+    factor_model = model.return_distribution_.factor_model
+    asset_names = X.columns if asset_input == "dataframe" else ["x0", "x1", "x2"]
+    factor_names = factors.columns if factor_input == "dataframe" else ["x0", "x1"]
+    observations = (
+        X.index if "dataframe" in (asset_input, factor_input) else np.arange(len(X))
+    )
+    np.testing.assert_array_equal(factor_model.asset_names, asset_names)
+    np.testing.assert_array_equal(factor_model.factor_names, factor_names)
+    np.testing.assert_array_equal(factor_model.observations, observations)
+    assert hasattr(model, "feature_names_in_") == (asset_input == "dataframe")
+    np.testing.assert_allclose(model.return_distribution_.mu, expected_mu)
+    np.testing.assert_allclose(
+        model.return_distribution_.covariance, expected_covariance
+    )
+
+    np.testing.assert_array_equal(factor_model.summary().index, factor_names)
+    np.testing.assert_array_equal(
+        factor_model.summary(factors=[factor_names[1]]).index, [factor_names[1]]
+    )
+    np.testing.assert_array_equal(factor_model.factor_returns_df.index, observations)
+    np.testing.assert_array_equal(factor_model.idio_returns_df.columns, asset_names)
+    selected = factor_model.select_assets([asset_names[2], asset_names[0]])
+    np.testing.assert_array_equal(
+        selected.loading_matrix, factor_model.loading_matrix[[2, 0]]
+    )
+
+
+def test_factor_activity_mask_alias(small_factor_data):
+    X, factors = small_factor_data
+    active = np.ones(factors.shape, dtype=bool)
+    active[:20, 0] = False
+    with config_context(enable_metadata_routing=True):
+        model = TimeSeriesFactorModel(
+            factor_prior_estimator=EmpiricalPrior(
+                mu_estimator=EWMu(half_life=5).set_fit_request(
+                    active_mask="factor_active_mask"
+                ),
+                covariance_estimator=EWCovariance(half_life=5).set_fit_request(
+                    active_mask="factor_active_mask"
+                ),
+            ),
+            loading_matrix_estimator=LoadingMatrixRegression(
+                linear_regressor=LinearRegression()
+            ),
+        ).fit(X, factors=factors, factor_active_mask=active)
+    learned = model.factor_prior_estimator_.return_distribution_
+    np.testing.assert_allclose(
+        learned.mu, EWMu(half_life=5).fit(factors, active_mask=active).mu_
+    )
+    np.testing.assert_allclose(
+        learned.covariance,
+        EWCovariance(half_life=5).fit(factors, active_mask=active).covariance_,
+    )
+
+
+def test_loading_matrix_regression_list_inputs(small_factor_data):
+    X, factors = small_factor_data
+    model = LoadingMatrixRegression().fit(X.to_numpy(), factors.to_numpy())
+    expected_loadings = model.loading_matrix_.copy()
+    expected_intercepts = model.intercepts_.copy()
+
+    model.fit(X.to_numpy().tolist(), factors.to_numpy().tolist())
+
+    np.testing.assert_array_equal(model.loading_matrix_, expected_loadings)
+    np.testing.assert_array_equal(model.intercepts_, expected_intercepts)
+
+
+def test_factor_model(X, factors):
+    X_test = X.iloc[-300:]
+    factors_test = factors.loc[X_test.index]
     model = TimeSeriesFactorModel()
-    model.fit(X, y)
+    with pytest.raises(TypeError, match="missing 1 required keyword-only argument"):
+        model.fit(X_test, factors_test)
+    model.fit(X_test, factors=factors_test)
     assert model.return_distribution_
     assert model.return_distribution_.mu.shape == (20,)
+    sqrt = model.return_distribution_.covariance_sqrt
+    reconstructed = sum(component @ component.T for component in sqrt.components)
+    if sqrt.diagonal is not None:
+        reconstructed = reconstructed + np.diag(sqrt.diagonal**2)
     np.testing.assert_almost_equal(
-        model.return_distribution_.cholesky @ model.return_distribution_.cholesky.T,
+        reconstructed,
         model.return_distribution_.covariance,
         15,
+    )
+    assert model.return_distribution_.factor_model.loading_matrix.shape == (20, 5)
+    np.testing.assert_equal(
+        model.return_distribution_.factor_model.factor_names,
+        ["MTUM", "QUAL", "SIZE", "USMV", "VLUE"],
     )
 
     model = TimeSeriesFactorModel(
@@ -30,16 +154,39 @@ def test_factor_model(X, y):
             linear_regressor=LassoCV(cv=5, fit_intercept=False), n_jobs=-1
         ),
     )
-    model.fit(X, y)
+    model.fit(X_test, factors=factors_test)
     assert model.return_distribution_
+    chol = safe_cholesky(model.return_distribution_.covariance)
     np.testing.assert_almost_equal(
-        model.return_distribution_.cholesky @ model.return_distribution_.cholesky.T,
+        chol @ chol.T,
         model.return_distribution_.covariance,
         15,
     )
 
 
-def test_black_litterman_factor_model(X, y):
+def test_factor_model_with_factor_families(X, factors):
+    X_test = X.iloc[-300:]
+    factors_test = factors.loc[X_test.index]
+    factor_families = ["style", "quality", "style", "defensive", "style"]
+    model = TimeSeriesFactorModel(factor_families=factor_families)
+    model.fit(X_test, factors=factors_test)
+
+    np.testing.assert_array_equal(
+        model.return_distribution_.factor_model.factor_families,
+        factor_families,
+    )
+
+
+def test_factor_model_factor_families_length_error(X, factors):
+    X_test = X.iloc[-50:]
+    factors_test = factors.loc[X_test.index]
+    model = TimeSeriesFactorModel(factor_families=["style", "quality"])
+
+    with pytest.raises(ValueError, match=r"`factor_families` must have length 5"):
+        model.fit(X_test, factors=factors_test)
+
+
+def test_black_litterman_factor_model(X, factors):
     factor_views = ["MTUM - QUAL == 0.03 ", "SIZE - USMV== 0.04", "VLUE == 0.06 "]
     n_observations = X.shape[0]
     model = TimeSeriesFactorModel(
@@ -47,7 +194,7 @@ def test_black_litterman_factor_model(X, y):
             views=factor_views, tau=1 / n_observations
         ),
     )
-    model.fit(X, y)
+    model.fit(X, factors=factors)
 
     assert model.return_distribution_.mu.shape == (20,)
     assert model.return_distribution_.covariance.shape == (20, 20)
@@ -93,7 +240,7 @@ def test_black_litterman_factor_model(X, y):
     )
 
 
-def test_metadata_routing_error(X, y, implied_vol):
+def test_metadata_routing_error(X, factors, implied_vol):
     with config_context(enable_metadata_routing=True):
         model = TimeSeriesFactorModel(
             factor_prior_estimator=EmpiricalPrior(
@@ -106,10 +253,12 @@ def test_metadata_routing_error(X, y, implied_vol):
         with pytest.raises(
             ValueError, match="The following assets are missing from `implied_vol`"
         ):
-            model.fit(X, y, implied_vol=implied_vol)
+            model.fit(X, factors=factors, implied_vol=implied_vol)
 
 
 def test_metadata_routing(X, implied_vol):
+    X_test = X.iloc[-300:, :6]
+    implied_vol_test = implied_vol.loc[X_test.index, X_test.columns]
     with config_context(enable_metadata_routing=True):
         model = TimeSeriesFactorModel(
             factor_prior_estimator=EmpiricalPrior(
@@ -119,10 +268,107 @@ def test_metadata_routing(X, implied_vol):
             )
         )
 
-        with pytest.raises(ValueError):
-            model.fit(X, X)
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
+            model.fit(X_test, factors=X_test)
 
-        model.fit(X, X, implied_vol=implied_vol)
+        model.fit(X_test, factors=X_test, implied_vol=implied_vol_test)
 
-    # noinspection PyUnresolvedReferences
-    assert model.factor_prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
+    assert model.factor_prior_estimator_.covariance_estimator_.r2_scores_.shape == (6,)
+
+
+class _FixedShapeLoadingMatrix(BaseLoadingMatrix):
+    """Loading matrix estimator returning arrays of configurable shapes."""
+
+    def __init__(self, loading_shape=None, intercepts_shape=None):
+        self.loading_shape = loading_shape
+        self.intercepts_shape = intercepts_shape
+
+    def fit(self, X, y, **fit_params):
+        n_assets = np.shape(X)[1]
+        n_factors = np.shape(y)[1]
+        loading_shape = self.loading_shape or (n_assets, n_factors)
+        intercepts_shape = self.intercepts_shape or (n_assets,)
+        self.loading_matrix_ = np.zeros(loading_shape)
+        self.intercepts_ = np.zeros(intercepts_shape)
+        return self
+
+
+def test_factor_model_factor_families_ndim_error(X, factors):
+    model = TimeSeriesFactorModel(factor_families=[["a", "b", "c", "d", "e"]])
+    with pytest.raises(ValueError, match="`factor_families` must be a 1D array"):
+        model.fit(X, factors=factors)
+
+
+def test_factor_model_loading_matrix_shape_error(X, factors):
+    model = TimeSeriesFactorModel(
+        loading_matrix_estimator=_FixedShapeLoadingMatrix(loading_shape=(20, 6))
+    )
+    with pytest.raises(
+        ValueError,
+        match=r"`loading_matrix_estimator\.loading_matrix_` must be a 2D array",
+    ):
+        model.fit(X, factors=factors)
+
+
+def test_factor_model_intercepts_shape_error(X, factors):
+    model = TimeSeriesFactorModel(
+        loading_matrix_estimator=_FixedShapeLoadingMatrix(intercepts_shape=(20, 1))
+    )
+    with pytest.raises(
+        ValueError, match=r"`loading_matrix_estimator\.intercepts_` must be a 1D array"
+    ):
+        model.fit(X, factors=factors)
+
+
+def test_fixed_shape_loading_matrix_default_shapes(X, factors):
+    model = TimeSeriesFactorModel(loading_matrix_estimator=_FixedShapeLoadingMatrix())
+    model.fit(X, factors=factors)
+    assert model.return_distribution_.factor_model.loading_matrix.shape == (20, 5)
+
+
+def test_loading_matrix_regression_metadata_routing():
+    router = LoadingMatrixRegression().get_metadata_routing()
+    assert router.owner == "LoadingMatrixRegression"
+
+
+def test_loading_matrix_regression_fit_returns_self(X, factors):
+    X_test = X.iloc[-300:]
+    factors_test = factors.loc[X_test.index]
+    model = LoadingMatrixRegression()
+    assert model.fit(X_test, factors_test) is model
+
+
+def test_loading_matrix_regression_routes_sample_weight(X, factors):
+    X_test = X.iloc[-300:]
+    factors_test = factors.loc[X_test.index]
+    sample_weight = np.linspace(0.5, 1.5, len(X_test))
+    with config_context(enable_metadata_routing=True):
+        model = LoadingMatrixRegression(
+            linear_regressor=LinearRegression().set_fit_request(sample_weight=True)
+        )
+        model.fit(X_test, factors_test, sample_weight=sample_weight)
+
+    expected = LinearRegression().fit(
+        factors_test, X_test.iloc[:, 0], sample_weight=sample_weight
+    )
+    np.testing.assert_almost_equal(model.loading_matrix_[0], expected.coef_)
+
+
+def test_factor_model_routes_sample_weight_to_loading_matrix(X, factors):
+    X_test = X.iloc[-300:]
+    factors_test = factors.loc[X_test.index]
+    sample_weight = np.linspace(0.5, 1.5, len(X_test))
+    with config_context(enable_metadata_routing=True):
+        model = TimeSeriesFactorModel(
+            loading_matrix_estimator=LoadingMatrixRegression(
+                linear_regressor=LinearRegression().set_fit_request(sample_weight=True)
+            )
+        )
+        model.fit(X_test, factors=factors_test, sample_weight=sample_weight)
+
+    expected = LinearRegression().fit(
+        factors_test, X_test.iloc[:, 0], sample_weight=sample_weight
+    )
+    np.testing.assert_almost_equal(
+        model.return_distribution_.factor_model.loading_matrix[0], expected.coef_
+    )

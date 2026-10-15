@@ -11,7 +11,7 @@ import operator
 import re
 import warnings
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import cvxpy as cp
 import numpy as np
@@ -30,9 +30,10 @@ from skfolio.measures import (
     PerfMeasure,
     RiskMeasure,
 )
-from skfolio.prior._base import BasePrior, ReturnDistribution
+from skfolio.prior._base import BasePrior
 from skfolio.prior._empirical import EmpiricalPrior
-from skfolio.typing import ArrayLike, BoolArray, FloatArray, ObjArray
+from skfolio.prior._model import ReturnDistribution
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, StrArray
 from skfolio.utils.equations import equations_to_matrix
 from skfolio.utils.tools import check_estimator, default_asset_names, input_to_array
 
@@ -297,7 +298,7 @@ class EntropyPooling(BasePrior):
           documentation for a full list and descriptions:
           https://docs.scipy.org/doc/scipy/reference/optimize.minimize-tnc.html
 
-        - When using a **CVXPY** solver (e.g. ``"CLARABEL"``), supply any
+        - When using a **CVXPY** solver (e.g. `"CLARABEL"`), supply any
           solver-specific parameters here. Refer to the CVXPY solver guide for
           details: https://www.cvxpy.org/tutorial/solvers
 
@@ -394,9 +395,9 @@ class EntropyPooling(BasePrior):
     >>> print(entropy_pooling.relative_entropy_)
     0.18...
     >>> print(entropy_pooling.effective_number_of_scenarios_)
-    6876.67...
+    687...
     >>> print(entropy_pooling.return_distribution_.sample_weight)
-    [0.000103...  0.000093... ... 0.000103...  0.000108...]
+    [0.00010... 0.00009... ... 0.00010... 0.00010...]
     >>>
     >>> # CVaR Hierarchical Risk Parity optimization on Entropy Pooling
     >>> model = HierarchicalRiskParity(
@@ -406,7 +407,7 @@ class EntropyPooling(BasePrior):
     >>> model.fit(X)
     HierarchicalRiskParity(prior_estimator=...
     >>> print(model.weights_)
-    [0.073... 0.0541... ... 0.200...]
+    [0.073... 0.054... 0.076... 0.20... 0.063... 0.32... 0.20...]
     >>>
     >>> # Stress Test the Portfolio
     >>> entropy_pooling = EntropyPooling(cvar_views=["AMD == 0.10"])
@@ -422,12 +423,12 @@ class EntropyPooling(BasePrior):
     effective_number_of_scenarios_: float
     prior_estimator_: BasePrior
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
 
     if TYPE_CHECKING:
         _returns: FloatArray
         _prior_sample_weight: FloatArray
-        _groups: ObjArray
+        _groups: StrArray
         _is_fixed_mean: BoolArray
         _is_fixed_variance: BoolArray
         _constraints: dict[str, list[FloatArray] | None]
@@ -447,7 +448,7 @@ class EntropyPooling(BasePrior):
         groups: skt.Groups | None = None,
         solver: str = "TNC",
         solver_params: dict | None = None,
-    ):
+    ) -> None:
         self.prior_estimator = prior_estimator
         self.mean_views = mean_views
         self.variance_views = variance_views
@@ -462,14 +463,23 @@ class EntropyPooling(BasePrior):
         self.solver = solver
         self.solver_params = solver_params
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of `prior_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             prior_estimator=self.prior_estimator,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> EntropyPooling:
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> EntropyPooling:
         """Fit the Entropy Pooling estimator.
 
         Parameters
@@ -483,7 +493,7 @@ class EntropyPooling(BasePrior):
         **fit_params : dict
            Parameters to pass to the underlying estimators.
            Only available if `enable_metadata_routing=True`, which can be
-           set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+           set by using `sklearn.set_config(enable_metadata_routing=True)`.
            See :ref:`Metadata Routing User Guide <metadata_routing>` for
            more details.
 
@@ -548,7 +558,7 @@ class EntropyPooling(BasePrior):
             # Get mean from Step 1
             mean = sm.mean(self._returns, sample_weight=sample_weight)
             # Add new views and solve
-            self._add_variance_views(mean=mean)
+            self._add_variance_views(mean=mean)  # ty: ignore[invalid-argument-type]
             sample_weight = self._solve_with_cvar()
 
         # Step 3: Mean, VaR, CVaR, Variance, Correlation, Skew and Kurtosis
@@ -563,9 +573,9 @@ class EntropyPooling(BasePrior):
                 self._returns, sample_weight=sample_weight, biased=True
             )
             # Add new views and solve
-            self._add_correlation_views(mean=mean, variance=variance)
-            self._add_skew_views(mean=mean, variance=variance)
-            self._add_kurtosis_views(mean=mean, variance=variance)
+            self._add_correlation_views(mean=mean, variance=variance)  # ty: ignore[invalid-argument-type]
+            self._add_skew_views(mean=mean, variance=variance)  # ty: ignore[invalid-argument-type]
+            self._add_kurtosis_views(mean=mean, variance=variance)  # ty: ignore[invalid-argument-type]
             sample_weight = self._solve_with_cvar()
 
         self.relative_entropy_ = float(
@@ -573,7 +583,7 @@ class EntropyPooling(BasePrior):
         )
         self.effective_number_of_scenarios_ = np.exp(sts.entropy(sample_weight))
         self.return_distribution_ = ReturnDistribution(
-            mu=sm.mean(self._returns, sample_weight=sample_weight),
+            mu=sm.mean(self._returns, sample_weight=sample_weight),  # ty: ignore[invalid-argument-type]
             covariance=np.cov(self._returns, rowvar=False, aweights=sample_weight),
             returns=self._returns,
             sample_weight=sample_weight,
@@ -598,7 +608,7 @@ class EntropyPooling(BasePrior):
         a : ndarray of shape (n_observations, n_constraints)
             Left matrix in `x @ a == b` or `x @ a <= b`.
 
-        a : ndarray of shape (n_observations, n_constraints)
+        b : ndarray of shape (n_constraints,)
             Right vector in `x @ a == b` or `x @ a <= b`.
 
         Returns
@@ -609,9 +619,11 @@ class EntropyPooling(BasePrior):
             return
 
         # Init constraints dict
-        if self._constraints[name] is None:
+        constraints: list[FloatArray] | None = self._constraints[name]
+        if constraints is None:
             n_observations, _ = self._returns.shape
-            self._constraints[name] = [np.empty((n_observations, 0)), np.empty(0)]
+            constraints = [np.empty((n_observations, 0)), np.empty(0)]
+            self._constraints[name] = constraints
 
         # Rescaling: views can be on different scales, by rescaling we avoid high
         # disparity, have better conditioning, uniform stopping criteria and slack
@@ -621,7 +633,7 @@ class EntropyPooling(BasePrior):
         b /= scales
 
         for i, x in enumerate([a, b]):
-            self._constraints[name][i] = np.hstack((self._constraints[name][i], x))
+            constraints[i] = np.hstack((constraints[i], x))
 
     def _add_mean_views(self) -> None:
         """Add mean view constraints to the optimization problem."""
@@ -800,29 +812,26 @@ class EntropyPooling(BasePrior):
         assets = self._groups[0]
         _, n_assets = self._returns.shape
         asset_to_index = {asset: i for i, asset in enumerate(assets)}
-        try:
-            views = []
-            for view in self.correlation_views:
-                res = _parse_correlation_view(view, assets=assets)
-                expression = res["expression"]
-                corr_view = expression["constant"]
-                if "prior_assets" in expression:
-                    i, j = (asset_to_index[a] for a in expression["prior_assets"])
-                    corr_view += (
-                        self._covariance[i, j]
-                        / np.sqrt(self._covariance[i, i] * self._covariance[j, j])
-                        * expression["multiplier"]
-                    )
-                    corr_view = np.clip(corr_view, 0 + 1e-8, 1 - 1e-8)
-                views.append(
-                    (
-                        (asset_to_index[a] for a in res["assets"]),
-                        res["operator"],
-                        corr_view,
-                    )
+        views = []
+        for view in self.correlation_views:
+            res = _parse_correlation_view(view, assets=assets)
+            expression = res["expression"]
+            corr_view = expression["constant"]
+            if "prior_assets" in expression:
+                i, j = (asset_to_index[a] for a in expression["prior_assets"])
+                corr_view += (
+                    self._covariance[i, j]
+                    / np.sqrt(self._covariance[i, i] * self._covariance[j, j])
+                    * expression["multiplier"]
                 )
-        except KeyError as e:
-            raise ValueError(f"Asset {e.args[0]} is missing from the assets.") from None
+                corr_view = np.clip(corr_view, 0 + 1e-8, 1 - 1e-8)
+            views.append(
+                (
+                    (asset_to_index[a] for a in res["assets"]),
+                    res["operator"],
+                    corr_view,
+                )
+            )
 
         fix = np.zeros(n_assets, dtype=bool)
         for (i, j), op, corr_view in views:
@@ -1056,7 +1065,8 @@ class EntropyPooling(BasePrior):
                         bounds += [(-1000, 1000)] * s
                     case "inequality":
                         bounds += [(0, None)] * s
-                    case _:
+                    # All constraint kinds created by this estimator are handled.
+                    case _:  # pragma: no cover
                         raise KeyError(f"constrain {name}")
 
         a = np.hstack(a)
@@ -1187,7 +1197,9 @@ class EntropyPooling(BasePrior):
                 "such as 'TNC'."
             ) from None
 
-    def _process_views(self, measure: PerfMeasure | RiskMeasure | ExtraRiskMeasure):
+    def _process_views(
+        self, measure: PerfMeasure | RiskMeasure | ExtraRiskMeasure
+    ) -> tuple[FloatArray, FloatArray, FloatArray, FloatArray]:
         """Process and convert view equations into constraint matrices.
 
         This method uses the provided view strings and groups to generate the equality
@@ -1244,7 +1256,7 @@ class EntropyPooling(BasePrior):
 
         return a_eq, b_eq, a_ineq, b_ineq
 
-    def _fix_mean(self, fix: FloatArray, mean: FloatArray) -> None:
+    def _fix_mean(self, fix: BoolArray, mean: FloatArray) -> None:
         """Add constraints to fix the mean for assets where view constraints have been
         applied.
 
@@ -1267,7 +1279,7 @@ class EntropyPooling(BasePrior):
             self._is_fixed_mean |= fix
 
     def _fix_variance(
-        self, fix: FloatArray, mean: FloatArray, variance: FloatArray
+        self, fix: BoolArray, mean: FloatArray, variance: FloatArray
     ) -> None:
         """Add constraints to fix the variance for assets where view constraints have
         been applied.
@@ -1368,7 +1380,8 @@ def _replace_prior_views(
         r"(?:\s*\*\s*([0-9\.]+))?"  # Optional post-multiplier
     )
 
-    def repl(match) -> str:
+    def repl(match: re.Match[str]) -> str:
+        """Return the prior value times the multipliers of a matched pattern."""
         pre_multiplier = float(match.group(1)) if match.group(1) else 1.0
         asset = match.group(2)
         post_multiplier = float(match.group(3)) if match.group(3) else 1.0

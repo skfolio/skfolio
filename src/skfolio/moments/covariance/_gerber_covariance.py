@@ -52,7 +52,7 @@ class GerberCovariance(BaseCovariance):
 
     nearest : bool, default=True
         If this is set to True, the covariance is replaced by the nearest covariance
-        matrix that is positive definite and with a Cholesky decomposition than can be
+        matrix that is positive definite and with a Cholesky decomposition that can be
         computed. The variance is left unchanged.
         A covariance matrix that is not positive definite often occurs in high
         dimensional problems. It can be due to multicollinearity, floating-point
@@ -109,7 +109,7 @@ class GerberCovariance(BaseCovariance):
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
-    ):
+    ) -> None:
         super().__init__(
             nearest=nearest,
             higham=higham,
@@ -119,7 +119,7 @@ class GerberCovariance(BaseCovariance):
         self.threshold = threshold
         self.psd_variant = psd_variant
 
-    def fit(self, X: ArrayLike, y=None) -> GerberCovariance:
+    def fit(self, X: ArrayLike, y: None = None) -> GerberCovariance:
         """Fit the Gerber covariance estimator.
 
         Parameters

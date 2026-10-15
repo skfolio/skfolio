@@ -24,13 +24,12 @@ support this method.
 # ====
 # We load the S&P 500 :ref:`dataset <datasets>` composed of the daily prices of 20
 # assets from the S&P 500 Index composition starting from 2010-01-04 up to 2022-12-28.
-from plotly.io import show
 import numpy as np
+from plotly.io import show
 
 from skfolio import Population
 from skfolio.datasets import load_sp500_dataset
-from skfolio.measures import RatioMeasure
-from skfolio.model_selection import OnlineGridSearch, online_predict, online_score
+from skfolio.model_selection import OnlineGridSearch, online_predict
 from skfolio.moments import EWMu, RegimeAdjustedEWCovariance
 from skfolio.optimization import MeanRisk, ObjectiveFunction
 from skfolio.preprocessing import prices_to_returns
@@ -85,12 +84,15 @@ portfolio_search = OnlineGridSearch(
     warmup_size=252,
     test_size=5,
     n_jobs=-1,
+    return_predictions=True,
 )
 portfolio_search.fit(X)
 
 # %%
 print(f"Best params: {portfolio_search.best_params_}")
-print(f"Best score (Annualized Sharpe): {np.sqrt(252) * portfolio_search.best_score_:.6f}")
+print(
+    f"Best score (Annualized Sharpe): {np.sqrt(252) * portfolio_search.best_score_:.6f}"
+)
 
 # %%
 # Online Evaluation
@@ -107,13 +109,31 @@ baseline_prediction = online_predict(
     portfolio_params=dict(name="Baseline"),
 )
 
-tuned_prediction = online_predict(
-    portfolio_search.best_estimator_,
-    X,
-    warmup_size=252,
-    test_size=5,
-    portfolio_params=dict(name="Tuned"),
-)
+# %%
+# The tuned model's walk-forward prediction can be obtained in two ways.
+#
+# The first calls the same function on the tuned estimator:
+#
+# .. code-block:: python
+#
+#     tuned_prediction = online_predict(
+#         portfolio_search.best_estimator_,
+#         X,
+#         warmup_size=252,
+#         test_size=5,
+#         portfolio_params=dict(name="Tuned"),
+#     )
+#
+# The second, used below, reads the prediction that the search already retained through
+# `return_predictions=True`. Both return the same portfolio here, because the search
+# evaluated its candidates on the same data with the same `warmup_size` and `test_size`,
+# so reading it back avoids a second walk-forward pass. Call `online_predict` to
+# evaluate on different data or with different window sizes.
+
+tuned_prediction = portfolio_search.cv_results_["predictions"][
+    portfolio_search.best_index_
+]
+tuned_prediction.name = "Tuned"
 
 # %%
 # Portfolio Comparison
@@ -131,23 +151,34 @@ show(fig)
 # %%
 # Online Score
 # ============
-# :func:`~skfolio.model_selection.online_score` provides the same walk-forward
-# evaluation as a single scalar, which is useful for quick comparisons in code.
+# :func:`~skfolio.model_selection.online_score` runs the same walk-forward evaluation
+# and returns a scalar score. This is useful when the prediction path is not needed:
+#
+# .. code-block:: python
+#
+#     from skfolio.measures import RatioMeasure
+#     from skfolio.model_selection import online_score
+#
+#     baseline_score = online_score(
+#         baseline_model,
+#         X,
+#         warmup_size=252,
+#         test_size=5,
+#         scoring=RatioMeasure.ANNUALIZED_SHARPE_RATIO,
+#     )
+#     tuned_score = online_score(
+#         portfolio_search.best_estimator_,
+#         X,
+#         warmup_size=252,
+#         test_size=5,
+#         scoring=RatioMeasure.ANNUALIZED_SHARPE_RATIO,
+#     )
+#
+# Both prediction paths are already available here, so the scores are read from them
+# below rather than running two additional walk-forward passes:
 
-baseline_score = online_score(
-    baseline_model,
-    X,
-    warmup_size=252,
-    test_size=5,
-    scoring=RatioMeasure.ANNUALIZED_SHARPE_RATIO,
-)
-tuned_score = online_score(
-    portfolio_search.best_estimator_,
-    X,
-    warmup_size=252,
-    test_size=5,
-    scoring=RatioMeasure.ANNUALIZED_SHARPE_RATIO,
-)
+baseline_score = baseline_prediction.annualized_sharpe_ratio
+tuned_score = tuned_prediction.annualized_sharpe_ratio
 
 print(f"Baseline Sharpe: {baseline_score:.4f}")
 print(f"Tuned Sharpe: {tuned_score:.4f}")

@@ -22,10 +22,14 @@ if TYPE_CHECKING:
         RiskMeasure,
     )
     from skfolio.optimization._base import BaseOptimization
+    from skfolio.preprocessing import BaseCSTransformer
 
 __all__ = [
+    "AnyArray",
     "ArrayLike",
     "BoolArray",
+    "CSTransformer",
+    "ConstraintFunction",
     "CvxMeasure",
     "ExpressionFunction",
     "Factor",
@@ -43,6 +47,7 @@ __all__ = [
     "Result",
     "RiskResult",
     "Scoring",
+    "StrArray",
     "Tags",
     "Target",
 ]
@@ -53,6 +58,8 @@ BoolArray: TypeAlias = npt.NDArray[np.bool_]
 FloatArray: TypeAlias = npt.NDArray[np.floating]
 IntArray: TypeAlias = npt.NDArray[np.integer]
 ObjArray: TypeAlias = npt.NDArray[np.object_]
+StrArray: TypeAlias = npt.NDArray[np.str_]
+AnyArray: TypeAlias = npt.NDArray[Any]
 
 # Skfolio
 Measure: TypeAlias = Union[
@@ -60,16 +67,23 @@ Measure: TypeAlias = Union[
 ]
 CvxMeasure: TypeAlias = Union["PerfMeasure", "RiskMeasure", "RatioMeasure"]
 Scoring: TypeAlias = Callable | dict[str, Callable] | Measure | None
+CSTransformer: TypeAlias = Union["BaseCSTransformer", Literal["passthrough"], None]
 MultiInput = float | dict[str, float] | ArrayLike
-Groups = dict[str, list[str]] | IntArray | ObjArray | list[list[str]]
+Groups = dict[str, list[str]] | IntArray | StrArray | list[list[str]]
 LinearConstraints = FloatArray | list[str]
 Inequality = FloatArray | list
 Target = float | FloatArray
 ParametersValues = list[tuple[cp.Parameter, float | FloatArray]]
 Factor = cp.Variable | cp.Constant
 Result = FloatArray | tuple[float | tuple[float, float] | FloatArray, FloatArray]
-RiskResult = tuple[cp.Expression | cp.Variable, list[cp.Expression | cp.SOC | cp.PSD]]
-ExpressionFunction = Callable[[cp.Variable, Any], cp.Expression]
+RiskResult = tuple[cp.Expression, list[cp.Constraint]]
+ExpressionFunction = (
+    Callable[[cp.Variable], cp.Expression] | Callable[[cp.Variable, Any], cp.Expression]
+)
+ConstraintFunction = (
+    Callable[[cp.Variable], cp.Constraint | list[cp.Constraint]]
+    | Callable[[cp.Variable, Any], cp.Constraint | list[cp.Constraint]]
+)
 Figure = go.Figure
 Names = str | list[str]
 Tags = str | list[str]

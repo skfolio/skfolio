@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from sklearn import config_context, set_config
+from sklearn import config_context
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
@@ -28,14 +28,13 @@ from skfolio.prior import EmpiricalPrior
     ],
 )
 def test_transformer(X, transformer):
-    set_config(transform_output="pandas")
+    with config_context(transform_output="pandas"):
+        X_train, X_test = train_test_split(X, shuffle=False, test_size=0.3)
 
-    X_train, X_test = train_test_split(X, shuffle=False, test_size=0.3)
-
-    pipe = Pipeline([("pre_selection", transformer), ("mean_risk", MeanRisk())])
-    pipe.fit(X_train)
-    portfolio = pipe.predict(X_test)
-    _ = portfolio.sharpe_ratio
+        pipe = Pipeline([("pre_selection", transformer), ("mean_risk", MeanRisk())])
+        pipe.fit(X_train)
+        portfolio = pipe.predict(X_test)
+        _ = portfolio.sharpe_ratio
 
 
 def test_meta_data_routing_pipeline(X, implied_vol):

@@ -43,7 +43,7 @@ class EmpiricalCovariance(BaseCovariance):
 
     nearest : bool, default=True
         If this is set to True, the covariance is replaced by the nearest covariance
-        matrix that is positive definite and with a Cholesky decomposition than can be
+        matrix that is positive definite and with a Cholesky decomposition that can be
         computed. The variance is left unchanged.
         A covariance matrix that is not positive definite often occurs in high
         dimensional problems. It can be due to multicollinearity, floating-point
@@ -87,7 +87,7 @@ class EmpiricalCovariance(BaseCovariance):
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
-    ):
+    ) -> None:
         super().__init__(
             assume_centered=assume_centered,
             nearest=nearest,
@@ -97,7 +97,7 @@ class EmpiricalCovariance(BaseCovariance):
         self.window_size = window_size
         self.ddof = ddof
 
-    def fit(self, X: ArrayLike, y=None) -> EmpiricalCovariance:
+    def fit(self, X: ArrayLike, y: None = None) -> EmpiricalCovariance:
         """Fit the empirical covariance estimator.
 
         Parameters

@@ -12,7 +12,7 @@ weight, Cholesky decomposition).
 
 The term "prior" is used in a general optimization sense, not confined to Bayesian
 priors. It denotes any **a priori** assumption or estimation method for the return
-distribution before optimization, unifying both **Frequentist**, **Bayesian** and
+distribution before optimization, unifying **Frequentist**, **Bayesian** and
 **Information-theoretic** approaches into a single cohesive framework:
 
 1. Frequentist:

@@ -28,7 +28,11 @@ from skfolio.model_selection import (
     CovarianceForecastComparison,
     online_covariance_forecast_evaluation,
 )
-from skfolio.moments import EWCovariance, RegimeAdjustedEWCovariance, RegimeAdjustmentMethod
+from skfolio.moments import (
+    EWCovariance,
+    RegimeAdjustedEWCovariance,
+    RegimeAdjustmentMethod,
+)
 from skfolio.preprocessing import prices_to_returns
 
 prices = load_sp500_dataset()

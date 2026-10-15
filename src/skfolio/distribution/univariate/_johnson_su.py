@@ -79,16 +79,17 @@ class JohnsonSU(BaseUnivariateDist):
     >>>
     >>> # Fit the model to the data.
     >>> model.fit(X)
+    JohnsonSU(...)
     >>>
     >>> # Display the fitted parameters.
     >>> print(model.fitted_repr)
-    JohnsonSU(0.0742, 1.08, 0.00115, 0.00774)
+    JohnsonSU(a=0.074, b=1.1, loc=0.0012, scale=0.0077)
     >>>
     >>> # Compute the log-likelihood, total log-likelihood, CDF, PPF, AIC, and BIC
     >>> log_likelihood = model.score_samples(X)
     >>> score = model.score(X)
     >>> cdf = model.cdf(X)
-    >>> ppf = model.ppf(X)
+    >>> ppf = model.ppf([0.01, 0.05, 0.5, 0.95, 0.99])
     >>> aic = model.aic(X)
     >>> bic = model.bic(X)
     >>>
@@ -97,7 +98,6 @@ class JohnsonSU(BaseUnivariateDist):
     >>>
     >>> # Plot the estimated probability density function (PDF).
     >>> fig = model.plot_pdf()
-    >>> fig.show()
     """
 
     a_: float
@@ -111,7 +111,7 @@ class JohnsonSU(BaseUnivariateDist):
         loc: float | None = None,
         scale: float | None = None,
         random_state: int | None = None,
-    ):
+    ) -> None:
         super().__init__(random_state=random_state)
         self.loc = loc
         self.scale = scale
@@ -121,7 +121,7 @@ class JohnsonSU(BaseUnivariateDist):
         """Dictionary of parameters to pass to the underlying SciPy distribution."""
         return {"a": self.a_, "b": self.b_, "loc": self.loc_, "scale": self.scale_}
 
-    def fit(self, X: ArrayLike, y=None) -> JohnsonSU:
+    def fit(self, X: ArrayLike, y: None = None) -> JohnsonSU:
         """Fit the univariate Johnson SU distribution model.
 
         Parameters

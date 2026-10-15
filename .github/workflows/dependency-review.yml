@@ -16,5 +16,3 @@ jobs:
           fail-on-severity: high
           allow-licenses: MIT,BSD-3-Clause,BSD-2-Clause,Apache-2.0,ISC
           comment-summary-in-pr: true
-
-

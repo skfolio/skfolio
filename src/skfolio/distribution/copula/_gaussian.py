@@ -78,14 +78,15 @@ class GaussianCopula(BaseBivariateCopula):
     >>>
     >>> # Fit the model to the data.
     >>> model.fit(X)
+    GaussianCopula(...)
     >>>
     >>> # Display the fitted parameter and tail dependence coefficients
     >>> print(model.fitted_repr)
     GaussianCopula(rho=0.327)
     >>> print(model.lower_tail_dependence)
-    0.0
+    0
     >>> print(model.upper_tail_dependence)
-    0.0
+    0
     >>>
     >>> # Compute the log-likelihood, total log-likelihood, CDF, Partial Derivative,
     >>> # Inverse Partial Derivative, AIC, and BIC
@@ -102,15 +103,12 @@ class GaussianCopula(BaseBivariateCopula):
     >>>
     >>> # Plot the tail concentration function.
     >>> fig = model.plot_tail_concentration()
-    >>> fig.show()
     >>>
     >>> # Plot a 2D contour of the estimated PDF.
     >>> fig = model.plot_pdf_2d()
-    >>> fig.show()
     >>>
     >>> # Plot a 3D surface of the estimated PDF.
     >>> fig = model.plot_pdf_3d()
-    >>> fig.show()
 
     References
     ----------
@@ -139,13 +137,13 @@ class GaussianCopula(BaseBivariateCopula):
         kendall_tau: float | None = None,
         tolerance: float = 1e-4,
         random_state: int | None = None,
-    ):
+    ) -> None:
         super().__init__(random_state=random_state)
         self.itau = itau
         self.kendall_tau = kendall_tau
         self.tolerance = tolerance
 
-    def fit(self, X: ArrayLike, y=None) -> GaussianCopula:
+    def fit(self, X: ArrayLike, y: None = None) -> GaussianCopula:
         r"""Fit the Bivariate Gaussian Copula.
 
         If `itau` is True, estimates :math:`\rho` using Kendall's tau inversion.

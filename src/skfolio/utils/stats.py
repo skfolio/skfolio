@@ -14,6 +14,7 @@ import math
 import random
 import warnings
 from enum import auto
+from typing import overload
 
 import cvxpy as cp
 import numpy as np
@@ -25,10 +26,16 @@ import scipy.spatial.distance as scd
 import scipy.special as scs
 from scipy.sparse import csr_matrix
 
-from skfolio.typing import BoolArray, FloatArray, IntArray
-from skfolio.utils.tools import AutoEnum
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray
+from skfolio.utils.tools import (
+    AutoEnum,
+    _validate_non_negative_integer,
+    _validate_positive_integer,
+)
 
 __all__ = [
+    "CSWeighting",
+    "CorrelationMethod",
     "NBinsMethod",
     "assert_is_distance",
     "assert_is_square",
@@ -39,12 +46,13 @@ __all__ = [
     "corr_to_cov",
     "cov_nearest",
     "cov_to_corr",
+    "cs_pearson_correlation",
     "cs_rank",
-    "cs_rank_correlation",
-    "cs_weighted_correlation",
+    "cs_spearman_correlation",
     "inverse_multiply",
     "inverse_volatility_weights",
     "is_cholesky_dec",
+    "is_positive_semidefinite",
     "minimize_relative_weight_deviation",
     "multiply_by_inverse",
     "n_bins_freedman",
@@ -52,6 +60,7 @@ __all__ = [
     "rand_weights",
     "rand_weights_dirichlet",
     "safe_cholesky",
+    "safe_divide",
     "sample_unique_subsets",
     "squared_mahalanobis_dist",
     "squared_standardized_euclidean_dist",
@@ -64,6 +73,22 @@ _MAX_RIDGE_TRIES = 3
 _RIDGE_ESCALATION_FACTOR = 10.0
 _DISTANCE_ATOL = 1e-5
 _DISTANCE_RTOL = 0.0
+
+
+class CorrelationMethod(AutoEnum):
+    """Correlation method."""
+
+    PEARSON = auto()
+    SPEARMAN = auto()
+
+
+class CSWeighting(AutoEnum):
+    """Cross-sectional weighting."""
+
+    BENCHMARK = auto()
+    REGRESSION = auto()
+    INVERSE_IDIO_VARIANCE = auto()
+    IDENTITY = auto()
 
 
 class NBinsMethod(AutoEnum):
@@ -80,6 +105,66 @@ class NBinsMethod(AutoEnum):
 
     FREEDMAN = auto()
     KNUTH = auto()
+
+
+@overload
+def safe_divide(  # numpydoc ignore=GL08
+    numerator: float, denominator: float, fill_value: float = 0.0, *, atol: float = 0.0
+) -> float: ...
+
+
+@overload
+def safe_divide(  # numpydoc ignore=GL08
+    numerator: float | FloatArray | IntArray,
+    denominator: float | FloatArray | IntArray,
+    fill_value: float = 0.0,
+    *,
+    atol: float = 0.0,
+) -> FloatArray: ...
+
+
+def safe_divide(
+    numerator: float | FloatArray | IntArray,
+    denominator: float | FloatArray | IntArray,
+    fill_value: float = 0.0,
+    *,
+    atol: float = 0.0,
+) -> float | FloatArray:
+    """Safely divide arrays or scalars.
+
+    Division is performed elementwise where `abs(denominator) > atol`. Elsewhere and for
+    any non-finite output produced by the division,`fill_value` is returned.
+
+    Parameters
+    ----------
+    numerator : float or ndarray
+        Numerator values.
+
+    denominator : float or ndarray
+        Denominator values.
+
+    fill_value : float, default=0.0
+        Replacement value where safe division cannot produce a valid finite result.
+
+    atol : float, default=0.0
+        Absolute tolerance below which the denominator is treated as zero.
+
+    Returns
+    -------
+    out : float or ndarray
+        Safe division result.
+    """
+    if atol < 0:
+        raise ValueError("`atol` must be non-negative.")
+
+    fill_value = float(fill_value)
+    numerator = np.asarray(numerator)
+    denominator = np.asarray(denominator)
+    out = np.full(np.broadcast(numerator, denominator).shape, fill_value, dtype=float)
+    valid = np.abs(denominator) > atol
+    np.divide(numerator, denominator, out=out, where=valid)
+    np.copyto(out, fill_value, where=~np.isfinite(out))
+    return float(out) if out.ndim == 0 else out
 
 
 def n_bins_freedman(x: FloatArray) -> int:
@@ -114,6 +199,10 @@ def n_bins_freedman(x: FloatArray) -> int:
 def n_bins_knuth(x: FloatArray) -> int:
     """Compute the optimal histogram bin size using Knuth's rule [1]_.
 
+    The number of bins is bounded to :math:`[1, n]`, where :math:`n` is the number of
+    observations. Data with many repeated values, such as zero-filled returns, push the
+    estimate toward the upper bound.
+
     Parameters
     ----------
     x : ndarray of shape (n_observations,)
@@ -133,8 +222,10 @@ def n_bins_knuth(x: FloatArray) -> int:
     n = len(x)
 
     def func(y: FloatArray) -> float:
+        """Compute the negative Knuth log-posterior for `y[0]` bins."""
         y = y[0]
-        if y <= 0:
+        # The histogram uses int(y) bins, so y < n + 1 allows up to n bins.
+        if not 1 <= y < n + 1:
             return np.inf
         bin_edges = np.linspace(x[0], x[-1], int(y) + 1)
         hist, _ = np.histogram(x, bin_edges)
@@ -146,13 +237,13 @@ def n_bins_knuth(x: FloatArray) -> int:
             + np.sum(scs.gammaln(hist + 0.5))
         )
 
-    n_bins_init = n_bins_freedman(x)
+    n_bins_init = min(n_bins_freedman(x), n)
     n_bins = sco.fmin(func, n_bins_init, disp=0)[0]
-    return round(n_bins)
+    return min(round(n_bins), n)
 
 
-def rand_weights_dirichlet(n: int) -> np.array:
-    """Produces n random weights that sum to one from a dirichlet distribution
+def rand_weights_dirichlet(n: int) -> FloatArray:
+    """Produces n random weights that sum to one from a Dirichlet distribution
     (uniform distribution over a simplex).
 
     Parameters
@@ -180,7 +271,7 @@ def rand_weights(n: int, zeros: int = 0, seed: int | None = None) -> FloatArray:
     zeros : int, default=0
         The number of weights to randomly set to zeros.
 
-    seed : int or None, default=None
+    seed : int, optional
         Seed for reproducibility. If None, use an unseeded generator.
 
     Returns
@@ -233,7 +324,30 @@ def is_positive_definite(x: FloatArray) -> bool:
     value : bool
         True if the matrix is positive definite, False otherwise.
     """
-    return np.all(np.linalg.eigvals(x) > 0)
+    return bool(np.all(np.linalg.eigvals(x) > 0))
+
+
+def is_positive_semidefinite(x: FloatArray, *, atol: float = 0.0) -> bool:
+    """Return True if the matrix is positive semidefinite within a tolerance.
+
+    The caller must provide a finite, symmetric matrix.
+
+    Parameters
+    ----------
+    x : ndarray of shape (n, n)
+        Matrix to check.
+
+    atol : float, default=0.0
+        Nonnegative absolute tolerance. Eigenvalues greater than or equal to
+        `-atol` are accepted.
+
+    Returns
+    -------
+    value : bool
+        True if all eigenvalues are at least `-atol`, False otherwise.
+        Singular matrices are accepted.
+    """
+    return bool(np.all(np.linalg.eigvalsh(x) >= -atol))
 
 
 def assert_is_square(x: FloatArray) -> None:
@@ -312,11 +426,12 @@ def cov_to_corr(cov: FloatArray) -> tuple[FloatArray, FloatArray]:
     if cov.ndim != 2:
         raise ValueError(f"`cov` must be a 2D array, got a {cov.ndim}D array")
     std = np.sqrt(np.diag(cov))
-    corr = cov / std / std[:, None]
+    corr = safe_divide(cov, np.outer(std, std), fill_value=np.nan)
+    np.fill_diagonal(corr, 1.0)
     return corr, std
 
 
-def corr_to_cov(corr: FloatArray, std: FloatArray):
+def corr_to_cov(corr: FloatArray, std: FloatArray) -> FloatArray:
     """Convert a correlation matrix to a covariance matrix given its
     standard-deviation vector.
 
@@ -349,47 +464,58 @@ def cov_nearest(
     higham: bool = False,
     higham_max_iteration: int = 100,
     warn: bool = False,
-):
-    """Compute the nearest covariance matrix that is positive definite and with a
-    cholesky decomposition than can be computed. The variance is left unchanged.
-    A covariance matrix that is not positive definite often occurs in high
-    dimensional problems. It can be due to multicollinearity, floating-point
-    inaccuracies, or when the number of observations is smaller than the number of
+) -> FloatArray:
+    """Compute the nearest covariance matrix that is positive definite and admits a
+    Cholesky decomposition. The variances are unchanged.
+
+    Non-positive-definite covariance matrices can occur in high-dimensional problems
+    due to multicollinearity, floating-point inaccuracies, or fewer observations than
     assets.
 
-    First, it converts the covariance matrix to a correlation matrix.
-    Then, it finds the nearest correlation matrix and converts it back to a covariance
-    matrix using the initial standard deviation.
+    The covariance matrix is converted to a correlation matrix, repaired using
+    eigenvalue clipping or Higham's nearest-correlation algorithm, and converted back
+    using the original standard deviations.
 
-    Cholesky decomposition can fail for symmetric positive definite (SPD) matrix due
-    to floating point error and inversely, Cholesky decomposition can succeed for
-    non-SPD matrix. Therefore, we need to test for both. We always start by testing
-    for Cholesky decomposition which is significantly faster than checking for positive
-    eigenvalues.
+    Cholesky decomposition can fail for a symmetric positive-definite matrix or
+    succeed for a non-positive-definite matrix due to floating-point error. Both
+    Cholesky decomposition and symmetric eigenvalue checks are therefore used, with
+    Cholesky checked first because it is faster. The input is returned unchanged if
+    Cholesky succeeds, covariance eigenvalues are positive, and the minimum
+    correlation eigenvalue is at least `5e-14`.
+
+    Both methods clip correlation eigenvalues at `1e-13` and normalize the diagonal
+    to one. Failed validation triggers one retry at `1e-12`. After the retry,
+    nonpositive covariance eigenvalues within `n * eps * max(abs(eigenvalues))`
+    of zero are accepted only if Cholesky decomposition succeeds, where `eps` is
+    double-precision machine epsilon.
 
     Parameters
     ----------
     cov : ndarray of shape (n, n)
-        Covariance matrix.
+        Finite, symmetric covariance matrix with strictly positive variances.
 
     higham : bool, default=False
-        If this is set to True, the Higham (2002) algorithm [1]_ is used,
-        otherwise the eigenvalues are clipped to threshold above zeros (1e-13).
-        The default (`False`) is to use the clipping method as the Higham
-        algorithm can be slow for large datasets.
+        If True, apply Higham's algorithm [1]_ before eigenvalue clipping.
+        Otherwise, use eigenvalue clipping only. Clipping is the default because
+        Higham's algorithm can be slow for large datasets.
 
     higham_max_iteration : int, default=100
-        Maximum number of iterations of the Higham (2002) algorithm.
-        The default value is `100`.
+        Maximum number of iterations when `higham=True`.
 
     warn : bool, default=False
-        If this is set to True, a user warning is emitted when the covariance matrix
-        is not positive definite and replaced by the nearest. The default is False.
+        If True, emit a UserWarning when the input requires repair.
 
     Returns
     -------
-    cov : ndarray
-        The nearest covariance matrix.
+    cov : ndarray of shape (n, n)
+        Repaired covariance matrix. The input is returned unchanged if it satisfies
+        the numerical acceptance criteria.
+
+    Raises
+    ------
+    ValueError
+        If `cov` is not square, symmetric, or finite, has nonpositive variances,
+        or cannot be repaired within the iteration and retry limits.
 
     References
     ----------
@@ -397,11 +523,24 @@ def cov_nearest(
         IMA Journal of Numerical Analysis
         Higham (2002)
     """
-    assert_is_square(cov)
     assert_is_symmetric(cov)
+    variances = np.diag(cov)
+    if not np.isfinite(cov).all() or np.any(variances <= 0):
+        raise ValueError(
+            "The covariance matrix must contain only finite values and strictly "
+            "positive variances"
+        )
+    # Normalize in float64: float32 rounding exceeds the eigenvalue clipping floor.
+    corr, std = cov_to_corr(np.asarray(cov, dtype=float))
 
-    # Around 100 times faster than checking eigenvalues with np.linalg.eigh
-    if is_cholesky_dec(cov) and is_positive_definite(cov):
+    # Cholesky is cheaper than an eigenvalue decomposition, so check it first.
+    # Normalization can move a clipped eigenvalue just below the threshold. The
+    # half-threshold buffer avoids repeatedly repairing an already repaired matrix.
+    if (
+        is_cholesky_dec(cov)
+        and np.linalg.eigvalsh(corr)[0] >= _CLIPPING_VALUE / 2
+        and np.linalg.eigvalsh(cov)[0] > 0
+    ):
         return cov
 
     if warn:
@@ -411,35 +550,50 @@ def cov_nearest(
             "the nearest positive definite covariance.",
             stacklevel=2,
         )
-    corr, std = cov_to_corr(cov)
-
+    eps = np.finfo(float).eps
     if higham:
-        eps = np.finfo(np.float64).eps * 5
         diff = np.zeros(corr.shape)
-        x = corr.copy()
+        x = corr
         for _ in range(higham_max_iteration):
             x_adj = x - diff
             eig_vals, eig_vecs = np.linalg.eigh(x_adj)
-            x = eig_vecs * np.maximum(eig_vals, eps) @ eig_vecs.T
+            x = eig_vecs * np.maximum(eig_vals, 5 * eps) @ eig_vecs.T
             diff = x - x_adj
             np.fill_diagonal(x, 1)
-            cov = corr_to_cov(x, std)
-            if is_cholesky_dec(cov) and is_positive_definite(cov):
+            eigenvalues = np.linalg.eigvalsh(x)
+            # Stop at numerical PSD. Final clipping enforces the eigenvalue floor.
+            tolerance = len(x) * eps * np.max(np.abs(eigenvalues))
+            if eigenvalues[0] >= -tolerance:
                 break
         else:
             raise ValueError("Unable to find the nearest positive definite matrix")
-    else:
-        eig_vals, eig_vecs = np.linalg.eigh(corr)
+        corr = x
+
+    eig_vals, eig_vecs = np.linalg.eigh(corr)
+    for clipping_value in (_CLIPPING_VALUE, 10 * _CLIPPING_VALUE):
         # Clipping the eigenvalues with a value smaller than 1e-13 can cause scipy to
-        # consider the matrix non-psd is some corner cases (see test/test_stats.py)
-        x = eig_vecs * np.maximum(eig_vals, _CLIPPING_VALUE) @ eig_vecs.T
+        # consider the matrix non-psd in some corner cases (see test_stats.py).
+        x = eig_vecs * np.maximum(eig_vals, clipping_value) @ eig_vecs.T
         x, _ = cov_to_corr(x)
         cov = corr_to_cov(x, std)
+        symmetrize(cov)
+        np.fill_diagonal(cov, variances)
+        cholesky_ok = is_cholesky_dec(cov)
+        eigenvalues = np.linalg.eigvalsh(cov)
+        if (
+            cholesky_ok
+            and eigenvalues[0] > 0
+            and np.linalg.eigvalsh(x)[0] >= _CLIPPING_VALUE / 2
+        ):
+            return cov
 
-    return cov
+    tolerance = len(cov) * eps * np.max(np.abs(eigenvalues))
+    if cholesky_ok and eigenvalues[0] >= -tolerance:
+        return cov
+    raise ValueError("Unable to find the nearest positive definite matrix")
 
 
-def commutation_matrix(x):
+def commutation_matrix(x: FloatArray) -> csr_matrix:
     """Compute the commutation matrix.
 
     Parameters
@@ -449,7 +603,7 @@ def commutation_matrix(x):
 
     Returns
     -------
-    K : ndarray of shape (m * n, m * n)
+    K : csr_matrix of shape (m * n, m * n)
         The commutation matrix.
     """
     (m, n) = x.shape
@@ -508,6 +662,9 @@ def compute_optimal_n_clusters(distance: FloatArray, linkage_matrix: FloatArray)
     .. [1] "Application of two-order difference to gap statistic".
         Yue, Wang & Wei (2009)
     """
+    # Two assets have no second-order gap. Use the two singleton leaves.
+    if distance.shape[0] == 2:
+        return 2
     cut_tree = sch.cut_tree(linkage_matrix)
     n = cut_tree.shape[1]
     max_clusters = min(n, max(8, round(np.sqrt(n))))
@@ -527,8 +684,7 @@ def compute_optimal_n_clusters(distance: FloatArray, linkage_matrix: FloatArray)
     gaps = np.roll(dispersion, -2) + dispersion - 2 * np.roll(dispersion, -1)
     gaps = gaps[:-2]
     # k=0 represents one cluster
-    k = np.argmax(gaps) + 2
-    return k
+    return int(np.argmax(gaps)) + 2
 
 
 def minimize_relative_weight_deviation(
@@ -554,7 +710,7 @@ def minimize_relative_weight_deviation(
     Parameters
     ----------
     weights : ndarray of shape (n_assets,)
-        Initial weights.
+        Strictly positive initial weights summing to one.
 
     min_weights : ndarray of shape (n_assets,)
         Minimum assets weights (weights lower bounds).
@@ -577,7 +733,7 @@ def minimize_relative_weight_deviation(
     if not (weights.shape == min_weights.shape == max_weights.shape):
         raise ValueError("`min_weights` and `max_weights` must have same size")
 
-    if np.any(weights < 0):
+    if np.any(weights <= 0):
         raise ValueError("Initial weights must be strictly positive")
 
     if not np.isclose(np.sum(weights), 1.0):
@@ -605,12 +761,12 @@ def minimize_relative_weight_deviation(
         if w.value is None:
             raise cp.SolverError("No solution found")
 
-    except (cp.SolverError, scl.ArpackNoConvergence):
+    except (cp.SolverError, scl.ArpackNoConvergence) as error:
         raise cp.SolverError(
             f"Solver '{solver}' failed. Try another"
             " solver, or solve with solver_params=dict(verbose=True) for more"
             " information"
-        ) from None
+        ) from error
 
     return w.value
 
@@ -710,7 +866,7 @@ def sample_unique_subsets(
     n_subsets : int
         Number of distinct subsets to generate (0 <= n_subsets <= C(n, k)).
 
-    random_state : int, RandomState instance or None, default=None
+    random_state : int, RandomState instance, optional
         Seed or random state to ensure reproducibility.
 
     Returns
@@ -840,7 +996,7 @@ def symmetrize(matrix: FloatArray, where: BoolArray | None = None) -> None:
     matrix : ndarray of shape (n, n)
         Square matrix to symmetrize in-place.
 
-    where : ndarray of shape (n,) or None, default=None
+    where : ndarray of shape (n,), optional
         Boolean mask indicating which rows/columns to include. If `None`,
         the full matrix is symmetrized.
     """
@@ -1038,7 +1194,108 @@ def squared_mahalanobis_dist(
     return _squared_mahalanobis_dist_from_cholesky(X, cholesky=chol, mean=mean)
 
 
-def cs_weighted_correlation(
+def _cs_pearson_correlation_2d_3d(
+    a: FloatArray,
+    b: FloatArray,
+    weights: FloatArray | None,
+    min_count: int,
+    eps: float,
+) -> FloatArray:
+    r"""Weighted Pearson correlation between 2D and 3D cross-sections.
+
+    `a` has shape `(n_observations, n_assets)` and `b` has shape
+    `(n_observations, n_assets, n_series)`. Correlations are computed over the
+    asset axis and returned with shape `(n_observations, n_series)`.
+    """
+    a_finite = np.isfinite(a)
+    b_finite = np.isfinite(b)
+
+    if weights is None:
+        a_weight = a_finite.astype(float)
+        n_valid = np.einsum("tn,tnk->tk", a_weight, b_finite, optimize=True)
+        weight_sum = n_valid
+    else:
+        w = np.asarray(weights, dtype=float)
+        if np.any(np.isfinite(w) & (w < 0.0)):
+            raise ValueError("`weights` must be non-negative.")
+        if w.ndim == 1:
+            if w.shape[0] != a.shape[1]:
+                raise ValueError(
+                    f"`weights` length must match the cross-sectional axis, got "
+                    f"{w.shape[0]} and {a.shape[1]}."
+                )
+            w = np.broadcast_to(w[np.newaxis, :], a.shape)
+        elif w.shape != a.shape:
+            raise ValueError(
+                f"`weights` must have shape {(a.shape[1],)} or {a.shape}, "
+                f"got {w.shape}."
+            )
+        effective = np.isfinite(w) & (w > 0.0) & a_finite
+        a_weight = np.where(effective, w, 0.0)
+        n_valid = np.einsum(
+            "tn,tnk->tk", effective.astype(float), b_finite, optimize=True
+        )
+        weight_sum = np.einsum("tn,tnk->tk", a_weight, b_finite, optimize=True)
+
+    a_weight_sum = a_weight.sum(axis=1)
+    a_center = safe_divide(
+        np.sum(np.where(a_finite, a_weight * a, 0.0), axis=1),
+        a_weight_sum,
+        fill_value=0.0,
+    )
+    a_centered = np.where(a_finite, a - a_center[:, np.newaxis], 0.0)
+
+    b_centered = np.where(b_finite, b, 0.0)
+    b_center = safe_divide(
+        np.einsum("tn,tnk->tk", a_weight, b_centered, optimize=True),
+        weight_sum,
+        fill_value=0.0,
+    )
+    b_centered -= b_center[:, np.newaxis, :]
+    b_centered[~b_finite] = 0.0
+
+    weighted_a = a_weight * a_centered
+    a_sum = np.einsum("tn,tnk->tk", weighted_a, b_finite, optimize=True)
+    a_square_sum = np.einsum(
+        "tn,tnk->tk", weighted_a * a_centered, b_finite, optimize=True
+    )
+    b_sum = np.einsum("tn,tnk->tk", a_weight, b_centered, optimize=True)
+    b_square_sum = np.einsum(
+        "tn,tnk,tnk->tk", a_weight, b_centered, b_centered, optimize=True
+    )
+    cross_sum = np.einsum("tn,tnk->tk", weighted_a, b_centered, optimize=True)
+
+    covariance = cross_sum - safe_divide(a_sum * b_sum, weight_sum, fill_value=np.nan)
+    a_variance = a_square_sum - safe_divide(a_sum**2, weight_sum, fill_value=np.nan)
+    b_variance = b_square_sum - safe_divide(b_sum**2, weight_sum, fill_value=np.nan)
+    a_variance = np.maximum(a_variance, 0.0)
+    b_variance = np.maximum(b_variance, 0.0)
+
+    denom = np.sqrt(a_variance * b_variance)
+    corr = safe_divide(covariance, denom, fill_value=np.nan, atol=eps)
+    corr[
+        (n_valid < min_count)
+        | (weight_sum <= eps)
+        | (a_variance <= eps)
+        | (b_variance <= eps)
+    ] = np.nan
+    return corr
+
+
+def _use_cs_pearson_correlation_2d_3d(
+    a: FloatArray, b: FloatArray, axis: int
+) -> tuple[FloatArray, FloatArray] | None:
+    """Return ordered 2D/3D inputs for the optimized cross-sectional path."""
+    if axis not in (1, -2):
+        return None
+    if a.ndim == 2 and b.ndim == 3 and a.shape == b.shape[:2]:
+        return a, b
+    if a.ndim == 3 and b.ndim == 2 and b.shape == a.shape[:2]:
+        return b, a
+    return None
+
+
+def cs_pearson_correlation(
     a: FloatArray,
     b: FloatArray,
     weights: FloatArray | None = None,
@@ -1073,16 +1330,19 @@ def cs_weighted_correlation(
     b : ndarray
         Second array, broadcastable to the same shape as *a*.
 
-    weights : ndarray or None, default=None
+    weights : ndarray, optional
         Non-negative weights, broadcastable to *a* along `axis`.
-        `None` uses equal weights.
+        `None` uses equal weights. Non-finite and zero weights are excluded
+        from weighted correlations.
 
     axis : int, default=0
         The cross-sectional axis along which correlation is computed.
 
     min_count : int, default=3
-        Minimum number of jointly finite observations along `axis`.
-        Slices with fewer valid pairs return `NaN`.
+        Minimum number of effective observations along `axis`. Without
+        `weights`, this is the number of jointly finite observations. With
+        `weights`, this is the number of jointly finite observations with
+        finite strictly positive weight.
 
     eps : float, default=1e-12
         Denominator threshold below which `NaN` is returned to guard against
@@ -1096,6 +1356,11 @@ def cs_weighted_correlation(
     """
     a = np.asarray(a, dtype=float)
     b = np.asarray(b, dtype=float)
+    fast_path = _use_cs_pearson_correlation_2d_3d(a, b, axis)
+    if fast_path is not None:
+        return _cs_pearson_correlation_2d_3d(
+            fast_path[0], fast_path[1], weights=weights, min_count=min_count, eps=eps
+        )
 
     try:
         shape = np.broadcast_shapes(a.shape, b.shape)
@@ -1107,31 +1372,36 @@ def cs_weighted_correlation(
     a = np.broadcast_to(a, shape)
     b = np.broadcast_to(b, shape)
     if axis < -a.ndim or axis >= a.ndim:
-        raise np.AxisError(axis, a.ndim)
+        # AxisError moved under np.exceptions in NumPy 2.
+        raise getattr(np, "exceptions", np).AxisError(axis, a.ndim)  # ty: ignore[unresolved-attribute]
     axis = axis % a.ndim
 
     valid = np.isfinite(a) & np.isfinite(b)
-    n_valid = valid.sum(axis=axis)
 
     if weights is not None:
-        w = np.asarray(weights, dtype=float)
-        if w.ndim == 1:
-            if w.shape[0] != shape[axis]:
+        weight = np.asarray(weights, dtype=float)
+        if np.any(np.isfinite(weight) & (weight < 0.0)):
+            raise ValueError("`weights` must be non-negative.")
+        if weight.ndim == 1:
+            if weight.shape[0] != shape[axis]:
                 raise ValueError(
                     f"`weights` length must match the size of `axis`, got "
-                    f"{w.shape[0]} and {shape[axis]}."
+                    f"{weight.shape[0]} and {shape[axis]}."
                 )
-            w_shape = [1] * a.ndim
-            w_shape[axis] = shape[axis]
-            w = w.reshape(w_shape)
+            weight_shape = [1] * a.ndim
+            weight_shape[axis] = shape[axis]
+            weight = weight.reshape(weight_shape)
         else:
-            while w.ndim < a.ndim:
-                w = w[..., np.newaxis]
-        w = np.broadcast_to(w, shape).copy()
-        w[~valid] = 0.0
-        w_sum = w.sum(axis=axis)
+            while weight.ndim < a.ndim:
+                weight = weight[..., np.newaxis]
+        weight = np.broadcast_to(weight, shape).copy()
+        effective = valid & np.isfinite(weight) & (weight > 0.0)
+        n_valid = effective.sum(axis=axis)
+        weight[~effective] = 0.0
+        weight_sum = weight.sum(axis=axis)
     else:
-        w_sum = n_valid.astype(float)
+        n_valid = valid.sum(axis=axis)
+        weight_sum = n_valid.astype(float)
 
     a = a.copy()
     a[~valid] = 0.0
@@ -1140,11 +1410,11 @@ def cs_weighted_correlation(
 
     with np.errstate(divide="ignore", invalid="ignore"):
         if weights is not None:
-            a_mean = (w * a).sum(axis=axis) / w_sum
-            b_mean = (w * b).sum(axis=axis) / w_sum
+            a_mean = (weight * a).sum(axis=axis) / weight_sum
+            b_mean = (weight * b).sum(axis=axis) / weight_sum
         else:
-            a_mean = a.sum(axis=axis) / w_sum
-            b_mean = b.sum(axis=axis) / w_sum
+            a_mean = a.sum(axis=axis) / weight_sum
+            b_mean = b.sum(axis=axis) / weight_sum
 
     a -= np.expand_dims(a_mean, axis=axis)
     b -= np.expand_dims(b_mean, axis=axis)
@@ -1152,18 +1422,18 @@ def cs_weighted_correlation(
     b[~valid] = 0.0
 
     if weights is not None:
-        cov_ab = (w * a * b).sum(axis=axis)
-        var_a = (w * a**2).sum(axis=axis)
-        var_b = (w * b**2).sum(axis=axis)
+        covariance = (weight * a * b).sum(axis=axis)
+        a_variance = (weight * a**2).sum(axis=axis)
+        b_variance = (weight * b**2).sum(axis=axis)
     else:
-        cov_ab = (a * b).sum(axis=axis)
-        var_a = (a**2).sum(axis=axis)
-        var_b = (b**2).sum(axis=axis)
+        covariance = (a * b).sum(axis=axis)
+        a_variance = (a**2).sum(axis=axis)
+        b_variance = (b**2).sum(axis=axis)
 
-    denom = np.sqrt(var_a * var_b)
+    denom = np.sqrt(a_variance * b_variance)
 
     with np.errstate(divide="ignore", invalid="ignore"):
-        corr = np.where(denom > eps, cov_ab / denom, np.nan)
+        corr = np.where(denom > eps, covariance / denom, np.nan)
 
     corr = np.where(n_valid >= min_count, corr, np.nan)
 
@@ -1198,7 +1468,7 @@ def cs_rank(a: FloatArray, axis: int = 0) -> FloatArray:
     return ranks
 
 
-def cs_rank_correlation(
+def cs_spearman_correlation(
     a: FloatArray,
     b: FloatArray,
     axis: int = 0,
@@ -1208,7 +1478,7 @@ def cs_rank_correlation(
     r"""Cross-sectional Spearman rank correlation.
 
     Ranks the jointly finite values of *a* and *b* along `axis` with :func:`cs_rank`,
-    then computes their Pearson correlation via :func:`cs_weighted_correlation`
+    then computes their Pearson correlation via :func:`cs_pearson_correlation`
     (unweighted).
 
     Parameters
@@ -1255,7 +1525,7 @@ def cs_rank_correlation(
         a_rank = cs_rank(np.where(valid, a, np.nan), axis=axis)
         b_rank = cs_rank(np.where(valid, b, np.nan), axis=axis)
 
-    return cs_weighted_correlation(
+    return cs_pearson_correlation(
         a_rank,
         b_rank,
         axis=axis,
@@ -1283,3 +1553,163 @@ def inverse_volatility_weights(covariance: FloatArray) -> FloatArray:
     std = np.sqrt(np.maximum(np.diag(covariance), _NUMERICAL_THRESHOLD))
     w = 1.0 / std
     return w / w.sum()
+
+
+def _forward_mean_return(X: ArrayLike, horizon: int = 5, lag: int = 1) -> FloatArray:
+    r"""Compute a forward H-period mean return target.
+
+    Computes the mean of the next H returns for each observation. This is used
+    as the regression target in alpha estimation models.
+
+    Under the as-of indexing convention, the target for observation :math:`t` is:
+
+    .. math::
+
+        y_t = \frac{1}{H}\sum_{s=\ell}^{\ell + H - 1} X_{t+s}
+
+    where :math:`\ell` is the signal lag. The default `lag=1` means scores at
+    :math:`t` predict returns starting at :math:`t{+}1`. An internal `lag=0`
+    is supported for arrays that are already shifted into a forecast/realization
+    alignment. The last
+    `lag + horizon - 1` rows are NaN due to incomplete forward windows.
+
+    Parameters
+    ----------
+    horizon : int, default=5
+        Number of forward periods to average. Must be >= 1.
+
+        * `horizon=1`: Returns next-period values.
+        * `horizon>1`: Returns mean of next H periods.
+
+    lag : int, default=1
+        Number of periods between the score date and the first return in the target
+        window. Must be >= 0. Public alpha estimators validate `signal_lag >= 1` to
+        respect the as-of time-indexing convention.
+
+    Returns
+    -------
+    y : ndarray of shape (T, N)
+        Forward mean returns. Last `lag + horizon - 1` rows are NaN.
+
+    Notes
+    -----
+    The computation uses an O(n) cumsum algorithm and handles NaN values by
+    excluding them from both sum and count (i.e., `nanmean` semantics).
+    """
+    _validate_positive_integer(horizon, "horizon")
+    _validate_non_negative_integer(lag, "lag")
+    horizon = int(horizon)
+    lag = int(lag)
+    X = np.asarray(X)
+    if X.ndim != 2:
+        raise ValueError(f"X must be 2D (T, N), got {X.shape}")
+
+    n_observations, n_assets = X.shape
+
+    if n_observations == 0:
+        return np.empty((0, n_assets), dtype=np.float64)
+
+    # NaN-safe sums: replace NaN with 0, and count valid observations
+    X0 = np.nan_to_num(X, nan=0.0)
+    V0 = np.isfinite(X).astype(np.float64)
+
+    target_gap = lag + horizon - 1
+
+    # Pad target_gap rows at the end so incomplete forward windows are treated as missing.
+
+    # (n_obs + target_gap, n_assets)
+    X0 = np.vstack([X0, np.zeros((target_gap, n_assets))])
+    V0 = np.vstack([V0, np.zeros((target_gap, n_assets))])
+
+    # Prefix a zero row so csum has length (n_obs + target_gap + 1, n_assets)
+    csum = np.vstack([np.zeros((1, n_assets)), np.cumsum(X0, axis=0)])
+    ccnt = np.vstack([np.zeros((1, n_assets)), np.cumsum(V0, axis=0)])
+
+    # For each t, window is [t + lag, t + lag + horizon) in the padded array.
+    start = np.arange(n_observations) + lag
+    end = np.arange(n_observations) + lag + horizon
+
+    # (n_obs, n_assets)
+    sum_fwd = csum[end] - csum[start]
+    cnt_fwd = ccnt[end] - ccnt[start]
+
+    y = safe_divide(sum_fwd, cnt_fwd, fill_value=np.nan)
+    if target_gap > 0:
+        y[-target_gap:] = np.nan
+    return y
+
+
+def _market_returns(
+    asset_returns: ArrayLike,
+    weights: ArrayLike,
+    estimation_mask: ArrayLike | None = None,
+) -> FloatArray:
+    """Compute market returns on the estimation universe.
+
+    Parameters
+    ----------
+    asset_returns : array-like of shape (n_observations, n_assets)
+        Asset returns at each observation.
+
+    weights : array-like of shape (n_observations, n_assets)
+        Asset weights per observation, typically market capitalizations.
+
+    estimation_mask : array-like of shape (n_observations, n_assets), optional
+        Boolean mask indicating which entries are eligible for market-return
+        construction. If `None`, all entries are eligible.
+
+    Returns
+    -------
+    market_ret : ndarray of shape (n_observations,)
+        Market (cap-weighted) return at each date.
+
+    Raises
+    ------
+    ValueError
+        If inputs do not have matching 2D shapes.
+
+    ValueError
+        If no eligible asset has finite returns and finite positive total
+        weight at any observation.
+    """
+    asset_returns = np.asarray(asset_returns, dtype=float)
+    weights = np.asarray(weights, dtype=float)
+    if asset_returns.ndim != 2:
+        raise ValueError(
+            "asset_returns must be a 2D array of shape (n_observations, n_assets)."
+        )
+    if weights.shape != asset_returns.shape:
+        raise ValueError(
+            "weights must have the same shape as asset_returns; "
+            f"got weights.shape={weights.shape} and "
+            f"asset_returns.shape={asset_returns.shape}."
+        )
+
+    if estimation_mask is None:
+        estimation_mask = np.ones(asset_returns.shape, dtype=bool)
+    else:
+        estimation_mask = np.asarray(estimation_mask, dtype=bool)
+        if estimation_mask.shape != asset_returns.shape:
+            raise ValueError(
+                "estimation_mask must have the same shape as asset_returns; "
+                f"got estimation_mask.shape={estimation_mask.shape} and "
+                f"asset_returns.shape={asset_returns.shape}."
+            )
+
+    valid = estimation_mask & np.isfinite(asset_returns) & np.isfinite(weights)
+    weights = np.where(valid, weights, 0.0)
+    asset_returns = np.where(valid, asset_returns, 0.0)
+
+    w_sum = weights.sum(axis=1, keepdims=True)
+    valid_rows = w_sum[:, 0] > 0
+    if not np.all(valid_rows):
+        bad_obs = int(np.where(~valid_rows)[0][0])
+        raise ValueError(
+            "Market return is undefined because no estimable asset has finite "
+            f"returns and finite positive total weight at observation index {bad_obs}."
+        )
+
+    norm_w = np.divide(
+        weights, w_sum, out=np.zeros_like(weights, dtype=float), where=w_sum > 0
+    )
+    return np.sum(norm_w * asset_returns, axis=1)

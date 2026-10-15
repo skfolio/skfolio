@@ -72,25 +72,10 @@ class TestEWCovariance:
         with pytest.raises(ValueError, match="half_life must be positive"):
             EWCovariance(half_life=-10).fit(X)
 
-    def test_ew_covariance_legacy_alpha(self, X):
-        """Test EWCovariance with legacy alpha parameter (backward compat)."""
-        with pytest.warns(FutureWarning, match="alpha.*deprecated"):
-            model = EWCovariance(alpha=0.02)
-            model.fit(X)
-
-        assert model.covariance_.shape == (20, 20)
-
-        # alpha=0.02 means half_life=34, which is half_life ~= 34.3
-        model_new = EWCovariance(half_life=34.3)
-        model_new.fit(X)
-        np.testing.assert_almost_equal(
-            model.covariance_, model_new.covariance_, decimal=3
-        )
-
-    def test_ew_covariance_alpha_half_life_conflict(self, X):
-        """Test that specifying both alpha and half_life raises an error."""
-        with pytest.raises(ValueError, match="Cannot specify both"):
-            EWCovariance(alpha=0.2, half_life=20).fit(X)
+    def test_ew_covariance_rejects_removed_alpha(self):
+        """Test that removed alpha parameter is rejected at construction."""
+        with pytest.raises(TypeError, match="alpha"):
+            EWCovariance(alpha=0.02)
 
 
 # ---------------------------------------------------------------------------
@@ -824,3 +809,11 @@ class TestLateListingPSD:
         assert np.all(eigvals >= -1e-10), (
             f"Non-PD with half_life={half_life}: min eigval={eigvals.min():.2e}"
         )
+
+
+def test_ew_covariance_invalid_window_size(X_synth):
+    model = EWCovariance(window_size=0)
+    with pytest.raises(
+        ValueError, match="window_size must be a positive integer, got 0"
+    ):
+        model.fit(X_synth)

@@ -11,13 +11,14 @@ from __future__ import annotations
 
 import warnings
 from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
 import sklearn.base as skb
 import sklearn.utils.validation as skv
 
 from skfolio.exceptions import NonPositiveVarianceError
-from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, ObjArray
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, StrArray
 from skfolio.utils.stats import (
     _squared_mahalanobis_dist_from_cholesky,
     cov_nearest,
@@ -40,7 +41,7 @@ class BaseCovariance(skb.BaseEstimator, ABC):
 
     nearest : bool, default=True
         If this is set to True, the covariance is replaced by the nearest covariance
-        matrix that is positive definite and with a Cholesky decomposition than can be
+        matrix that is positive definite and with a Cholesky decomposition that can be
         computed. The variance is left unchanged.
         A covariance matrix that is not positive definite often occurs in high
         dimensional problems. It can be due to multicollinearity, floating-point
@@ -78,14 +79,14 @@ class BaseCovariance(skb.BaseEstimator, ABC):
     Notes
     -----
     All estimators should specify all the parameters that can be set
-    at the class level in their ``__init__`` as explicit keyword
-    arguments (no ``*args`` or ``**kwargs``).
+    at the class level in their `__init__` as explicit keyword
+    arguments (no `*args` or `**kwargs`).
     """
 
     covariance_: FloatArray
     location_: FloatArray
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
 
     def __init__(
         self,
@@ -93,17 +94,35 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
-    ):
+    ) -> None:
         self.assume_centered = assume_centered
         self.nearest = nearest
         self.higham = higham
         self.higham_max_iteration = higham_max_iteration
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None, **fit_params):
-        pass
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> BaseCovariance:
+        """Fit the covariance estimator.
 
-    def score(self, X_test: ArrayLike, y=None) -> float:
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : Ignored
+            Not used, present for API consistency by convention.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators, if any.
+
+        Returns
+        -------
+        self : BaseCovariance
+            Fitted estimator.
+        """
+        ...
+
+    def score(self, X_test: ArrayLike, y: None = None) -> float:
         r"""Compute the mean log-likelihood of observations under the estimated model.
 
         Evaluates how well the fitted covariance matrix explains new observations,
@@ -149,13 +168,16 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         --------
         >>> import numpy as np
         >>> from skfolio.moments import EmpiricalCovariance, LedoitWolf
-        >>> X_train = np.random.randn(100, 5)
-        >>> X_test = np.random.randn(50, 5)
+        >>> rng = np.random.default_rng(0)
+        >>> X_train = rng.standard_normal((100, 5))
+        >>> X_test = rng.standard_normal((50, 5))
         >>> emp = EmpiricalCovariance().fit(X_train)
         >>> lw = LedoitWolf().fit(X_train)
         >>> # Compare models on held-out data
-        >>> print(f"Empirical: {emp.score(X_test):.2f}")
-        >>> print(f"LedoitWolf: {lw.score(X_test):.2f}")
+        >>> print("Empirical:", emp.score(X_test))
+        Empirical: -6.97...
+        >>> print("LedoitWolf:", lw.score(X_test))
+        LedoitWolf: -6.88...
         """
         skv.check_is_fitted(self, "covariance_")
         X_test = skv.validate_data(
@@ -197,7 +219,12 @@ class BaseCovariance(skb.BaseEstimator, ABC):
             raise ValueError("X_test has no row with any finite retained observation.")
         return float(np.nanmean(row_scores))
 
-    def mahalanobis(self, X_test: ArrayLike) -> FloatArray:
+    def mahalanobis(
+        self,
+        X: ArrayLike | None = None,
+        *,
+        X_test: ArrayLike | None = None,
+    ) -> FloatArray | float:
         r"""Compute the squared Mahalanobis distance of observations.
 
         The squared Mahalanobis distance of an observation :math:`r` is defined as:
@@ -217,7 +244,7 @@ class BaseCovariance(skb.BaseEstimator, ABC):
 
         Parameters
         ----------
-        X_test : array-like of shape (n_observations, n_assets) or (n_assets,)
+        X : array-like of shape (n_observations, n_assets) or (n_assets,)
             Observations for which to compute the squared Mahalanobis distance.
             Each row represents one observation. If 1D, treated as a single
             observation. Assets with non-finite fitted variance are excluded from
@@ -227,6 +254,10 @@ class BaseCovariance(skb.BaseEstimator, ABC):
             different observation patterns, the returned distances follow
             :math:`\chi^2` distributions with different degrees of freedom.
             Rows with no finite retained observation return NaN.
+
+        X_test : array-like of shape (n_observations, n_assets) or (n_assets,), optional
+            Deprecated alias for `X`. It will be removed in version 2.0.
+            Use `X` instead.
 
         Returns
         -------
@@ -238,20 +269,37 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         --------
         >>> import numpy as np
         >>> from skfolio.moments import EmpiricalCovariance
-        >>> X = np.random.randn(100, 3)
+        >>> rng = np.random.default_rng(0)
+        >>> X = rng.standard_normal((100, 3))
         >>> model = EmpiricalCovariance()
         >>> model.fit(X)
+        EmpiricalCovariance()
         >>> distances = model.mahalanobis(X)
-        >>> # Distances follow approximately chi-squared distribution with n_assets DoF
-        >>> print(f"Mean distance: {distances.mean():.2f}, Expected: {3:.2f}")
+        >>> # The mean squared distance should be close to the number of assets (3).
+        >>> print(distances.mean())
+        2.9...
         """
+        # TODO remove deprecated X_test and the X default in v2.0
+        if X_test is not None:
+            if X is not None:
+                raise ValueError("`X_test` is deprecated; pass only `X`.")
+            warnings.warn(
+                "`X_test` is deprecated and will be removed in version 2.0. "
+                "Use `X` instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            X = X_test
+        if X is None:
+            raise TypeError("Missing required argument: `X`.")
+
         skv.check_is_fitted(self, "covariance_")
 
-        is_1d = np.asarray(X_test).ndim == 1
-        X_test = np.atleast_2d(X_test) if is_1d else X_test
-        X_test = skv.validate_data(
+        is_1d = np.asarray(X).ndim == 1
+        X = np.atleast_2d(X) if is_1d else X
+        X = skv.validate_data(
             self,
-            X_test,
+            X,
             reset=False,
             dtype=float,
             ensure_all_finite="allow-nan",
@@ -264,19 +312,19 @@ class BaseCovariance(skb.BaseEstimator, ABC):
             raise ValueError("No finite fitted assets available for inference.")
 
         if not np.all(mask):
-            X_test = X_test[:, mask]
+            X = X[:, mask]
             covariance = self.covariance_[np.ix_(mask, mask)]
             if mean is not None:
                 mean = mean[mask]
         else:
             covariance = self.covariance_
-        if np.isfinite(X_test).all():
-            distances = squared_mahalanobis_dist(X_test, covariance, mean=mean)
-            return float(distances[0]) if is_1d else distances
+        if np.isfinite(X).all():
+            distances = squared_mahalanobis_dist(X, covariance, mean=mean)
+            return float(distances[0]) if is_1d else distances  # ty: ignore[not-subscriptable]
 
-        distances = _mahalanobis_observed_subspaces(X_test, covariance, mean)
+        distances = _mahalanobis_observed_subspaces(X, covariance, mean)
         if np.all(np.isnan(distances)):
-            raise ValueError("X_test has no row with any finite retained observation.")
+            raise ValueError("X has no row with any finite retained observation.")
         if is_1d:
             return float(distances[0])
         return distances

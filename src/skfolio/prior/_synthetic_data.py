@@ -7,16 +7,18 @@
 from __future__ import annotations
 
 import inspect
+from typing import Any
 
 import numpy as np
 import sklearn.base as skb
+import sklearn.utils as sku
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 from skfolio.distribution import VineCopula
 from skfolio.prior._base import BasePrior
 from skfolio.prior._empirical import EmpiricalPrior
-from skfolio.typing import ArrayLike, ObjArray
+from skfolio.typing import ArrayLike, StrArray
 from skfolio.utils.tools import check_estimator
 
 
@@ -26,7 +28,7 @@ class SyntheticData(BasePrior):
     The Synthetic Data model estimates a :class:`~skfolio.prior.ReturnDistribution` by
     fitting a `distribution_estimator` and sampling new returns data from it.
 
-    The default ``distribution_estimator`` is a Regular Vine Copula model. Other common
+    The default `distribution_estimator` is a Regular Vine Copula model. Other common
     choices are Generative Adversarial Networks (GANs) or Variational Autoencoders
     (VAEs).
 
@@ -78,24 +80,30 @@ class SyntheticData(BasePrior):
     >>>
     >>> # Load historical prices and convert them to returns
     >>> prices = load_sp500_dataset()
-    >>> factors = load_factors_dataset()
-    >>> X, y = prices_to_returns(prices, factors)
+    >>> factor_prices = load_factors_dataset()
+    >>> X, factors = prices_to_returns(prices, factor_prices)
     >>>
-    >>> # Instanciate the SyntheticData model and fit it
+    >>> # Instantiate the SyntheticData model and fit it
     >>> model = SyntheticData()
     >>> model.fit(X)
+    SyntheticData()
     >>> print(model.return_distribution_)
+    ReturnDistribution(...)
     >>>
     >>> # Minimum CVaR optimization on synthetic returns
     >>> model = MeanRisk(
     ...    risk_measure=RiskMeasure.CVAR,
     ...    prior_estimator=SyntheticData(
-    ...        distribution_estimator=VineCopula(log_transform=True, n_jobs=-1),
+    ...        distribution_estimator=VineCopula(
+    ...            log_transform=True, n_jobs=-1, random_state=0
+    ...        ),
     ...        n_samples=2000,
     ...    )
     ... )
     >>> model.fit(X)
+    MeanRisk(...)
     >>> print(model.weights_)
+    [0.0021 0.     0.     ... 0.     0.1559 0.0641]
     >>>
     >>> # Minimum CVaR optimization on Stressed Factors
     >>> factor_model = TimeSeriesFactorModel(
@@ -104,20 +112,25 @@ class SyntheticData(BasePrior):
     ...            central_assets=["QUAL"],
     ...            log_transform=True,
     ...            n_jobs=-1,
+    ...            random_state=0,
     ...        ),
     ...        n_samples=5000,
     ...        sample_args=dict(conditioning={"QUAL": -0.2}),
     ...    )
     ... )
     >>> model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
-    >>> model.fit(X, y)
+    >>> model.fit(X, factors=factors)
+    MeanRisk(...)
     >>> print(model.weights_)
+    [0.     0.     0.     ... 0.0616 0.     0.9384 0.    ]
     >>>
     >>> # Stress Test the Portfolio
     >>> factor_model.set_params(factor_prior_estimator__sample_args=dict(
     ...     conditioning={"QUAL": -0.5}
     ... ))
-    >>> factor_model.fit(X,y)
+    TimeSeriesFactorModel(...)
+    >>> factor_model.fit(X, factors=factors)
+    TimeSeriesFactorModel(...)
     >>> stressed_dist = factor_model.return_distribution_
     >>> stressed_ptf = model.predict(stressed_dist)
     """
@@ -125,27 +138,36 @@ class SyntheticData(BasePrior):
     distribution_estimator_: skb.BaseEstimator
     prior_estimator_: BasePrior
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
 
     def __init__(
         self,
         distribution_estimator: skb.BaseEstimator | None = None,
         n_samples: int = 1000,
         sample_args: dict | None = None,
-    ):
+    ) -> None:
         self.distribution_estimator = distribution_estimator
         self.n_samples = n_samples
         self.sample_args = sample_args
 
-    def get_metadata_routing(self):
-        # noinspection PyTypeChecker
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of
+        `distribution_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
-            distance_estimator=self.distribution_estimator,
+            distribution_estimator=self.distribution_estimator,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> SyntheticData:
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> SyntheticData:
         """Fit the Synthetic Data estimator.
 
         Parameters
@@ -159,7 +181,7 @@ class SyntheticData(BasePrior):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 
@@ -178,7 +200,6 @@ class SyntheticData(BasePrior):
         _check_sample_method(self.distribution_estimator_)
 
         # fitting distribution estimator on prior returns
-        # noinspection PyUnresolvedReferences
         self.distribution_estimator_.fit(
             X, y, **routed_params.distribution_estimator.fit
         )
@@ -189,7 +210,6 @@ class SyntheticData(BasePrior):
 
         # sample from the distribution estimator
         sample_args = self.sample_args if self.sample_args is not None else {}
-        # noinspection PyUnresolvedReferences
         synthetic_data = self.distribution_estimator_.sample(
             n_samples=self.n_samples, **sample_args
         )
@@ -197,9 +217,18 @@ class SyntheticData(BasePrior):
         # When performing conditional sampling, the conditioning samples are often
         # constant. To avoid null variance, we add a small white noise.
         constant_returns = np.var(synthetic_data, axis=0) < 1e-14
-        if np.any(constant_returns):
-            noise = 1e-6 * np.random.randn(len(synthetic_data), 1)
-            synthetic_data[:, constant_returns] += noise
+        n_constant = int(np.sum(constant_returns))
+        if n_constant:
+            rng = sku.check_random_state(
+                getattr(self.distribution_estimator_, "random_state", None)
+            )
+            # Draw a new seed for the noise. Reusing the estimator's seed could
+            # repeat the Gaussian draws used to generate an asset's returns,
+            # making the noise perfectly correlated with that asset.
+            noise_rng = sku.check_random_state(rng.randint(np.iinfo(np.int32).max))
+            synthetic_data[:, constant_returns] += 1e-6 * noise_rng.randn(
+                len(synthetic_data), n_constant
+            )
 
         # Fit empirical posterior estimator
         posterior_estimator = EmpiricalPrior()

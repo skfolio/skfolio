@@ -4,4 +4,3 @@ Mean-Risk
 ---------
 
 Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
-

@@ -1,19 +1,9 @@
-:og:description: API reference for skfolio: detailed documentation of functions, classes, and modules for portfolio optimization and risk management in Python.
+:og:description: API reference for skfolio: detailed documentation of functions, classes, and modules for portfolio optimization, factor model construction, and risk management in Python.
 
 .. meta::
-    :keywords: python portfolio optimization,
-               quantitative finance,
-               risk management,
-               portfolio backtesting,
-               algorithmic trading,
-               robust optimization,
-               scikit-learn integration,
-               financial modeling,
-               stress testing,
-               skfolio
     :description: API reference for skfolio: detailed documentation of functions,
-                  classes, and modules for portfolio optimization and risk management
-                  in Python.
+                  classes, and modules for portfolio optimization, factor model
+                  construction, and risk management in Python.
 
 .. _api:
 
@@ -78,6 +68,8 @@ Functions
     measures.third_central_moment
     measures.fourth_central_moment
     measures.fourth_lower_partial_moment
+    measures.skew
+    measures.kurtosis
     measures.cvar
     measures.mean_absolute_deviation
     measures.value_at_risk
@@ -152,6 +144,85 @@ Classes
     :template: class.rst
 
     population.Population
+
+
+.. _containers_ref:
+
+:mod:`skfolio.containers`: Containers
+=====================================
+
+.. automodule:: skfolio.containers
+    :no-members:
+    :no-inherited-members:
+
+Classes
+-------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    containers.AssetPanel
+    containers.AssetPanelView
+
+Field Base Class
+----------------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    containers.BaseField
+    containers.Field2D
+    containers.Field3D
+    containers.FieldCategorical
+
+Enum
+----
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    containers.InactivePolicy
+
+Functions
+---------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :toctree: generated/
+    :template: function.rst
+
+    containers.concat
+
+
+.. _base_ref:
+
+:mod:`skfolio.base`: Base Estimators
+====================================
+
+.. automodule:: skfolio.base
+   :no-members:
+   :no-inherited-members:
+
+Classes
+-------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    base.BaseAssetPanelTransformer
+    base.BaseComposition
 
 
 .. _optimization_base_ref:
@@ -234,12 +305,12 @@ Classes
     optimization.DistributionallyRobustCVaR
 
 
-.. _optimization_cluster_ref:
+.. _optimization_hierarchical_ref:
 
-:mod:`skfolio.optimization.cluster`: Clustering Optimization Estimators
-==========================================================================
+:mod:`skfolio.optimization.hierarchical`: Hierarchical Optimization Estimators
+==============================================================================
 
-.. automodule:: skfolio.optimization.cluster
+.. automodule:: skfolio.optimization.hierarchical
    :no-members:
    :no-inherited-members:
 
@@ -252,7 +323,6 @@ Classes
     :toctree: generated/
     :template: class.rst
 
-    optimization.BaseHierarchicalOptimization
     optimization.HierarchicalRiskParity
     optimization.HierarchicalEqualRiskContribution
     optimization.SchurComplementary
@@ -276,7 +346,6 @@ Classes
     :toctree: generated/
     :template: class.rst
 
-    optimization.BaseComposition
     optimization.StackingOptimization
 
 .. _prior_ref:
@@ -298,6 +367,8 @@ Model Dataclass
     :template: class.rst
 
     prior.ReturnDistribution
+    prior.FactorModel
+    prior.CovarianceSqrt
 
 Base Class
 ----------
@@ -322,6 +393,7 @@ Classes
     prior.EmpiricalPrior
     prior.BlackLitterman
     prior.TimeSeriesFactorModel
+    prior.CharacteristicsFactorModel
     prior.SyntheticData
     prior.EntropyPooling
     prior.OpinionPooling
@@ -337,6 +409,187 @@ Loading Matrix Classes for Factor Models
 
     prior.BaseLoadingMatrix
     prior.LoadingMatrixRegression
+
+.. _factor_model_ref:
+
+Factor Model Components
+=======================
+
+.. automodule:: skfolio.descriptor
+   :no-members:
+   :no-inherited-members:
+
+Descriptor Base Classes
+-----------------------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    descriptor.BaseDescriptor
+
+Descriptors
+-----------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    descriptor.AccrualsCashFlow
+    descriptor.AnalystDispersionToPrice
+    descriptor.AssetTurnover
+    descriptor.AssetsGrowthRate
+    descriptor.BookLeverage
+    descriptor.BookToPrice
+    descriptor.CapexToAssetsChangeInIntensity
+    descriptor.CashFlowToAssets
+    descriptor.CashFlowToPrice
+    descriptor.ChangeInIntensity
+    descriptor.ChangeToScale
+    descriptor.DaysToCover
+    descriptor.DebtToAssets
+    descriptor.DividendToPrice
+    descriptor.EWAmihudIlliquidity
+    descriptor.EWDownsideBeta
+    descriptor.EWDownsideVolatility
+    descriptor.EWMacroSensitivity
+    descriptor.EWMarketBeta
+    descriptor.EWMomentum
+    descriptor.EWResidualDownsideVolatility
+    descriptor.EWResidualVolatility
+    descriptor.EWShareTurnover
+    descriptor.EWVolatility
+    descriptor.EarningsChangeToPrice
+    descriptor.EarningsToPrice
+    descriptor.EbitdaToEnterpriseValue
+    descriptor.ForwardDividendToPrice
+    descriptor.ForwardEarningsToPrice
+    descriptor.GrossMargin
+    descriptor.GrossProfitability
+    descriptor.GrowthRate
+    descriptor.IssuanceGrowthRate
+    descriptor.LogMarketCap
+    descriptor.MarketLeverage
+    descriptor.MaxReturn
+    descriptor.Passthrough
+    descriptor.ReturnOnAssets
+    descriptor.ReturnOnEquity
+    descriptor.Reversal
+    descriptor.RollingMomentum
+    descriptor.SalesGrowthRate
+    descriptor.SalesToEnterpriseValue
+    descriptor.SalesToPrice
+    descriptor.ShareholderYield
+    descriptor.ShortInterest
+
+.. automodule:: skfolio.factor_exposure
+   :no-members:
+   :no-inherited-members:
+
+Factor Exposure Estimators
+--------------------------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    factor_exposure.BaseFactorExposure
+    factor_exposure.DerivedFactor
+    factor_exposure.FixedWeightedFactor
+    factor_exposure.GlobalFactor
+    factor_exposure.OneHotCategoricalFactors
+
+.. automodule:: skfolio.alpha
+   :no-members:
+   :no-inherited-members:
+
+Alpha Estimators
+----------------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    alpha.BaseAlpha
+    alpha.EWSharpeOptimalAlpha
+    alpha.FixedWeightedAlpha
+    alpha.PredictorAlpha
+
+Alpha Evaluation
+----------------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    alpha.AlphaForecastComparison
+    alpha.AlphaForecastEvaluation
+
+Functions
+---------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :toctree: generated/
+    :template: function.rst
+
+    alpha.alpha_forecast_evaluation
+
+Enum
+----
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    alpha.ForecastUnit
+    utils.stats.CSWeighting
+    utils.stats.CorrelationMethod
+
+.. automodule:: skfolio.attribution
+   :no-members:
+   :no-inherited-members:
+
+Attribution
+-----------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    attribution.Attribution
+    attribution.AssetBreakdown
+    attribution.AssetByFactorContribution
+    attribution.BaseBreakdown
+    attribution.Component
+    attribution.FactorBreakdown
+    attribution.FamilyBreakdown
+
+Attribution Functions
+---------------------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :toctree: generated/
+    :template: function.rst
+
+    attribution.predicted_factor_attribution
+    attribution.realized_factor_attribution
+    attribution.rolling_realized_factor_attribution
 
 .. _mu_ref:
 
@@ -435,6 +688,7 @@ Enum
     :toctree: generated/
     :template: class.rst
 
+    moments.GeodesicShrinkageTarget
     moments.RegimeAdjustmentMethod
     moments.RegimeAdjustmentTarget
 
@@ -455,6 +709,7 @@ Classes
     moments.LedoitWolf
     moments.OAS
     moments.ShrunkCovariance
+    moments.GeodesicShrinkageCovariance
     moments.GraphicalLassoCV
     moments.ImpliedCovariance
     moments.RegimeAdjustedEWCovariance
@@ -494,6 +749,26 @@ Classes
     distance.CovarianceDistance
     distance.DistanceCorrelation
     distance.MutualInformation
+
+.. _seriation_ref:
+
+:mod:`skfolio.seriation`: Seriation Estimators
+==============================================
+
+.. automodule:: skfolio.seriation
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    seriation.BaseSeriation
+    seriation.HierarchicalSeriation
+    seriation.SpectralSeriation
 
 .. _cluster_ref:
 
@@ -535,6 +810,7 @@ Model Dataclass
     :template: class.rst
 
     uncertainty_set.UncertaintySet
+    uncertainty_set.CompactCovarianceUncertaintySet
 
 
 Base Classes
@@ -562,6 +838,8 @@ Classes
     uncertainty_set.EmpiricalCovarianceUncertaintySet
     uncertainty_set.BootstrapMuUncertaintySet
     uncertainty_set.BootstrapCovarianceUncertaintySet
+    uncertainty_set.OrthogonalMuUncertaintySet
+    uncertainty_set.OrthogonalCovarianceUncertaintySet
 
 
 .. _pre_selection_ref:
@@ -721,6 +999,7 @@ Functions
     datasets.load_ftse100_dataset
     datasets.load_nasdaq_dataset
     datasets.load_sp500_implied_vol_dataset
+    datasets.make_synthetic_characteristics
 
 .. _preprocessing_ref:
 
@@ -843,13 +1122,14 @@ Functions
     stats.corr_to_cov
     stats.cov_nearest
     stats.cov_to_corr
+    stats.cs_pearson_correlation
     stats.cs_rank
-    stats.cs_rank_correlation
-    stats.cs_weighted_correlation
+    stats.cs_spearman_correlation
     stats.inverse_multiply
     stats.inverse_volatility_weights
     stats.safe_cholesky
     stats.is_cholesky_dec
+    stats.is_positive_semidefinite
     stats.minimize_relative_weight_deviation
     stats.multiply_by_inverse
     stats.n_bins_freedman
@@ -861,6 +1141,53 @@ Functions
     stats.squared_standardized_euclidean_dist
     stats.symmetric_step_up_matrix
     stats.symmetrize
+
+.. _validation_ref:
+
+:mod:`skfolio.utils.validation`: Validation
+===========================================
+
+Functions
+---------
+.. currentmodule:: skfolio.utils
+
+.. autosummary::
+    :toctree: generated/
+    :template: function.rst
+
+    validation.validate_asset_panel
+    validation.validate_cross_sectional_data
+
+.. _distribution_ref:
+
+:mod:`skfolio.distribution`: Distribution Estimators
+====================================================
+
+.. automodule:: skfolio.distribution
+   :no-members:
+   :no-inherited-members:
+
+Base Class
+----------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    distribution.BaseDistribution
+
+Enum
+----
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    distribution.SelectionCriterion
 
 .. _univariate_distribution_ref:
 
@@ -914,6 +1241,17 @@ Functions
 .. automodule:: skfolio.distribution.multivariate
    :no-members:
    :no-inherited-members:
+
+Base Class
+----------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    distribution.BaseMultivariateDist
 
 Classes
 -------
@@ -996,3 +1334,29 @@ Enum
     :template: class.rst
 
     distribution.CopulaRotation
+
+.. _exceptions_ref:
+
+:mod:`skfolio.exceptions`: Exceptions
+=====================================
+
+.. automodule:: skfolio.exceptions
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    exceptions.SkfolioError
+    exceptions.OptimizationError
+    exceptions.ConvexOptimizationError
+    exceptions.SolverError
+    exceptions.DuplicateGroupsError
+    exceptions.EquationToMatrixError
+    exceptions.FactorNotFoundError
+    exceptions.GroupNotFoundError
+    exceptions.NonPositiveVarianceError

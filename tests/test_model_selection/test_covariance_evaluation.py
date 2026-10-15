@@ -109,7 +109,7 @@ def comparison_multi_portfolio():
 
 class TestCovarianceForecastEvaluation:
     def test_frozen(self, evaluation_integer_index):
-        with pytest.raises(AttributeError):
+        with pytest.raises(AttributeError, match="cannot assign to field 'horizon'"):
             evaluation_integer_index.horizon = 10
 
     def test_fields(self, evaluation_full):
@@ -294,6 +294,14 @@ class TestPlots:
         fig = evaluation_full.plot_calibration(window=21)
         assert isinstance(fig, go.Figure)
 
+    @pytest.mark.parametrize(
+        "plot_method",
+        ["plot_calibration", "plot_qlike_loss", "plot_exceedance"],
+    )
+    def test_window_too_large_raises(self, evaluation_full, plot_method):
+        with pytest.raises(ValueError, match=r"window=201.*n_observations=200"):
+            getattr(evaluation_full, plot_method)(window=201)
+
     def test_custom_title(self, evaluation_full):
         fig = evaluation_full.plot_calibration(title="Custom Title")
         assert fig.layout.title.text == "Custom Title"
@@ -302,7 +310,8 @@ class TestPlots:
 class TestCovarianceForecastComparison:
     def test_construction(self, comparison):
         assert len(comparison.evaluations) == 2
-        assert comparison._names == ["EWCov(30)", "EWCov(60)"]
+        names = [name for name, _ in comparison._named_evaluations()]
+        assert names == ["EWCov(30)", "EWCov(60)"]
 
     def test_auto_names_from_evaluation(self):
         ev1 = _make_eval(42)
@@ -310,20 +319,23 @@ class TestCovarianceForecastComparison:
         object.__setattr__(ev1, "name", "MyEstimator1")
         object.__setattr__(ev2, "name", "MyEstimator2")
         comp = CovarianceForecastComparison([ev1, ev2])
-        assert comp._names == ["MyEstimator1", "MyEstimator2"]
+        names = [name for name, _ in comp._named_evaluations()]
+        assert names == ["MyEstimator1", "MyEstimator2"]
 
     def test_auto_names_fallback(self):
         comp = CovarianceForecastComparison(
             [_make_eval(42), _make_eval(123)],
         )
-        assert comp._names == ["Estimator 0", "Estimator 1"]
+        names = [name for name, _ in comp._named_evaluations()]
+        assert names == ["Estimator 0", "Estimator 1"]
 
     def test_names_override(self):
         comp = CovarianceForecastComparison(
             [_make_eval(42), _make_eval(123)],
             names=["Short", "Long"],
         )
-        assert comp._names == ["Short", "Long"]
+        names = [name for name, _ in comp._named_evaluations()]
+        assert names == ["Short", "Long"]
 
     def test_names_length_mismatch_raises(self):
         with pytest.raises(ValueError, match="length"):
@@ -337,7 +349,9 @@ class TestCovarianceForecastComparison:
             CovarianceForecastComparison([])
 
     def test_frozen(self, comparison):
-        with pytest.raises(AttributeError):
+        with pytest.raises(
+            AttributeError, match="cannot assign to field 'evaluations'"
+        ):
             comparison.evaluations = []
 
     def test_summary(self, comparison):
@@ -480,6 +494,24 @@ class TestCovarianceForecastComparison:
     def test_custom_window(self, comparison):
         fig = comparison.plot_calibration(window=21)
         assert isinstance(fig, go.Figure)
+
+    @pytest.mark.parametrize(
+        "plot_method",
+        ["plot_calibration", "plot_qlike_loss", "plot_exceedance"],
+    )
+    def test_window_too_large_raises(self, comparison, plot_method):
+        with pytest.raises(ValueError, match=r"window=201.*n_observations=200"):
+            getattr(comparison, plot_method)(window=201)
+
+    @pytest.mark.parametrize(
+        "plot_method",
+        ["plot_calibration", "plot_qlike_loss"],
+    )
+    def test_multi_portfolio_window_too_large_raises(
+        self, comparison_multi_portfolio, plot_method
+    ):
+        with pytest.raises(ValueError, match=r"window=201.*n_observations=200"):
+            getattr(comparison_multi_portfolio, plot_method)(window=201)
 
 
 class TestBatchCovarianceForecastEvaluation:
@@ -648,3 +680,22 @@ class TestBatchCovarianceForecastEvaluation:
         assert np.isfinite(ev.diagonal_calibration_ratio[0])
         assert np.all(np.isfinite(ev.portfolio_standardized_return[0]))
         assert np.all(np.isfinite(ev.portfolio_variance_qlike_loss[0]))
+
+
+def test_covariance_forecast_evaluation_skips_fully_inactive_test_window(X_array):
+    ev_clean = covariance_forecast_evaluation(
+        LedoitWolf(), X_array, train_size=100, test_size=5
+    )
+    X_nan = X_array.copy()
+    # Last test window (indices 495:500) has no finite observation for any asset.
+    X_nan[495:, :] = np.nan
+    ev = covariance_forecast_evaluation(
+        LedoitWolf(), X_nan, train_size=100, test_size=5
+    )
+    assert (
+        ev.mahalanobis_calibration_ratio.shape[0]
+        == ev_clean.mahalanobis_calibration_ratio.shape[0] - 1
+    )
+    np.testing.assert_allclose(
+        ev.mahalanobis_calibration_ratio, ev_clean.mahalanobis_calibration_ratio[:-1]
+    )

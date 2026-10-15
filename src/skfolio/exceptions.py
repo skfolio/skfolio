@@ -9,35 +9,64 @@ classes used across skfolio.
 
 from __future__ import annotations
 
+import cvxpy as cp
+
 __all__ = [
+    "ConvexOptimizationError",
     "DuplicateGroupsError",
     "EquationToMatrixError",
+    "FactorNotFoundError",
     "GroupNotFoundError",
     "NonPositiveVarianceError",
     "OptimizationError",
+    "SkfolioError",
     "SolverError",
 ]
 
 
-class OptimizationError(Exception):
-    """Optimization Did not converge."""
+class SkfolioError(Exception):
+    """Base class for all custom skfolio exceptions."""
 
 
-class SolverError(Exception):
-    """Solver error."""
+class OptimizationError(SkfolioError):
+    """An optimizer could not compute a valid portfolio allocation.
+
+    See :ref:`optimization_failure_handling` for fallback behavior and
+    :ref:`online_failure_handling` for online continuation and restart rules.
+    """
 
 
-class EquationToMatrixError(Exception):
+class ConvexOptimizationError(OptimizationError, cp.SolverError):
+    """A convex optimization step could not produce valid portfolio weights.
+
+    This includes infeasible problems and unusable numerical results. It can be caught
+    as `OptimizationError` or `cvxpy.SolverError`. See
+    :ref:`optimization_failure_handling`.
+    """
+
+
+class SolverError(SkfolioError):
+    """A solver failed during model estimation, such as entropy pooling.
+
+    Portfolio optimization failures use `OptimizationError` instead.
+    """
+
+
+class EquationToMatrixError(SkfolioError):
     """Error while processing equations."""
 
 
-class GroupNotFoundError(Exception):
+class GroupNotFoundError(SkfolioError):
     """Group name not found in the groups."""
 
 
-class DuplicateGroupsError(Exception):
+class FactorNotFoundError(SkfolioError):
+    """Factor name not found in factor_groups or loading_matrix not provided."""
+
+
+class DuplicateGroupsError(SkfolioError):
     """Group name appear in multiple group levels."""
 
 
-class NonPositiveVarianceError(Exception):
+class NonPositiveVarianceError(SkfolioError):
     """Variance negative or null."""

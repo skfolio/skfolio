@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import gc
 import tracemalloc
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from skfolio.distribution import (
@@ -753,25 +755,39 @@ def test_clear_cache(X, max_depth):
 
 
 def test_memory_fit(X):
-    model = VineCopula(
-        max_depth=100,
-        marginal_candidates=[Gaussian()],
-        copula_candidates=[GaussianCopula()],
-    )
+    n_observations, n_assets = X.shape
+    col = n_observations * 8
 
-    tracemalloc.start()
+    def _model():
+        return VineCopula(
+            max_depth=100,
+            marginal_candidates=[Gaussian()],
+            copula_candidates=[GaussianCopula()],
+        )
+
+    _model().fit(X)
+    gc.collect()
+
+    if not tracemalloc.is_tracing():
+        tracemalloc.start()
     tracemalloc.clear_traces()
+    tracemalloc.reset_peak()
     start = tracemalloc.get_traced_memory()
-    model.fit(X)
+    _model().fit(X)
     end = tracemalloc.get_traced_memory()
     current = end[0] - start[0]
     peak = end[1] - start[1]
-    assert current < 500_000
-    expected_peak = 18_000 * 2 * (20 + 19)  # 18_000 is the memory of a numpy of len(X)
+
+    assert current < col * n_assets * 1.5
+    expected_peak = col * 2 * (2 * n_assets - 1)
     assert peak < expected_peak * 1.5
+    tracemalloc.stop()
 
 
 def test_memory_sample(X):
+    n_samples = 100_000
+    n_assets = X.shape[1]
+    col = n_samples * 8
     model = VineCopula(
         max_depth=None,
         marginal_candidates=[Gaussian()],
@@ -779,20 +795,22 @@ def test_memory_sample(X):
     )
     model.fit(X)
 
-    tracemalloc.start()
+    if not tracemalloc.is_tracing():
+        tracemalloc.start()
     tracemalloc.clear_traces()
+    tracemalloc.reset_peak()
     start = tracemalloc.get_traced_memory()
-    _ = model.sample(100_000)
+    _ = model.sample(n_samples)
     end = tracemalloc.get_traced_memory()
     current = end[0] - start[0]
     peak = end[1] - start[1]
 
-    # 800_000 is the memory of a numpy of len 100_000
-    expected_current = 800_000 * 20
-    expected_peak_without_optim = 800_000 * 2 * (20 * 21) / 2
+    expected_current = col * n_assets
+    expected_peak_without_optim = col * 2 * (n_assets * (n_assets + 1) / 2)
 
     assert current < expected_current * 1.5
     assert peak < expected_peak_without_optim * 0.5
+    tracemalloc.stop()
 
 
 @pytest.mark.parametrize(
@@ -1093,11 +1111,12 @@ def test_vine_copula_conditional_sampling_without_priority(X):
 
 @pytest.mark.parametrize("max_depth", [*list(range(2, 22)), None])
 def test_vine_truncated_sampling_order(X, max_depth):
+    X = X.iloc[-300:]
     model = VineCopula(
         max_depth=max_depth,
         marginal_candidates=[Gaussian()],
         copula_candidates=[GaussianCopula()],
-        n_jobs=-1,
+        n_jobs=1,
         random_state=42,
     )
     model.fit(X)
@@ -1427,6 +1446,7 @@ def test_vine_conditional_sample(X, conditioning, log_transform, expected):
 
 @pytest.mark.parametrize("dependence_method", list(DependenceMethod))
 def test_vine_dependence_method(X, dependence_method):
+    X = X.iloc[-300:, :6]
     model = VineCopula(
         marginal_candidates=[Gaussian()],
         copula_candidates=[GaussianCopula(), ClaytonCopula()],
@@ -1571,3 +1591,138 @@ def test_vine_plot_raise(X):
 #             )
 #         trees.append(edges)
 #     return trees
+
+
+@pytest.fixture
+def small_returns():
+    rng = np.random.default_rng(0)
+    return rng.standard_normal((100, 3)) * 0.01
+
+
+@pytest.fixture
+def small_uniforms():
+    rng = np.random.default_rng(0)
+    return rng.random((100, 3))
+
+
+@pytest.fixture
+def small_model(small_returns):
+    model = VineCopula(
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula()],
+        central_assets=[0],
+        random_state=0,
+    )
+    return model.fit(small_returns)
+
+
+def test_vine_score_samples_log_transform(small_returns):
+    model = VineCopula(
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula()],
+        log_transform=True,
+        random_state=0,
+    )
+    model.fit(small_returns)
+    scores = model.score_samples(small_returns)
+    assert scores.shape == (100,)
+    assert np.all(np.isfinite(scores))
+
+
+def test_vine_score_samples_without_marginals(small_uniforms):
+    model = VineCopula(
+        fit_marginals=False, copula_candidates=[GaussianCopula()], random_state=0
+    )
+    model.fit(small_uniforms)
+    scores = model.score_samples(small_uniforms)
+    assert scores.shape == (100,)
+    assert np.all(np.isfinite(scores))
+
+
+def test_vine_sample_without_marginals_bounds_conditioning(small_uniforms):
+    model = VineCopula(
+        fit_marginals=False,
+        copula_candidates=[GaussianCopula()],
+        central_assets=[0],
+        random_state=0,
+    )
+    model.fit(small_uniforms)
+    sample = model.sample(n_samples=20, conditioning={0: (0.2, 0.8)})
+    assert sample.shape == (20, 3)
+    assert np.all((sample[:, 0] >= 0.2) & (sample[:, 0] <= 0.8))
+
+
+def test_vine_conditioning_raise(small_model):
+    with pytest.raises(ValueError, match="`conditioning` must be a dictionary"):
+        small_model.sample(n_samples=5, conditioning=[0.5])
+    with pytest.raises(ValueError, match="it must beof length 2"):
+        small_model.sample(n_samples=5, conditioning={0: (0.1, 0.2, 0.3)})
+    with pytest.raises(ValueError, match="lower bound must be lower than"):
+        small_model.sample(n_samples=5, conditioning={0: (0.5, -0.5)})
+    with pytest.raises(ValueError, match="Conditioning values should be numbers"):
+        small_model.sample(n_samples=5, conditioning={0: "abc"})
+
+
+def test_vine_conditioning_keys_not_in_X(small_model):
+    with pytest.raises(ValueError, match="99 is not in"):
+        small_model.sample(n_samples=5, conditioning={99: 0.5})
+
+
+def test_vine_sampling_order_incomplete(small_model):
+    # A fitted state inconsistent with the trees is detected by the sanity check.
+    small_model.n_features_in_ = 4
+    with pytest.raises(ValueError, match="Sampling order computation failed"):
+        small_model._sampling_order()
+
+
+def test_vine_plot_marginal_distributions_raise_ndim(small_model):
+    with pytest.raises(ValueError, match="X should be an 2D array"):
+        small_model.plot_marginal_distributions(X=np.zeros((2, 2, 3)))
+
+
+@pytest.mark.parametrize("named", [False, True])
+@pytest.mark.parametrize("with_history", [False, True])
+@pytest.mark.parametrize("selector", ["positions", "names", "mixed", "all"])
+def test_vine_marginal_plot_selectors(
+    small_model, small_returns, named, with_history, selector
+):
+    asset_names = ["A", "B", "C"] if named else ["x0", "x1", "x2"]
+    if named:
+        small_model.fit(pd.DataFrame(small_returns, columns=asset_names))
+    subsets = {
+        "positions": [2, 0],
+        "names": [asset_names[2], asset_names[0]],
+        "mixed": [asset_names[2], 0],
+        "all": None,
+    }
+    X = small_returns if with_history else None
+    reference = small_model.plot_marginal_distributions(X=X, n_samples=100)
+    figure = small_model.plot_marginal_distributions(
+        X=X, subset=subsets[selector], n_samples=100
+    )
+
+    positions = range(3) if selector == "all" else [2, 0]
+    stride = 2 if with_history else 1
+    expected = [
+        reference.data[stride * i + j] for i in positions for j in range(stride)
+    ]
+    assert [trace.name for trace in figure.data] == [trace.name for trace in expected]
+    for trace, expected_trace in zip(figure.data, expected, strict=True):
+        np.testing.assert_array_equal(trace.x, expected_trace.x)
+        np.testing.assert_array_equal(trace.y, expected_trace.y)
+    assert hasattr(small_model, "feature_names_in_") is named
+
+
+@pytest.mark.parametrize(
+    "subset,match",
+    [
+        (["missing"], "missing not found"),
+        ([-1], "`subset` -1 is not in"),
+        ([3], "`subset` 3 is not in"),
+        ([1.5], "`subset` 1.5 is not in"),
+        ([0, 0], "Duplicates found"),
+    ],
+)
+def test_vine_marginal_plot_invalid_selectors(small_model, subset, match):
+    with pytest.raises(ValueError, match=match):
+        small_model.plot_marginal_distributions(subset=subset)

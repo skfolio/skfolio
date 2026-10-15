@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import scipy.special as scs
@@ -18,9 +20,10 @@ import sklearn.utils.parallel as skp
 import sklearn.utils.validation as skv
 
 import skfolio.measures as sm
-from skfolio.prior._base import BasePrior, ReturnDistribution
-from skfolio.typing import ArrayLike, FloatArray, ObjArray
-from skfolio.utils.composition import BaseComposition
+from skfolio.base import BaseComposition
+from skfolio.prior._base import BasePrior
+from skfolio.prior._model import ReturnDistribution
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 from skfolio.utils.tools import check_estimator, fit_single_estimator
 
 
@@ -53,9 +56,10 @@ class OpinionPooling(BasePrior, BaseComposition):
         :class:`~skfolio.prior.EntropyPooling`.
 
     opinion_probabilities : array-like of float, optional
-        Probability mass assigned to each opinion, in [0,1] summing to ≤1.
-        Any leftover mass is assigned to the uniform (uninformative) prior.
-        The default (None), is to assign the same probability to each opinion.
+        Probability mass assigned to each opinion. Entries must be in :math:`[0, 1]`
+        and sum to at most one. Any leftover mass is assigned to the uniform
+        (uninformative) prior.
+        The default (`None`) assigns the same probability to each opinion.
 
     prior_estimator : BasePrior, optional
         Common prior for all `estimators`. If provided, each estimator from `estimators`
@@ -140,10 +144,10 @@ class OpinionPooling(BasePrior, BaseComposition):
     prior_estimator_ : BasePrior
         Fitted `prior_estimator` if provided.
 
-    opinion_probabilities_ : ndarray of shape (n_opinions,)
+    opinion_probabilities_ : ndarray of shape (n_opinions,) or (n_opinions + 1,)
         Final opinion probabilities after applying the KL-divergence penalty.
-        If the initial `opinion_probabilities` doesn't sum to one, the last element of
-        `opinion_probabilities_` is the probability assigned to the uniform prior.
+        If the initial `opinion_probabilities` sum to less than one, the last element
+        of `opinion_probabilities_` is the probability assigned to the uniform prior.
 
     n_features_in_ : int
         Number of assets seen during `fit`.
@@ -192,16 +196,30 @@ class OpinionPooling(BasePrior, BaseComposition):
     ... )
     >>>
     >>> opinion_pooling.fit(X)
+    OpinionPooling(...)
     >>>
     >>> print(opinion_pooling.return_distribution_.sample_weight)
-    >>>
-    >>> # CVaR Risk Parity optimization on opinion Pooling
+    [0.000117... 0.000117... 0.000117... ... 0.000117... 0.000117...
+     0.000117...]
+
+    We use SCS (`pip install scs`) for CVaR risk parity because concentrated scenario
+    probabilities can cause numerical difficulties for CLARABEL. To keep CLARABEL as
+    the primary solver and fall back to SCS on failure, see
+    :ref:`sphx_glr_auto_examples_mean_risk_plot_17_failure_and_fallbacks.py`.
+
     >>> model = RiskBudgeting(
     ...     risk_measure=RiskMeasure.CVAR,
-    ...     prior_estimator=opinion_pooling
+    ...     prior_estimator=opinion_pooling,
+    ...     solver="SCS",
+    ...     solver_params={"eps_abs": 1e-6, "eps_rel": 1e-6, "max_iters": 100_000},
     ... )
     >>> model.fit(X)
+    RiskBudgeting(...)
     >>> print(model.weights_)
+    [0.041... 0.031... 0.029... 0.044... 0.038... 0.033...
+     0.034... 0.077... 0.032... 0.067... 0.059... 0.057...
+     0.040... 0.056... 0.059... 0.077... 0.053... 0.038...
+     0.075... 0.050...]
     >>>
     >>> # Stress Test the Portfolio
     >>> opinion_1 = EntropyPooling(cvar_views=["AMD == 0.05"])
@@ -211,6 +229,7 @@ class OpinionPooling(BasePrior, BaseComposition):
     ...     opinion_probabilities=[0.6, 0.4],
     ... )
     >>> opinion_pooling.fit(X)
+    OpinionPooling(...)
     >>>
     >>> stressed_dist = opinion_pooling.return_distribution_
     >>>
@@ -222,7 +241,7 @@ class OpinionPooling(BasePrior, BaseComposition):
     opinion_probabilities_: FloatArray
     prior_estimator_: BasePrior
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
 
     def __init__(
         self,
@@ -232,7 +251,7 @@ class OpinionPooling(BasePrior, BaseComposition):
         is_linear_pooling: bool = True,
         divergence_penalty: float = 0.0,
         n_jobs: int | None = None,
-    ):
+    ) -> None:
         self.estimators = estimators
         self.opinion_probabilities = opinion_probabilities
         self.prior_estimator = prior_estimator
@@ -241,7 +260,7 @@ class OpinionPooling(BasePrior, BaseComposition):
         self.n_jobs = n_jobs
 
     @property
-    def named_estimators(self):
+    def named_estimators(self) -> sku.Bunch:
         """Dictionary to access any fitted sub-estimators by name.
 
         Returns
@@ -250,15 +269,17 @@ class OpinionPooling(BasePrior, BaseComposition):
         """
         return sku.Bunch(**dict(self.estimators))
 
-    def _validate_estimators(self) -> tuple[list[str], list[BasePrior]]:
+    def _validate_estimators(
+        self,
+    ) -> tuple[tuple[str, ...], tuple[BasePrior, ...]]:
         """Validate the `estimators` parameter.
 
         Returns
         -------
-        names : list[str]
-            The list of estimators names.
-        estimators : list[BaseOptimization
-            The list of optimization estimators.
+        names : tuple of str
+            The estimators names.
+        estimators : tuple of BasePrior
+            The prior estimators.
         """
         if self.estimators is None or len(self.estimators) == 0:
             raise ValueError(
@@ -280,7 +301,7 @@ class OpinionPooling(BasePrior, BaseComposition):
 
         return names, estimators
 
-    def set_params(self, **params):
+    def set_params(self, **params: Any) -> OpinionPooling:
         """Set the parameters of an estimator from the ensemble.
 
         Valid parameter keys can be listed with `get_params()`. Note that you
@@ -304,7 +325,7 @@ class OpinionPooling(BasePrior, BaseComposition):
         super()._set_params("estimators", **params)
         return self
 
-    def get_params(self, deep=True):
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
         """Get the parameters of an estimator from the ensemble.
 
         Returns the parameters given in the constructor as well as the
@@ -324,7 +345,17 @@ class OpinionPooling(BasePrior, BaseComposition):
         """
         return super()._get_params("estimators", deep=deep)
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of each estimator in
+        `estimators`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__)
         for name, estimator in self.estimators:
             router.add(
@@ -333,7 +364,7 @@ class OpinionPooling(BasePrior, BaseComposition):
             )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> OpinionPooling:
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> OpinionPooling:
         """Fit the Opinion Pooling estimator.
 
         Parameters
@@ -347,7 +378,7 @@ class OpinionPooling(BasePrior, BaseComposition):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 
@@ -408,9 +439,11 @@ class OpinionPooling(BasePrior, BaseComposition):
         n_observations = len(returns)
 
         # Add the remaining part of the opinion_probabilities to the uniform prior
-        q_weight = 1.0 - opinion_probabilities.sum()
-        if q_weight > 1e-8:
-            opinion_probabilities = np.append(opinion_probabilities, q_weight)
+        total = opinion_probabilities.sum()
+        if np.isclose(total, 1.0):
+            opinion_probabilities = opinion_probabilities / total
+        else:
+            opinion_probabilities = np.append(opinion_probabilities, 1.0 - total)
             q = np.ones(n_observations) / n_observations
             sample_weights = np.vstack((sample_weights, q))
 
@@ -428,7 +461,7 @@ class OpinionPooling(BasePrior, BaseComposition):
 
         self.opinion_probabilities_ = opinion_probabilities
         self.return_distribution_ = ReturnDistribution(
-            mu=sm.mean(returns, sample_weight=sample_weight),
+            mu=sm.mean(returns, sample_weight=sample_weight),  # ty: ignore[invalid-argument-type]
             covariance=np.cov(returns, rowvar=False, aweights=sample_weight),
             returns=returns,
             sample_weight=sample_weight,
@@ -441,7 +474,7 @@ class OpinionPooling(BasePrior, BaseComposition):
         if self.opinion_probabilities is None:
             return np.ones(n_opinions) / n_opinions
 
-        opinion_probabilities = np.asarray(self.opinion_probabilities)
+        opinion_probabilities = np.asarray(self.opinion_probabilities, dtype=float)
 
         if len(opinion_probabilities) != n_opinions:
             raise ValueError(
@@ -451,9 +484,10 @@ class OpinionPooling(BasePrior, BaseComposition):
 
         if np.any(opinion_probabilities < 0) or np.any(opinion_probabilities > 1):
             raise ValueError(
-                "`The entries of `opinion_probabilities` must be between 0 and 1"
+                "The entries of `opinion_probabilities` must be between 0 and 1"
             )
-        if opinion_probabilities.sum() > 1.0:
+        total = opinion_probabilities.sum()
+        if total > 1.0 and not np.isclose(total, 1.0):
             raise ValueError(
                 "The entries of `opinion_probabilities` must sum to at most 1; "
                 "any remaining mass (1-sum) is allocated to the uniform prior."
@@ -472,6 +506,7 @@ class OpinionPooling(BasePrior, BaseComposition):
 
         consensus = opinion_probabilities @ sample_weights
         divergences = np.sum(scs.rel_entr(sample_weights, consensus), axis=1)
-        opinion_probabilities *= np.exp(-self.divergence_penalty * divergences)
-        opinion_probabilities /= opinion_probabilities.sum()
-        return opinion_probabilities
+        opinion_probabilities = opinion_probabilities * np.exp(
+            -self.divergence_penalty * divergences
+        )
+        return opinion_probabilities / opinion_probabilities.sum()
