@@ -111,6 +111,16 @@ class TestOutput:
         assert not np.isnan(result[11, 0, 0])
         assert not np.any(np.isnan(result[8:11, 1:, 0]))
 
+    def test_count_counts_non_missing_values(self, simple_panel):
+        simple_panel["returns"][8, 0] = np.nan
+        result = _raw_factor(source="returns", windows={"count": [2]}).fit_transform(
+            simple_panel
+        )
+
+        np.testing.assert_array_equal(result[8:10, 0, 0], [1.0, 1.0])
+        assert result[7, 0, 0] == 2.0
+        assert result[10, 0, 0] == 2.0
+
     def test_late_listing_needs_full_active_window(self, simple_panel):
         active_mask = simple_panel.active_mask.copy()
         active_mask[:5, 0] = False

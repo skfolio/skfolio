@@ -82,7 +82,9 @@ class RollingFactor(BaseFactorExposure):
       (respectively :math:`k + 1`) active observations in total.
 
     In both cases a missing (NaN) source value inside the window propagates to the
-    output, as in pandas, and inactive observations are NaN.
+    output, as in pandas, and inactive observations are NaN. The exception is
+    `"count"`, which counts the non-missing values in the window, so a window such
+    as `[1, NaN]` gives `1` rather than NaN.
 
     Parameters
     ----------
@@ -499,7 +501,8 @@ def _rolling_aggregate(values: FloatArray, aggregation: str, window: int) -> Flo
     -------
     result : ndarray of shape (n_observations, n_assets)
         Aggregated values. The first `window - 1` rows (`window` rows for a lag) and
-        any window containing a NaN are NaN.
+        any window containing a NaN are NaN, except for `"count"`, which counts the
+        non-missing values in the window.
     """
     df = pd.DataFrame(values)
     if aggregation == _LAG:
