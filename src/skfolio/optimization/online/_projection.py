@@ -713,8 +713,7 @@ def project_convex(
             raise ValueError(
                 "Online custom constraints do not support integer variables"
             )
-    if solver_params is None:
-        solver_params = dict(solver=cp.CLARABEL, verbose=False)
+    solver_params = {"solver": cp.CLARABEL, "verbose": False, **(solver_params or {})}
 
     if discrete:
         try:
@@ -730,11 +729,17 @@ def project_convex(
     else:
         try:
             prob.solve(**solver_params)
-        except Exception:
-            prob.solve(verbose=False)
+        except cp.SolverError as err:
+            raise RuntimeError(
+                f"Convex projection failed with solver {solver_params['solver']}: {err}"
+            ) from err
+        if prob.status not in (cp.OPTIMAL, cp.OPTIMAL_INACCURATE):
+            raise RuntimeError(
+                f"Convex projection failed with solver {solver_params['solver']}: {prob.status}"
+            )
 
-    if w.value is None:
-        raise RuntimeError("Convex projection failed to converge.")
+    if w.value is None or not np.isfinite(w.value).all():
+        raise RuntimeError("Convex projection failed to return finite weights.")
     if max_turnover == 0 and previous_weights is not None:
         return np.asarray(previous_weights, dtype=float).copy()
     return w.value

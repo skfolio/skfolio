@@ -1256,6 +1256,13 @@ A constant nonzero active return therefore consumes the tracking-error limit.
 Inputs must be finite, aligned, and contain at least two observations. Public
 causal benchmark routing remains a separate API task.
 
+Continuous projections use the selected ``solver`` and ``solver_params`` without
+retrying with another solver or dropping options. Solver errors retain their
+original cause; invalid options and modeling errors propagate directly.
+Continuous solutions require an optimal or optimal-inaccurate status and finite
+weights. CVXPY may warn for inaccurate solutions. Infeasible, unbounded and
+interrupted results are rejected even if the solver returns candidate weights.
+
 **Cardinality constraints**
 
 ``cardinality`` limits the number of nonzero positions. ``group_cardinalities``
