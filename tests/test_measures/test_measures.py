@@ -356,6 +356,34 @@ def test_mean_sample_weight(returns):
     )
 
 
+def test_log_wealth():
+    """Test log_wealth computation."""
+    # Simple test case
+    returns = np.array([0.01, 0.02, -0.005, 0.015, 0.03])
+    lw = skm.log_wealth(returns)
+    expected = np.sum(np.log1p(returns))
+    np.testing.assert_almost_equal(lw, expected)
+
+    # Test numerical stability with small returns
+    small_returns = np.array([1e-5, -1e-6, 2e-5, -5e-7])
+    lw_small = skm.log_wealth(small_returns)
+    expected_small = np.sum(np.log1p(small_returns))
+    np.testing.assert_almost_equal(lw_small, expected_small)
+
+    # Test with real data
+    prices = load_sp500_dataset()
+    X = prices_to_returns(X=prices[["AAPL"]], log_returns=False)
+    returns_aapl = X.to_numpy().reshape(-1)
+    lw_aapl = skm.log_wealth(returns_aapl)
+    # Verify it's equal to log of final wealth
+    final_wealth = np.prod(1 + returns_aapl)
+    np.testing.assert_almost_equal(lw_aapl, np.log(final_wealth))
+
+    # Test that it's consistent with cumulative log returns
+    expected_aapl = np.sum(np.log1p(returns_aapl))
+    np.testing.assert_almost_equal(lw_aapl, expected_aapl)
+
+
 @pytest.mark.parametrize(
     "returns,min_acceptable_return,sample_weight,expected",
     [
@@ -1394,3 +1422,14 @@ def test_correlation(returns, sample_weight, expected):
     np.testing.assert_almost_equal(
         skm.correlation(returns, sample_weight=sample_weight), expected
     )
+
+
+@pytest.mark.parametrize("sample_weight", [None, np.array([0.2, 0.3, 0.5])])
+def test_log_wealth_excludes_missing_periods(sample_weight):
+    returns = np.array([0.1, np.nan, -0.05])
+    assert np.isclose(
+        skm.log_wealth(returns, sample_weight=sample_weight), np.log(1.1 * 0.95)
+    )
+    assert np.isnan(skm.log_wealth(np.array([np.nan])))
+    assert np.isnan(skm.log_wealth(np.array([])))
+    assert np.isneginf(skm.log_wealth(np.array([-1.0])))

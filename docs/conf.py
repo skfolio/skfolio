@@ -541,15 +541,15 @@ numpydoc_class_members_toctree = False
 
 
 def _numpydoc_show_inherited_class_members() -> dict[str, bool]:
-    """Hide inherited members in numpydoc Methods/Attributes for AutoEnum classes.
+    """Hide inherited string methods in numpydoc summaries for string enums.
 
-    AutoEnum subclasses inherit public `str` methods. Numpydoc lists them in the
+    String enums inherit public `str` methods. Numpydoc lists them in the
     class Methods autosummary, and Sphinx fails while formatting some signatures.
     Estimator classes keep the default (`True`) so inherited sklearn helpers stay
     in the summary table. Autodoc still skips `str` methods via
     `skip_str_inherited_members`.
     """
-    from skfolio.utils.tools import AutoEnum
+    from enum import Enum
 
     mapping: dict[str, bool] = {}
     for module_info in pkgutil.walk_packages(skfolio.__path__, skfolio.__name__ + "."):
@@ -561,10 +561,10 @@ def _numpydoc_show_inherited_class_members() -> dict[str, bool]:
             if not inspect.isclass(obj):
                 continue
             try:
-                is_autoenum = issubclass(obj, AutoEnum)
+                is_string_enum = issubclass(obj, str) and issubclass(obj, Enum)
             except TypeError:
                 continue
-            if not is_autoenum:
+            if not is_string_enum:
                 continue
             mapping[f"{obj.__module__}.{obj.__qualname__}"] = False
             mapping[f"{module.__name__}.{attr_name}"] = False
@@ -651,6 +651,7 @@ TUTORIAL_ORDER = {
         "plot_2_online_hyperparameter_tuning.py",
         "plot_3_online_portfolio_optimization_evaluation.py",
         "plot_online_schur_changing_universe.py",
+        "plot_online_portfolio_selection.py",
     ),
     "pre_selection": (
         "plot_1_drop_correlated.py",
