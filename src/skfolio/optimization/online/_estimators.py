@@ -93,6 +93,9 @@ class ExponentiatedGradient(FollowTheWinner):
         Confidence level for the CDAR limit, between zero and one.
     edar_beta : float, default=0.95
         Confidence level for the EDAR limit, between zero and one.
+    threshold_long : float, dict or array-like, optional
+        Nonzero positions must reach this minimum weight; zero remains allowed.
+        Requires a mixed-integer solver when any threshold is positive.
     cardinality : int, optional
         Maximum number of invested assets; requires a mixed-integer solver.
     group_cardinalities : dict[str, int], optional
@@ -205,6 +208,7 @@ class ExponentiatedGradient(FollowTheWinner):
         evar_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        threshold_long: skt.MultiInput | None = None,
         cardinality: int | None = None,
         group_cardinalities: dict[str, int] | None = None,
         solver: str = "CLARABEL",
@@ -255,6 +259,7 @@ class ExponentiatedGradient(FollowTheWinner):
             evar_beta=evar_beta,
             cdar_beta=cdar_beta,
             edar_beta=edar_beta,
+            threshold_long=threshold_long,
             cardinality=cardinality,
             group_cardinalities=group_cardinalities,
             solver=solver,
@@ -349,6 +354,9 @@ class AdaGrad(FollowTheWinner):
         Confidence level for the CDAR limit, between zero and one.
     edar_beta : float, default=0.95
         Confidence level for the EDAR limit, between zero and one.
+    threshold_long : float, dict or array-like, optional
+        Nonzero positions must reach this minimum weight; zero remains allowed.
+        Requires a mixed-integer solver when any threshold is positive.
     cardinality : int, optional
         Maximum number of invested assets; requires a mixed-integer solver.
     group_cardinalities : dict[str, int], optional
@@ -462,6 +470,7 @@ class AdaGrad(FollowTheWinner):
         evar_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        threshold_long: skt.MultiInput | None = None,
         cardinality: int | None = None,
         group_cardinalities: dict[str, int] | None = None,
         solver: str = "CLARABEL",
@@ -513,6 +522,7 @@ class AdaGrad(FollowTheWinner):
             evar_beta=evar_beta,
             cdar_beta=cdar_beta,
             edar_beta=edar_beta,
+            threshold_long=threshold_long,
             cardinality=cardinality,
             group_cardinalities=group_cardinalities,
             solver=solver,
@@ -605,6 +615,9 @@ class OnlineMovingAverageReversion(FollowTheLoser):
         Confidence level for the CDAR limit, between zero and one.
     edar_beta : float, default=0.95
         Confidence level for the EDAR limit, between zero and one.
+    threshold_long : float, dict or array-like, optional
+        Nonzero positions must reach this minimum weight; zero remains allowed.
+        Requires a mixed-integer solver when any threshold is positive.
     cardinality : int, optional
         Maximum number of invested assets; requires a mixed-integer solver.
     group_cardinalities : dict[str, int], optional
@@ -721,6 +734,7 @@ class OnlineMovingAverageReversion(FollowTheLoser):
         evar_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        threshold_long: skt.MultiInput | None = None,
         cardinality: int | None = None,
         group_cardinalities: dict[str, int] | None = None,
         solver: str = "CLARABEL",
@@ -772,6 +786,7 @@ class OnlineMovingAverageReversion(FollowTheLoser):
             evar_beta=evar_beta,
             cdar_beta=cdar_beta,
             edar_beta=edar_beta,
+            threshold_long=threshold_long,
             cardinality=cardinality,
             group_cardinalities=group_cardinalities,
             solver=solver,
@@ -876,6 +891,9 @@ class PassiveAggressiveMeanReversion(FollowTheLoser):
         Confidence level for the CDAR limit, between zero and one.
     edar_beta : float, default=0.95
         Confidence level for the EDAR limit, between zero and one.
+    threshold_long : float, dict or array-like, optional
+        Nonzero positions must reach this minimum weight; zero remains allowed.
+        Requires a mixed-integer solver when any threshold is positive.
     cardinality : int, optional
         Maximum number of invested assets; requires a mixed-integer solver.
     group_cardinalities : dict[str, int], optional
@@ -987,6 +1005,7 @@ class PassiveAggressiveMeanReversion(FollowTheLoser):
         evar_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        threshold_long: skt.MultiInput | None = None,
         cardinality: int | None = None,
         group_cardinalities: dict[str, int] | None = None,
         solver: str = "CLARABEL",
@@ -1039,6 +1058,7 @@ class PassiveAggressiveMeanReversion(FollowTheLoser):
             evar_beta=evar_beta,
             cdar_beta=cdar_beta,
             edar_beta=edar_beta,
+            threshold_long=threshold_long,
             cardinality=cardinality,
             group_cardinalities=group_cardinalities,
             solver=solver,

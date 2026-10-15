@@ -140,6 +140,7 @@ class OnlineParameterConstraintsMixin:
         "evar_beta": [Interval(Real, 0, 1, closed="both")],
         "cdar_beta": [Interval(Real, 0, 1, closed="both")],
         "edar_beta": [Interval(Real, 0, 1, closed="both")],
+        "threshold_long": [Real, "array-like", dict, None],
         "cardinality": [Interval(Integral, 0, None, closed="left"), None],
         "group_cardinalities": [dict, None],
         "solver": [str],

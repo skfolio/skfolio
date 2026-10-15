@@ -1272,6 +1272,32 @@ remove the usual convex-domain online-update guarantees. Solves may also be much
 slower and tied optima can select different supports. These are opt-in constraints,
 not a change to the default algorithms.
 
+**Minimum position thresholds**
+
+``threshold_long`` requires every nonzero position to reach a minimum weight;
+it does not require every asset to be held. It accepts a scalar, an aligned array
+or a dictionary keyed by asset name. Unspecified dictionary entries default to
+zero. Thresholds must be finite and nonnegative; all-zero thresholds need no
+mixed-integer solver. Unlike ``min_weights``, positive thresholds permit an
+asset's weight to be exactly zero.
+
+For example, limit a portfolio to five positions, each at least 10%::
+
+    from skfolio.optimization.online import PassiveAggressiveMeanReversion
+
+    estimator = PassiveAggressiveMeanReversion(
+        cardinality=5,
+        threshold_long=0.10,
+        solver="SCIP",
+    )
+
+Thresholds share the cardinality solver and geometry requirements above. They
+are enforced jointly with bounds, groups, risk limits, custom constraints and
+turnover. A threshold exceeding an asset's upper bound forces that asset to zero;
+if the remaining assets cannot meet the budget, the update fails. Zero-turnover
+holdings below an active threshold are likewise infeasible. Public online
+estimators remain long-only; short-position thresholds are not exposed.
+
 **Custom constraints**
 
 The four online estimators accept ``add_constraints``, using the same callback

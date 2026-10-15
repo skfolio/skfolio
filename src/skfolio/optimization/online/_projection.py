@@ -67,6 +67,8 @@ class ProjectionConfig:
         Causal factor information for named exposure constraints.
     distribution_config : DistributionConstraintConfig or None
         Minimum expected return and risk caps from the causal prior distribution.
+    threshold_long : array-like, float or None
+        Minimum nonzero long position; zero positions remain permitted.
     cardinality, group_cardinalities : int or dict or None
         Global and named-group support limits requiring a mixed-integer solver.
     add_constraints : callable or None
@@ -100,6 +102,7 @@ class ProjectionConfig:
     solver_params: dict[str, Any] | None = None
     return_distribution: ReturnDistribution | None = None
     distribution_config: DistributionConstraintConfig | None = None
+    threshold_long: ArrayLike | float | None = None
     cardinality: int | None = None
     group_cardinalities: dict[str, int] | None = None
     add_constraints: skt.ConstraintFunction | None = None
@@ -203,6 +206,7 @@ class ConvexProjector(BaseProjector):
             linear_constraints=self.config.linear_constraints,
             return_distribution=self.config.return_distribution,
             distribution_config=self.config.distribution_config,
+            threshold_long=self.config.threshold_long,
             cardinality=self.config.cardinality,
             group_cardinalities=self.config.group_cardinalities,
             add_constraints=self.config.add_constraints,
@@ -238,6 +242,7 @@ class AutoProjector(BaseProjector):
         return any(
             v is not None
             for v in [
+                self.config.threshold_long,
                 self.config.cardinality,
                 self.config.group_cardinalities,
                 self.config.add_constraints,
@@ -271,6 +276,7 @@ class AutoProjector(BaseProjector):
         """
         if has_discrete_constraints(
             n_assets=len(dual),
+            threshold_long=self.config.threshold_long,
             cardinality=self.config.cardinality,
             group_cardinalities=self.config.group_cardinalities,
         ) and not isinstance(mirror, (EuclideanMirrorMap, AdaptiveMahalanobisMap)):
@@ -532,6 +538,7 @@ def project_convex(
     objective: Callable[[cp.Variable], cp.Expression] | None = None,
     distribution_config: DistributionConstraintConfig | None = None,
     return_distribution: ReturnDistribution | None = None,
+    threshold_long: ArrayLike | float | None = None,
     cardinality: int | None = None,
     group_cardinalities: dict[str, int] | None = None,
     add_constraints: skt.ConstraintFunction | None = None,
@@ -647,7 +654,10 @@ def project_convex(
         constraints.extend(custom)
 
     discrete = has_discrete_constraints(
-        n_assets=n, cardinality=cardinality, group_cardinalities=group_cardinalities
+        n_assets=n,
+        cardinality=cardinality,
+        group_cardinalities=group_cardinalities,
+        threshold_long=None if threshold_long is None else np.asarray(threshold_long),
     )
     if discrete:
         validate_discrete_solver(solver_params)
@@ -656,6 +666,11 @@ def project_convex(
                 w=w,
                 lower=lower_bounds,
                 upper=u,
+                threshold_long=None
+                if threshold_long is None
+                else _bound_array(
+                    threshold_long, n_assets=n, default=0.0, name="threshold_long"
+                ),
                 cardinality=cardinality,
                 group_cardinalities=group_cardinalities,
                 groups=None if groups is None else np.asarray(groups),

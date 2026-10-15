@@ -137,6 +137,9 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         Confidence level for the CDAR limit, between zero and one.
     edar_beta : float, default=0.95
         Confidence level for the EDAR limit, between zero and one.
+    threshold_long : float, dict or array-like, optional
+        Nonzero positions must reach this minimum weight; zero remains allowed.
+        Requires a mixed-integer solver when any threshold is positive.
     cardinality : int, optional
         Maximum number of invested assets; requires a mixed-integer solver.
     group_cardinalities : dict[str, int], optional
@@ -234,6 +237,7 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         evar_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        threshold_long: skt.MultiInput | None = None,
         cardinality: int | None = None,
         group_cardinalities: dict[str, int] | None = None,
         solver: str = "CLARABEL",
@@ -290,6 +294,7 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         self.evar_beta = evar_beta
         self.cdar_beta = cdar_beta
         self.edar_beta = edar_beta
+        self.threshold_long = threshold_long
         self.cardinality = cardinality
         self.group_cardinalities = group_cardinalities
         self.solver = solver
@@ -450,6 +455,16 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
             min_budget=self.min_budget,
             max_budget=self.max_budget,
             groups=groups,
+            threshold_long=(
+                None
+                if self.threshold_long is None
+                else self._clean_input(
+                    value=self.threshold_long,
+                    n_assets=n_assets,
+                    fill_value=0.0,
+                    name="threshold_long",
+                )
+            ),
             cardinality=self.cardinality,
             group_cardinalities=self.group_cardinalities,
             solver_params={"solver": self.solver, **(self.solver_params or {})},

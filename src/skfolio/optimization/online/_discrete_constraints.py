@@ -10,23 +10,35 @@ import numpy as np
 from cvxpy.reductions.solvers.defines import MI_SOLVERS
 
 from skfolio.optimization.convex import MeanRisk
+from skfolio.typing import ArrayLike
 from skfolio.utils.equations import group_cardinalities_to_matrix
 
 
 def has_discrete_constraints(
     *,
     n_assets: int,
+    threshold_long: float | ArrayLike | None = None,
     cardinality: int | None = None,
     group_cardinalities: dict[str, int] | None = None,
 ) -> bool:
     """Validate counts and determine whether binary variables are needed."""
+    if threshold_long is not None:
+        threshold = np.asarray(threshold_long)
+        if threshold.ndim != 0 and threshold.shape != (n_assets,):
+            raise ValueError(
+                "threshold_long must be scalar or have one value per asset"
+            )
+        if not np.isfinite(threshold).all() or np.any(threshold < 0):
+            raise ValueError("threshold_long must be finite and nonnegative")
     counts = ([] if cardinality is None else [cardinality]) + list(
         (group_cardinalities or {}).values()
     )
     if any(isinstance(k, bool) or not isinstance(k, Integral) or k < 0 for k in counts):
         raise ValueError("Cardinality limits must be nonnegative integers")
-    return (cardinality is not None and cardinality < n_assets) or bool(
-        group_cardinalities
+    return (
+        (cardinality is not None and cardinality < n_assets)
+        or bool(group_cardinalities)
+        or (threshold_long is not None and bool(np.any(np.asarray(threshold_long) > 0)))
     )
 
 
@@ -46,6 +58,7 @@ def discrete_constraints(
     w: cp.Variable,
     lower: np.ndarray,
     upper: np.ndarray,
+    threshold_long: np.ndarray | None,
     cardinality: int | None,
     group_cardinalities: dict[str, int] | None,
     groups: np.ndarray | None,
@@ -71,7 +84,9 @@ def discrete_constraints(
         factor=cp.Constant(1.0),
         min_weights=lower,
         max_weights=upper,
-        threshold_long=None,
+        threshold_long=threshold_long
+        if threshold_long is not None and np.any(threshold_long > 0)
+        else None,
         threshold_short=None,
         groups=None if groups is None else np.asarray(groups),
     )
