@@ -104,7 +104,12 @@ class _WeightProjection:
                 if holdings is None:
                     raise ValueError("`holdings` is required for a turnover limit.")
                 constraints.append(cp.norm1(self.weights - holdings[i]) <= max_turnover)
-            problem = cp.Problem(self.problem.objective, constraints)
+            # Reuse canonicalization when only the target or budget changes.
+            problem = (
+                self.problem
+                if len(constraints) == len(self.constraints)
+                else cp.Problem(self.problem.objective, constraints)
+            )
             problem.solve(solver="CLARABEL")
             if problem.status not in (cp.OPTIMAL, cp.OPTIMAL_INACCURATE):
                 raise ValueError(

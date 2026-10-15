@@ -80,3 +80,23 @@ def test_conflicting_risk_and_turnover_raise():
     _, future = data(n=1, offset=11)
     with pytest.raises(ValueError, match="infeasible"):
         estimator.predict_weights(future, covariance=np.eye(3), holdings=[1, 0, 0])
+
+
+def test_reused_projection_matches_fresh_solves():
+    from skfolio.optimization.parametric._weight_projection import _WeightProjection
+
+    def make_projection():
+        return _WeightProjection(["a", "b", "c"], True, None, 0.8, None, None)
+
+    projection = make_projection()
+    proposals = np.array([[0.8, 0.4, -0.2], [-0.1, 0.3, 0.8], [0.3, 0.3, 0.4]])
+    expected = np.vstack([make_projection().project(row[None, :]) for row in proposals])
+    np.testing.assert_allclose(projection.project(proposals), expected, atol=1e-6)
+    # A dynamic call must not leak its exclusion into later static calls.
+    excluded = projection.project(
+        proposals[:1], eligible=np.array([[True, True, False]])
+    )
+    assert abs(excluded[0, 2]) < 1e-6
+    np.testing.assert_allclose(projection.project(proposals), expected, atol=1e-6)
+    funded = projection.project(proposals, budget=0.8)
+    np.testing.assert_allclose(funded.sum(axis=1), 0.8, atol=1e-6)
