@@ -929,6 +929,70 @@ def test_portfolio_drawdown_contribution_sums_to_measure(portfolio, measure):
     )
 
 
+@pytest.mark.parametrize("dtype", [np.float16, np.float32, np.float64])
+@pytest.mark.parametrize("compounded", [False, True])
+@pytest.mark.parametrize(
+    "measure, expected, compounded_expected",
+    [
+        (RiskMeasure.MAX_DRAWDOWN, [0.015, 0.035], [0.01465, 0.03415]),
+        (RiskMeasure.AVERAGE_DRAWDOWN, [0.0125, 0.0275], [0.012325, 0.027075]),
+        (RiskMeasure.CDAR, [0.04 / 3, 0.03], [0.0131, 0.0883 / 3]),
+        (RiskMeasure.EDAR, [0.01375, 0.03125], [0.0134875, 0.0306125]),
+    ],
+)
+def test_portfolio_drawdown_contribution_weights_dtype(
+    dtype, compounded, measure, expected, compounded_expected
+):
+    # Both observations lose money, so the final observation is the worst drawdown.
+    X = np.array([[-0.02, -0.04], [-0.01, -0.03]])
+    weights = np.array([0.5, 0.5], dtype=dtype)
+    # CDaR's tail weights are [1/3, 2/3]. Choose EDaR's confidence from the relative
+    # entropy to uniform probabilities, giving tilted probabilities [1/4, 3/4].
+    edar_beta = 1 - np.exp(-(0.25 * np.log(0.5) + 0.75 * np.log(1.5)))
+    portfolio = Portfolio(
+        X, weights=weights, compounded=compounded, cdar_beta=0.25, edar_beta=edar_beta
+    )
+
+    np.testing.assert_allclose(
+        portfolio.contribution(measure),
+        compounded_expected if compounded else expected,
+        rtol=1e-8,
+    )
+    np.testing.assert_array_equal(weights, [0.5, 0.5])
+    np.testing.assert_array_equal(portfolio.weights, weights)
+    assert portfolio.weights.dtype == dtype
+
+
+@pytest.mark.parametrize("compounded", [False, True])
+def test_portfolio_max_drawdown_contribution_sp500(X, compounded):
+    X = X.loc["2020"].to_numpy()
+    weights = np.full(X.shape[1], 1 / X.shape[1])
+    portfolio = Portfolio(X, weights=weights, compounded=compounded)
+    returns = X @ weights
+    path = (
+        np.r_[1.0, np.cumprod(1 + returns)]
+        if compounded
+        else np.r_[0.0, np.cumsum(returns)]
+    )
+    trough = np.argmin(portfolio.drawdowns) + 1
+    peak = np.argmax(path[:trough])
+
+    # Differentiate the return over the active peak-to-trough interval directly.
+    if compounded:
+        gross_returns = 1 + returns[peak:trough]
+        gradient = -np.prod(gross_returns) * np.sum(
+            X[peak:trough] / gross_returns[:, None], axis=0
+        )
+    else:
+        gradient = -np.sum(X[peak:trough], axis=0)
+
+    np.testing.assert_allclose(
+        portfolio.contribution(RiskMeasure.MAX_DRAWDOWN),
+        weights * gradient,
+        rtol=1e-7,
+    )
+
+
 def test_weights_per_observation(portfolio):
     df = portfolio.weights_per_observation
     np.testing.assert_array_equal(df.index.values, portfolio.observations)

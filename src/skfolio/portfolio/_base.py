@@ -1320,7 +1320,8 @@ class BasePortfolio:
 
         spacing : float, optional
             Spacing "h" of the finite difference:
-            :math:`contribution(w_i) = w_i \frac{measure(w_i + h) - measure(w_i - h)}{2h}`
+            :math:`contribution(w_i) = w_i \frac{measure(w_i + h) - measure(w_i - h)}{2h}`.
+            If `None`, uses `1e-5`.
 
         Returns
         -------
