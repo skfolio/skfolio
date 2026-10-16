@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.9.3 (2026-10-16)
+
+### Bug Fixes
+
+- **model-selection**: Include final randomized window
+  ([#433](https://github.com/skfolio/skfolio/pull/433),
+  [`70819bf`](https://github.com/skfolio/skfolio/commit/70819bf83f23346e86fbd54c2232e12b35a43ded))
+
+
 ## v1.9.2 (2026-10-16)
 
 ### Bug Fixes
