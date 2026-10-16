@@ -34,7 +34,7 @@ def test_distributionally_robust_cvar(X_small):
         min_weights=0,
     )
     model2.fit(X_small)
-    w2 = model.weights_
+    w2 = model2.weights_
     np.testing.assert_almost_equal(w1, w2, 5)
     model.set_params(wasserstein_ball_radius=1e-2)
     p3 = model.fit_predict(X_small)
