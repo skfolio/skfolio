@@ -13,6 +13,7 @@ from skfolio.factor_exposure._global_factor import GlobalFactor
 from skfolio.factor_exposure._one_hot_categorical_factors import (
     OneHotCategoricalFactors,
 )
+from skfolio.factor_exposure._rolling_factor import RollingFactor
 
 __all__ = [
     "BaseFactorExposure",
@@ -20,4 +21,5 @@ __all__ = [
     "FixedWeightedFactor",
     "GlobalFactor",
     "OneHotCategoricalFactors",
+    "RollingFactor",
 ]
