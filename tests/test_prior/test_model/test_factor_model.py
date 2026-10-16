@@ -1281,63 +1281,39 @@ class TestPlotIdioSkewness:
 
 
 class TestPlotIdioVolIc:
-    def test_returns_figure(self, factor_model):
+    def test_plot_contract(self, factor_model):
         fig = factor_model.plot_idio_vol_ic(window=10)
         assert isinstance(fig, go.Figure)
-
-    def test_plot_uses_ic_series(self, factor_model):
-        fig = factor_model.plot_idio_vol_ic(window=10)
         np.testing.assert_allclose(fig.data[0].y, factor_model.idio_vol_ic.values)
-
-    def test_two_traces(self, factor_model):
-        fig = factor_model.plot_idio_vol_ic(window=10)
         assert len(fig.data) == 2
-
-    def test_title_and_legend_names(self, factor_model):
-        fig = factor_model.plot_idio_vol_ic(window=10)
-        assert fig.layout.title.text == (
-            "Rolling Idiosyncratic Volatility IC (Spearman, 10 observations)"
+        assert (
+            fig.layout.title.text
+            == "Rolling Idiosyncratic Volatility IC (Spearman, 10 observations)"
         )
         assert [trace.name for trace in fig.data] == [
             "Rank Correlation",
             "Rolling Mean",
         ]
-
-    def test_smoothed_trace_uses_full_window(self, factor_model):
-        fig = factor_model.plot_idio_vol_ic(window=10)
         expected = factor_model.idio_vol_ic.rolling(window=10).mean().values
         np.testing.assert_allclose(fig.data[1].y, expected)
 
 
 class TestPlotIdioVolResidualDependence:
-    def test_returns_figure(self, factor_model):
+    def test_plot_contract(self, factor_model):
         fig = factor_model.plot_idio_vol_residual_dependence(window=10)
         assert isinstance(fig, go.Figure)
-
-    def test_plot_uses_residual_dependence_series(self, factor_model):
-        fig = factor_model.plot_idio_vol_residual_dependence(window=10)
         np.testing.assert_allclose(
-            fig.data[0].y,
-            factor_model.idio_vol_residual_dependence.values,
+            fig.data[0].y, factor_model.idio_vol_residual_dependence.values
         )
-
-    def test_two_traces(self, factor_model):
-        fig = factor_model.plot_idio_vol_residual_dependence(window=10)
         assert len(fig.data) == 2
-
-    def test_title_and_legend_names(self, factor_model):
-        fig = factor_model.plot_idio_vol_residual_dependence(window=10)
-        assert fig.layout.title.text == (
-            "Rolling Idiosyncratic Volatility Residual Dependence "
-            "(Spearman, 10 observations)"
+        assert (
+            fig.layout.title.text
+            == "Rolling Idiosyncratic Volatility Residual Dependence (Spearman, 10 observations)"
         )
         assert [trace.name for trace in fig.data] == [
             "Residual Dependence",
             "Rolling Mean",
         ]
-
-    def test_smoothed_trace_uses_full_window(self, factor_model):
-        fig = factor_model.plot_idio_vol_residual_dependence(window=10)
         expected = (
             factor_model.idio_vol_residual_dependence.rolling(window=10).mean().values
         )
