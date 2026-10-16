@@ -18,6 +18,16 @@ from skfolio.preprocessing import BaseCSTransformer, CSStandardScaler, CSWinsori
 from tests.test_alpha._alpha_test_utils import apply_idio_nan_exclusions
 
 
+def _make_signal_model(**overrides):
+    """Create fresh signal descriptors and predictors for each test."""
+    kwargs = dict(
+        predictor=Ridge(alpha=1.0),
+        descriptors=[("signal", Passthrough("signal"))],
+    )
+    kwargs.update(overrides)
+    return PredictorAlpha(**kwargs)
+
+
 class MethodAwareDescriptor(BaseDescriptor):
     """Descriptor that records which transform method was called."""
 
@@ -65,22 +75,14 @@ class TestBasicFunctionality:
 
     def test_fit_returns_self(self, alpha_deterministic_panel):
         """Test that fit() returns self for method chaining."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            half_life=5,
-        )
+        model = _make_signal_model(horizon=3, half_life=5)
         result = model.fit(alpha_deterministic_panel)
         assert result is model
 
     def test_partial_fit_returns_self(self, alpha_deterministic_panel):
         """Test that partial_fit() returns self for method chaining."""
-        model = PredictorAlpha(
-            predictor=SGDRegressor(random_state=42),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            half_life=5,
+        model = _make_signal_model(
+            predictor=SGDRegressor(random_state=42), horizon=3, half_life=5
         )
         result = model.partial_fit(alpha_deterministic_panel)
         assert result is model
@@ -88,12 +90,7 @@ class TestBasicFunctionality:
     def test_alpha_shape(self, alpha_deterministic_panel):
         """Test that alpha_ has correct shape (n_assets,)."""
         n_assets = alpha_deterministic_panel.n_assets
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            half_life=5,
-        )
+        model = _make_signal_model(horizon=3, half_life=5)
         model.fit(alpha_deterministic_panel)
 
         assert model.alpha_ is not None
@@ -108,23 +105,15 @@ class TestWarmupBehavior:
         # Take only 3 observations with horizon=5
         panel_short = alpha_deterministic_panel[:3]
 
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=5,
-            half_life=5,
-        )
+        model = _make_signal_model(horizon=5, half_life=5)
         model.fit(panel_short)
 
         assert model.alpha_ is None
 
     def test_warmup_transition(self, alpha_deterministic_panel):
         """Test transition from warmup to valid alpha."""
-        model = PredictorAlpha(
-            predictor=SGDRegressor(random_state=42),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=5,
-            half_life=5,
+        model = _make_signal_model(
+            predictor=SGDRegressor(random_state=42), horizon=5, half_life=5
         )
 
         # First partial_fit with too few observations
@@ -137,12 +126,8 @@ class TestWarmupBehavior:
 
     def test_warmup_then_fit_with_batch_only_predictor(self, alpha_deterministic_panel):
         """A batch-only predictor can fit after an initial warmup-only partial fit."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=5,
-            half_life=5,
-            calibrate_to_return_units=False,
+        model = _make_signal_model(
+            horizon=5, half_life=5, calibrate_to_return_units=False
         )
 
         model.partial_fit(alpha_deterministic_panel[:3])
@@ -153,13 +138,7 @@ class TestWarmupBehavior:
 
     def test_signal_lag_delays_warmup(self, alpha_deterministic_panel):
         """A longer signal lag should delay the first trainable target."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            signal_lag=2,
-            half_life=5,
-        )
+        model = _make_signal_model(horizon=3, signal_lag=2, half_life=5)
         model.fit(alpha_deterministic_panel[:4])
         assert model.alpha_ is None
 
@@ -174,13 +153,7 @@ class TestStreamingConsistency:
         """Test that buffer keeps rows needed for future target maturity."""
         horizon = 5
         signal_lag = 2
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=horizon,
-            signal_lag=signal_lag,
-            half_life=5,
-        )
+        model = _make_signal_model(horizon=horizon, signal_lag=signal_lag, half_life=5)
         model.fit(alpha_deterministic_panel)
 
         target_gap = horizon + signal_lag - 1
@@ -198,11 +171,8 @@ class TestStreamingConsistency:
         self, alpha_deterministic_panel
     ):
         """Rows kept in the target-gap buffer should be trained in the next batch."""
-        model = PredictorAlpha(
-            predictor=CountingRegressor(),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            calibrate_to_return_units=False,
+        model = _make_signal_model(
+            predictor=CountingRegressor(), horizon=3, calibrate_to_return_units=False
         )
 
         model.partial_fit(alpha_deterministic_panel[:5])
@@ -219,11 +189,8 @@ class TestStreamingConsistency:
         with panel.edit_masks():
             panel.estimation_mask[:, 0] = False
 
-        model = PredictorAlpha(
-            predictor=CountingRegressor(),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            calibrate_to_return_units=False,
+        model = _make_signal_model(
+            predictor=CountingRegressor(), horizon=3, calibrate_to_return_units=False
         )
         model.fit(panel)
 
@@ -235,12 +202,7 @@ class TestStreamingConsistency:
         self, alpha_deterministic_panel
     ):
         """Test that second partial_fit raises error for predictor without partial_fit."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),  # Ridge doesn't have partial_fit
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            half_life=5,
-        )
+        model = _make_signal_model(horizon=3, half_life=5)
 
         # First partial_fit succeeds (uses predictor.fit internally)
         model.partial_fit(alpha_deterministic_panel[:10])
@@ -261,12 +223,8 @@ class TestNaNHandling:
         # Introduce NaN in some returns
         apply_idio_nan_exclusions(panel, "X", rows=slice(5, 8))
 
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            half_life=5,
-            calibrate_to_return_units=False,
+        model = _make_signal_model(
+            horizon=3, half_life=5, calibrate_to_return_units=False
         )
         # Should not raise
         model.fit(panel)
@@ -280,12 +238,7 @@ class TestNaNHandling:
         panel = alpha_deterministic_panel.copy(deep=True)
         panel[_IDIO_RETURNS][:] = np.nan
 
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            calibrate_to_return_units=False,
-        )
+        model = _make_signal_model(horizon=3, calibrate_to_return_units=False)
         model.fit(panel)
 
         assert model.alpha_ is None
@@ -296,11 +249,8 @@ class TestFitReset:
 
     def test_fit_resets_state(self, alpha_deterministic_panel):
         """Test that calling fit() after partial_fit() starts fresh."""
-        model = PredictorAlpha(
-            predictor=SGDRegressor(random_state=42),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            half_life=5,
+        model = _make_signal_model(
+            predictor=SGDRegressor(random_state=42), horizon=3, half_life=5
         )
 
         # First partial_fit
@@ -324,8 +274,7 @@ class TestMultipleDescriptors:
         # Add a second signal (must maintain sorted asset order)
         panel["signal2"] = panel["signal"] * 0.5
 
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
+        model = _make_signal_model(
             descriptors=[
                 ("signal", Passthrough("signal")),
                 ("signal2", Passthrough("signal2")),
@@ -344,12 +293,7 @@ class TestEdgeCases:
 
     def test_horizon_one(self, alpha_deterministic_panel):
         """Test with minimal horizon=1."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=1,
-            half_life=5,
-        )
+        model = _make_signal_model(horizon=1, half_life=5)
         model.fit(alpha_deterministic_panel)
 
         assert model.alpha_ is not None
@@ -369,12 +313,8 @@ class TestEdgeCases:
             third_axis_groups=["market"],
         )
 
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            neutralize_against=["market"],
-            calibrate_to_return_units=False,
+        model = _make_signal_model(
+            horizon=3, neutralize_against=["market"], calibrate_to_return_units=False
         )
         model.fit(panel)
 
@@ -382,11 +322,8 @@ class TestEdgeCases:
 
     def test_single_observation_streaming(self, alpha_deterministic_panel):
         """Test streaming one observation at a time after warmup."""
-        model = PredictorAlpha(
-            predictor=SGDRegressor(random_state=42),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            half_life=5,
+        model = _make_signal_model(
+            predictor=SGDRegressor(random_state=42), horizon=3, half_life=5
         )
 
         # Warmup with enough data
@@ -404,12 +341,8 @@ class TestEdgeCases:
         # Make all idio_returns NaN for asset X
         apply_idio_nan_exclusions(panel, "X")
 
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            half_life=5,
-            calibrate_to_return_units=False,
+        model = _make_signal_model(
+            horizon=3, half_life=5, calibrate_to_return_units=False
         )
         model.fit(panel)
 
@@ -418,9 +351,7 @@ class TestEdgeCases:
 
     def test_passthrough_transformers(self, alpha_deterministic_panel):
         """Test with transformers set to passthrough."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
+        model = _make_signal_model(
             horizon=3,
             half_life=5,
             outlier_transformer="passthrough",
@@ -434,24 +365,14 @@ class TestEdgeCases:
 
     def test_large_half_life(self, alpha_deterministic_panel):
         """Test with very large half_life (slow adaptation)."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            half_life=1000,
-        )
+        model = _make_signal_model(horizon=3, half_life=1000)
         model.fit(alpha_deterministic_panel)
 
         assert model.alpha_ is not None
 
     def test_small_half_life(self, alpha_deterministic_panel):
         """Test with very small half_life (fast adaptation)."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            half_life=1,
-        )
+        model = _make_signal_model(horizon=3, half_life=1)
         model.fit(alpha_deterministic_panel)
 
         assert model.alpha_ is not None
@@ -462,12 +383,7 @@ class TestCalibration:
 
     def test_no_calibration(self, alpha_deterministic_panel):
         """Test with calibrate_to_return_units=False."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            calibrate_to_return_units=False,
-        )
+        model = _make_signal_model(horizon=3, calibrate_to_return_units=False)
         model.fit(alpha_deterministic_panel)
 
         assert model.alpha_ is not None
@@ -475,19 +391,11 @@ class TestCalibration:
 
     def test_calibration_vs_no_calibration_differ(self, alpha_deterministic_panel):
         """Test that calibrated and non-calibrated alpha differ."""
-        model_calibrated = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            calibrate_to_return_units=True,
-        )
+        model_calibrated = _make_signal_model(horizon=3, calibrate_to_return_units=True)
         model_calibrated.fit(alpha_deterministic_panel)
 
-        model_no_calibration = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            calibrate_to_return_units=False,
+        model_no_calibration = _make_signal_model(
+            horizon=3, calibrate_to_return_units=False
         )
         model_no_calibration.fit(alpha_deterministic_panel)
 
@@ -498,18 +406,9 @@ class TestCalibration:
         self, alpha_deterministic_panel
     ):
         """forecast_scale should rescale alpha after return-unit calibration."""
-        model_base = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            calibrate_to_return_units=True,
-        )
-        model_scaled = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            calibrate_to_return_units=True,
-            forecast_scale=2.5,
+        model_base = _make_signal_model(horizon=3, calibrate_to_return_units=True)
+        model_scaled = _make_signal_model(
+            horizon=3, calibrate_to_return_units=True, forecast_scale=2.5
         )
 
         model_base.fit(alpha_deterministic_panel)
@@ -524,9 +423,7 @@ class TestCalibration:
 
     def test_idio_sharpe_forecast_unit(self, alpha_deterministic_panel):
         """Idio-Sharpe forecast unit should still return a finite alpha."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
+        model = _make_signal_model(
             horizon=3,
             forecast_unit=ForecastUnit.IDIO_SHARPE,
             calibrate_to_return_units=False,
@@ -538,11 +435,7 @@ class TestCalibration:
 
     def test_calibration_uses_ewls_statistics_not_smoothed_coefficients(self):
         """Calibration should average normal-equation statistics before solving."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            half_life=1,
-        )
+        model = _make_signal_model(half_life=1)
         model._calibration_decay = 0.5
         model._calibration_normal = 0.0
         model._calibration_cross = 0.0
@@ -563,11 +456,7 @@ class TestCalibration:
 
     def test_estimation_mask_excludes_calibration_observations(self):
         """Non-estimation assets should not update the calibration coefficient."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            half_life=1,
-        )
+        model = _make_signal_model(half_life=1)
         model._calibration_decay = 0.0
         model._calibration_normal = 0.0
         model._calibration_cross = 0.0
@@ -587,12 +476,7 @@ class TestCalibration:
         self, alpha_deterministic_panel
     ):
         """Explicit CV should not silently fall back to in-sample calibration."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=2,
-            cv=5,
-        )
+        model = _make_signal_model(horizon=2, cv=5)
 
         with pytest.raises(ValueError, match="cv requires at least"):
             model.fit(alpha_deterministic_panel[:3])
@@ -603,11 +487,8 @@ class TestTargetTransformers:
 
     def test_target_outlier_transformer(self, alpha_deterministic_panel):
         """Test with custom target_outlier_transformer."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            target_outlier_transformer=CSWinsorizer(low=0.1, high=0.9),
+        model = _make_signal_model(
+            horizon=3, target_outlier_transformer=CSWinsorizer(low=0.1, high=0.9)
         )
         model.fit(alpha_deterministic_panel)
 
@@ -615,11 +496,8 @@ class TestTargetTransformers:
 
     def test_target_scoring_transformer(self, alpha_deterministic_panel):
         """Test with custom target_scoring_transformer."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            target_scoring_transformer=CSStandardScaler(),
+        model = _make_signal_model(
+            horizon=3, target_scoring_transformer=CSStandardScaler()
         )
         model.fit(alpha_deterministic_panel)
 
@@ -627,9 +505,7 @@ class TestTargetTransformers:
 
     def test_both_target_transformers(self, alpha_deterministic_panel):
         """Test with both target transformers."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
+        model = _make_signal_model(
             horizon=3,
             target_outlier_transformer=CSWinsorizer(low=0.05, high=0.95),
             target_scoring_transformer=CSStandardScaler(),
@@ -645,9 +521,7 @@ class TestTargetTransformers:
         panel = alpha_deterministic_panel.copy(deep=True)
         panel["group"] = np.tile(np.array([0, 0, 1, 1]), (panel.n_observations, 1))
 
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
+        model = _make_signal_model(
             horizon=3,
             transform_by_group="group",
             target_outlier_transformer=RecordingTargetTransformer(),
@@ -662,98 +536,68 @@ class TestTargetTransformers:
 class TestValidation:
     """Tests for parameter validation."""
 
-    def test_zero_horizon_raises(self, alpha_deterministic_panel):
-        """Zero horizon should raise ValueError."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=0,
-        )
-        with pytest.raises(ValueError, match="horizon must be a positive integer"):
-            model.fit(alpha_deterministic_panel)
-
-    def test_negative_horizon_raises(self, alpha_deterministic_panel):
-        """Negative horizon should raise ValueError."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=-1,
-        )
-        with pytest.raises(ValueError, match="horizon must be a positive integer"):
-            model.fit(alpha_deterministic_panel)
-
-    def test_zero_signal_lag_raises(self, alpha_deterministic_panel):
-        """Zero signal_lag should raise ValueError."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            signal_lag=0,
-        )
-        with pytest.raises(ValueError, match="signal_lag must be a positive integer"):
-            model.fit(alpha_deterministic_panel)
-
-    def test_zero_half_life_raises(self, alpha_deterministic_panel):
-        """Zero half_life should raise ValueError."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            half_life=0,
-        )
-        with pytest.raises(ValueError, match="half_life must be a positive number"):
-            model.fit(alpha_deterministic_panel)
-
-    def test_negative_half_life_raises(self, alpha_deterministic_panel):
-        """Negative half_life should raise ValueError."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            half_life=-5,
-        )
-        with pytest.raises(ValueError, match="half_life must be a positive number"):
-            model.fit(alpha_deterministic_panel)
-
-    def test_zero_forecast_scale_raises(self, alpha_deterministic_panel):
-        """Zero forecast_scale should raise ValueError."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            forecast_scale=0.0,
-        )
-        with pytest.raises(
-            ValueError, match="forecast_scale must be a positive number"
-        ):
-            model.fit(alpha_deterministic_panel)
-
-    def test_empty_descriptors_raises(self, alpha_deterministic_panel):
-        """Empty descriptors list should raise ValueError."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[],
-            horizon=3,
-        )
-        with pytest.raises(ValueError, match="descriptors cannot be empty"):
-            model.fit(alpha_deterministic_panel)
-
-    def test_invalid_forecast_unit_raises(self, alpha_deterministic_panel):
-        """Unsupported forecast_unit should raise ValueError."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            forecast_unit="bad",
-        )
-        with pytest.raises(TypeError, match="forecast_unit must be of type"):
-            model.fit(alpha_deterministic_panel)
-
-    def test_non_bool_calibrate_to_return_units_raises(self, alpha_deterministic_panel):
-        """Non-boolean calibrate_to_return_units should raise ValueError."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            calibrate_to_return_units="bad",
-        )
-        with pytest.raises(
-            ValueError, match="calibrate_to_return_units must be a boolean"
-        ):
+    @pytest.mark.parametrize(
+        "kwargs,error,match",
+        [
+            pytest.param(
+                {"horizon": 0},
+                ValueError,
+                "horizon must be a positive integer",
+                id="zero_horizon_raises",
+            ),
+            pytest.param(
+                {"horizon": -1},
+                ValueError,
+                "horizon must be a positive integer",
+                id="negative_horizon_raises",
+            ),
+            pytest.param(
+                {"signal_lag": 0},
+                ValueError,
+                "signal_lag must be a positive integer",
+                id="zero_signal_lag_raises",
+            ),
+            pytest.param(
+                {"half_life": 0},
+                ValueError,
+                "half_life must be a positive number",
+                id="zero_half_life_raises",
+            ),
+            pytest.param(
+                {"half_life": -5},
+                ValueError,
+                "half_life must be a positive number",
+                id="negative_half_life_raises",
+            ),
+            pytest.param(
+                {"forecast_scale": 0.0},
+                ValueError,
+                "forecast_scale must be a positive number",
+                id="zero_forecast_scale_raises",
+            ),
+            pytest.param(
+                {"descriptors": [], "horizon": 3},
+                ValueError,
+                "descriptors cannot be empty",
+                id="empty_descriptors_raises",
+            ),
+            pytest.param(
+                {"forecast_unit": "bad"},
+                TypeError,
+                "forecast_unit must be of type",
+                id="invalid_forecast_unit_raises",
+            ),
+            pytest.param(
+                {"calibrate_to_return_units": "bad"},
+                ValueError,
+                "calibrate_to_return_units must be a boolean",
+                id="non_bool_calibrate_to_return_units_raises",
+            ),
+        ],
+    )
+    def test_invalid_parameters(self, alpha_deterministic_panel, kwargs, error, match):
+        model = _make_signal_model(**kwargs)
+        with pytest.raises(error, match=match):
             model.fit(alpha_deterministic_panel)
 
 
@@ -762,33 +606,21 @@ class TestPredictors:
 
     def test_ridge_predictor(self, alpha_deterministic_panel):
         """Test with Ridge predictor (batch only)."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-        )
+        model = _make_signal_model(horizon=3)
         model.fit(alpha_deterministic_panel)
 
         assert model.alpha_ is not None
 
     def test_sgd_predictor(self, alpha_deterministic_panel):
         """Test with SGDRegressor (supports partial_fit)."""
-        model = PredictorAlpha(
-            predictor=SGDRegressor(random_state=42),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-        )
+        model = _make_signal_model(predictor=SGDRegressor(random_state=42), horizon=3)
         model.fit(alpha_deterministic_panel)
 
         assert model.alpha_ is not None
 
     def test_sgd_streaming(self, alpha_deterministic_panel):
         """Test SGDRegressor in streaming mode."""
-        model = PredictorAlpha(
-            predictor=SGDRegressor(random_state=42),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-        )
+        model = _make_signal_model(predictor=SGDRegressor(random_state=42), horizon=3)
 
         # First batch
         model.partial_fit(alpha_deterministic_panel[:10])
@@ -803,10 +635,8 @@ class TestPredictors:
 
     def test_fit_uses_descriptor_fit_transform(self, alpha_deterministic_panel):
         """Batch fit should call descriptor fit_transform."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", MethodAwareDescriptor())],
-            horizon=3,
+        model = _make_signal_model(
+            descriptors=[("signal", MethodAwareDescriptor())], horizon=3
         )
         model.fit(alpha_deterministic_panel)
 
@@ -835,12 +665,7 @@ class TestRegression:
 
     def test_exact_alpha_values(self, alpha_deterministic_panel):
         """Test exact alpha values to detect any computation changes."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            half_life=5,
-        )
+        model = _make_signal_model(horizon=3, half_life=5)
         model.fit(alpha_deterministic_panel)
 
         # Expected alpha values (computed with current implementation)
@@ -857,12 +682,7 @@ class TestRegression:
 
     def test_exact_coef_values(self, alpha_deterministic_panel):
         """Test exact EWLS calibration coefficient values."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=3,
-            half_life=5,
-        )
+        model = _make_signal_model(horizon=3, half_life=5)
         model.fit(alpha_deterministic_panel)
 
         assert np.isfinite(model.calibration_coef_)
@@ -886,9 +706,8 @@ class TestFittedPredictorEdgeCases:
     def test_metadata_routing_includes_predictor(self):
         """The router maps fit/partial_fit callers onto the predictor."""
         with config_context(enable_metadata_routing=True):
-            model = PredictorAlpha(
-                predictor=Ridge(alpha=1.0).set_fit_request(sample_weight=True),
-                descriptors=[("signal", Passthrough("signal"))],
+            model = _make_signal_model(
+                predictor=Ridge(alpha=1.0).set_fit_request(sample_weight=True)
             )
 
             routing = model.get_metadata_routing()
@@ -906,9 +725,8 @@ class TestFittedPredictorEdgeCases:
         self, alpha_deterministic_panel
     ):
         """A fitted predictor still publishes alpha when a chunk has no targets."""
-        model = PredictorAlpha(
+        model = _make_signal_model(
             predictor=SGDRegressor(random_state=0),
-            descriptors=[("signal", Passthrough("signal"))],
             horizon=1,
             calibrate_to_return_units=False,
         )
@@ -927,11 +745,8 @@ class TestFittedPredictorEdgeCases:
         self, alpha_deterministic_panel
     ):
         """IDIO_SHARPE forecasts cannot be converted without idio variances."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            forecast_unit=ForecastUnit.IDIO_SHARPE,
-            calibrate_to_return_units=False,
+        model = _make_signal_model(
+            forecast_unit=ForecastUnit.IDIO_SHARPE, calibrate_to_return_units=False
         )
         model.fit(alpha_deterministic_panel)
 
@@ -943,11 +758,7 @@ class TestFittedPredictorEdgeCases:
 
     def test_calibration_skips_zero_alpha_observations(self):
         """An all-zero alpha cross-section carries no calibration information."""
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            half_life=1,
-        )
+        model = _make_signal_model(half_life=1)
         model._calibration_decay = 0.5
         model._calibration_normal = 0.0
         model._calibration_cross = 0.0
@@ -971,12 +782,7 @@ class TestFittedPredictorEdgeCases:
         panel = alpha_deterministic_panel.copy(deep=True)
         panel[_IDIO_VARIANCES][:] = np.nan
 
-        model = PredictorAlpha(
-            predictor=Ridge(alpha=1.0),
-            descriptors=[("signal", Passthrough("signal"))],
-            horizon=1,
-            calibrate_to_return_units=True,
-        )
+        model = _make_signal_model(horizon=1, calibrate_to_return_units=True)
         model.fit(panel)
 
         assert model._predictor_fitted
@@ -985,10 +791,7 @@ class TestFittedPredictorEdgeCases:
 
     def test_none_predictor_raises(self, alpha_deterministic_panel):
         """The predictor is mandatory."""
-        model = PredictorAlpha(
-            predictor=None,
-            descriptors=[("signal", Passthrough("signal"))],
-        )
+        model = _make_signal_model(predictor=None)
 
         with pytest.raises(ValueError, match="predictor cannot be None"):
             model.fit(alpha_deterministic_panel)
