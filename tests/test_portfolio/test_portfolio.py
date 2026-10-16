@@ -1119,6 +1119,88 @@ def test_weight_dict(X, weights):
     )
 
 
+@pytest.mark.parametrize("weight_drift", [False, True])
+@pytest.mark.parametrize(
+    "weights",
+    [
+        {"A": 0.5, "TYPO": 0.5},
+        {"A": 0.5, "B": 0.5, "TYPO": 0.0},
+        {"TYPO": 0.5, 17: 0.5},
+    ],
+)
+def test_unknown_weight_key(weights, weight_drift):
+    """Reject unknown current positions without changing caller-owned inputs."""
+    X = pd.DataFrame({"A": [0.1, 0.2], "B": [0.3, 0.4]})
+    original_X = X.copy(deep=True)
+    original_weights = weights.copy()
+    # Excluded prior positions remain valid even when the current allocation is bad.
+    previous = {"EXIT": 0.8, "SHORT": -0.2}
+    costs = {"A": 0.01, "EXIT": 0.02, "SHORT": 0.03}
+    with pytest.raises(ValueError, match="Unknown asset names in `weights`") as error:
+        Portfolio(
+            X=X,
+            weights=weights,
+            previous_weights=previous,
+            transaction_costs=costs,
+            weight_drift=weight_drift,
+        )
+    for asset in weights.keys() - {"A", "B"}:
+        assert repr(asset) in str(error.value)
+    pd.testing.assert_frame_equal(X, original_X)
+    assert weights == original_weights
+    assert previous == {"EXIT": 0.8, "SHORT": -0.2}
+    assert costs == {"A": 0.01, "EXIT": 0.02, "SHORT": 0.03}
+
+
+@pytest.mark.parametrize(
+    "weights, expected_weights, expected_returns",
+    [
+        ({"B": 0.5, "A": 0.5}, [0.5, 0.5], [0.2, 0.3]),
+        ({"A": 0.5}, [0.5, 0.0], [0.05, 0.1]),
+        ({}, [0.0, 0.0], [0.0, 0.0]),
+        ({"B": -0.5, "A": 1.5}, [1.5, -0.5], [0.0, 0.1]),
+    ],
+)
+def test_weight_dict_preserves_allocation(weights, expected_weights, expected_returns):
+    """Keep label order, omitted-asset cash, and leveraged long/short allocations."""
+    X = pd.DataFrame({"A": [0.1, 0.2], "B": [0.3, 0.4]})
+    portfolio = Portfolio(X=X, weights=weights)
+    np.testing.assert_array_equal(portfolio.assets, ["A", "B"])
+    np.testing.assert_array_equal(portfolio.weights, expected_weights)
+    # These returns are explicit labeled dot products, independent of conversion.
+    np.testing.assert_allclose(portfolio.returns, expected_returns, atol=1e-16)
+    assert portfolio.X is X
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+@pytest.mark.parametrize(
+    "costs, expected_cost",
+    [(0.01, 0.02), ({"B": 0.01, "EXIT": 0.02, "SHORT": 0.03}, 0.032)],
+)
+def test_weight_dict_preserves_liquidation(costs, expected_cost, weight_drift):
+    """Accept excluded prior positions with named current weights and reconstruction."""
+    X = pd.DataFrame({"B": [0.3, 0.4]})
+    portfolio = Portfolio(
+        X=X,
+        weights={"B": 1.0},
+        previous_weights={"EXIT": 0.8, "SHORT": -0.2},
+        transaction_costs=costs,
+        weight_drift=weight_drift,
+    )
+    # Turnover is 1 entering B + 0.8 exiting EXIT + 0.2 covering SHORT.
+    for restored in (
+        portfolio,
+        copy(portfolio),
+        pickle.loads(pickle.dumps(portfolio)),
+        portfolio * 1,
+    ):
+        assert restored.turnover == pytest.approx(2.0)
+        assert restored.total_cost == pytest.approx(expected_cost)
+        np.testing.assert_allclose(
+            restored.returns, np.array([0.3, 0.4]) - expected_cost
+        )
+
+
 def test_portfolio_nan_handling(X, weights):
     """Test that NaN values in X are handled gracefully."""
     X_with_nan = X.to_numpy().copy()
