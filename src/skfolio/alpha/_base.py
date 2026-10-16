@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import auto
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import sklearn as sk
@@ -29,7 +29,7 @@ from skfolio.descriptor import BaseDescriptor
 from skfolio.descriptor._base import BaseDescriptorComposition
 from skfolio.linear_model._cross_sectional._utils import _cs_neutralize
 from skfolio.preprocessing import BaseCSTransformer, CSStandardScaler, CSWinsorizer
-from skfolio.typing import FloatArray, ObjArray
+from skfolio.typing import FloatArray, ObjArray, StrArray
 from skfolio.utils._factor_tools import _expand_factor_names, _factor_name_maps
 from skfolio.utils.tools import (
     AutoEnum,
@@ -55,7 +55,7 @@ class ForecastUnit(AutoEnum):
 class BaseAlpha(skb.BaseEstimator, ABC):
     """Base class for all Alpha estimators in skfolio."""
 
-    alpha_: FloatArray
+    alpha_: FloatArray | None
     n_assets_: int
     asset_names_: ObjArray
 
@@ -97,8 +97,8 @@ class BaseAlphaDescriptorComposition(BaseDescriptorComposition, ABC):
 
     descriptors_: list[BaseDescriptor]
     named_descriptors_: dict[str, BaseDescriptor]
-    outlier_transformer_: skt.CSTransformer
-    scoring_transformer_: skt.CSTransformer
+    outlier_transformer_: BaseCSTransformer | Literal["passthrough"]
+    scoring_transformer_: BaseCSTransformer | Literal["passthrough"]
 
     def _validate_descriptor_params(self) -> None:
         """Validate common descriptor composition hyperparameters."""
@@ -173,6 +173,11 @@ class BaseAlphaDescriptorComposition(BaseDescriptorComposition, ABC):
         # Score neutralization
         if self.neutralize_against is not None:
             field = X.fields[_EXPOSURES]
+            if not isinstance(field, Field3D):
+                raise TypeError(
+                    f'Field "{_EXPOSURES}" must be a Field3D to neutralize scores, '
+                    f"got {type(field).__name__}."
+                )
             scores = _neutralize_scores(
                 neutralize_against=self.neutralize_against,
                 scores=scores,
@@ -206,10 +211,10 @@ class BaseAlphaDescriptorComposition(BaseDescriptorComposition, ABC):
         panel[_DESCRIPTOR_SCORES] = Field3D(
             scores,
             third_axis_name="descriptor",
-            third_axis_labels=list(self.named_descriptors_),
+            third_axis_labels=list(self.named_descriptors_),  # ty: ignore[invalid-argument-type]
             inactive_policy=InactivePolicy.IGNORE,
         )
-        return panel
+        return panel  # ty: ignore[invalid-return-type]
 
     def _prepend_buffer(self, current: AssetPanel) -> AssetPanel:
         """Prepend pending rows to the current compact training panel."""
@@ -237,8 +242,8 @@ def _neutralize_scores(
     scores: FloatArray,
     exposures: FloatArray,
     cs_weights: FloatArray,
-    factor_names: ObjArray,
-    factor_families: ObjArray | None = None,
+    factor_names: StrArray,
+    factor_families: StrArray | None = None,
 ) -> FloatArray:
     """Neutralize descriptor scores against selected factor exposures.
 

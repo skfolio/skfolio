@@ -270,8 +270,8 @@ class EmpiricalPrior(BasePrior):
             self._initialize()
 
         if self.is_log_normal:
-            X_fit = np.log(1 + X)
-            y_fit = np.log(1 + y) if y is not None else None
+            X_fit = np.log1p(X)
+            y_fit = np.log1p(y) if y is not None else None
         else:
             X_fit = X
             y_fit = y
@@ -298,8 +298,8 @@ class EmpiricalPrior(BasePrior):
 
         # Transform log moments to linear if needed
         if self.is_log_normal:
-            mu *= self.investment_horizon
-            covariance *= self.investment_horizon
+            mu *= self.investment_horizon  # ty: ignore[unsupported-operator]
+            covariance *= self.investment_horizon  # ty: ignore[unsupported-operator]
 
             # Convert to linear returns distribution
             mu = np.exp(mu + 0.5 * np.diag(covariance))
@@ -327,13 +327,13 @@ class EmpiricalPrior(BasePrior):
         missing = np.isnan(returns) & investable
         if missing.any():
             self._warn_zero_fill(missing)
-            returns = returns.copy()
+            returns = returns.copy()  # ty: ignore[unresolved-attribute]
             returns[missing] = 0.0
 
         self.return_distribution_ = ReturnDistribution(
             mu=mu,
             covariance=covariance,
-            returns=returns,
+            returns=returns,  # ty: ignore[invalid-argument-type]
         )
         return self
 

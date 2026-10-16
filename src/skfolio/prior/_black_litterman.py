@@ -124,7 +124,7 @@ class BlackLitterman(BasePrior):
     """
 
     groups_: StrArray
-    views_: StrArray
+    views_: FloatArray
     picking_matrix_: FloatArray
     prior_estimator_: BasePrior
     n_features_in_: int

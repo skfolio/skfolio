@@ -502,7 +502,7 @@ a `summary` method and the diagnostic statistics and plots covered in the
 
     factor_model = model.factor_model_
     factor_model.summary()
-    factor_model.factor_returns_df()
+    factor_model.factor_returns_df
 
 
 The fitted sub-estimators are also available with the usual scikit-learn trailing
@@ -2241,6 +2241,15 @@ forecasts at observation :math:`t` with the forward mean target over
 
 .. include:: ../_static/factor_model/tables/alpha_eval_ic_summary.inc.rst
 
+The example alpha is deliberately simple. Its Spearman IC averages 0.012 with an
+ICIR of 0.16 and a hit rate of 56%. The t-statistic accounts for dependence
+between evaluation dates, including overlapping targets, and changes in
+volatility. We assess significance using the bootstrap p-value and 95%
+confidence interval. For Spearman, these are 0.0014 and approximately
+[0.0060, 0.0179], supporting a modest positive mean IC in this sample. The
+Pearson IC also has a positive mean, with a p-value of 0.0007 and an interval
+of approximately [0.0049, 0.0135]. See
+:meth:`~skfolio.alpha.AlphaForecastEvaluation.ic_summary` for the method.
 
 .. code-block:: python
 
@@ -2248,10 +2257,7 @@ forecasts at observation :math:`t` with the forward mean target over
 
 .. include:: ../_static/factor_model/tables/alpha_eval_portfolio_summary.inc.rst
 
-The example alpha is deliberately simple. Its Spearman IC averages 0.012 with an
-ICIR of 0.16 (t-stat 3.97) and a hit rate of 56%: a genuine but modest
-predictive signal, in line with typical daily alpha signals. The simple
-portfolios earn an annualized information ratio above 1.7 with substantial
+The portfolios earn an annualized information ratio above 1.7 with substantial
 turnover, gross of any trading friction. Whether such a signal can be monetized
 depends on transaction costs, borrow costs, market impact and turnover
 constraints, which enter at the optimization step and are covered in
@@ -2758,7 +2764,7 @@ on each subsequent test window:
     from skfolio.model_selection import online_predict
 
     portfolio = online_predict(
-        estimator=optimization,
+        estimator=mvo,
         X=X,
         warmup_size=2 * 252 + 21,
         test_size=21,
@@ -2791,7 +2797,7 @@ the estimator on every fold:
     from skfolio.model_selection import OnlineGridSearch
 
     search = OnlineGridSearch(
-        estimator=optimization,
+        estimator=mvo,
         param_grid={
             "prior_estimator__inv_idio_variance_weight_shrinkage": [0.0, 0.5, 1.0],
             "prior_estimator__exposure_lag": [1, 2],

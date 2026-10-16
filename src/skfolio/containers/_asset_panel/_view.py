@@ -6,9 +6,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from collections.abc import Iterable, Iterator, Mapping
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, overload
 
 import numpy as np
 
@@ -58,7 +58,7 @@ class AssetPanelView(_BaseAssetPanel):
     observation_selector : slice or ndarray of integers, optional
         Selector applied to the owner observation axis. Slices preserve zero-copy
         semantics. Integer arrays follow NumPy fancy-indexing semantics on access.
-        The default (`None`) selects all observations.
+        The default (`slice(None)`) selects all observations.
 
     _local_fields : dict[str, BaseField], optional
         View-local fields. This argument is for internal use. Use `view[name] = value`
@@ -72,8 +72,8 @@ class AssetPanelView(_BaseAssetPanel):
     """
 
     owner: AssetPanel
-    observation_selector: slice | IntArray | None = None
-    _local_fields: dict[str, BaseField] | None = None
+    observation_selector: slice | IntArray = field(default_factory=lambda: slice(None))
+    _local_fields: dict[str, BaseField] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.owner is None:
@@ -82,11 +82,9 @@ class AssetPanelView(_BaseAssetPanel):
             self.owner.n_observations,
             self.observation_selector,
         )
-        if self._local_fields is None:
-            self._local_fields = {}
-        for name, field in self._local_fields.items():
+        for name, local_field in self._local_fields.items():
             _validate_field_name(name)
-            self._validate_field(name, field)
+            self._validate_field(name, local_field)
 
     def __len__(self) -> int:
         """Return the number of observations in the view."""
@@ -95,6 +93,12 @@ class AssetPanelView(_BaseAssetPanel):
     def __contains__(self, name: str) -> bool:
         """Check whether a local or owner field exists."""
         return name in self._local_fields or name in self.owner.fields
+
+    @overload
+    def __getitem__(self, key: str) -> AnyArray: ...
+
+    @overload
+    def __getitem__(self, key: slice | ArrayLike) -> AssetPanelView: ...
 
     def __getitem__(self, key: str | slice | ArrayLike) -> AnyArray | AssetPanelView:
         """Return field values or a nested observation view.
@@ -235,7 +239,7 @@ class AssetPanelView(_BaseAssetPanel):
         """
         return _ViewFieldMapping(self)
 
-    def keys(self) -> Iterable[str]:
+    def keys(self) -> list[str]:
         """Return field names visible from the view.
 
         Returns
@@ -362,7 +366,7 @@ class _ViewFieldMapping(Mapping[str, BaseField]):
     def __getitem__(self, name: str) -> BaseField:
         return self._view.get_field(name)
 
-    def __iter__(self) -> Iterable[str]:
+    def __iter__(self) -> Iterator[str]:
         return iter(self._view.keys())
 
     def __len__(self) -> int:

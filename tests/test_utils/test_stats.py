@@ -33,6 +33,7 @@ from skfolio.utils.stats import (
     inverse_multiply,
     is_cholesky_dec,
     is_positive_definite,
+    is_positive_semidefinite,
     minimize_relative_weight_deviation,
     multiply_by_inverse,
     n_bins_freedman,
@@ -157,6 +158,29 @@ def test_n_bins_knuth_can_return_n_bins():
 )
 def test_is_positive_definite(x, expected):
     assert is_positive_definite(x) == expected
+
+
+@pytest.mark.parametrize(
+    ("x", "expected"),
+    [
+        (np.eye(2), True),
+        (np.ones((2, 2)), True),
+        (np.zeros((2, 2)), True),
+        (np.array([[1.0, 2.0], [2.0, 1.0]]), False),
+        (np.diag([1.0, -1e-14]), False),
+    ],
+)
+def test_is_positive_semidefinite(x, expected):
+    assert is_positive_semidefinite(x) is expected
+
+
+@pytest.mark.parametrize(
+    ("eigenvalue", "expected"),
+    [(-2e-12, False), (-1e-12, True), (-5e-13, True), (0.0, True)],
+)
+def test_is_positive_semidefinite_tolerance(eigenvalue, expected):
+    x = np.diag([1.0, eigenvalue])
+    assert is_positive_semidefinite(x, atol=1e-12) is expected
 
 
 def test_cov_nearest(nasdaq_X):

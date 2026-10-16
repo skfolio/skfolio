@@ -231,7 +231,7 @@ class EWMarketBeta(BaseDescriptor):
 
         group_labels = None
         if self._shrinkage_enabled:
-            group_field = X.get_field(self.shrinkage_group)
+            group_field = X.get_field(self.shrinkage_group)  # ty: ignore[invalid-argument-type]
             if not group_field.is_categorical:
                 raise ValueError(
                     f"Field '{self.shrinkage_group}' must be a CategoricalField."
@@ -244,7 +244,9 @@ class EWMarketBeta(BaseDescriptor):
                 if self._shrinkage_enabled and self._t >= self._min_periods:
                     # Shrinkage applied every observation since betas update every time
                     self._shrunk_betas = self._apply_shrinkage(
-                        self._betas, group_labels[i], market_caps[i]
+                        self._betas,
+                        group_labels[i],  # ty: ignore[not-subscriptable]
+                        market_caps[i],
                     )
                     betas[i] = self._shrunk_betas
                 else:
@@ -261,7 +263,9 @@ class EWMarketBeta(BaseDescriptor):
                     # Apply shrinkage only on flush (when betas update)
                     if self._shrinkage_enabled and self._t >= self._min_periods:
                         self._shrunk_betas = self._apply_shrinkage(
-                            self._betas, group_labels[i], market_caps[i]
+                            self._betas,
+                            group_labels[i],  # ty: ignore[not-subscriptable]
+                            market_caps[i],
                         )
 
                 # Output: shrunk betas if available, else raw betas

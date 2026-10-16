@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import inspect
 import warnings
-from typing import Any, SupportsIndex
+from collections.abc import Iterable
+from typing import Any, SupportsIndex, overload
 
 import numpy as np
 import pandas as pd
@@ -35,22 +36,26 @@ class Population(list):
 
     Parameters
     ----------
-    iterable : list[BasePortfolio]
-        The list of portfolios. Each item can be of type
+    iterable : iterable of BasePortfolio
+        The portfolios. Each item can be of type
         :class:`~skfolio.portfolio.Portfolio` and/or
         :class:`~skfolio.portfolio.MultiPeriodPortfolio`.
         Empty list are accepted.
     """
 
-    def __init__(self, iterable: list[BasePortfolio]) -> None:
+    def __init__(self, iterable: Iterable[BasePortfolio]) -> None:
         super().__init__(self._validate_item(item) for item in iterable)
 
     def __repr__(self) -> str:
         return "<Population(" + super().__repr__() + ")>"
 
-    def __getitem__(
-        self, indices: int | list[int] | slice
-    ) -> BasePortfolio | Population:
+    @overload
+    def __getitem__(self, indices: SupportsIndex) -> BasePortfolio: ...
+
+    @overload
+    def __getitem__(self, indices: slice) -> Population: ...
+
+    def __getitem__(self, indices: SupportsIndex | slice) -> BasePortfolio | Population:
         item = super().__getitem__(indices)
         if isinstance(item, list):
             return self.__class__(item)
@@ -74,7 +79,7 @@ class Population(list):
         """Append portfolio to the end of the population list."""
         super().append(self._validate_item(item))
 
-    def extend(self, other: BasePortfolio) -> None:
+    def extend(self, other: Iterable[BasePortfolio]) -> None:
         """Extend population list by appending elements from the iterable."""
         if isinstance(other, type(self)):
             super().extend(other)
@@ -327,19 +332,12 @@ class Population(list):
         if isinstance(tags, str):
             tags = [tags]
 
-        if tags is None:
-            return self.__class__(
-                [portfolio for portfolio in self if portfolio.name in names]
-            )
-        if names is None:
-            return self.__class__(
-                [portfolio for portfolio in self if portfolio.tag in tags]
-            )
         return self.__class__(
             [
                 portfolio
                 for portfolio in self
-                if portfolio.name in names and portfolio.tag in tags
+                if (names is None or portfolio.name in names)
+                and (tags is None or portfolio.tag in tags)
             ]
         )
 
@@ -379,7 +377,7 @@ class Population(list):
         value : float
             The mean of portfolios measures.
         """
-        return np.nanmean(self.measures(measure=measure), axis=0)
+        return float(np.nanmean(self.measures(measure=measure), axis=0))
 
     def measures_std(
         self,
@@ -398,7 +396,7 @@ class Population(list):
         value : float
             The standard-deviation of portfolios measures.
         """
-        return np.nanstd(self.measures(measure=measure), axis=0)
+        return float(np.nanstd(self.measures(measure=measure), axis=0))
 
     def sort_measure(self, measure: skt.Measure, reverse: bool = False) -> Population:
         """Sort the population by a given portfolio measure.
@@ -611,7 +609,11 @@ class Population(list):
         return df
 
     def rolling_measure(
-        self, measure: skt.Measure = RatioMeasure.SHARPE_RATIO, window: int = 30
+        self,
+        measure: skt.Measure = RatioMeasure.SHARPE_RATIO,
+        window: int = 30,
+        *,
+        min_periods: int | None = None,
     ) -> pd.DataFrame:
         """Compute the measure over a rolling window for each portfolio in the
          population.
@@ -624,6 +626,12 @@ class Population(list):
         window : int, default=30
             The window size. The default value is `30` observations.
 
+        min_periods : int, optional
+            Minimum number of non-missing returns required in a window. Must be
+            between `1` and `window`. The default (`None`) uses `window`. A smaller
+            value evaluates leading partial windows and windows with missing returns.
+            Windows containing an infinite return produce NaN.
+
         Returns
         -------
         dataframe : pandas DataFrame
@@ -632,7 +640,11 @@ class Population(list):
         rolling_measures = []
         names = []
         for ptf in self:
-            rolling_measures.append(ptf.rolling_measure(measure=measure, window=window))
+            rolling_measures.append(
+                ptf.rolling_measure(
+                    measure=measure, window=window, min_periods=min_periods
+                )
+            )
             names.append(_ptf_name_with_tag(ptf))
         df = pd.concat(rolling_measures, axis=1)
         df.columns = deduplicate_names(names)
@@ -983,7 +995,7 @@ class Population(list):
         self,
         x: skt.Measure,
         y: skt.Measure,
-        z: skt.Measure = None,
+        z: skt.Measure | None = None,
         to_surface: bool = False,
         hover_measures: list[skt.Measure] | None = None,
         show_fronts: bool = False,
@@ -1194,6 +1206,8 @@ class Population(list):
         self,
         measure: skt.Measure = RatioMeasure.SHARPE_RATIO,
         window: int = 30,
+        *,
+        min_periods: int | None = None,
     ) -> go.Figure:
         """Plot the measure over a rolling window for each portfolio in the population.
 
@@ -1205,12 +1219,20 @@ class Population(list):
         window : int, default=30
            The window size.
 
+        min_periods : int, optional
+            Minimum number of non-missing returns required in a window. Must be
+            between `1` and `window`. The default (`None`) uses `window`. A smaller
+            value evaluates leading partial windows and windows with missing returns.
+            Windows containing an infinite return produce NaN.
+
         Returns
         -------
         plot : Figure
             Returns the plot Figure object
         """
-        df = self.rolling_measure(measure=measure, window=window)
+        df = self.rolling_measure(
+            measure=measure, window=window, min_periods=min_periods
+        )
         fig = df.plot(backend="plotly")
         max_val = np.max(df)
         min_val = np.min(df)

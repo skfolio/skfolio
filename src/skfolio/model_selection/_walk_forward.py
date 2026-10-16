@@ -289,16 +289,23 @@ class WalkForward(sks.BaseCrossValidator):
         ------
         ValueError
             If a window size has an invalid type, if a training or test window size
-            is not positive, or if `purged_size` is not a non-negative integer.
+            is not positive, if `purged_size` is not a non-negative integer, or if
+            training and purging leave no observation for testing in observation
+            mode.
         """
         test_size, train_size = self._validate_window_sizes()
         X, y = sku.indexable(X, y)
         n_samples = X.shape[0]
 
         if self.freq is None:
+            _validate_observation_count(
+                n_samples=n_samples,
+                train_size=train_size,  # ty: ignore[invalid-argument-type]
+                purged_size=self.purged_size,
+            )
             return _split_without_period(
                 n_samples=n_samples,
-                train_size=train_size,
+                train_size=train_size,  # ty: ignore[invalid-argument-type]
                 test_size=test_size,
                 purged_size=self.purged_size,
                 expand_train=self.expand_train,
@@ -363,8 +370,9 @@ class WalkForward(sks.BaseCrossValidator):
         ------
         ValueError
             If `X` is `None`, if a window size has an invalid type, if a training or
-            test window size is not positive, or if `purged_size` is not a
-            non-negative integer.
+            test window size is not positive, if `purged_size` is not a non-negative
+            integer, or if training and purging leave no observation for testing in
+            observation mode.
         """
         if X is None:
             raise ValueError("The 'X' parameter should not be None.")
@@ -373,6 +381,11 @@ class WalkForward(sks.BaseCrossValidator):
         n_samples = X.shape[0]
 
         if self.freq is None:
+            _validate_observation_count(
+                n_samples=n_samples,
+                train_size=train_size,  # ty: ignore[invalid-argument-type]
+                purged_size=self.purged_size,
+            )
             n = n_samples - train_size - self.purged_size
 
             if self.reduce_test and n % test_size != 0:
@@ -406,7 +419,7 @@ class WalkForward(sks.BaseCrossValidator):
         train_idx = ts_index.get_indexer(date_range - train_size, method="ffill")
         if np.all(train_idx == -1):
             return 0
-        first_valid = np.argmax(train_idx > -1)
+        first_valid = int(np.argmax(train_idx > -1))
         last_allowed_start = n if self.reduce_test else n - test_size
         if first_valid >= last_allowed_start:
             return 0
@@ -452,6 +465,19 @@ class WalkForward(sks.BaseCrossValidator):
         return int(self.test_size), train_size
 
 
+def _validate_observation_count(
+    n_samples: int, train_size: int, purged_size: int
+) -> None:
+    """Raise when training and purging leave no observation for testing."""
+    total_size = train_size + purged_size
+    if total_size >= n_samples:
+        raise ValueError(
+            f"The sum of `train_size={train_size}` and `purged_size={purged_size}` "
+            f"(total={total_size}) must be less than the number of "
+            f"observations={n_samples}."
+        )
+
+
 def _split_without_period(
     n_samples: int,
     train_size: int,
@@ -491,19 +517,7 @@ def _split_without_period(
 
     test_indices : ndarray
         Test indices for the current split.
-
-    Raises
-    ------
-    ValueError
-        If there are not enough observations for at least one split.
     """
-    if train_size + purged_size >= n_samples:
-        raise ValueError(
-            f"The sum of `train_size={train_size}` with `purged_size={purged_size}` "
-            f"(total={train_size + purged_size}) must be at least the number of "
-            f"observations={n_samples}."
-        )
-
     indices = np.arange(n_samples)
 
     test_start = train_size + purged_size
@@ -533,7 +547,7 @@ def _split_from_period_without_train_offset(
     n_samples: int,
     train_size: int,
     test_size: int,
-    freq: str,
+    freq: str | pd.offsets.BaseOffset,
     freq_offset: pd.offsets.BaseOffset | dt.timedelta | None,
     previous: bool,
     purged_size: int,
@@ -554,7 +568,7 @@ def _split_from_period_without_train_offset(
     test_size : int
         Number of calendar periods included in each test window.
 
-    freq : str
+    freq : str | pandas.offsets.DateOffset
         Calendar frequency used to define rebalancing dates.
 
     freq_offset : pandas DateOffset or datetime timedelta, optional
@@ -624,7 +638,7 @@ def _split_from_period_with_train_offset(
     n_samples: int,
     train_size: pd.offsets.BaseOffset | dt.timedelta,
     test_size: int,
-    freq: str,
+    freq: str | pd.offsets.BaseOffset,
     freq_offset: pd.offsets.BaseOffset | dt.timedelta | None,
     previous: bool,
     purged_size: int,
@@ -645,7 +659,7 @@ def _split_from_period_with_train_offset(
     test_size : int
         Number of calendar periods included in each test window.
 
-    freq : str
+    freq : str | pandas.offsets.DateOffset
         Calendar frequency used to define rebalancing dates.
 
     freq_offset : pandas DateOffset or datetime timedelta, optional
@@ -693,7 +707,7 @@ def _split_from_period_with_train_offset(
     if np.all(train_idx == -1):
         return
 
-    i = np.argmax(train_idx > -1)
+    i = int(np.argmax(train_idx > -1))
     while True:
         if i >= n:
             return
