@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.9.0 (2026-10-16)
+
+### Features
+
+- **measures**: Add probabilistic and deflated Sharpe ratios
+  ([#255](https://github.com/skfolio/skfolio/pull/255),
+  [`018dbaa`](https://github.com/skfolio/skfolio/commit/018dbaa9743490bc9dc32fcbd1d901c26efa0356))
+
+
 ## v1.8.6 (2026-10-14)
 
 ### Bug Fixes
