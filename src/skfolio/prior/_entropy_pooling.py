@@ -10,7 +10,7 @@ from __future__ import annotations
 import operator
 import re
 import warnings
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from typing import TYPE_CHECKING, Any
 
 import cvxpy as cp
@@ -1308,7 +1308,7 @@ class EntropyPooling(BasePrior):
             self._is_fixed_variance |= fix
 
 
-def _extract_prior_assets(views: Sequence[str], assets: Sequence[str]) -> set[str]:
+def _extract_prior_assets(views: Iterable[str], assets: Iterable[str]) -> set[str]:
     """
     Given a list of views, return a set of asset names referenced within any
     'prior(ASSET)' pattern. Only asset names in the provided 'assets' list
@@ -1321,11 +1321,11 @@ def _extract_prior_assets(views: Sequence[str], assets: Sequence[str]) -> set[st
 
     Parameters
     ----------
-    views : list[str]
-        The list of views to scan.
+    views : iterable of str
+        The views to scan.
 
-    assets : list[str]
-        The list of allowed asset names.
+    assets : iterable of str
+        The allowed asset names.
 
     Returns
     -------
@@ -1344,7 +1344,7 @@ def _extract_prior_assets(views: Sequence[str], assets: Sequence[str]) -> set[st
 
 
 def _replace_prior_views(
-    views: Sequence[str], prior_values: dict[str, float]
+    views: Iterable[str], prior_values: dict[str, float]
 ) -> list[str]:
     """
     Replace occurrences of the below prior patterns using `prior_values`.
@@ -1356,8 +1356,8 @@ def _replace_prior_views(
 
     Parameters
     ----------
-    views : list[str]
-        The list of views.
+    views : iterable of str
+        The views to update.
 
     prior_values : dict[str, float]
         A dictionary mapping asset names (str) to their prior values.

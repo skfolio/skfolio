@@ -1937,7 +1937,7 @@ def _weighted_evar(
     probabilities = _normalize_sample_weight(np.exp(log_probabilities))
     risk_tolerance = 1e-12
     if np.sqrt(-0.5 * log_tail) <= risk_tolerance:
-        return probabilities @ losses
+        return float(probabilities @ losses)
 
     def evaluate(log_inverse_temperature: float) -> tuple[float, float]:
         """Return the EVaR objective and a value with its derivative's sign."""
