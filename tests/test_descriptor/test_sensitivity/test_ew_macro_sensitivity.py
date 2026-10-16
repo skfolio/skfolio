@@ -78,15 +78,12 @@ class TestBasic:
 
     def test_default_min_periods(self, clean_panel_data, ref_returns):
         """`min_periods=None` defaults to ceil(half_life)."""
-        default = EWMacroSensitivity(half_life=10.2).fit_transform(
-            clean_panel_data, reference_returns=ref_returns
-        )
-        explicit = EWMacroSensitivity(half_life=10.2, min_periods=11).fit_transform(
-            clean_panel_data, reference_returns=ref_returns
-        )
-        np.testing.assert_array_equal(default, explicit)
-        assert np.isnan(default[9]).all()
-        assert not np.isnan(default[10]).any()
+        ms = EWMacroSensitivity(half_life=10.2)
+        result = ms.fit_transform(clean_panel_data, reference_returns=ref_returns)
+
+        assert ms._min_periods == 11
+        assert np.isnan(result[:10]).all()
+        assert np.isfinite(result[10:]).all()
 
     def test_macro_sensitivity_fitted_attribute(self, clean_panel_data, ref_returns):
         ms = EWMacroSensitivity(half_life=10, min_periods=5, aggregation_period=1)
@@ -162,14 +159,24 @@ class TestAggregation:
         ms = EWMacroSensitivity(half_life=5, aggregation_period=5, min_periods=2)
         # First chunk: 3 observations (incomplete window). Second chunk: 4
         # observations (completes the window and starts the next one).
-        result = np.vstack(
-            [
-                ms.partial_fit_transform(
-                    clean_panel_data[s], reference_returns=ref_returns[s]
-                )
-                for s in (slice(0, 3), slice(3, 7), slice(7, None))
-            ]
+        first = ms.partial_fit_transform(
+            clean_panel_data[:3], reference_returns=ref_returns[:3]
         )
+        assert ms._buffer_idx == 3
+        assert ms._t == 0
+
+        second = ms.partial_fit_transform(
+            clean_panel_data[3:7], reference_returns=ref_returns[3:7]
+        )
+        assert ms._buffer_idx == 2
+        assert ms._t == 1
+
+        rest = ms.partial_fit_transform(
+            clean_panel_data[7:], reference_returns=ref_returns[7:]
+        )
+        result = np.vstack([first, second, rest])
+        assert ms._t == clean_panel_data.n_observations // 5
+        assert ms._buffer_idx == clean_panel_data.n_observations % 5
 
         np.testing.assert_array_equal(result, expected)
 
@@ -224,6 +231,16 @@ class TestPartialFit:
         )
 
         np.testing.assert_array_equal(result_pf, result_fit)
+
+        assert ms_pf._t == ms_fit._t == clean_panel_data.n_observations // 5
+        assert (
+            ms_pf._buffer_idx
+            == ms_fit._buffer_idx
+            == clean_panel_data.n_observations % 5
+        )
+        np.testing.assert_array_equal(
+            ms_pf.macro_sensitivity_, ms_fit.macro_sensitivity_
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -351,6 +368,30 @@ class TestBetaValues:
         np.testing.assert_allclose(online.macro_sensitivity_, expected, equal_nan=True)
         np.testing.assert_allclose(batch_result, online_result, equal_nan=True)
 
+        # Check the moments themselves, not only ratios that may hide errors.
+        expected_state = {
+            "_mu_market": mu_market,
+            "_mu_ref": mu_ref,
+            "_mu_assets": mu_assets,
+            "_var_market": var_market,
+            "_var_ref": var_ref,
+            "_cov_market_ref": cov_market_ref,
+            "_cov_assets_market": cov_assets_market,
+            "_cov_assets_ref": cov_assets_ref,
+            "_market_betas": (cov_assets_market - expected * cov_market_ref)
+            / market_variance,
+        }
+        assert batch._t == online._t == panel.n_observations
+        np.testing.assert_array_equal(batch._n_valid_assets, n_valid_assets)
+        np.testing.assert_array_equal(online._n_valid_assets, n_valid_assets)
+        for attr, expected_value in expected_state.items():
+            np.testing.assert_allclose(
+                getattr(batch, attr), expected_value, rtol=1e-12, err_msg=attr
+            )
+            np.testing.assert_array_equal(
+                getattr(online, attr), getattr(batch, attr), err_msg=attr
+            )
+
 
 # ---------------------------------------------------------------------------
 # NaN handling
@@ -402,6 +443,12 @@ class TestNaNHandling:
         ms = EWMacroSensitivity(half_life=5, aggregation_period=1, min_periods=3)
         result = ms.fit_transform(clean_panel_data, reference_returns=ref)
 
+        # A skipped observation must not advance any observation counter.
+        assert ms._t == clean_panel_data.n_observations - 1
+        np.testing.assert_array_equal(
+            ms._n_valid_assets,
+            np.full(clean_panel_data.n_assets, clean_panel_data.n_observations - 1),
+        )
         np.testing.assert_array_equal(
             result[10, :],
             result[9, :],
@@ -548,3 +595,19 @@ class TestRegression:
         np.testing.assert_array_equal(
             ms_pf.macro_sensitivity_, ms_fit.macro_sensitivity_
         )
+        assert ms_pf._t == ms_fit._t == panel.n_observations
+        for attr in (
+            "_mu_market",
+            "_var_market",
+            "_mu_ref",
+            "_var_ref",
+            "_mu_assets",
+            "_cov_market_ref",
+            "_cov_assets_market",
+            "_cov_assets_ref",
+            "_n_valid_assets",
+            "_market_betas",
+        ):
+            np.testing.assert_array_equal(
+                getattr(ms_pf, attr), getattr(ms_fit, attr), err_msg=attr
+            )
