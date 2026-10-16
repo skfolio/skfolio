@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v1.9.1 (2026-10-16)
+
+### Bug Fixes
+
+- **portfolio**: Use the default finite-difference step for drawdown contributions
+  ([#384](https://github.com/skfolio/skfolio/pull/384),
+  [`f066a15`](https://github.com/skfolio/skfolio/commit/f066a150e9f74aa319a62523f3b6b4dc18953994))
+
+### Documentation
+
+- Improve readme and add documentation snippet tests
+  ([#431](https://github.com/skfolio/skfolio/pull/431),
+  [`9d6bc3a`](https://github.com/skfolio/skfolio/commit/9d6bc3a764fd9b88b59dc469057bfeaaf0790d62))
+
+
 ## v1.9.0 (2026-10-16)
 
 ### Features
