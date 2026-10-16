@@ -29,6 +29,7 @@ from urllib.parse import urlparse
 import plotly.io as pio
 from plotly.io._sg_scraper import plotly_sg_scraper
 from sphinx.errors import SphinxError
+from sphinx.util.tags import Tags
 
 import skfolio
 
@@ -502,8 +503,9 @@ _is_markdown_subbuild = any(builder in sys.argv for builder in _markdown_builder
 
 # Fast mode checks that the documentation sources build. It skips gallery execution,
 # the JupyterLite site build and the sphinx-llm Markdown sub-build, which the
-# deployment workflow runs in full. Used by the CI docs job.
-_fast_docs_build = os.environ.get("SKFOLIO_DOCS_FAST") == "1"
+# deployment workflow runs in full. Enable it with `sphinx-build -t fast`.
+tags: Tags  # Sphinx supplies this when executing the configuration file.
+_fast_docs_build = tags.has("fast")
 if _fast_docs_build:
     for _extension in ("skfolio_jupyterlite", "sphinx_llm.txt", "jupyterlite_sphinx"):
         extensions.remove(_extension)

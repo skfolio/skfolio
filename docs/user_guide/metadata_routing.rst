@@ -78,6 +78,8 @@ the mask to the enclosing prior or optimizer without configuring each child:
         mu_estimator=EWMu(),
         covariance_estimator=EWCovariance(),
     )
+    X_batch = X.iloc[:252]
+    active_batch = X_batch.notna()
     prior.partial_fit(X_batch, active_mask=active_batch)
 
 The mask is optional. Omitting it treats all assets as active.

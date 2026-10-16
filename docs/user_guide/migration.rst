@@ -28,6 +28,7 @@ Import HRP, HERC, Schur Complementary and NCO from `skfolio.optimization` or
 
 .. code-block:: python
 
+    from skfolio.cluster import HierarchicalClustering
     from skfolio.optimization.hierarchical import (
         HierarchicalEqualRiskContribution,
         HierarchicalRiskParity,
@@ -116,6 +117,8 @@ Before:
 
 .. code-block:: python
 
+    from skfolio.moments import EWCovariance, EWMu
+
     EWMu(alpha=0.2)
     EWCovariance(alpha=0.2)
 
@@ -146,6 +149,8 @@ Walk-Forward Cross-Validation
 Before:
 
 .. code-block:: python
+
+    from skfolio.model_selection import WalkForward
 
     WalkForward(test_size=60, train_size=252, expend_train=True)
 
@@ -178,6 +183,11 @@ After:
 
     from skfolio.optimization import MeanRisk
     from skfolio.prior import TimeSeriesFactorModel
+    from skfolio.datasets import load_sp500_dataset, load_factors_dataset
+    from skfolio.preprocessing import prices_to_returns
+
+    X, factors = prices_to_returns(load_sp500_dataset(), load_factors_dataset())
+    X_train, factors_train = X.iloc[:252], factors.iloc[:252]
 
     model = MeanRisk(prior_estimator=TimeSeriesFactorModel())
     model.fit(X_train, factors=factors_train)

@@ -530,7 +530,7 @@ Grid Search on Embedded Parameters
 
     gs = GridSearchCV(
         estimator=model,
-        cv=KFold(n_splits=5, shuffle=False),
+        cv=WalkForward(train_size=252, test_size=60),
         n_jobs=-1,
         param_grid={
             "risk_measure": [
@@ -541,11 +541,14 @@ Grid Search on Embedded Parameters
             "prior_estimator__mu_estimator__half_life": [10, 20, 30, 40],
         },
     )
-    gs.fit(X)
+    gs.fit(X_train)
 
     best_model = gs.best_estimator_
 
     print(best_model.weights_)
+
+    portfolio = best_model.predict(X_test)
+    print(portfolio.summary())
 
 
 Black & Litterman Model
@@ -744,9 +747,9 @@ Combinatorial Purged Cross-Validation
 
     cv = CombinatorialPurgedCV(n_folds=10, n_test_folds=2)
 
-    print(cv.summary(X_train))
+    print(cv.summary(X_test))
 
-    population = cross_val_predict(model, X_train, cv=cv)
+    population = cross_val_predict(model, X_test, cv=cv)
 
     population.plot_distribution(
         measure_list=[RatioMeasure.SHARPE_RATIO, RatioMeasure.SORTINO_RATIO]
@@ -910,18 +913,18 @@ If you use `skfolio` in a scientific publication, we would appreciate citations:
         @software{skfolio,
           title     = {skfolio},
           author    = {Delatte, Hugo and Nicolini, Carlo and Manzi, Matteo},
-          version   = {1.0.0},
           year      = {2026},
           doi       = {10.5281/zenodo.16148630},
           url       = {https://doi.org/10.5281/zenodo.16148630}
         }
 
-The above uses the concept DOI, which always resolves to the latest release.
-If you need precise reproducibility, especially for journals or conferences that require
-it, you can cite the version-specific DOI for the exact release you used. To find it,
-go to our `Zenodo project page <https://doi.org/10.5281/zenodo.16148630>`_, locate the
-release you wish to reference (e.g. "v1.0.0"), and copy the DOI listed next to that
-version.
+The citation above refers to skfolio across all versions. Its concept DOI resolves
+to the latest version archived on Zenodo.
+
+For reproducible research, we recommend citing the specific release you used. Visit
+the `Zenodo project page <https://doi.org/10.5281/zenodo.16148630>`_, select that
+release, and use its citation so that the DOI, version, and publication date
+correspond to the same release.
 
 **The paper:**
 
@@ -938,3 +941,10 @@ version.
         }
 
 .. skfolio-shared-body-end
+
+Repository mirror
+~~~~~~~~~~~~~~~~~
+
+The project is also mirrored on `AtomGit <https://gitcode.com/skfolio/skfolio>`_.
+`GitHub <https://github.com/skfolio/skfolio>`_ remains the primary repository for
+development and contributions.

@@ -502,7 +502,7 @@ a `summary` method and the diagnostic statistics and plots covered in the
 
     factor_model = model.factor_model_
     factor_model.summary()
-    factor_model.factor_returns_df()
+    factor_model.factor_returns_df
 
 
 The fitted sub-estimators are also available with the usual scikit-learn trailing
@@ -602,7 +602,7 @@ This layout has additional practical benefits:
     saved_panel = AssetPanel.load("path/to/saved_panel")
 
     # Generate a synthetic panel for examples and tests.
-    characteristics = make_synthetic_characteristics()
+    synthetic_characteristics = make_synthetic_characteristics(random_state=0)
 
 
 .. _factor_model_universes:
@@ -1809,6 +1809,7 @@ The figures below evaluate the model with
 
     from skfolio.model_selection import online_covariance_forecast_evaluation
 
+    X = characteristics.to_dataframe(fields="returns")
     evaluation = online_covariance_forecast_evaluation(
         model,
         X,
@@ -1862,7 +1863,20 @@ volatility regime shifts.
 
 .. code-block:: python
 
+    from sklearn.base import clone
     from skfolio.model_selection import CovarianceForecastComparison
+
+    eval_month = evaluation
+    quarter_model = clone(model).set_params(
+        factor_prior_estimator__covariance_estimator__regime_half_life=quarter
+    )
+    eval_quarter = online_covariance_forecast_evaluation(
+        quarter_model,
+        X,
+        params={"characteristics": characteristics},
+        warmup_size=2 * 252 + 21,
+        test_size=5,
+    )
 
     comparison = CovarianceForecastComparison(
         [eval_month, eval_quarter],
@@ -2640,7 +2654,7 @@ utility, balancing the alpha forecast against risk and transaction costs:
     from skfolio.optimization import MeanRisk, ObjectiveFunction
 
     week = 5
-    model.set_params(alpha_estimator=alpha_estimator)
+    alpha_model = clone(model).set_params(alpha_estimator=alpha_estimator)
 
     X = characteristics.to_dataframe(fields="returns")
     industry_names = characteristics.fields["industry"].levels
@@ -2650,11 +2664,11 @@ utility, balancing the alpha forecast against risk and transaction costs:
         "leverage", "dividend_yield",
     ]
 
-    mvo = MeanRisk(
+    alpha_mvo = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_UTILITY,
         risk_measure=RiskMeasure.VARIANCE,
         risk_aversion=1,
-        prior_estimator=model,
+        prior_estimator=alpha_model,
         max_weights=0.03,
         min_weights=-0.03,
         budget=0.0,
@@ -2669,15 +2683,15 @@ utility, balancing the alpha forecast against risk and transaction costs:
     )
 
     warmup_size = 2 * 252 + 21
-    mpp = online_predict(
-        estimator=mvo,
+    alpha_mpp = online_predict(
+        estimator=alpha_mvo,
         X=X,
         warmup_size=warmup_size,
         test_size=week,
         params={"characteristics": characteristics},
         entry_rebalancing_params={"transaction_costs": 0.0},
     )
-    print(mpp.annualized_sharpe_ratio)
+    print(alpha_mpp.annualized_sharpe_ratio)
 
 `entry_rebalancing_params` applies estimator parameters only while constructing
 the first portfolio, which starts from cash while later portfolios rebalance
@@ -2697,7 +2711,7 @@ Realized attribution verifies that the portfolio behaves as intended:
 
 .. code-block:: python
 
-    realized_attrib = mpp.realized_attribution(
+    realized_attrib = alpha_mpp.realized_attribution(
         factor_model=factor_model,
         compute_uncertainty=True,
         compute_asset_breakdowns=False,
@@ -2764,7 +2778,7 @@ on each subsequent test window:
     from skfolio.model_selection import online_predict
 
     portfolio = online_predict(
-        estimator=optimization,
+        estimator=mvo,
         X=X,
         warmup_size=2 * 252 + 21,
         test_size=21,
@@ -2797,7 +2811,7 @@ the estimator on every fold:
     from skfolio.model_selection import OnlineGridSearch
 
     search = OnlineGridSearch(
-        estimator=optimization,
+        estimator=mvo,
         param_grid={
             "prior_estimator__inv_idio_variance_weight_shrinkage": [0.0, 0.5, 1.0],
             "prior_estimator__exposure_lag": [1, 2],
@@ -3021,9 +3035,13 @@ portfolio, whose weights vary through time:
 
     # Equivalent access via the FactorModel API, passing the time-varying
     # weights and the realized portfolio returns explicitly
-    realized_attrib = factor_model.realized_attribution(
-        weights=weights,
-        portfolio_returns=portfolio_returns,
+    attribution_model = factor_model.select_observations(mpp.observations)
+    weights = mpp.weights_per_observation.reindex(
+        columns=attribution_model.asset_names, fill_value=0.0
+    )
+    realized_attrib = attribution_model.realized_attribution(
+        weights=weights.to_numpy(),
+        portfolio_returns=mpp.returns,
     )
 
     realized_attrib.summary_df()
@@ -3182,6 +3200,7 @@ time-series outputs to a rolling window.
 
 .. code-block:: python
 
+    warmup = 2 * 252 + 21
     model.fit(characteristics=characteristics[:warmup])
     for i in range(warmup, len(characteristics), 5):
         model.partial_fit(characteristics=characteristics[i : i + 5])
