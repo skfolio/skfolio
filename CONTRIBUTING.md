@@ -136,37 +136,45 @@ Add `--group docs` or `--group notebooks` if you use those tools.
 
 ## Documentation
 
+Run these commands from the repository root.
+
 If your change affects the documentation, install the documentation dependencies:
 
 ```shell
 uv sync --group docs
-cd docs
 ```
 
 For a fast build without executing the tutorials, as run by CI:
 
 ```shell
-SKFOLIO_DOCS_FAST=1 uv run sphinx-build -b html . _build
+uv run sphinx-build -b html -t fast docs docs/_build
 ```
 
-Fast mode also skips the JupyterLite site and the sphinx-llm Markdown build. In
-PowerShell, run `$env:SKFOLIO_DOCS_FAST = "1"` before the build and
-`Remove-Item Env:SKFOLIO_DOCS_FAST` after it.
+Fast mode also skips the JupyterLite site and the sphinx-llm Markdown build.
 
 To execute a single tutorial, replace the filename in `filename_pattern`:
 
 ```shell
-uv run sphinx-build -b html -D 'sphinx_gallery_conf.filename_pattern=plot_characteristics_factor_model\.py$' -D sphinx_gallery_conf.run_stale_examples=True . _build
+uv run sphinx-build -b html -D 'sphinx_gallery_conf.filename_pattern=plot_characteristics_factor_model\.py$' -D sphinx_gallery_conf.run_stale_examples=True docs docs/_build
 ```
 
 To execute the complete gallery locally when needed:
 
 ```shell
-uv run sphinx-build -b html . _build
+uv run sphinx-build -b html docs docs/_build
 ```
 
 The complete gallery can take about 30 minutes and is also executed by the
 documentation deployment workflow.
+
+To preview a completed build:
+
+```shell
+uv run python -m http.server --directory docs/_build
+```
+
+Open [localhost:8000](http://localhost:8000) in your browser. Press `Ctrl+C` to stop
+the server.
 
 Sphinx-Gallery generates `docs/auto_examples` and `docs/_contents`.
 Edit the source tutorials under `examples` rather than editing these generated files.

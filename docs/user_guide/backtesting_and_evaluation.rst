@@ -243,7 +243,12 @@ rate of 10 basis points on traded notional, and limits turnover in each asset to
 
 .. code-block:: python
 
+    from skfolio.datasets import load_sp500_dataset
+    from skfolio.model_selection import WalkForward, cross_val_predict
     from skfolio.optimization import MeanRisk
+    from skfolio.preprocessing import prices_to_returns
+
+    X = prices_to_returns(load_sp500_dataset())
 
     holding_period = 5
     tc_rate = 0.001

@@ -286,6 +286,7 @@ For more complex cases and estimators, check the :ref:`API Reference <api>`.
 .. code-block:: python
 
     import numpy as np
+    from sklearn.utils.validation import validate_data
 
     from skfolio.datasets import load_sp500_dataset
     from skfolio.moments import BaseCovariance
@@ -303,7 +304,7 @@ For more complex cases and estimators, check the :ref:`API Reference <api>`.
             self.my_param = my_param
 
         def fit(self, X, y=None):
-            X = self._validate_data(X)
+            X = validate_data(self, X)
             # Your custom implementation goes here
             covariance = np.cov(X.T, ddof=self.my_param)
             self._set_covariance(covariance)
@@ -633,10 +634,16 @@ separate covariance estimator measures dependence from input returns:
 
 .. code-block:: python
 
+    from skfolio.datasets import load_factors_dataset
     from skfolio.distance import CovarianceDistance
     from skfolio.moments import EWCovariance
     from skfolio.optimization import SchurComplementary
+    from skfolio.prior import TimeSeriesFactorModel
     from skfolio.seriation import SpectralSeriation
+
+    X, factors = prices_to_returns(load_sp500_dataset(), load_factors_dataset())
+
+    factor_prior = TimeSeriesFactorModel()
 
     model = SchurComplementary(
         prior_estimator=factor_prior,
@@ -644,9 +651,7 @@ separate covariance estimator measures dependence from input returns:
         distance_from_prior=False,
         seriation_estimator=SpectralSeriation(),
     )
-    model.fit(X)
-
-Here `factor_prior` is a separately configured factor model.
+    model.fit(X, factors=factors)
 
 Custom distances inherit from :class:`~skfolio.distance.BaseDistance`. Override
 its read-only `requires_covariance_input` property to return `True` when `X` must
@@ -917,7 +922,7 @@ Tracking error measures the deviation between a portfolio's performance and a be
 
 **Example 1: Return-based tracking error constraint**
 
-Minimize CVaR while constraining the tracking error to 0.30% vs a benchmark:
+Minimize CVaR while constraining the tracking error to 0.50% vs a benchmark:
 
 .. code-block:: python
 
@@ -932,14 +937,16 @@ Minimize CVaR while constraining the tracking error to 0.30% vs a benchmark:
     spx_prices = load_sp500_index()
 
     X, y = prices_to_returns(prices, spx_prices)
-    X_train, X_test, factors_train, factors_test = train_test_split(X, factors, test_size=0.33, shuffle=False)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.33, shuffle=False
+    )
 
     model = MeanRisk(
         objective_function=ObjectiveFunction.MINIMIZE_RISK,
         risk_measure=RiskMeasure.CVAR,
-        max_tracking_error=0.003,  # 0.30% tracking error constraint
+        max_tracking_error=0.005,  # 0.50% tracking error constraint
     )
-    model.fit(X_train, factors=factors_train)
+    model.fit(X_train, y_train)
     print(model.weights_)
 
     portfolio = model.predict(X_test)
@@ -996,14 +1003,14 @@ Minimize tracking error vs a benchmark's returns:
     benchmark_prices = load_sp500_index()
 
     X, y = prices_to_returns(prices, benchmark_prices)
-    X_train, X_test, factors_train, factors_test = train_test_split(
+    X_train, X_test, y_train, y_test = train_test_split(
         X, y["SP500"], test_size=0.33, shuffle=False
     )
 
     model = BenchmarkTracker(
         risk_measure=RiskMeasure.STANDARD_DEVIATION,
     )
-    model.fit(X_train, factors=factors_train)
+    model.fit(X_train, y_train)
     print(model.weights_)
 
     portfolio = model.predict(X_test)
