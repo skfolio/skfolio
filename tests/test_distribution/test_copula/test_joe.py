@@ -22,13 +22,27 @@ def X():
     return X
 
 
-@pytest.fixture
-def fitted_model():
+def _make_fitted_model():
     # Using same convention as other libraries for Benchmark
     fitted_model = JoeCopula(random_state=42)
     fitted_model.theta_ = 3.4781710077039865
     fitted_model.rotation_ = CopulaRotation.R0
     return fitted_model
+
+
+@pytest.fixture
+def fitted_model():
+    return _make_fitted_model()
+
+
+@pytest.fixture(scope="module", params=list(CopulaRotation))
+def refitting_sample(request):
+    """Reuse each rotation's sample without sharing a mutable fitted model."""
+    model = _make_fitted_model()
+    model.rotation_ = request.param
+    samples = model.sample(n_samples=int(1e5))
+    samples.setflags(write=False)
+    return samples, model.theta_
 
 
 def test_joe_copula_init():
@@ -304,12 +318,10 @@ def test_joe_partial_derivative_inverse_partial_derivative(
 
 
 @pytest.mark.parametrize("itau", [True, False])
-@pytest.mark.parametrize("rotation", list(CopulaRotation))
-def test_clayton_sample_refitting(X, fitted_model, itau, rotation):
-    fitted_model.rotation_ = rotation
-    samples = fitted_model.sample(n_samples=int(1e5))
+def test_joe_sample_refitting(refitting_sample, itau):
+    samples, theta = refitting_sample
     m = JoeCopula(itau=itau).fit(samples)
-    assert np.isclose(fitted_model.theta_, m.theta_, 1e-2)
+    assert np.isclose(theta, m.theta_, 1e-2)
 
 
 def test_itau_bounds():
