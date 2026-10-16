@@ -1396,17 +1396,17 @@ def test_correlation(returns, sample_weight, expected):
     )
 
 
-def _paper_returns():
-    """Return the series of Bailey and Lopez de Prado (2014), section 3.
+def _synthetic_sharpe_returns():
+    """Approximate the moments in Bailey and Lopez de Prado (2014), section 3.
 
-    A Sharpe ratio of 2.5 / sqrt(252) over 1250 observations, with a skew of -3
-    and a kurtosis of 10. Those two moments sit on the boundary
+    The paper uses a Sharpe ratio of 2.5 / sqrt(250) over 1250 observations,
+    with a skew of -3 and a kurtosis of 10. Those two moments sit on the boundary
     `kurtosis = skew ** 2 + 1`, where the only distribution is two-point, so the
     series is built from two atoms: 105 of one and 1145 of the other come within
     0.004 of both at this sample size.
     """
     base = np.concatenate([np.zeros(105), np.ones(1145)])
-    return (base - base.mean()) / base.std(ddof=1) + 2.5 / np.sqrt(252)
+    return (base - base.mean()) / base.std(ddof=1) + 2.5 / np.sqrt(250)
 
 
 def test_expected_max_sharpe_ratio():
@@ -1414,6 +1414,10 @@ def test_expected_max_sharpe_ratio():
     assert skm.expected_max_sharpe_ratio(1, 0.5) == 0.0
     assert skm.expected_max_sharpe_ratio(50, 0.0) == 0.0
     assert skm.expected_max_sharpe_ratio(1, 0.5, trial_sharpe_ratio_mean=0.2) == 0.2
+    assert skm.expected_max_sharpe_ratio(50, 0.0, trial_sharpe_ratio_mean=0.2) == 0.2
+    assert skm.expected_max_sharpe_ratio(np.int64(10), 0.5) == (
+        skm.expected_max_sharpe_ratio(10, 0.5)
+    )
 
     # The hurdle grows with the number of trials and scales with their dispersion
     assert skm.expected_max_sharpe_ratio(100, 0.5) > skm.expected_max_sharpe_ratio(
@@ -1434,25 +1438,56 @@ def test_expected_max_sharpe_ratio():
     # Sharpe ratio variance of 0.5
     np.testing.assert_almost_equal(skm.expected_max_sharpe_ratio(100, 1.0), 2.5306, 4)
     np.testing.assert_almost_equal(
-        skm.expected_max_sharpe_ratio(100, np.sqrt(0.5 / 252)) * np.sqrt(252),
+        skm.expected_max_sharpe_ratio(100, np.sqrt(0.5 / 250)) * np.sqrt(250),
         1.7894,
         4,
     )
 
-    with pytest.raises(ValueError):
-        skm.expected_max_sharpe_ratio(0, 0.5)
+
+@pytest.mark.parametrize(
+    "n_trials", [0, -1, 0.5, np.nan, np.inf, -np.inf, True, np.bool_(True)]
+)
+def test_expected_max_sharpe_ratio_invalid_n_trials(n_trials):
+    with pytest.raises(ValueError, match="n_trials must be"):
+        skm.expected_max_sharpe_ratio(n_trials, 0.5)
+
+
+@pytest.mark.parametrize("n_trials", [1.0, 2.0, np.float64(10)])
+def test_expected_max_sharpe_ratio_float_n_trials(n_trials):
+    assert skm.expected_max_sharpe_ratio(n_trials, 0.5) == (
+        skm.expected_max_sharpe_ratio(int(n_trials), 0.5)
+    )
+
+
+@pytest.mark.parametrize("n_trials", [25.7, np.float64(25.7)])
+def test_expected_max_sharpe_ratio_fractional_n_trials(n_trials):
+    assert (
+        skm.expected_max_sharpe_ratio(25, 0.5)
+        < skm.expected_max_sharpe_ratio(n_trials, 0.5)
+        < skm.expected_max_sharpe_ratio(26, 0.5)
+    )
+
+
+@pytest.mark.parametrize("n_trials", [1, 20])
+@pytest.mark.parametrize(
+    "trial_sharpe_ratio_std", [-0.1, np.nan, np.inf, -np.inf, True, np.bool_(True)]
+)
+def test_expected_max_sharpe_ratio_invalid_std(n_trials, trial_sharpe_ratio_std):
+    with pytest.raises(ValueError, match="trial_sharpe_ratio_std"):
+        skm.expected_max_sharpe_ratio(n_trials, trial_sharpe_ratio_std)
 
 
 def test_probabilistic_sharpe_ratio():
-    returns = _paper_returns()
+    returns = _synthetic_sharpe_returns()
     np.testing.assert_almost_equal(skm.skew(returns), -3.0, 3)
     np.testing.assert_almost_equal(skm.kurtosis(returns), 10.0, 2)
 
-    # Bailey and Lopez de Prado (2014), section 3
-    benchmark = skm.expected_max_sharpe_ratio(100, np.sqrt(0.5 / 252))
+    # Approximate the numerical example in Bailey and Lopez de Prado (2014),
+    # section 3, using synthetic returns with nearly the same moments.
+    benchmark = skm.expected_max_sharpe_ratio(100, np.sqrt(0.5 / 250))
     np.testing.assert_almost_equal(
         skm.probabilistic_sharpe_ratio(returns, benchmark_sharpe_ratio=benchmark),
-        0.8997,
+        0.9004,
         4,
     )
 
@@ -1464,27 +1499,60 @@ def test_probabilistic_sharpe_ratio():
     ) < skm.probabilistic_sharpe_ratio(returns)
 
     # A zero Sharpe ratio is a valid input, not a missing value
-    rng = np.random.default_rng(0)
-    flat = rng.normal(0, 0.01, 500)
-    flat -= skm.mean(flat)
-    assert skm.probabilistic_sharpe_ratio(flat) <= 0.5
+    assert skm.probabilistic_sharpe_ratio([-0.01, 0.0, 0.01]) == 0.5
 
     # The risk-free rate enters through the excess mean
-    assert skm.probabilistic_sharpe_ratio(returns, risk_free_rate=0.05) < (
-        skm.probabilistic_sharpe_ratio(returns)
+    np.testing.assert_allclose(
+        skm.probabilistic_sharpe_ratio(returns, risk_free_rate=0.05),
+        skm.probabilistic_sharpe_ratio(returns - 0.05),
     )
 
 
 def test_probabilistic_sharpe_ratio_2d():
     rng = np.random.default_rng(0)
-    returns = rng.normal(0.001, 0.01, size=(500, 3))
+    returns = rng.normal(0.001, 0.01, size=(500, 5))
+    returns[::3, 0] = np.nan
+    returns[:, 1] = np.nan
+    returns[2:, 2] = np.nan
+    returns[:, 3] = 0.001
     values = skm.probabilistic_sharpe_ratio(returns, benchmark_sharpe_ratio=0.05)
-    assert values.shape == (3,)
-    for i in range(3):
+    assert values.shape == (5,)
+    assert np.isfinite(values[[0, 4]]).all()
+    assert np.isnan(values[1:4]).all()
+    for i in range(5):
+        valid_returns = returns[:, i][~np.isnan(returns[:, i])]
         np.testing.assert_almost_equal(
             values[i],
-            skm.probabilistic_sharpe_ratio(returns[:, i], benchmark_sharpe_ratio=0.05),
+            skm.probabilistic_sharpe_ratio(valid_returns, benchmark_sharpe_ratio=0.05),
         )
+
+
+@pytest.mark.parametrize(
+    "returns",
+    [
+        [],
+        [0.01],
+        [0.01, 0.02],
+        [np.nan, np.nan, np.nan],
+        [np.nan, 0.01, np.nan],
+        [0.01, np.nan, 0.02],
+        [0.0, 0.0, 0.0],
+        np.full(250, 0.001),
+    ],
+)
+@pytest.mark.filterwarnings("error::RuntimeWarning")
+def test_probabilistic_sharpe_ratio_undefined(returns):
+    value = skm.probabilistic_sharpe_ratio(returns)
+    assert isinstance(value, float)
+    assert np.isnan(value)
+
+
+@pytest.mark.parametrize("n_observations", [0, 1, 2])
+@pytest.mark.filterwarnings("error::RuntimeWarning")
+def test_probabilistic_sharpe_ratio_short_2d(n_observations):
+    values = skm.probabilistic_sharpe_ratio(np.zeros((n_observations, 3)))
+    assert values.shape == (3,)
+    assert np.isnan(values).all()
 
 
 def test_deflated_sharpe_ratio():
@@ -1502,16 +1570,14 @@ def test_deflated_sharpe_ratio():
     assert value < 0.95
     assert skm.deflated_sharpe_ratio(winner, [sharpe_ratios.max()]) > value
 
-    # More trials set a higher benchmark, hence a lower probability
-    assert skm.deflated_sharpe_ratio(winner, sharpe_ratios[:10]) > value
-
     # NaNs in the trial Sharpe ratios are dropped, not propagated
     np.testing.assert_almost_equal(
         skm.deflated_sharpe_ratio(winner, np.append(sharpe_ratios, np.nan)), value
     )
 
 
-def test_deflated_sharpe_ratio_is_psr_against_expected_max():
+@pytest.mark.parametrize("risk_free_rate", [0.0, 0.0005])
+def test_deflated_sharpe_ratio_is_psr_against_expected_max(risk_free_rate):
     rng = np.random.default_rng(1)
     returns = rng.normal(0.001, 0.01, 750)
     sharpe_ratios = rng.normal(0.02, 0.05, 60)
@@ -1521,22 +1587,62 @@ def test_deflated_sharpe_ratio_is_psr_against_expected_max():
         trial_sharpe_ratio_std=skm.standard_deviation(sharpe_ratios),
     )
     np.testing.assert_almost_equal(
-        skm.deflated_sharpe_ratio(returns, sharpe_ratios),
-        skm.probabilistic_sharpe_ratio(returns, benchmark_sharpe_ratio=benchmark),
+        skm.deflated_sharpe_ratio(
+            returns, sharpe_ratios, risk_free_rate=risk_free_rate
+        ),
+        skm.probabilistic_sharpe_ratio(
+            returns, benchmark_sharpe_ratio=benchmark, risk_free_rate=risk_free_rate
+        ),
     )
 
-    # With a single trial the benchmark is zero, so the DSR reduces to the PSR
+
+@pytest.mark.parametrize("sharpe_ratios", [[0.3], [0.3, 0.3]])
+def test_deflated_sharpe_ratio_without_selection_adjustment(sharpe_ratios):
+    returns = np.random.default_rng(1).normal(0.001, 0.01, 750)
+    # With a single trial or no dispersion, the DSR reduces to the PSR.
     np.testing.assert_almost_equal(
-        skm.deflated_sharpe_ratio(returns, [0.3]),
+        skm.deflated_sharpe_ratio(returns, sharpe_ratios),
         skm.probabilistic_sharpe_ratio(returns),
     )
 
 
+@pytest.mark.parametrize(
+    "sharpe_ratios, message",
+    [
+        ([], "at least one finite value"),
+        ([np.nan], "at least one finite value"),
+        ([np.inf], "infinite values"),
+        ([-np.inf], "infinite values"),
+        ([0.05, 0.1, 0.2, np.inf], "infinite values"),
+        (0.1, "a 1D array"),
+        ([[0.1, 0.2], [0.3, 0.4]], "a 1D array"),
+    ],
+)
+def test_deflated_sharpe_ratio_invalid_trials(sharpe_ratios, message):
+    returns = np.random.default_rng(10).normal(0.001, 0.01, 250)
+    with pytest.raises(ValueError, match=f"trial_sharpe_ratios must.*{message}"):
+        skm.deflated_sharpe_ratio(returns, sharpe_ratios)
+
+
+def test_deflated_sharpe_ratio_2d():
+    returns = np.random.default_rng(0).normal(0.001, 0.01, (500, 3))
+    returns[::3, 0] = np.nan
+    sharpe_ratios = (skm.mean(returns) - 0.0005) / skm.standard_deviation(returns)
+    values = skm.deflated_sharpe_ratio(returns, sharpe_ratios, risk_free_rate=0.0005)
+    assert values.shape == (3,)
+    for i in range(3):
+        np.testing.assert_allclose(
+            values[i],
+            skm.deflated_sharpe_ratio(
+                returns[:, i], sharpe_ratios, risk_free_rate=0.0005
+            ),
+        )
+
+
 def test_deflated_sharpe_ratio_constant_series():
     sharpe_ratios = [0.5, 1.0, 1.5, 2.0]
-    # A constant series has no dispersion and therefore no Sharpe ratio. Its
-    # standard deviation is floating-point residue rather than an exact zero, so
-    # without the guard the ratio comes out finite and deflates to 1.0.
+    # Constant returns yield NaN even when floating-point residue gives their
+    # standard deviation a small positive value.
     for value in (1e-7, 0.001, 1.0, 100.0):
         assert np.isnan(skm.deflated_sharpe_ratio(np.full(250, value), sharpe_ratios))
     assert np.isnan(skm.deflated_sharpe_ratio(np.zeros(250), sharpe_ratios))

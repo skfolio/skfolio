@@ -17,7 +17,12 @@ import scipy.stats as st
 
 from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.stats import safe_divide
-from skfolio.utils.tools import _normalize_sample_weight, _validate_sample_weight
+from skfolio.utils.tools import (
+    _normalize_sample_weight,
+    _validate_non_negative_real,
+    _validate_positive_real,
+    _validate_sample_weight,
+)
 
 
 def mean(
@@ -1210,15 +1215,17 @@ def correlation(X: ArrayLike, sample_weight: FloatArray | None = None) -> FloatA
 
 
 def expected_max_sharpe_ratio(
-    n_trials: int,
+    n_trials: float,
     trial_sharpe_ratio_std: float,
     trial_sharpe_ratio_mean: float = 0.0,
 ) -> float:
-    r"""Compute the expected maximum Sharpe ratio across `n_trials` trials.
+    r"""Approximate the expected maximum Sharpe ratio across independent trials.
 
     When a strategy is selected as the best of several trials, its Sharpe ratio is
-    the maximum of a sample and is therefore inflated by the selection itself. The
-    expected value of that maximum is:
+    the maximum of a sample and is therefore inflated by the selection itself.
+
+    The formula below approximates this expected maximum. It assumes that the
+    trial Sharpe ratios are independent and follow the same normal distribution:
 
     .. math::
 
@@ -1230,16 +1237,19 @@ def expected_max_sharpe_ratio(
     Euler-Mascheroni constant, :math:`e` Euler's number and :math:`Z^{-1}` the
     inverse standard normal CDF.
 
-    It is the benchmark of the Deflated Sharpe Ratio, where :math:`\mu = 0` under
-    the null hypothesis that no trial has a positive expected Sharpe ratio.
+    The Deflated Sharpe Ratio uses this benchmark with :math:`\mu = 0`,
+    representing trials whose true Sharpe ratios are zero.
 
     Parameters
     ----------
-    n_trials : int
-        Number of trials :math:`N` evaluated by the search.
+    n_trials : float
+        Number of independent trials :math:`N`, which can be fractional when
+        estimated as an effective trial count. Must be finite and at least 1.
 
     trial_sharpe_ratio_std : float
-        Standard deviation :math:`\sigma` of the Sharpe ratios across the trials.
+        Standard deviation :math:`\sigma` of the trial Sharpe ratios, measuring
+        how much they vary from one trial to another. Must be finite and
+        non-negative.
 
     trial_sharpe_ratio_mean : float, default=0.0
         Mean :math:`\mu` of the Sharpe ratios across the trials.
@@ -1247,18 +1257,24 @@ def expected_max_sharpe_ratio(
     Returns
     -------
     value : float
-        Expected maximum Sharpe ratio, in the same per-period terms as
-        `trial_sharpe_ratio_std`.
+        Approximate expected maximum Sharpe ratio, in the same per-period terms
+        as `trial_sharpe_ratio_std` and `trial_sharpe_ratio_mean`.
+
+    Raises
+    ------
+    ValueError
+        If `n_trials` is not a finite real number greater than or equal to 1, or
+        `trial_sharpe_ratio_std` is not a finite, non-negative real number.
 
     Notes
     -----
     With a single trial or without dispersion across trials, there is no selection
     to correct for and `trial_sharpe_ratio_mean` is returned.
 
-    Where the trials are correlated, for example a dense grid of similar parameter
-    combinations, the effective number of independent trials is lower than the
-    number evaluated. An effective count can be estimated separately and passed as
-    `n_trials`.
+    The calculation treats all `n_trials` trials as independent. Similar parameter
+    settings can produce correlated Sharpe ratios, so counting every setting as an
+    independent trial can overestimate the expected maximum. An estimated effective
+    number of independent trials can be passed as `n_trials`.
 
     See Also
     --------
@@ -1267,12 +1283,15 @@ def expected_max_sharpe_ratio(
 
     References
     ----------
-    .. [1] "The Sharpe Ratio Efficient Frontier".
-        Bailey, D. and Lopez de Prado, M. (2012)
+    .. [1] "The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest
+        Overfitting, and Non-Normality".
+        Bailey, D. and Lopez de Prado, M. (2014)
     """
+    _validate_positive_real(n_trials, "n_trials")
     if n_trials < 1:
-        raise ValueError("n_trials must be at least 1")
-    if n_trials == 1 or not trial_sharpe_ratio_std > 0:
+        raise ValueError(f"n_trials must be at least 1, got {n_trials!r}")
+    _validate_non_negative_real(trial_sharpe_ratio_std, "trial_sharpe_ratio_std")
+    if n_trials == 1 or trial_sharpe_ratio_std == 0:
         return trial_sharpe_ratio_mean
     return trial_sharpe_ratio_mean + trial_sharpe_ratio_std * (
         (1 - np.euler_gamma) * st.norm.ppf(1 - 1 / n_trials)
@@ -1287,7 +1306,7 @@ def probabilistic_sharpe_ratio(
 ) -> float | FloatArray:
     r"""Compute the Probabilistic Sharpe Ratio (PSR).
 
-    The PSR is the probability that the true Sharpe ratio of a return series
+    The PSR estimates the probability that the true Sharpe ratio of a return series
     exceeds a benchmark, given the length of the series and the non-normality of
     its returns:
 
@@ -1306,9 +1325,7 @@ def probabilistic_sharpe_ratio(
         Array of return values.
 
     benchmark_sharpe_ratio : float, default=0.0
-        Benchmark Sharpe ratio :math:`SR^*`. Pass
-        :func:`expected_max_sharpe_ratio` to test against the best of several
-        trials, which gives the Deflated Sharpe Ratio.
+        Benchmark Sharpe ratio :math:`SR^*`.
 
     risk_free_rate : float, default=0.0
         Risk-free rate used to compute the excess mean of `returns`.
@@ -1316,7 +1333,8 @@ def probabilistic_sharpe_ratio(
     Returns
     -------
     value : float or ndarray of shape (n_assets,)
-        Probability that the true Sharpe ratio exceeds `benchmark_sharpe_ratio`.
+        Estimated probability that the true Sharpe ratio exceeds
+        `benchmark_sharpe_ratio`.
         If `returns` is a 1D-array, the result is a float.
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
 
@@ -1325,8 +1343,6 @@ def probabilistic_sharpe_ratio(
     All quantities are per-period: `returns`, `risk_free_rate` and
     `benchmark_sharpe_ratio` must share the same frequency, and none of them is
     annualized.
-
-    `sample_weight` is not supported.
 
     NaN handling: NaNs are ignored. A series with fewer than three observations,
     with no dispersion, or with a non-positive variance adjustment yields NaN.
@@ -1342,22 +1358,22 @@ def probabilistic_sharpe_ratio(
         Bailey, D. and Lopez de Prado, M. (2012)
     """
     returns = np.asarray(returns, dtype=float)
-    with warnings.catch_warnings():
-        # Ignore NaNs and suppress warnings for all-NaN slices
-        warnings.simplefilter("ignore", category=RuntimeWarning)
-        n_observations = np.sum(~np.isnan(returns), axis=0)
-        constant = np.nanmin(returns, axis=0) == np.nanmax(returns, axis=0)
-        with np.errstate(divide="ignore", invalid="ignore"):
-            sr = (mean(returns) - risk_free_rate) / standard_deviation(returns)
-            variance_adj = 1 - skew(returns) * sr + (kurtosis(returns) - 1) / 4 * sr**2
-            value = st.norm.cdf(
-                (sr - benchmark_sharpe_ratio)
-                * np.sqrt(n_observations - 1)
-                / np.sqrt(variance_adj)
-            )
+    n_observations = np.sum(~np.isnan(returns), axis=0)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        sr = safe_divide(
+            mean(returns) - risk_free_rate,
+            standard_deviation(returns),
+            fill_value=np.nan,
+        )
+        variance_adj = 1 - skew(returns) * sr + (kurtosis(returns) - 1) / 4 * sr**2
+        value = st.norm.cdf(
+            (sr - benchmark_sharpe_ratio)
+            * np.sqrt(n_observations - 1)
+            / np.sqrt(variance_adj)
+        )
 
     value = np.where(
-        (n_observations < 3) | constant | ~np.isfinite(sr) | ~(variance_adj > 0),
+        (n_observations < 3) | np.logical_not(variance_adj > 0),
         np.nan,
         value,
     )
@@ -1371,8 +1387,8 @@ def deflated_sharpe_ratio(
 ) -> float | FloatArray:
     r"""Compute the Deflated Sharpe Ratio (DSR).
 
-    The DSR is the probability that the true Sharpe ratio of a strategy selected
-    as the best of several trials is greater than zero, once the number and
+    The DSR estimates the probability that the true Sharpe ratio of a strategy
+    selected as the best of several trials is greater than zero, once the number and
     dispersion of those trials and the non-normality of the selected returns are
     accounted for. It is the Probabilistic Sharpe Ratio benchmarked against the
     expected maximum Sharpe ratio of the search:
@@ -1381,20 +1397,20 @@ def deflated_sharpe_ratio(
 
         DSR = PSR\left(SR_0\right)
 
-    with :math:`SR_0` given by :func:`expected_max_sharpe_ratio` under a zero
-    mean. It is compared against a confidence level: at the 5% level, the selected
-    strategy is rejected when :math:`DSR < 0.95`.
+    with :math:`SR_0` computed by :func:`expected_max_sharpe_ratio` using
+    `trial_sharpe_ratio_mean=0.0`. The selected strategy meets a 95% confidence
+    requirement when :math:`DSR \geq 0.95`.
 
     Parameters
     ----------
     returns : ndarray of shape (n_observations,) or (n_observations, n_assets)
-        Return series of the selected trial.
+        Return series of the selected trial. For a 2D-array, each column is
+        assessed against the same benchmark derived from `trial_sharpe_ratios`.
 
     trial_sharpe_ratios : ndarray of shape (n_trials,)
         Sharpe ratios of every trial evaluated by the search, not only the
         selected one, since their count and dispersion set the benchmark. They
-        must be excess Sharpe ratios when `risk_free_rate` is non-zero. NaNs are
-        dropped.
+        must use the same risk-free rate as `returns`.
 
     risk_free_rate : float, default=0.0
         Risk-free rate used to compute the excess mean of `returns`.
@@ -1402,21 +1418,26 @@ def deflated_sharpe_ratio(
     Returns
     -------
     value : float or ndarray of shape (n_assets,)
-        Probability that the true Sharpe ratio of the selected trial is greater
-        than zero.
+        Estimated probability that the true Sharpe ratio of the selected trial
+        is greater than zero after accounting for selection across trials.
         If `returns` is a 1D-array, the result is a float.
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+
+    Raises
+    ------
+    ValueError
+        If `trial_sharpe_ratios` is not a 1D-array, is empty after dropping NaNs,
+        or contains infinite values.
 
     Notes
     -----
     All quantities are per-period, not annualized, and `trial_sharpe_ratios` must
     share the frequency of `returns`.
 
-    `sample_weight` is not supported.
-
-    Where the trials are correlated, for example a dense grid of similar parameter
-    combinations, the effective number of independent trials is lower than
-    `len(trial_sharpe_ratios)` and this estimate is accordingly conservative.
+    The benchmark assumes independent, normally distributed trial Sharpe ratios
+    and uses the number of non-NaN trials as the independent trial count. Positively
+    correlated trials, such as a dense grid of similar parameter combinations,
+    may therefore lead to an overly conservative adjustment.
 
     See Also
     --------
@@ -1430,12 +1451,18 @@ def deflated_sharpe_ratio(
         Bailey, D. and Lopez de Prado, M. (2014)
     """
     trial_sharpe_ratios = np.asarray(trial_sharpe_ratios, dtype=float)
+    if trial_sharpe_ratios.ndim != 1:
+        raise ValueError("trial_sharpe_ratios must be a 1D array")
+    if np.isinf(trial_sharpe_ratios).any():
+        raise ValueError("trial_sharpe_ratios must not contain infinite values")
     trial_sharpe_ratios = trial_sharpe_ratios[~np.isnan(trial_sharpe_ratios)]
     n_trials = len(trial_sharpe_ratios)
+    if n_trials == 0:
+        raise ValueError("trial_sharpe_ratios must contain at least one finite value")
     benchmark_sharpe_ratio = expected_max_sharpe_ratio(
         n_trials=n_trials,
         trial_sharpe_ratio_std=(
-            standard_deviation(trial_sharpe_ratios) if n_trials > 1 else 0.0
+            float(standard_deviation(trial_sharpe_ratios)) if n_trials > 1 else 0.0
         ),
     )
     return probabilistic_sharpe_ratio(
