@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import cvxpy as cp
 import numpy as np
 import pandas as pd
 import scipy.cluster.hierarchy as sch
@@ -18,9 +19,12 @@ import sklearn.utils.validation as skv
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
 from skfolio.distance import BaseDistance, PearsonDistance
+from skfolio.exceptions import ConvexOptimizationError
 from skfolio.measures import ExtraRiskMeasure, RiskMeasure
-from skfolio.optimization.cluster.hierarchical._base import (
-    BaseHierarchicalOptimization,
+from skfolio.optimization._base import BaseOptimization, _check_finite_weights
+from skfolio.optimization.hierarchical._utils import (
+    _PortfolioRiskMixin,
+    _convert_weight_bounds,
 )
 from skfolio.prior import BasePrior, EmpiricalPrior
 from skfolio.typing import ArrayLike
@@ -28,7 +32,7 @@ from skfolio.utils.stats import minimize_relative_weight_deviation
 from skfolio.utils.tools import check_estimator
 
 
-class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
+class HierarchicalEqualRiskContribution(_PortfolioRiskMixin, BaseOptimization):
     r"""Hierarchical Equal Risk Contribution estimator.
 
     The Hierarchical Equal Risk Contribution is a portfolio optimization method
@@ -260,21 +264,21 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
         Fallback estimator or a list of estimators to try, in order, when the primary
-        optimization raises during `fit`. Alternatively, use `"previous_weights"` 
-        (alone or in a list) to fall back to the estimator's `previous_weights`.
-        When a fallback succeeds, its fitted `weights_` are copied back to the primary 
-        estimator so that `fit` still returns the original instance. For traceability, 
+        optimization raises during `fit`. Alternatively, use `"previous_weights"` (alone
+        or in a list) to fall back to the estimator's `previous_weights`. When a
+        fallback succeeds, its fitted `weights_` are copied back to the primary
+        estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
-        and `fallback_chain_` stores each attempt with the associated outcome.
+        and `fallback_chain_` stores each attempt with the associated outcome. See
+        :ref:`optimization_fallbacks`.
 
     raise_on_failure : bool, default=True
-        Controls error handling when fitting fails.
-        If True, any failure during `fit` is raised immediately, no `weights_` are
-        set and subsequent calls to `predict` will raise a `NotFittedError`.
-        If False, errors are not raised; instead, a warning is emitted, `weights_`
-        is set to `None` and subsequent calls to `predict` will return a
-        `FailedPortfolio`. When fallbacks are specified, this behavior applies only
-        after all fallbacks have been exhausted.
+        Controls error handling when fitting fails and no fallback succeeds. If True,
+        the estimator raises the final error. If False, the estimator emits a warning
+        and sets `weights_` to None, so subsequent calls to `predict` return a
+        :class:`~skfolio.portfolio.FailedPortfolio`. During `fit`, `raise_on_failure`
+        applies to any fitting error, including errors raised by the prior estimator.
+        See :ref:`optimization_failure_handling`.
 
     Attributes
     ----------
@@ -306,9 +310,11 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         a valid solution, otherwise the stringified error message. For successful
         fits without any fallback, this is `None`.
 
-    error_ : str | list[str] | None
-        Captured error message(s) when `fit` fails. For multi-portfolio outputs
-        (`weights_` is 2D), this is a list aligned with portfolios.
+    error_ : str | list[str | None] | None
+        For a single portfolio, this is the recorded error message, or None after a
+        successful allocation or fallback. For multiple portfolios, it is a list with
+        one entry per row of `weights_`, containing an error message for each failed
+        portfolio and None for each successful portfolio.
 
     Notes
     -----
@@ -332,6 +338,10 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         Gautier Marti, Frank Nielsen, Mikołaj Bińkowski, Philippe Donnat (2020).
     """
 
+    prior_estimator_: BasePrior
+    distance_estimator_: BaseDistance
+    hierarchical_clustering_estimator_: HierarchicalClustering
+
     def __init__(
         self,
         risk_measure: RiskMeasure | ExtraRiskMeasure = RiskMeasure.VARIANCE,
@@ -350,21 +360,39 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         raise_on_failure: bool = True,
     ) -> None:
         super().__init__(
-            risk_measure=risk_measure,
-            prior_estimator=prior_estimator,
-            distance_estimator=distance_estimator,
-            hierarchical_clustering_estimator=hierarchical_clustering_estimator,
-            min_weights=min_weights,
-            max_weights=max_weights,
-            transaction_costs=transaction_costs,
-            management_fees=management_fees,
             previous_weights=previous_weights,
             portfolio_params=portfolio_params,
             fallback=fallback,
             raise_on_failure=raise_on_failure,
         )
+        self.risk_measure = risk_measure
+        self.prior_estimator = prior_estimator
+        self.distance_estimator = distance_estimator
+        self.hierarchical_clustering_estimator = hierarchical_clustering_estimator
+        self.min_weights = min_weights
+        self.max_weights = max_weights
         self.solver = solver
         self.solver_params = solver_params
+        self.transaction_costs = transaction_costs
+        self.management_fees = management_fees
+
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Route fitting metadata to the prior, distance and clustering estimators."""
+        return (
+            skm.MetadataRouter(owner=type(self).__name__)
+            .add(
+                prior_estimator=self.prior_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+            .add(
+                distance_estimator=self.distance_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+            .add(
+                hierarchical_clustering_estimator=self.hierarchical_clustering_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+        )
 
     def fit(
         self, X: ArrayLike, y: None = None, **fit_params: Any
@@ -448,7 +476,23 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         X = skv.validate_data(self, X)
         n_assets = X.shape[1]
 
-        min_weights, max_weights = self._convert_weights_bounds(n_assets=n_assets)
+        min_weights, max_weights = _convert_weight_bounds(
+            min_weights=self._clean_input(
+                self.min_weights,
+                n_assets=n_assets,
+                fill_value=0,
+                name="min_weights",
+                apply_investable_mask=False,
+            ),
+            max_weights=self._clean_input(
+                self.max_weights,
+                n_assets=n_assets,
+                fill_value=1,
+                name="max_weights",
+                apply_investable_mask=False,
+            ),
+            n_assets=n_assets,
+        )
 
         assets_risks = self._unitary_risks(return_distribution=return_distribution)
         weights = np.ones(n_assets)
@@ -516,14 +560,20 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
             weights[cluster_ids] *= clusters_weights[i]
 
         # Apply weights constraints
-        weights = minimize_relative_weight_deviation(
-            weights=weights,
-            min_weights=min_weights,
-            max_weights=max_weights,
-            solver=self.solver,
-            solver_params=self.solver_params,
-        )
+        _check_finite_weights(weights)
+        try:
+            weights = minimize_relative_weight_deviation(
+                weights=weights,
+                min_weights=min_weights,
+                max_weights=max_weights,
+                solver=self.solver,
+                solver_params=self.solver_params,
+            )
+        except cp.SolverError as error:
+            raise ConvexOptimizationError(str(error)) from error
 
+        if not np.isfinite(weights).all():
+            raise ConvexOptimizationError("Allocation produced non-finite weights.")
         self.weights_ = weights
 
         return self

@@ -29,6 +29,7 @@ a large set of attributes and methods.
 .. code-block:: python
 
     import datetime as dt
+    import numpy as np
     from skfolio import BasePortfolio
 
     portfolio = BasePortfolio(
@@ -70,8 +71,13 @@ measures are (see :ref:`Periodicity Convention <periodicity_convention>`).
 
     # methods
     portfolio.summary()
-    portfolio.dominates(other_portfolio)
     portfolio.rolling_measure(measure=RatioMeasure.SHARPE_RATIO)
+
+    other_portfolio = BasePortfolio(
+        returns=[0.001, -0.002, 0.002],
+        observations=portfolio.observations,
+    )
+    portfolio.dominates(other_portfolio)
 
     # plots
     portfolio.plot_cumulative_returns()
@@ -83,7 +89,7 @@ It is also an array container:
 .. code-block:: python
 
     np.asarray(portfolio)
-    >>> array([ 0.002 , -0.001 ,  0.0015])
+    # array([ 0.002 , -0.001 ,  0.0015])
 
 
 Finally, portfolios can be compared together using domination:
@@ -164,13 +170,10 @@ objectives and the choice between `weight_drift=False` and `weight_drift=True`.
         [-0.001, 0.002],
         [0.0015, 0.004],
     ]
-
     weights = [0.6, 0.4]
-
     portfolio = Portfolio(X=X, weights=weights)
-
-    print(portfolio.returns)
-    >>> array([0.0014, 0.0002, 0.0025])
+    portfolio.returns
+    # array([0.0014, 0.0002, 0.0025])
 
     drifted_portfolio = Portfolio(X=X, weights=weights, weight_drift=True)
     drifted_portfolio.weights_per_observation
@@ -189,20 +192,16 @@ objectives and the choice between `weight_drift=False` and `weight_drift=True`.
         columns=["Asset A", "Asset B"],
         index=[dt.date(2022, 1, 1), dt.date(2022, 1, 2), dt.date(2022, 1, 3)],
     )
-
-    print(X)
-    >>>
-                Asset A  Asset B
-    2022-01-01   0.0030   -0.001
-    2022-01-02  -0.0010    0.002
-    2022-01-03   0.0015    0.004
+    X
+    #             Asset A  Asset B
+    # 2022-01-01   0.0030   -0.001
+    # 2022-01-02  -0.0010    0.002
+    # 2022-01-03   0.0015    0.004
 
     weights = [0.6, 0.4]
-
     portfolio = Portfolio(X=X, weights=weights, name="my_portfolio")
-
-    print(portfolio.returns)
-    >>> array([0.0014, 0.0002, 0.0025])
+    portfolio.returns
+    # array([0.0014, 0.0002, 0.0025])
 
 
 Attributes and Methods
@@ -215,17 +214,16 @@ It also provides methods for analyzing portfolio weights:
     from skfolio import RatioMeasure
 
     portfolio.contribution(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO)
-    >>> array([-3.04203502,  3.04203503])
+    # array([-3.02408776,  3.02408776])
 
     portfolio.composition
-    >>>
-                  my_portfolio
-    asset
-    Asset A           0.6
-    Asset B           0.4
+    #          my_portfolio
+    # asset
+    # Asset A           0.6
+    # Asset B           0.4
 
     portfolio.get_weight("Asset A")
-    >>> 0.6
+    # np.float64(0.6)
 
     # Weight paths and trading diagnostics
     portfolio.weights_per_observation
@@ -233,12 +231,40 @@ It also provides methods for analyzing portfolio weights:
     portfolio.turnover
 
     # Plots
-    portfolio.plot_contribution()
+    portfolio.plot_contribution(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO)
     portfolio.plot_composition()
     portfolio.plot_composition_treemap(
         groups={"Asset A": ["Equity", "US"], "Asset B": ["Bond", "US"]}
     )
 
+
+
+Observation Weights
+*******************
+
+`sample_weight` assigns probabilities to historical or synthetic observations.
+On portfolios, these weights must be finite, nonnegative and sum to one within
+an absolute tolerance of 1.001e-5. Functions in :mod:`skfolio.measures` also accept
+relative weights and normalize them.
+
+Weighted portfolio measures exclude NaNs and normalize the remaining weights.
+They return NaN if no positive weight remains.
+
+Drawdowns depend on the sequence of returns. Removing a zero-weight return could
+change portfolio value and later drawdowns, so the full path is kept. Average
+drawdown is the weighted average of the resulting drawdowns at each date. CDaR
+and EDaR use the same observation probabilities to measure tail risk.
+
+`worst_realization` and `max_drawdown` report the worst event in the supplied
+sample, regardless of its weight. Calmar uses the weighted mean return minus the
+risk-free rate, divided by this maximum drawdown.
+At `beta=1`, VaR, CVaR, EVaR, DaR, CDaR and EDaR use the worst observation with
+positive weight.
+
+Rolling measures apply these rules independently within each window.
+
+`predict(X)` does not reuse training probabilities. Use
+`predict(return_distribution)` to evaluate a supplied weighted distribution.
 
 
 Multi Period Portfolio
@@ -264,9 +290,12 @@ composed of multiple test `Portfolio`, each corresponding to a train/test fold.
 
     from skfolio import MultiPeriodPortfolio
 
+    ptf1 = Portfolio(X=X.iloc[:1], weights=[0.6, 0.4])
+    ptf2 = Portfolio(X=X.iloc[1:2], weights=[0.5, 0.5])
+    ptf3 = Portfolio(X=X.iloc[2:], weights=[0.4, 0.6])
     portfolio = MultiPeriodPortfolio(portfolios=[ptf1, ptf2, ptf3])
 
 Sample weights control each observation's contribution to measures such as mean
 and variance. By default, they are inherited from the children, with periods
-weighted by their observation counts. Set ``sample_weight`` on the parent to
+weighted by their observation counts. Set `sample_weight` on the parent to
 override them.

@@ -2,6 +2,168 @@
 
 <!-- version list -->
 
+## v1.9.1 (2026-10-16)
+
+### Bug Fixes
+
+- **portfolio**: Use the default finite-difference step for drawdown contributions
+  ([#384](https://github.com/skfolio/skfolio/pull/384),
+  [`f066a15`](https://github.com/skfolio/skfolio/commit/f066a150e9f74aa319a62523f3b6b4dc18953994))
+
+### Documentation
+
+- Improve readme and add documentation snippet tests
+  ([#431](https://github.com/skfolio/skfolio/pull/431),
+  [`9d6bc3a`](https://github.com/skfolio/skfolio/commit/9d6bc3a764fd9b88b59dc469057bfeaaf0790d62))
+
+
+## v1.9.0 (2026-10-16)
+
+### Features
+
+- **measures**: Add probabilistic and deflated Sharpe ratios
+  ([#255](https://github.com/skfolio/skfolio/pull/255),
+  [`018dbaa`](https://github.com/skfolio/skfolio/commit/018dbaa9743490bc9dc32fcbd1d901c26efa0356))
+
+
+## v1.8.6 (2026-10-14)
+
+### Bug Fixes
+
+- **alpha**: Account for overlapping windows in the IC t-statistic
+  ([#409](https://github.com/skfolio/skfolio/pull/409),
+  [`246176c`](https://github.com/skfolio/skfolio/commit/246176ccfbbb1faabe43d44a510a38ad7f5193d1))
+
+### Continuous Integration
+
+- Validate PR titles and require approval for major releases
+  ([#428](https://github.com/skfolio/skfolio/pull/428),
+  [`878bda1`](https://github.com/skfolio/skfolio/commit/878bda1a75cba1390f2f766dbd76378703b86912))
+
+
+## v1.8.5 (2026-10-12)
+
+### Bug Fixes
+
+- **optimization**: Use the degree-2 worst-case variance in the MAXIMIZE_RATIO objective
+  ([#425](https://github.com/skfolio/skfolio/pull/425),
+  [`ab34a25`](https://github.com/skfolio/skfolio/commit/ab34a252744b6eee5e0273e685be75b9de844c69))
+
+
+## v1.8.4 (2026-10-12)
+
+### Performance Improvements
+
+- **optimization**: Use sparse sorting networks for Gini mean difference
+  ([#295](https://github.com/skfolio/skfolio/pull/295),
+  [`b7e8287`](https://github.com/skfolio/skfolio/commit/b7e82875ca2be71a9d4c4105cb5430b68122c949))
+
+
+## v1.8.3 (2026-10-12)
+
+### Bug Fixes
+
+- **prior**: Seed SyntheticData conditioning noise and draw it independently per asset
+  ([#419](https://github.com/skfolio/skfolio/pull/419),
+  [`5d3acca`](https://github.com/skfolio/skfolio/commit/5d3acca969a6d12116d8365b22facc0327e9da02))
+
+
+## v1.8.2 (2026-10-12)
+
+### Bug Fixes
+
+- **equations**: Multiply consecutive signs in linear equations
+  ([#423](https://github.com/skfolio/skfolio/pull/423),
+  [`5cff516`](https://github.com/skfolio/skfolio/commit/5cff516e7adc2864d3fdfa7d8f9a910a67ec75d5))
+
+
+## v1.8.1 (2026-10-10)
+
+### Bug Fixes
+
+- **model-selection**: Assign trailing observations to the last CombinatorialPurgedCV fold
+  ([#414](https://github.com/skfolio/skfolio/pull/414),
+  [`a479a42`](https://github.com/skfolio/skfolio/commit/a479a42addbb7face6df026d377113a9ccb4ae55))
+
+### Documentation
+
+- Restore llms-full.txt and use actual example titles in llms.txt
+  ([#418](https://github.com/skfolio/skfolio/pull/418),
+  [`4fe0c76`](https://github.com/skfolio/skfolio/commit/4fe0c769822e228517189ad020c35bd723f8ed47))
+
+
+## v1.8.0 (2026-10-09)
+
+### Features
+
+- Extend sample-weight support across risk measures
+  ([#412](https://github.com/skfolio/skfolio/pull/412),
+  [`a75fb77`](https://github.com/skfolio/skfolio/commit/a75fb772b57ec1fc2034c75d38d0af1ae5a348b4))
+
+
+## v1.7.1 (2026-10-08)
+
+### Bug Fixes
+
+- Correct weighted downside risk and prevent VaR from skipping rare losses
+  ([#410](https://github.com/skfolio/skfolio/pull/410),
+  [`ec062b6`](https://github.com/skfolio/skfolio/commit/ec062b63305a207f5dd2d821fe83eab54bde6f46))
+
+- **portfolio**: Correct weighted rolling measures and NaN handling
+  ([#404](https://github.com/skfolio/skfolio/pull/404),
+  [`40091bb`](https://github.com/skfolio/skfolio/commit/40091bbd08c13d4c0ea7d52a6e7087285b971229))
+
+### Documentation
+
+- Update parameter grids in the HRP vs HERC tutorial
+  ([#408](https://github.com/skfolio/skfolio/pull/408),
+  [`0d7c8f4`](https://github.com/skfolio/skfolio/commit/0d7c8f404459aad7bc700c422afae51ff5d7ac2f))
+
+
+## v1.7.0 (2026-10-07)
+
+### Features
+
+- **optimization**: Support online learning for HRP and Schur Complementary
+  ([#342](https://github.com/skfolio/skfolio/pull/342),
+  [`21e68be`](https://github.com/skfolio/skfolio/commit/21e68beda7d1f11914d333c9aec3478227dd947e))
+
+### Additional Release Information
+
+- **optimization**: HRP, HERC and Schur no longer inherit from BaseHierarchicalOptimization.
+  Existing custom subclasses remain supported through the deprecation period. Legacy public imports
+  and the HRP/Schur hierarchical_clustering_estimator parameter are deprecated for removal in 2.0.
+
+- CovarianceDistance rejects invalid covariance matrices.
+
+
+## v1.6.0 (2026-10-07)
+
+### Features
+
+- **seriation**: Add hierarchical and spectral seriation estimators
+  ([#407](https://github.com/skfolio/skfolio/pull/407),
+  [`3eeb7dc`](https://github.com/skfolio/skfolio/commit/3eeb7dc845d5af7c60103c17c0603ddb85d65562))
+
+
+## v1.5.0 (2026-10-07)
+
+### Features
+
+- **optimization**: Unify failure handling and fallback behavior
+  ([#406](https://github.com/skfolio/skfolio/pull/406),
+  [`3322df2`](https://github.com/skfolio/skfolio/commit/3322df27595590c6acec5d3f7cf6500e6dff296d))
+
+
+## v1.4.12 (2026-10-06)
+
+### Bug Fixes
+
+- **optimization**: Improve Schur gamma search accuracy and robustness
+  ([#405](https://github.com/skfolio/skfolio/pull/405),
+  [`99fa21e`](https://github.com/skfolio/skfolio/commit/99fa21ed764ccc6d252d461a7e8e43a5864fdb8f))
+
+
 ## v1.4.11 (2026-10-03)
 
 ### Bug Fixes

@@ -683,8 +683,8 @@ def _is_portfolio_optimization_estimator(
         or, for a `Pipeline`, when its last step is one.
     """
     # Imported here rather than at module scope: `skfolio.optimization` imports
-    # `skfolio.model_selection` (through `optimization.cluster._nco` and
-    # `optimization.ensemble._stacking`), which imports this module, so a
+    # `skfolio.model_selection` (through `optimization.hierarchical._clustering._nco`
+    # and `optimization.ensemble._stacking`), which imports this module, so a
     # module-level import would close a package-level cycle between
     # `skfolio.model_selection` and `skfolio.optimization`. Annotations are
     # postponed, so the `TYPE_CHECKING` import above covers the signature.

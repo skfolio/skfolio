@@ -19,6 +19,9 @@ equal-weighted benchmark.
 
 Finally, we will use the :class:`~skfolio.model_selection.CombinatorialPurgedCV` to
 analyze the stability and distribution of both models.
+
+For online updates with HRP or Schur and a changing investment universe, see
+:ref:`sphx_glr_auto_examples_online_learning_plot_online_schur_changing_universe.py`.
 """
 
 # %%
@@ -45,6 +48,7 @@ from skfolio.optimization import (
     HierarchicalRiskParity,
 )
 from skfolio.preprocessing import prices_to_returns
+from skfolio.seriation import HierarchicalSeriation
 
 prices = load_ftse100_dataset()
 
@@ -57,7 +61,9 @@ X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 # We create two models: an HRP-CVaR and an HERC-CVaR:
 model_hrp = HierarchicalRiskParity(
     risk_measure=RiskMeasure.CVAR,
-    hierarchical_clustering_estimator=HierarchicalClustering(),
+    seriation_estimator=HierarchicalSeriation(
+        hierarchical_clustering_estimator=HierarchicalClustering()
+    ),
 )
 
 model_herc = HierarchicalEqualRiskContribution(
@@ -71,7 +77,8 @@ model_herc = HierarchicalEqualRiskContribution(
 # For both HRP and HERC models, we find the parameters that maximize the average
 # out-of-sample Mean-CVaR ratio using `GridSearchCV` with `WalkForward` cross-validation
 # on the training set. The `WalkForward` splits are chosen to simulate a three-month
-# (60 business days) rolling portfolio fitted on the previous year (252 business days):
+# (60 business days) rolling portfolio fitted on the previous year (252 business days).
+# For HRP, the linkage method is configured through `seriation_estimator`:
 cv = WalkForward(train_size=252, test_size=60)
 
 grid_search_hrp = GridSearchCV(
@@ -80,8 +87,7 @@ grid_search_hrp = GridSearchCV(
     n_jobs=-1,
     param_grid={
         "distance_estimator": [PearsonDistance(), KendallDistance()],
-        "hierarchical_clustering_estimator__linkage_method": [
-            # LinkageMethod.SINGLE,
+        "seriation_estimator__hierarchical_clustering_estimator__linkage_method": [
             LinkageMethod.WARD,
             LinkageMethod.COMPLETE,
         ],
@@ -93,8 +99,21 @@ model_hrp = grid_search_hrp.best_estimator_
 print(model_hrp)
 
 # %%
-#
-grid_search_herc = grid_search_hrp.set_params(estimator=model_herc)
+# HERC uses its clustering estimator directly, so its parameter grid has a
+# different path for the linkage method:
+grid_search_herc = GridSearchCV(
+    estimator=model_herc,
+    cv=cv,
+    n_jobs=-1,
+    param_grid={
+        "distance_estimator": [PearsonDistance(), KendallDistance()],
+        "hierarchical_clustering_estimator__linkage_method": [
+            LinkageMethod.WARD,
+            LinkageMethod.COMPLETE,
+        ],
+    },
+    scoring=make_scorer(RatioMeasure.CVAR_RATIO),
+)
 grid_search_herc.fit(X_train)
 model_herc = grid_search_herc.best_estimator_
 print(model_herc)

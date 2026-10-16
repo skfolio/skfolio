@@ -31,7 +31,7 @@ import contextlib
 import numbers
 import warnings
 from collections import deque
-from collections.abc import Iterator
+from collections.abc import Generator
 from typing import cast
 
 import numpy as np
@@ -1140,7 +1140,7 @@ class VineCopula(BaseMultivariateDist):
         return fig
 
     @contextlib.contextmanager
-    def _count_node_visits(self) -> Iterator[None]:
+    def _count_node_visits(self) -> Generator[None, None, None]:
         """A context manager to enable counting node visits within the tree.
         Temporarily enables node visit counting for the duration of the context.
         After the block is executed, the original state is restored.

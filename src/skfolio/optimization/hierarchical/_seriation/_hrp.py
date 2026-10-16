@@ -11,24 +11,26 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-import pandas as pd
-import scipy.cluster.hierarchy as sch
-import sklearn.utils.metadata_routing as skm
-import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
-from skfolio.distance import BaseDistance, PearsonDistance
+from skfolio.distance import BaseDistance
+from skfolio.exceptions import OptimizationError
 from skfolio.measures import ExtraRiskMeasure, RiskMeasure
-from skfolio.optimization.cluster.hierarchical._base import (
-    BaseHierarchicalOptimization,
+from skfolio.optimization.hierarchical._seriation._base import (
+    _BaseSeriatedOptimization,
 )
-from skfolio.prior import BasePrior, EmpiricalPrior
+from skfolio.optimization.hierarchical._utils import (
+    _PortfolioRiskMixin,
+    _apply_weight_constraints_to_split_factor,
+)
+from skfolio.prior import BasePrior, ReturnDistribution
+from skfolio.seriation import BaseSeriation
 from skfolio.typing import ArrayLike, FloatArray, IntArray
-from skfolio.utils.tools import bisection, check_estimator
+from skfolio.utils.tools import bisection
 
 
-class HierarchicalRiskParity(BaseHierarchicalOptimization):
+class HierarchicalRiskParity(_PortfolioRiskMixin, _BaseSeriatedOptimization):
     r"""Hierarchical Risk Parity estimator.
 
     Hierarchical Risk Parity is a portfolio optimization method developed by Marcos
@@ -91,15 +93,35 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
     distance_estimator : BaseDistance, optional
         :ref:`Distance estimator <distance>`.
         The distance estimator is used to estimate the codependence and the distance
-        matrix needed for the computation of the linkage matrix.
+        matrix used by the seriation estimator.
         The default (`None`) is to use :class:`~skfolio.distance.PearsonDistance`.
 
     hierarchical_clustering_estimator : HierarchicalClustering, optional
-        :ref:`Hierarchical Clustering estimator <hierarchical_clustering>`.
-        The hierarchical clustering estimator is used to compute the linkage matrix
-        and the hierarchical clustering of the assets based on the distance matrix.
-        The default (`None`) is to use
-        :class:`~skfolio.cluster.HierarchicalClustering`.
+        Deprecated. Use `seriation_estimator=HierarchicalSeriation(
+        hierarchical_clustering_estimator=...)`. Supplying both parameters is an error.
+        Will be removed in version 2.0.
+
+    seriation_estimator : BaseSeriation, optional
+        Asset ordering estimator. The default is
+        :class:`~skfolio.seriation.HierarchicalSeriation` with Ward linkage
+        and optimal leaf ordering. Use :class:`~skfolio.seriation.SpectralSeriation`
+        for spectral ordering with orientation carried across online updates.
+
+    distance_from_prior : bool, default=True
+        If True, fit the distance estimator on the return scenarios produced by
+        the prior. With `CovarianceDistance(covariance_estimator="precomputed")`,
+        use the prior's covariance instead.
+
+        If False, use the `X` argument supplied to this optimizer's `fit(X)` or
+        `partial_fit(X)`, before the prior processes it. In a pipeline, `X` is
+        the output of the preceding steps. Precomputed covariance distances
+        require True.
+
+        During online learning, True refits the distance estimator on the prior's
+        current scenarios or covariance at each update. False updates it from
+        the new observations in `X` and requires support for `partial_fit`.
+        Portfolio allocation always uses the prior's moments and return scenarios.
+        See :ref:`asset_seriation`.
 
     min_weights : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Minimum assets weights (weights lower bounds). The default is 0.0 (no short
@@ -221,32 +243,51 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
         Fallback estimator or a list of estimators to try, in order, when the primary
-        optimization raises during `fit`. Alternatively, use `"previous_weights"`
-        (alone or in a list) to fall back to the estimator's `previous_weights`.
-        When a fallback succeeds, its fitted `weights_` are copied back to the primary
+        optimization raises during `fit`. Alternatively, use `"previous_weights"` (alone
+        or in a list) to fall back to the estimator's `previous_weights`. When a
+        fallback succeeds, its fitted `weights_` are copied back to the primary
         estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
-        and `fallback_chain_` stores each attempt with the associated outcome.
+        and `fallback_chain_` stores each attempt with the associated outcome. With
+        `partial_fit`, only None or `"previous_weights"` is supported because fallback
+        estimators have not accumulated the primary model's online history. See
+        :ref:`optimization_fallbacks`.
 
     raise_on_failure : bool, default=True
-        Controls error handling when fitting fails.
-        If True, any failure during `fit` is raised immediately, no `weights_` are
-        set and subsequent calls to `predict` will raise a `NotFittedError`.
-        If False, errors are not raised; instead, a warning is emitted, `weights_`
-        is set to `None` and subsequent calls to `predict` will return a
-        `FailedPortfolio`. When fallbacks are specified, this behavior applies only
-        after all fallbacks have been exhausted.
+        Controls error handling when fitting fails and no fallback succeeds. If True,
+        the estimator raises the final error. If False, the estimator emits a warning
+        and sets `weights_` to None, so subsequent calls to `predict` return a
+        :class:`~skfolio.portfolio.FailedPortfolio`. During `fit`, `raise_on_failure`
+        applies to any fitting error, including errors raised by the prior estimator.
+        During `partial_fit`, `raise_on_failure` applies only to optimization failures
+        after learning completes. Input validation failures and errors from the prior or
+        other learning estimators are always raised. See
+        :ref:`optimization_failure_handling` for batch recovery and
+        :ref:`online_failure_handling` for online continuation and restart rules.
 
     Attributes
     ----------
     weights_ : ndarray of shape (n_assets,)
         Weights of the assets.
 
-    distance_estimator_ : BaseDistance
-        Fitted `distance_estimator`.
+    distance_estimator_ : BaseDistance or None
+        Fitted `distance_estimator`. None when `distance_from_prior=True` and
+        fewer than two assets are investable.
 
-    hierarchical_clustering_estimator_ : HierarchicalClustering
-        Fitted `hierarchical_clustering_estimator`.
+    seriation_estimator_ : BaseSeriation
+        Fitted ordering estimator. Its `ordering_` contains positions in the
+        full input schema. Hierarchical linkage diagnostics are available through
+        `seriation_estimator_.hierarchical_clustering_estimator_`.
+
+    hierarchical_clustering_estimator_ : HierarchicalClustering or None
+        Deprecated alias of `seriation_estimator_.hierarchical_clustering_estimator_`.
+        Access emits a FutureWarning. Will be removed in version 2.0.
+        Unavailable with spectral seriation.
+
+    investable_mask_ : ndarray of shape (n_assets,) or None
+        Mask of investable assets from the fitted prior. None when all assets are
+        investable. May be absent after batch fallback if fitting failed before
+        the prior's investable mask was determined.
 
     n_features_in_ : int
         Number of assets seen during `fit`.
@@ -267,9 +308,11 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         a valid solution, otherwise the stringified error message. For successful
         fits without any fallback, this is `None`.
 
-    error_ : str | list[str] | None
-        Captured error message(s) when `fit` fails. For multi-portfolio outputs
-        (`weights_` is 2D), this is a list aligned with portfolios.
+    error_ : str | list[str | None] | None
+        For a single portfolio, this is the recorded error message, or None after a
+        successful allocation or fallback. For multiple portfolios, it is a list with
+        one entry per row of `weights_`, containing an error message for each failed
+        portfolio and None for each successful portfolio.
 
     Notes
     -----
@@ -296,6 +339,13 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
     .. [5] "Machine Learning for Asset Managers",
         Elements in Quantitative Finance. Cambridge University Press,
         Marcos López de Prado (2020).
+
+    Examples
+    --------
+    For online updates with late listings, delistings, holidays and asset warm-up,
+    see
+    :ref:`sphx_glr_auto_examples_online_learning_plot_online_schur_changing_universe.py`.
+    That example uses Schur, and the same online setup applies to HRP.
     """
 
     def __init__(
@@ -303,6 +353,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         risk_measure: RiskMeasure | ExtraRiskMeasure = RiskMeasure.VARIANCE,
         prior_estimator: BasePrior | None = None,
         distance_estimator: BaseDistance | None = None,
+        # TODO remove deprecated hierarchical_clustering_estimator in v2.0
         hierarchical_clustering_estimator: HierarchicalClustering | None = None,
         min_weights: skt.MultiInput | None = 0.0,
         max_weights: skt.MultiInput | None = 1.0,
@@ -312,11 +363,14 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
         raise_on_failure: bool = True,
+        *,
+        seriation_estimator: BaseSeriation | None = None,
+        distance_from_prior: bool = True,
     ) -> None:
         super().__init__(
-            risk_measure=risk_measure,
             prior_estimator=prior_estimator,
             distance_estimator=distance_estimator,
+            # TODO remove deprecated hierarchical_clustering_estimator in v2.0
             hierarchical_clustering_estimator=hierarchical_clustering_estimator,
             min_weights=min_weights,
             max_weights=max_weights,
@@ -326,10 +380,13 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
             portfolio_params=portfolio_params,
             fallback=fallback,
             raise_on_failure=raise_on_failure,
+            seriation_estimator=seriation_estimator,
+            distance_from_prior=distance_from_prior,
         )
+        self.risk_measure = risk_measure
 
     def fit(
-        self, X: ArrayLike, y: None = None, **fit_params: Any
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> HierarchicalRiskParity:
         """Fit the Hierarchical Risk Parity Optimization estimator.
 
@@ -338,78 +395,89 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         X : array-like of shape (n_observations, n_assets)
             Price returns of the assets.
 
-        y : Ignored
-            Not used, present for API consistency by convention.
+        y : array-like, optional
+            Targets passed to the prior and, when distance_from_prior=False,
+            to the distance estimator. Prior scenarios do not receive this target.
+
+        **fit_params : dict
+            Metadata routed to the underlying estimators. Metadata supplied to
+            a distance fitted on prior scenarios must align with those scenarios.
 
         Returns
         -------
         self : HierarchicalRiskParity
             Fitted estimator.
         """
-        routed_params = skm.process_routing(self, "fit", **fit_params)
+        self._reset()
+        self._warn_deprecated_clustering_estimator(stacklevel=4)
+        self._fit(X, y, method="fit", **fit_params)
+        return self
 
-        # Validate
+    def partial_fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> HierarchicalRiskParity:
+        """Update the prior, distances and seriation, then compute portfolio weights.
+
+        The prior must support incremental learning. With
+        `distance_from_prior=False`, the distance must also support it.
+        Supply only new observations on each call. See
+        :ref:`online_failure_handling` for failure handling and restarts.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            New returns with the same full asset schema as previous calls.
+
+        y : array-like, optional
+            Targets passed to the prior and, when distance_from_prior=False,
+            to the distance estimator.
+
+        **fit_params : dict
+            Metadata routed to the underlying estimators. Requires metadata
+            routing to be enabled. Observation metadata is not forwarded to
+            distances fitted on the prior's return scenarios or covariance.
+
+        Returns
+        -------
+        self : HierarchicalRiskParity
+            Updated estimator.
+
+        Raises
+        ------
+        OptimizationError
+            If optimization fails with `raise_on_failure=True` and `fallback=None`.
+        """
+        self._warn_deprecated_clustering_estimator(stacklevel=3)
+        self._fit(X, y, method="partial_fit", **fit_params)
+        return self
+
+    def _validate_params(self) -> None:
+        """Validate parameters."""
         if not isinstance(self.risk_measure, RiskMeasure | ExtraRiskMeasure):
             raise TypeError(
                 "`risk_measure` must be of type `RiskMeasure` or `ExtraRiskMeasure`"
             )
-
         if self.risk_measure in [ExtraRiskMeasure.SKEW, ExtraRiskMeasure.KURTOSIS]:
-            # Because Skew and Kurtosis can take negative values
             raise ValueError(
                 f"risk_measure {self.risk_measure} currently not supported in HRP"
             )
 
-        self.prior_estimator_ = check_estimator(
-            self.prior_estimator,
-            default=EmpiricalPrior(),
-            check_type=BasePrior,
-        )
-        self.distance_estimator_ = check_estimator(
-            self.distance_estimator,
-            default=PearsonDistance(),
-            check_type=BaseDistance,
-        )
-        self.hierarchical_clustering_estimator_ = check_estimator(
-            self.hierarchical_clustering_estimator,
-            default=HierarchicalClustering(),
-            check_type=HierarchicalClustering,
-        )
-
-        # Fit the estimators
-        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
-        return_distribution = self.prior_estimator_.return_distribution_
-        returns = return_distribution.returns
-
-        # To keep the asset_names
-        if isinstance(X, pd.DataFrame):
-            returns = pd.DataFrame(returns, columns=X.columns)
-
-        self.distance_estimator_.fit(returns, y, **routed_params.distance_estimator.fit)
-        distance = self.distance_estimator_.distance_
-
-        # To keep the asset_names
-        if isinstance(X, pd.DataFrame):
-            distance = pd.DataFrame(distance, columns=X.columns)
-
-        self.hierarchical_clustering_estimator_.fit(
-            X=distance, y=None, **routed_params.hierarchical_clustering_estimator.fit
-        )
-
-        X = skv.validate_data(self, X)
-        n_assets = X.shape[1]
-
-        min_weights, max_weights = self._convert_weights_bounds(n_assets=n_assets)
+    def _compute_weights(
+        self,
+        return_distribution: ReturnDistribution,
+        ordering: IntArray,
+        min_weights: FloatArray,
+        max_weights: FloatArray,
+    ) -> FloatArray:
+        """Apply recursive risk bisection in the supplied asset order."""
+        n_assets = len(ordering)
         assets_risks = self._unitary_risks(return_distribution=return_distribution)
-
-        ordered_linkage_matrix = sch.optimal_leaf_ordering(
-            self.hierarchical_clustering_estimator_.linkage_matrix_,
-            self.hierarchical_clustering_estimator_.condensed_distance_,
-        )
-        sorted_assets = sch.leaves_list(ordered_linkage_matrix)
-
+        if not np.isfinite(assets_risks).all() or np.any(assets_risks == 0):
+            raise OptimizationError(
+                "HRP cannot split assets with zero or nonfinite risk."
+            )
         weights = np.ones(n_assets)
-        items = [sorted_assets]
+        items = [ordering]
 
         while len(items) > 0:
             new_items = []
@@ -427,6 +495,10 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
                     )
                 left_risk, right_risk = risks
                 left_cluster, right_cluster = clusters_ids
+                if not np.isfinite(risks).all() or left_risk + right_risk == 0:
+                    raise OptimizationError(
+                        "HRP cannot split clusters with zero total or nonfinite risk."
+                    )
                 alpha = 1 - left_risk / (left_risk + right_risk)
                 # Weights constraints
                 alpha = _apply_weight_constraints_to_split_factor(
@@ -441,56 +513,4 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
                 weights[right_cluster] *= 1 - alpha
             items = new_items
 
-        self.weights_ = weights
-        return self
-
-
-def _apply_weight_constraints_to_split_factor(
-    alpha: float,
-    max_weights: FloatArray,
-    min_weights: FloatArray,
-    weights: FloatArray,
-    left_cluster: IntArray,
-    right_cluster: IntArray,
-) -> float:
-    """
-    Apply weight constraints to the split factor alpha of the ,Hierarchical Tree
-    Clustering algorithm.
-
-    Parameters
-    ----------
-    alpha : float
-        The split factor alpha of the Hierarchical Tree Clustering algorithm.
-
-    min_weights : ndarray of shape (n_assets,)
-        The weight lower bound 1D array.
-
-    max_weights : ndarray of shape (n_assets,)
-        The weight upper bound 1D array.
-
-    weights : FloatArray of shape (n_assets,)
-        The assets weights.
-
-    left_cluster : ndarray of shape (n_left_cluster,)
-        Indices of the left cluster weights.
-
-    right_cluster : ndarray of shape (n_right_cluster,)
-        Indices of the right cluster weights.
-
-    Returns
-    -------
-    value : float
-        The transformed split factor alpha incorporating the weight constraints.
-    """
-    alpha = min(
-        np.sum(max_weights[left_cluster]) / weights[left_cluster[0]],
-        max(np.sum(min_weights[left_cluster]) / weights[left_cluster[0]], alpha),
-    )
-    alpha = 1 - min(
-        np.sum(max_weights[right_cluster]) / weights[right_cluster[0]],
-        max(
-            np.sum(min_weights[right_cluster]) / weights[right_cluster[0]],
-            1 - alpha,
-        ),
-    )
-    return alpha
+        return weights

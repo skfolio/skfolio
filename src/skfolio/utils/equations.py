@@ -654,7 +654,7 @@ def _parse_expression(
         token = tokens[position]
 
         if token in _SUB_ADD_OPERATORS:
-            sign = 1 if token == "+" else -1
+            sign *= 1 if token == "+" else -1
             position += 1
             expect_term = True
             continue

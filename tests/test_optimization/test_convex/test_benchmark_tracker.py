@@ -42,6 +42,28 @@ def test_partial_fit_matches_benchmark_excess_returns(first_method, target_forma
     np.testing.assert_allclose(model.weights_, reference.weights_, atol=1e-8)
 
 
+def test_partial_fit_solver_failure_preserves_learning():
+    rng = np.random.default_rng(17)
+    X = rng.normal(0, 0.01, (60, 4))
+    y = rng.normal(0, 0.01, 60)
+    model = BenchmarkTracker(
+        prior_estimator=EmpiricalPrior(
+            mu_estimator=EWMu(), covariance_estimator=EWCovariance()
+        ),
+        min_weights=1.0,
+        raise_on_failure=False,
+    )
+    with pytest.warns(
+        UserWarning, match="BenchmarkTracker.partial_fit failed"
+    ) as caught:
+        model.partial_fit(X, y)
+    assert "The batch was consumed" in str(caught[0].message)
+    assert model.weights_ is None
+    np.testing.assert_array_equal(
+        model.prior_estimator_.return_distribution_.returns, X - y[:, None]
+    )
+
+
 @pytest.mark.parametrize("invalid", ["missing_y", "length", "budget", "schema"])
 def test_partial_fit_rejects_invalid_benchmark_input_before_learning(invalid):
     rng = np.random.default_rng(17)
