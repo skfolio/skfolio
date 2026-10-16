@@ -300,12 +300,12 @@ class WalkForward(sks.BaseCrossValidator):
         if self.freq is None:
             _validate_observation_count(
                 n_samples=n_samples,
-                train_size=train_size,
+                train_size=train_size,  # ty: ignore[invalid-argument-type]
                 purged_size=self.purged_size,
             )
             return _split_without_period(
                 n_samples=n_samples,
-                train_size=train_size,
+                train_size=train_size,  # ty: ignore[invalid-argument-type]
                 test_size=test_size,
                 purged_size=self.purged_size,
                 expand_train=self.expand_train,
@@ -383,7 +383,7 @@ class WalkForward(sks.BaseCrossValidator):
         if self.freq is None:
             _validate_observation_count(
                 n_samples=n_samples,
-                train_size=train_size,
+                train_size=train_size,  # ty: ignore[invalid-argument-type]
                 purged_size=self.purged_size,
             )
             n = n_samples - train_size - self.purged_size
@@ -419,7 +419,7 @@ class WalkForward(sks.BaseCrossValidator):
         train_idx = ts_index.get_indexer(date_range - train_size, method="ffill")
         if np.all(train_idx == -1):
             return 0
-        first_valid = np.argmax(train_idx > -1)
+        first_valid = int(np.argmax(train_idx > -1))
         last_allowed_start = n if self.reduce_test else n - test_size
         if first_valid >= last_allowed_start:
             return 0
@@ -547,7 +547,7 @@ def _split_from_period_without_train_offset(
     n_samples: int,
     train_size: int,
     test_size: int,
-    freq: str,
+    freq: str | pd.offsets.BaseOffset,
     freq_offset: pd.offsets.BaseOffset | dt.timedelta | None,
     previous: bool,
     purged_size: int,
@@ -568,7 +568,7 @@ def _split_from_period_without_train_offset(
     test_size : int
         Number of calendar periods included in each test window.
 
-    freq : str
+    freq : str | pandas.offsets.DateOffset
         Calendar frequency used to define rebalancing dates.
 
     freq_offset : pandas DateOffset or datetime timedelta, optional
@@ -638,7 +638,7 @@ def _split_from_period_with_train_offset(
     n_samples: int,
     train_size: pd.offsets.BaseOffset | dt.timedelta,
     test_size: int,
-    freq: str,
+    freq: str | pd.offsets.BaseOffset,
     freq_offset: pd.offsets.BaseOffset | dt.timedelta | None,
     previous: bool,
     purged_size: int,
@@ -659,7 +659,7 @@ def _split_from_period_with_train_offset(
     test_size : int
         Number of calendar periods included in each test window.
 
-    freq : str
+    freq : str | pandas.offsets.DateOffset
         Calendar frequency used to define rebalancing dates.
 
     freq_offset : pandas DateOffset or datetime timedelta, optional
@@ -707,7 +707,7 @@ def _split_from_period_with_train_offset(
     if np.all(train_idx == -1):
         return
 
-    i = np.argmax(train_idx > -1)
+    i = int(np.argmax(train_idx > -1))
     while True:
         if i >= n:
             return

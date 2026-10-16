@@ -110,12 +110,12 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
             return self
 
         # Build a population of portfolio
-        population = Population([])
+        portfolios: list[Portfolio] = []
         # Add single assets
         for i in range(n_assets):
             weights = np.zeros(n_assets)
             weights[i] = 1
-            population.append(
+            portfolios.append(
                 Portfolio(X=X, weights=weights, fitness_measures=self.fitness_measures)
             )
 
@@ -138,13 +138,13 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
                 weights = np.zeros(n_assets)
                 weights[i] = (var2 - cov) / (var1 + var2 - 2 * cov)
                 weights[j] = 1 - weights[i]
-                population.append(
+                portfolios.append(
                     Portfolio(
                         X=X, weights=weights, fitness_measures=self.fitness_measures
                     )
                 )
 
-        fronts = population.non_dominated_sort(
+        fronts = Population(portfolios).non_dominated_sort(
             first_front_only=self.min_n_assets is None
         )
         new_assets_idx = set()
@@ -156,7 +156,7 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
             ):
                 break
             for idx in fronts[i]:
-                new_assets_idx.update(population[idx].nonzero_assets_index)
+                new_assets_idx.update(portfolios[idx].nonzero_assets_index)
             i += 1
         self.to_keep_ = np.isin(np.arange(n_assets), list(new_assets_idx))
         return self

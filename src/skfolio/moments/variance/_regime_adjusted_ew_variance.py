@@ -9,6 +9,7 @@ from __future__ import annotations
 import numbers
 import warnings
 from collections import deque
+from typing import ClassVar
 
 import numpy as np
 import scipy.special as scs
@@ -96,6 +97,9 @@ class RegimeAdjustedEWVariance(BaseVariance):
     cross-sectional average of standardized squared returns: noisy or illiquid
     assets with unreliable variance estimates can inflate or deflate the
     statistic, distorting the regime multiplier applied to all variances.
+
+    With metadata routing enabled, `active_mask` is requested by default for
+    `fit` and `partial_fit`. See :ref:`default_metadata_requests`.
 
     Parameters
     ----------
@@ -274,6 +278,10 @@ class RegimeAdjustedEWVariance(BaseVariance):
     """
 
     regime_multiplier_: float
+
+    # Route universe membership to this estimator by default.
+    __metadata_request__fit: ClassVar[dict[str, bool]] = {"active_mask": True}
+    __metadata_request__partial_fit: ClassVar[dict[str, bool]] = {"active_mask": True}
 
     def __init__(
         self,
@@ -517,7 +525,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
         self._obs_count = np.zeros(n_assets, dtype=int)
         self._kappa = scs.digamma(0.5) + np.log(2.0)
         self._expected_abs_z = np.sqrt(2.0 / np.pi)
-        self._regime_state = None
+        self._regime_state = 0.0
         self._n_regime_observations = 0
 
         if self.assume_centered:
@@ -639,7 +647,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
                 log_z2 = np.log(np.maximum(z2_valid, _NUMERICAL_THRESHOLD))
                 transformed = np.nanmean(log_z2) - self._kappa
 
-        if self._regime_state is None:
+        if self._n_regime_observations == 0:
             self._regime_state = transformed
         else:
             self._regime_state = (
@@ -677,7 +685,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
         # Add lagged cross-products with Bartlett kernel weights
         # Treat NaN in past returns as 0 (no contribution from missing lagged values)
         for j, past_ret in enumerate(reversed(self._return_buffer), start=1):
-            w_j = 1.0 - j / (self.hac_lags + 1)
+            w_j = 1.0 - j / (self.hac_lags + 1)  # ty: ignore[unsupported-operator]
             past_ret_clean = np.nan_to_num(past_ret, nan=0.0)
             squared += 2.0 * w_j * ret * past_ret_clean
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skfolio"
-version = "1.4.7"
+version = "1.9.0"
 maintainers = [
     { name = "Hugo Delatte", email = "hugo.delatte@skfoliolabs.com" },
     { name = "Matteo Manzi", email = "matteomanzi09@gmail.com" },
@@ -71,8 +71,14 @@ Tutorials = "https://skfolio.org/auto_examples/"
 
 [dependency-groups]
 dev = [
-    # TODO: drop the upper bound once https://github.com/cvxpy/cvxpy/pull/3467 is released
-    "PySCIPOpt<6.0.0",
+    # CVXPY 1.9.3 fixes a PySCIPOpt 6 crash in single-cone SOCPs:
+    # https://github.com/cvxpy/cvxpy/pull/3467
+    # It requires Python >=3.11, so Python 3.10 must keep PySCIPOpt <6.
+    # TODO: When dropping Python 3.10 support, remove the PySCIPOpt <6 entry
+    # and the Python version markers below and keep the CVXPY >=1.9.3 requirement.
+    "cvxpy-base>=1.9.3; python_version >= '3.11'",
+    "PySCIPOpt<6.0.0; python_version < '3.11'",
+    "PySCIPOpt; python_version >= '3.11'",
     "deptry",
     # Optional solver used by the opinion pooling and fallback examples.
     "scs>=3.2.0",
@@ -80,11 +86,18 @@ dev = [
     "pytest-xdist",
     "pytest-cov",
     "ruff",
+    "ty",
     "pre-commit>=4.4.0",
 ]
 docs = [
-    # TODO: drop the upper bound once https://github.com/cvxpy/cvxpy/pull/3467 is released
-    "PySCIPOpt<6.0.0",
+    # CVXPY 1.9.3 fixes a PySCIPOpt 6 crash in single-cone SOCPs:
+    # https://github.com/cvxpy/cvxpy/pull/3467
+    # It requires Python >=3.11, so Python 3.10 must keep PySCIPOpt <6.
+    # TODO: When dropping Python 3.10 support, remove the PySCIPOpt <6 entry
+    # and the Python version markers below and keep the CVXPY >=1.9.3 requirement.
+    "cvxpy-base>=1.9.3; python_version >= '3.11'",
+    "PySCIPOpt<6.0.0; python_version < '3.11'",
+    "PySCIPOpt; python_version >= '3.11'",
     # Optional solver used by the opinion pooling and fallback examples.
     "scs>=3.2.0",
     "Sphinx>=7.2",
@@ -102,7 +115,8 @@ docs = [
     "jupyterlite-pyodide-kernel",
     "nbformat",
     "sphinx-last-updated-by-git",
-    "sphinx-llm>=0.4.1",
+    # Review minor upgrades for LLM output changes.
+    "sphinx-llm~=1.1.0",
 ]
 notebooks = [
     "jupyterlab",
@@ -197,6 +211,25 @@ convention = "numpy"
 # documented in the class docstring and dunder methods follow the Python data model.
 checks = ["GL08"]
 exclude = ['\.__\w+__$']
+
+# Fix diagnostics that reveal a bug or a wrong annotation. When ty cannot follow code
+# that is already correct, add a line-level `# ty: ignore[<rule>]` rather than adding
+# checks or restructuring the code only to satisfy the checker.
+[tool.ty.src]
+include = ["src"]
+
+[tool.ty.terminal]
+# Rules that ty reports as warnings by default also fail the check.
+error-on-warning = true
+
+# `invalid-method-override` requires an override to accept every call that the parent
+# method accepts. skfolio estimators declare only the `fit` inputs they use: `y` typed
+# as `None` or required, required keyword arguments such as `factors`, and no
+# `**fit_params` when no metadata is routed. `Population` restricts the `list` methods
+# to portfolios. Matching the parent signatures would add parameters that these
+# methods do not use, so the rule is disabled.
+[tool.ty.rules]
+invalid-method-override = "ignore"
 
 [tool.coverage.report]
 # Empty abstract bodies use ellipsis. Keep abstract methods with implementations

@@ -9,7 +9,10 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import numpy as np
+import sklearn.utils as sku
 import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance._base import BaseCovariance
@@ -89,6 +92,9 @@ class EWCovariance(BaseCovariance):
     The `min_observations` parameter controls a warm-up period: an asset's covariance
     entries remain NaN in the output until it has accumulated enough valid observations
     for a reliable estimate.
+
+    With metadata routing enabled, `active_mask` is requested by default for
+    `fit` and `partial_fit`. See :ref:`default_metadata_requests`.
 
     Parameters
     ----------
@@ -224,6 +230,10 @@ class EWCovariance(BaseCovariance):
     EWCovariance()
     """
 
+    # Route universe membership to this estimator by default.
+    __metadata_request__fit: ClassVar[dict[str, bool]] = {"active_mask": True}
+    __metadata_request__partial_fit: ClassVar[dict[str, bool]] = {"active_mask": True}
+
     def __init__(
         self,
         half_life: float = 40,
@@ -328,7 +338,7 @@ class EWCovariance(BaseCovariance):
 
         if active_mask is not None:
             for returns, active_row in zip(X, active_mask, strict=True):
-                self._process_return_row(returns, active_row)
+                self._process_return_row(returns, active_row)  # ty: ignore[invalid-argument-type]
         elif self.assume_centered and not np.isnan(X).any():
             self._process_batch_no_nan(X)
         else:
@@ -477,3 +487,9 @@ class EWCovariance(BaseCovariance):
         """Reset fitted state."""
         if hasattr(self, _FITTED_ATTR):
             delattr(self, _FITTED_ATTR)
+
+    def __sklearn_tags__(self) -> sku.Tags:
+        """Declare support for missing observations and inactive assets."""
+        tags = super().__sklearn_tags__()
+        tags.input_tags.allow_nan = True
+        return tags

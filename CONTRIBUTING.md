@@ -101,16 +101,28 @@ uv run ruff check --fix
 uv run ruff format
 ```
 
-The commit hook runs the same Ruff commands on staged files, checks that every
-module, class and function in `src` has a docstring, and checks YAML syntax and file
-endings. To run it on all files, as CI does, use `uv run pre-commit run --all-files`.
+The commit hook runs the same Ruff commands on staged files, type checks `src` with
+ty, checks that every module, class and function in `src` has a docstring, and checks
+YAML syntax and file endings. To run it on all files, as CI does, use `uv run pre-commit run --all-files`.
+
+Type check `src` with [ty](https://docs.astral.sh/ty/). Warnings also fail the check:
+
+```shell
+uv run ty check
+```
+
+Fix diagnostics that reveal a bug or a wrong annotation. When ty cannot follow code
+that is already correct, add a `# ty: ignore[<rule>]` comment on the reported line
+rather than adding checks or restructuring the code only to satisfy the checker.
+Unused ignore comments also fail the check.
 
 ### Dependency versions
 
 skfolio is a library that supports the dependency versions allowed by
 `pyproject.toml`, so `uv.lock` is not committed. CI tests this range, from the
-minimum supported versions to the latest releases, and lints with the latest Ruff
-release.
+minimum supported versions to the latest releases, lints with the latest Ruff
+release and type checks with the latest ty release. ty is in beta, so a new ty
+release can report diagnostics on code that has not changed.
 
 `uv sync` keeps the versions recorded in your local `uv.lock`. If CI reports a
 failure that you cannot reproduce locally, update your environment to the latest
@@ -124,37 +136,45 @@ Add `--group docs` or `--group notebooks` if you use those tools.
 
 ## Documentation
 
+Run these commands from the repository root.
+
 If your change affects the documentation, install the documentation dependencies:
 
 ```shell
 uv sync --group docs
-cd docs
 ```
 
 For a fast build without executing the tutorials, as run by CI:
 
 ```shell
-SKFOLIO_DOCS_FAST=1 uv run sphinx-build -b html . _build
+uv run sphinx-build -b html -t fast docs docs/_build
 ```
 
-Fast mode also skips the JupyterLite site and the sphinx-llm Markdown build. In
-PowerShell, run `$env:SKFOLIO_DOCS_FAST = "1"` before the build and
-`Remove-Item Env:SKFOLIO_DOCS_FAST` after it.
+Fast mode also skips the JupyterLite site and the sphinx-llm Markdown build.
 
 To execute a single tutorial, replace the filename in `filename_pattern`:
 
 ```shell
-uv run sphinx-build -b html -D 'sphinx_gallery_conf.filename_pattern=plot_characteristics_factor_model\.py$' -D sphinx_gallery_conf.run_stale_examples=True . _build
+uv run sphinx-build -b html -D 'sphinx_gallery_conf.filename_pattern=plot_characteristics_factor_model\.py$' -D sphinx_gallery_conf.run_stale_examples=True docs docs/_build
 ```
 
 To execute the complete gallery locally when needed:
 
 ```shell
-uv run sphinx-build -b html . _build
+uv run sphinx-build -b html docs docs/_build
 ```
 
 The complete gallery can take about 30 minutes and is also executed by the
 documentation deployment workflow.
+
+To preview a completed build:
+
+```shell
+uv run python -m http.server --directory docs/_build
+```
+
+Open [localhost:8000](http://localhost:8000) in your browser. Press `Ctrl+C` to stop
+the server.
 
 Sphinx-Gallery generates `docs/auto_examples` and `docs/_contents`.
 Edit the source tutorials under `examples` rather than editing these generated files.
@@ -198,8 +218,8 @@ Use `type(scope): description`, where the scope is optional. Common types are:
 - `ci`: Continuous integration changes.
 - `chore`: Repository maintenance.
 
-Add `!` for a breaking change, for example
-`feat!: remove deprecated parameter`.
+Discuss backward-incompatible changes with the maintainers before implementation.
+Major releases are coordinated by the maintainers.
 
 ```shell
 git add .

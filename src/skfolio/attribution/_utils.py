@@ -25,11 +25,14 @@ def _format_decimal(x: float, decimals: int = 4) -> str:
     return f"{x:.{decimals}f}"
 
 
-def _cov_with_centered(x: FloatArray, y_centered: FloatArray) -> FloatArray | float:
-    """Compute covariance of x (or each column of x) with pre-centered y."""
+def _cov_with_centered(x: FloatArray, y_centered: FloatArray) -> FloatArray:
+    """Compute covariance of x (or each column of x) with pre-centered y.
+
+    Returns a 0-dimensional array when `x` is 1D.
+    """
     n = len(y_centered)
     x_centered = x - np.mean(x, axis=0)
-    return np.dot(y_centered, x_centered) / (n - 1)
+    return np.asarray(np.dot(y_centered, x_centered) / (n - 1))
 
 
 def _format_ci(lower: float, upper: float) -> str:

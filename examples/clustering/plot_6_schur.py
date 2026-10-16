@@ -26,6 +26,10 @@ smoothly interpolates from the heuristic divide-and-conquer allocation of HRP
     even in the presence of ill-conditioned covariance matrices. Additionally, you can
     apply shrinkage or other conditioning techniques via the `prior_estimator` parameter
     to improve numerical stability and estimation accuracy.
+
+For online updates with spectral seriation, late listings, delistings, holidays
+and asset warm-up, see
+:ref:`sphx_glr_auto_examples_online_learning_plot_online_schur_changing_universe.py`.
 """
 
 # %%

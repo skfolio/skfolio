@@ -40,6 +40,7 @@ Upgrading between major versions is covered in the :ref:`Migration Guide <migrat
     Factor Models <factor_models>
     Distance <distance>
     Clustering <cluster>
+    Seriation <seriation>
     Uncertainty Set <uncertainty_set>
     Pre-Selection <pre_selection>
     Cross-Sectional Transformers <cross_sectional_transformers>

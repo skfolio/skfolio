@@ -10,7 +10,7 @@ from __future__ import annotations
 import operator
 import re
 import warnings
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from typing import TYPE_CHECKING, Any
 
 import cvxpy as cp
@@ -558,7 +558,7 @@ class EntropyPooling(BasePrior):
             # Get mean from Step 1
             mean = sm.mean(self._returns, sample_weight=sample_weight)
             # Add new views and solve
-            self._add_variance_views(mean=mean)
+            self._add_variance_views(mean=mean)  # ty: ignore[invalid-argument-type]
             sample_weight = self._solve_with_cvar()
 
         # Step 3: Mean, VaR, CVaR, Variance, Correlation, Skew and Kurtosis
@@ -573,9 +573,9 @@ class EntropyPooling(BasePrior):
                 self._returns, sample_weight=sample_weight, biased=True
             )
             # Add new views and solve
-            self._add_correlation_views(mean=mean, variance=variance)
-            self._add_skew_views(mean=mean, variance=variance)
-            self._add_kurtosis_views(mean=mean, variance=variance)
+            self._add_correlation_views(mean=mean, variance=variance)  # ty: ignore[invalid-argument-type]
+            self._add_skew_views(mean=mean, variance=variance)  # ty: ignore[invalid-argument-type]
+            self._add_kurtosis_views(mean=mean, variance=variance)  # ty: ignore[invalid-argument-type]
             sample_weight = self._solve_with_cvar()
 
         self.relative_entropy_ = float(
@@ -583,7 +583,7 @@ class EntropyPooling(BasePrior):
         )
         self.effective_number_of_scenarios_ = np.exp(sts.entropy(sample_weight))
         self.return_distribution_ = ReturnDistribution(
-            mu=sm.mean(self._returns, sample_weight=sample_weight),
+            mu=sm.mean(self._returns, sample_weight=sample_weight),  # ty: ignore[invalid-argument-type]
             covariance=np.cov(self._returns, rowvar=False, aweights=sample_weight),
             returns=self._returns,
             sample_weight=sample_weight,
@@ -608,7 +608,7 @@ class EntropyPooling(BasePrior):
         a : ndarray of shape (n_observations, n_constraints)
             Left matrix in `x @ a == b` or `x @ a <= b`.
 
-        a : ndarray of shape (n_observations, n_constraints)
+        b : ndarray of shape (n_constraints,)
             Right vector in `x @ a == b` or `x @ a <= b`.
 
         Returns
@@ -619,9 +619,11 @@ class EntropyPooling(BasePrior):
             return
 
         # Init constraints dict
-        if self._constraints[name] is None:
+        constraints: list[FloatArray] | None = self._constraints[name]
+        if constraints is None:
             n_observations, _ = self._returns.shape
-            self._constraints[name] = [np.empty((n_observations, 0)), np.empty(0)]
+            constraints = [np.empty((n_observations, 0)), np.empty(0)]
+            self._constraints[name] = constraints
 
         # Rescaling: views can be on different scales, by rescaling we avoid high
         # disparity, have better conditioning, uniform stopping criteria and slack
@@ -631,7 +633,7 @@ class EntropyPooling(BasePrior):
         b /= scales
 
         for i, x in enumerate([a, b]):
-            self._constraints[name][i] = np.hstack((self._constraints[name][i], x))
+            constraints[i] = np.hstack((constraints[i], x))
 
     def _add_mean_views(self) -> None:
         """Add mean view constraints to the optimization problem."""
@@ -1254,7 +1256,7 @@ class EntropyPooling(BasePrior):
 
         return a_eq, b_eq, a_ineq, b_ineq
 
-    def _fix_mean(self, fix: FloatArray, mean: FloatArray) -> None:
+    def _fix_mean(self, fix: BoolArray, mean: FloatArray) -> None:
         """Add constraints to fix the mean for assets where view constraints have been
         applied.
 
@@ -1277,7 +1279,7 @@ class EntropyPooling(BasePrior):
             self._is_fixed_mean |= fix
 
     def _fix_variance(
-        self, fix: FloatArray, mean: FloatArray, variance: FloatArray
+        self, fix: BoolArray, mean: FloatArray, variance: FloatArray
     ) -> None:
         """Add constraints to fix the variance for assets where view constraints have
         been applied.
@@ -1306,7 +1308,7 @@ class EntropyPooling(BasePrior):
             self._is_fixed_variance |= fix
 
 
-def _extract_prior_assets(views: Sequence[str], assets: Sequence[str]) -> set[str]:
+def _extract_prior_assets(views: Iterable[str], assets: Iterable[str]) -> set[str]:
     """
     Given a list of views, return a set of asset names referenced within any
     'prior(ASSET)' pattern. Only asset names in the provided 'assets' list
@@ -1319,11 +1321,11 @@ def _extract_prior_assets(views: Sequence[str], assets: Sequence[str]) -> set[st
 
     Parameters
     ----------
-    views : list[str]
-        The list of views to scan.
+    views : iterable of str
+        The views to scan.
 
-    assets : list[str]
-        The list of allowed asset names.
+    assets : iterable of str
+        The allowed asset names.
 
     Returns
     -------
@@ -1342,7 +1344,7 @@ def _extract_prior_assets(views: Sequence[str], assets: Sequence[str]) -> set[st
 
 
 def _replace_prior_views(
-    views: Sequence[str], prior_values: dict[str, float]
+    views: Iterable[str], prior_values: dict[str, float]
 ) -> list[str]:
     """
     Replace occurrences of the below prior patterns using `prior_values`.
@@ -1354,8 +1356,8 @@ def _replace_prior_views(
 
     Parameters
     ----------
-    views : list[str]
-        The list of views.
+    views : iterable of str
+        The views to update.
 
     prior_values : dict[str, float]
         A dictionary mapping asset names (str) to their prior values.

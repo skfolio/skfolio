@@ -14,6 +14,7 @@ import math
 import random
 import warnings
 from enum import auto
+from typing import overload
 
 import cvxpy as cp
 import numpy as np
@@ -51,6 +52,7 @@ __all__ = [
     "inverse_multiply",
     "inverse_volatility_weights",
     "is_cholesky_dec",
+    "is_positive_semidefinite",
     "minimize_relative_weight_deviation",
     "multiply_by_inverse",
     "n_bins_freedman",
@@ -105,9 +107,25 @@ class NBinsMethod(AutoEnum):
     KNUTH = auto()
 
 
+@overload
+def safe_divide(  # numpydoc ignore=GL08
+    numerator: float, denominator: float, fill_value: float = 0.0, *, atol: float = 0.0
+) -> float: ...
+
+
+@overload
+def safe_divide(  # numpydoc ignore=GL08
+    numerator: float | FloatArray | IntArray,
+    denominator: float | FloatArray | IntArray,
+    fill_value: float = 0.0,
+    *,
+    atol: float = 0.0,
+) -> FloatArray: ...
+
+
 def safe_divide(
-    numerator: float | FloatArray,
-    denominator: float | FloatArray,
+    numerator: float | FloatArray | IntArray,
+    denominator: float | FloatArray | IntArray,
     fill_value: float = 0.0,
     *,
     atol: float = 0.0,
@@ -145,7 +163,7 @@ def safe_divide(
     out = np.full(np.broadcast(numerator, denominator).shape, fill_value, dtype=float)
     valid = np.abs(denominator) > atol
     np.divide(numerator, denominator, out=out, where=valid)
-    np.nan_to_num(out, copy=False, nan=fill_value, posinf=fill_value, neginf=fill_value)
+    np.copyto(out, fill_value, where=~np.isfinite(out))
     return float(out) if out.ndim == 0 else out
 
 
@@ -224,7 +242,7 @@ def n_bins_knuth(x: FloatArray) -> int:
     return min(round(n_bins), n)
 
 
-def rand_weights_dirichlet(n: int) -> np.array:
+def rand_weights_dirichlet(n: int) -> FloatArray:
     """Produces n random weights that sum to one from a Dirichlet distribution
     (uniform distribution over a simplex).
 
@@ -306,7 +324,30 @@ def is_positive_definite(x: FloatArray) -> bool:
     value : bool
         True if the matrix is positive definite, False otherwise.
     """
-    return np.all(np.linalg.eigvals(x) > 0)
+    return bool(np.all(np.linalg.eigvals(x) > 0))
+
+
+def is_positive_semidefinite(x: FloatArray, *, atol: float = 0.0) -> bool:
+    """Return True if the matrix is positive semidefinite within a tolerance.
+
+    The caller must provide a finite, symmetric matrix.
+
+    Parameters
+    ----------
+    x : ndarray of shape (n, n)
+        Matrix to check.
+
+    atol : float, default=0.0
+        Nonnegative absolute tolerance. Eigenvalues greater than or equal to
+        `-atol` are accepted.
+
+    Returns
+    -------
+    value : bool
+        True if all eigenvalues are at least `-atol`, False otherwise.
+        Singular matrices are accepted.
+    """
+    return bool(np.all(np.linalg.eigvalsh(x) >= -atol))
 
 
 def assert_is_square(x: FloatArray) -> None:
@@ -621,6 +662,9 @@ def compute_optimal_n_clusters(distance: FloatArray, linkage_matrix: FloatArray)
     .. [1] "Application of two-order difference to gap statistic".
         Yue, Wang & Wei (2009)
     """
+    # Two assets have no second-order gap. Use the two singleton leaves.
+    if distance.shape[0] == 2:
+        return 2
     cut_tree = sch.cut_tree(linkage_matrix)
     n = cut_tree.shape[1]
     max_clusters = min(n, max(8, round(np.sqrt(n))))
@@ -640,8 +684,7 @@ def compute_optimal_n_clusters(distance: FloatArray, linkage_matrix: FloatArray)
     gaps = np.roll(dispersion, -2) + dispersion - 2 * np.roll(dispersion, -1)
     gaps = gaps[:-2]
     # k=0 represents one cluster
-    k = np.argmax(gaps) + 2
-    return k
+    return int(np.argmax(gaps)) + 2
 
 
 def minimize_relative_weight_deviation(
@@ -718,12 +761,12 @@ def minimize_relative_weight_deviation(
         if w.value is None:
             raise cp.SolverError("No solution found")
 
-    except (cp.SolverError, scl.ArpackNoConvergence):
+    except (cp.SolverError, scl.ArpackNoConvergence) as error:
         raise cp.SolverError(
             f"Solver '{solver}' failed. Try another"
             " solver, or solve with solver_params=dict(verbose=True) for more"
             " information"
-        ) from None
+        ) from error
 
     return w.value
 
@@ -1330,7 +1373,7 @@ def cs_pearson_correlation(
     b = np.broadcast_to(b, shape)
     if axis < -a.ndim or axis >= a.ndim:
         # AxisError moved under np.exceptions in NumPy 2.
-        raise getattr(np, "exceptions", np).AxisError(axis, a.ndim)
+        raise getattr(np, "exceptions", np).AxisError(axis, a.ndim)  # ty: ignore[unresolved-attribute]
     axis = axis % a.ndim
 
     valid = np.isfinite(a) & np.isfinite(b)

@@ -1,0 +1,52 @@
+name: PR title
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: read
+
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate PR title
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Only inspect PR metadata. Never check out or execute PR code in this
+      # pull_request_target workflow, which also handles contributions from forks.
+      - name: Check Conventional Commits format
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Types from CONTRIBUTING.md, plus the existing Dependabot convention.
+          types: |
+            feat
+            fix
+            docs
+            test
+            refactor
+            perf
+            build
+            ci
+            chore
+            deps
+
+      - name: Explain title format
+        if: failure()
+        shell: bash
+        run: |
+          cat <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          Use `type(scope): description` for the PR title. The scope is optional.
+
+          Examples: `fix(portfolio): handle zero returns`, `feat: add a risk measure`, or `docs: clarify installation`.
+
+          Rename the PR to rerun this check. No new commit is needed.
+          See [CONTRIBUTING.md](https://github.com/skfolio/skfolio/blob/main/CONTRIBUTING.md#submit-your-changes).
+          EOF

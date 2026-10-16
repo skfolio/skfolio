@@ -23,7 +23,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.gh_pages_deployment.outputs.page_url }}
-    concurrency: release
+    concurrency: pages
     env:
       UV_PYTHON_DOWNLOADS: never
 

@@ -16,7 +16,7 @@ import sklearn.base as skb
 import sklearn.utils.validation as skv
 from plotly.figure_factory import create_dendrogram
 
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 from skfolio.utils.stats import assert_is_distance, compute_optimal_n_clusters
 from skfolio.utils.tools import AutoEnum, default_asset_names
 
@@ -157,6 +157,8 @@ class HierarchicalClustering(skb.ClusterMixin, skb.BaseEstimator):
     labels_: FloatArray
     linkage_matrix_: FloatArray
     condensed_distance_: FloatArray
+    n_features_in_: int
+    feature_names_in_: StrArray
 
     def __init__(
         self,
@@ -304,25 +306,19 @@ class HierarchicalClustering(skb.ClusterMixin, skb.BaseEstimator):
         distance = scd.squareform(self.condensed_distance_, checks=False)
         heat_data = distance[ordered_asset_names_idx, :][:, ordered_asset_names_idx]
 
-        heatmap = [
-            go.Heatmap(
-                x=ordered_asset_names,
-                y=ordered_asset_names,
-                z=heat_data,
-                colorscale="Blues",
-                name="",
-            )
-        ]
-
-        heatmap[0]["x"] = fig["layout"]["xaxis"]["tickvals"]
-        heatmap[0]["y"] = side_dendrogram["layout"]["yaxis"]["tickvals"]
+        heatmap_trace = go.Heatmap(
+            x=fig["layout"]["xaxis"]["tickvals"],
+            y=side_dendrogram["layout"]["yaxis"]["tickvals"],
+            z=heat_data,
+            colorscale="Blues",
+            name="",
+        )
 
         # Add Heatmap Data to Figure
-        for data in heatmap:
-            fig.add_trace(data)
+        fig.add_trace(heatmap_trace)
 
         # Outline clusters
-        delta = heatmap[0]["x"][1] - heatmap[0]["x"][0]
+        delta = heatmap_trace["x"][1] - heatmap_trace["x"][0]
 
         clusters_ids = self.labels_[ordered_asset_names_idx]
 

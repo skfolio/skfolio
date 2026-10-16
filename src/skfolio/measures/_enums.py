@@ -8,8 +8,12 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from enum import auto
+from typing import TYPE_CHECKING
 
 from skfolio.utils.tools import AutoEnum
+
+if TYPE_CHECKING:
+    from typing_extensions import Self
 
 
 class BaseMeasure(AutoEnum):
@@ -61,7 +65,7 @@ class BaseMeasure(AutoEnum):
         return self.name[:10] == "ANNUALIZED"
 
     @property
-    def annualized_measure(self) -> BaseMeasure:
+    def annualized_measure(self) -> Self:
         """Annualized version of the measure.
 
         Raises
@@ -82,7 +86,7 @@ class BaseMeasure(AutoEnum):
             ) from None
 
     @property
-    def non_annualized_measure(self) -> BaseMeasure:
+    def non_annualized_measure(self) -> Self:
         """Non-annualized version of the measure.
 
         Raises

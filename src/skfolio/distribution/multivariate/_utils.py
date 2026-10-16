@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from enum import auto
 from functools import cached_property
 from itertools import combinations
-from typing import Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 import scipy.sparse.csgraph as ssc
@@ -21,6 +21,11 @@ import sklearn.feature_selection as sf
 
 from skfolio.typing import FloatArray
 from skfolio.utils.tools import AutoEnum
+
+if TYPE_CHECKING:
+    from skfolio.distribution.copula import BaseBivariateCopula
+
+_MIXED_EDGE_ERROR = "An edge must connect two root nodes or two child nodes."
 
 
 class DependenceMethod(AutoEnum):
@@ -74,11 +79,11 @@ class EdgeCondSets:
         s1 = self.to_set()
         s2 = other.to_set()
         conditioning = s1 & s2
-        conditioned = tuple(s1 ^ s2)
+        first, second = s1 ^ s2
         # maintain order
-        if conditioned[0] in other.conditioned:
-            conditioned = conditioned[::-1]
-        return self.__class__(conditioned=conditioned, conditioning=conditioning)
+        if first in other.conditioned:
+            first, second = second, first
+        return self.__class__(conditioned=(first, second), conditioning=conditioning)
 
     def __repr__(self) -> str:
         """String representation of the EdgeCondSets."""
@@ -90,12 +95,6 @@ class EdgeCondSets:
 class BaseNode(ABC):
     """Base class for Nodes of the R-vine tree.
 
-    Parameters
-    ----------
-    ref : int or Edge
-        For RootNode: reference of the variable index.
-        For ChildNode: reference of the edge in the previous tree.
-
     Attributes
     ----------
     edges : set[Edge]
@@ -105,18 +104,22 @@ class BaseNode(ABC):
         The Tree containing this Node.
     """
 
-    def __init__(self, ref: int | Edge) -> None:
-        self._ref = ref
+    def __init__(self) -> None:
         self.edges: set[Edge] = set()
         self.tree: Tree | None = None  # Reference to the Tree containing this Node
 
     @property
+    @abstractmethod
     def ref(self) -> int | Edge:
-        """Return the reference of this node (read-only)."""
-        return self._ref
+        """Return the reference of this node (read-only).
+
+        For RootNode: reference of the variable index.
+        For ChildNode: reference of the edge in the previous tree.
+        """
+        ...
 
     @abstractmethod
-    def clear_cache(self, **kwargs: Any) -> None:
+    def clear_cache(self, clear_count: bool = True) -> None:
         """Clear the cached pseudo-values and margin values (u and v)."""
         ...
 
@@ -151,12 +154,18 @@ class RootNode(BaseNode):
     def __init__(
         self, ref: int, central: bool, pseudo_values: FloatArray | None = None
     ) -> None:
-        super().__init__(ref=ref)
+        super().__init__()
+        self._ref = ref
         self.central = central
         self.pseudo_values = pseudo_values
 
-    def clear_cache(self, **kwargs: Any) -> None:
-        """Clear the cached margin values (u and v)."""
+    @property
+    def ref(self) -> int:
+        """Return the variable index of this node (read-only)."""
+        return self._ref
+
+    def clear_cache(self, clear_count: bool = True) -> None:
+        """Clear the cached pseudo-values."""
         self.pseudo_values = None
 
 
@@ -179,7 +188,8 @@ class ChildNode(BaseNode):
     """
 
     def __init__(self, ref: Edge) -> None:
-        super().__init__(ref=ref)
+        super().__init__()
+        self._ref = ref
         # pointer from Edge to Node
         ref.ref_node = self
         self._central: bool | None = None
@@ -189,6 +199,11 @@ class ChildNode(BaseNode):
         self._v_count: int = 0
         self._u_count_total: int = 0
         self._v_count_total: int = 0
+
+    @property
+    def ref(self) -> Edge:
+        """Return the edge of the previous tree referenced by this node (read-only)."""
+        return self._ref
 
     @property
     def central(self) -> bool:
@@ -292,32 +307,37 @@ class ChildNode(BaseNode):
         """Set the second margin value (v) for the node."""
         self._v = value
 
-    def get_var(self, is_left: bool) -> int:
+    def get_var(self, is_left: bool | None) -> int:
         """Return the variable index associated with this node.
 
         The variable is determined by the conditioned set of the edge.
 
         Parameters
         ----------
-        is_left : bool
+        is_left : bool or None
             Indicates whether to select the left or right node.
 
         Returns
         -------
         var : int
             The variable index corresponding to this node.
+
+        Raises
+        ------
+        ValueError
+            If `is_left` is None.
         """
         if is_left is None:
             raise ValueError("is_left cannot be None for Child Nodes")
         var = self.ref.cond_sets.conditioned[0 if is_left else 1]
         return var
 
-    def clear_cache(self, clear_count: bool) -> None:
+    def clear_cache(self, clear_count: bool = True) -> None:
         """Clear the cached margin values (u and v) and counts.
 
         Parameters
         ----------
-        clear_count : bool
+        clear_count : bool, default=True
             If True, the visit counts are also reset.
         """
         self._u = None
@@ -347,12 +367,16 @@ class Edge:
     dependence_method : DependenceMethod
        The method used to measure dependence between the two nodes.
 
-    copula : object or None
-       The fitted copula for this edge (if available).
+    copula : BaseBivariateCopula
+       The fitted copula for this edge. Set when the vine copula is fitted.
 
-    ref_node : Node or None
-       A pointer to the node in the next tree constructed from this edge.
+    ref_node : ChildNode
+       A pointer to the node in the next tree constructed from this edge. Set when
+       that node is created.
     """
+
+    copula: BaseBivariateCopula
+    ref_node: ChildNode
 
     def __init__(
         self,
@@ -363,8 +387,6 @@ class Edge:
         self.node1 = node1
         self.node2 = node2
         self.dependence_method = dependence_method
-        self.copula = None
-        self.ref_node = None  # Pointer to the next tree Node
 
     @cached_property
     def weakly_central(self) -> bool:
@@ -397,11 +419,12 @@ class Edge:
         For non-root nodes, the conditioning sets are obtained by combining the
         conditioning sets of the two edges from the previous tree.
         """
-        if isinstance(self.node1, RootNode):
-            return EdgeCondSets(
-                conditioned=(self.node1.ref, self.node2.ref), conditioning=set()
-            )
-        return self.node1.ref.cond_sets + self.node2.ref.cond_sets
+        node1, node2 = self.node1, self.node2
+        if isinstance(node1, RootNode) and isinstance(node2, RootNode):
+            return EdgeCondSets(conditioned=(node1.ref, node2.ref), conditioning=set())
+        if isinstance(node1, ChildNode) and isinstance(node2, ChildNode):
+            return node1.ref.cond_sets + node2.ref.cond_sets
+        raise TypeError(_MIXED_EDGE_ERROR)
 
     def ref_to_nodes(self) -> None:
         """Connect this edge to its two nodes."""
@@ -420,13 +443,16 @@ class Edge:
         X : ndarray of shape (n_observations, 2)
             The bivariate pseudo-observation data corresponding to this edge.
         """
-        if isinstance(self.node1, RootNode):
-            u = self.node1.pseudo_values
-            v = self.node2.pseudo_values
+        node1, node2 = self.node1, self.node2
+        if isinstance(node1, RootNode) and isinstance(node2, RootNode):
+            u = node1.pseudo_values
+            v = node2.pseudo_values
+        elif isinstance(node1, ChildNode) and isinstance(node2, ChildNode):
+            is_left1, is_left2 = node1.ref.shared_node_is_left(node2.ref)
+            u = node1.v if is_left1 else node1.u
+            v = node2.v if is_left2 else node2.u
         else:
-            is_left1, is_left2 = self.node1.ref.shared_node_is_left(self.node2.ref)
-            u = self.node1.v if is_left1 else self.node1.u
-            v = self.node2.v if is_left2 else self.node2.u
+            raise TypeError(_MIXED_EDGE_ERROR)
         X = np.stack([u, v]).T
         return X
 
@@ -479,9 +505,10 @@ class Edge:
 
     def __repr__(self) -> str:
         """String representation of the edge."""
-        if self.copula is None:
+        copula = getattr(self, "copula", None)
+        if copula is None:
             return f"Edge({self.cond_sets})"
-        return f"Edge({self.cond_sets}, {self.copula.fitted_repr})"
+        return f"Edge({self.cond_sets}, {copula.fitted_repr})"
 
 
 class Tree:
@@ -514,7 +541,7 @@ class Tree:
         for node in nodes:
             # pointer from Node to Tree
             node.tree = self
-        self.edges = None
+        self.edges: list[Edge] = []
         self.is_count_visits: bool = False
 
     @property
@@ -547,17 +574,22 @@ class Tree:
         for i, j in combinations(range(n), 2):
             node1 = self.nodes[i]
             node2 = self.nodes[j]
-            if self.level == 0 or node1.ref.share_one_node(node2.ref):
-                edge = Edge(
-                    node1=node1, node2=node2, dependence_method=dependence_method
-                )
-                if not central and edge.weakly_central:
-                    central = True
-                # Negate the matrix to use minimum_spanning_tree for maximum spanning
-                # Add a cst to ensure that even if dep is 0, we still build a valid MST
-                dep = abs(edge.dependence) + 1e-5
-                dependence_matrix[i, j] = dep
-                eligible_edges[(i, j)] = edge
+            # Above the first tree, two nodes can only be joined if their edges share
+            # one node (proximity condition).
+            if (
+                isinstance(node1, ChildNode)
+                and isinstance(node2, ChildNode)
+                and not node1.ref.share_one_node(node2.ref)
+            ):
+                continue
+            edge = Edge(node1=node1, node2=node2, dependence_method=dependence_method)
+            if not central and edge.weakly_central:
+                central = True
+            # Negate the matrix to use minimum_spanning_tree for maximum spanning
+            # Add a cst to ensure that even if dep is 0, we still build a valid MST
+            dep = abs(edge.dependence) + 1e-5
+            dependence_matrix[i, j] = dep
+            eligible_edges[(i, j)] = edge
 
         if np.any(np.isnan(dependence_matrix)):
             raise RuntimeError("dependence_matrix contains NaNs")

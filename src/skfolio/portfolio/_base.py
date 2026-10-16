@@ -41,9 +41,9 @@ from __future__ import annotations
 
 import warnings
 from abc import abstractmethod
-from collections.abc import Callable
 from functools import partial
-from typing import Any, ClassVar
+from types import FunctionType
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import pandas as pd
@@ -63,11 +63,16 @@ from skfolio.measures import (
 from skfolio.typing import FloatArray, IntArray
 from skfolio.utils.sorting import dominate
 from skfolio.utils.tools import (
+    _validate_positive_integer,
+    _validate_sample_weight,
     args_names,
     cached_property_slots,
     format_measure,
     optimal_rounding_decimals,
 )
+
+if TYPE_CHECKING:
+    from typing_extensions import Self
 
 _ZERO_THRESHOLD = 1e-5
 _MEASURES = {
@@ -147,8 +152,8 @@ class BasePortfolio:
         The default is `False`.
 
     sample_weight : ndarray of shape (n_observations,), optional
-        Sample weights for each observation. The weights must sum to one.
-         If None, equal weights are assumed.
+        Finite, nonnegative observation probabilities. The weights must sum to
+        one within an absolute tolerance of 1.001e-5. If None, equal weights are assumed.
 
     min_acceptable_return : float, optional
         The minimum acceptable return used to distinguish "downside" and "upside"
@@ -174,9 +179,9 @@ class BasePortfolio:
         The default value is `0.95`.
 
     cvar_beta : float, default=0.95
-        The confidence level of the Portfolio CVaR (Conditional Value at Risk) which
-        represents the expected VaR on the worst (1-beta)% observations.
-        The default value is `0.95`.
+        Confidence level of CVaR (Conditional Value at Risk), between 0 and 1,
+        inclusive. CVaR averages the worst `1 - beta` probability mass.
+        At 1, CVaR equals the largest loss with positive sample weight.
 
     evar_beta : float, default=0.95
         The confidence level of the Portfolio EVaR (Entropic Value at Risk).
@@ -188,9 +193,9 @@ class BasePortfolio:
         The default value is `0.95`.
 
     cdar_beta : float, default=0.95
-        The confidence level of the Portfolio CDaR (Conditional Drawdown at Risk) which
-        represents the expected drawdown on the worst (1-beta)% observations.
-        The default value is `0.95`.
+        Confidence level of CDaR (Conditional Drawdown at Risk), between 0 and 1,
+        inclusive. CDaR averages the worst drawdowns over probability `1 - beta`.
+        At 1, CDaR equals the largest drawdown magnitude with positive sample weight.
 
     edar_beta : float, default=0.95
         The confidence level of the Portfolio EDaR (Entropic Drawdown at Risk).
@@ -547,6 +552,7 @@ class BasePortfolio:
         self.edar_beta = edar_beta
 
         self.name = str(id(self)) if name is None else name
+        self._fitness_measures: list[skt.Measure]
         if fitness_measures is None:
             self._fitness_measures = [PerfMeasure.MEAN, RiskMeasure.VARIANCE]
         else:
@@ -592,7 +598,7 @@ class BasePortfolio:
             )
         return self.__eq__(other) or self.__gt__(other)
 
-    def __copy__(self) -> BasePortfolio:
+    def __copy__(self) -> Self:
         cls = self.__class__
         result = cls.__new__(cls)
         result._loaded = False
@@ -663,7 +669,7 @@ class BasePortfolio:
     @abstractmethod
     def contribution(
         self, measure: skt.Measure, spacing: float | None = None, to_df: bool = True
-    ) -> FloatArray | pd.DataFrame:
+    ) -> FloatArray | list[FloatArray] | pd.DataFrame:
         """Compute the contribution of each asset to a given measure."""
         ...
 
@@ -720,15 +726,9 @@ class BasePortfolio:
     def sample_weight(self, value: FloatArray | None) -> None:
         """Validate and set the observations sample weights."""
         if value is not None:
-            value = np.asarray(value)
-            if value.ndim != 1:
-                raise ValueError("sample_weight must be a 1D array.")
-            if len(value) != self.n_observations:
-                raise ValueError(
-                    "sample_weight must have the same length as the number of observations."
-                )
-            if not np.isclose(value.sum(), 1):
-                raise ValueError("sample_weight must sum to one.")
+            value = _validate_sample_weight(
+                value, n_observations=self.n_observations, ensure_normalized=True
+            )
         self._sample_weight = value
 
     # Custom attribute getter (read-only and cached)
@@ -801,7 +801,7 @@ class BasePortfolio:
         return pd.DataFrame(res, index=idx, columns=["measures"])
 
     # Public methods
-    def copy(self) -> BasePortfolio:
+    def copy(self) -> Self:
         """Copy the Portfolio attributes without its measures values."""
         return self.__copy__()
 
@@ -895,7 +895,11 @@ class BasePortfolio:
         return dominate(self.fitness[idx], other.fitness[idx])
 
     def rolling_measure(
-        self, measure: skt.Measure = RatioMeasure.SHARPE_RATIO, window: int = 30
+        self,
+        measure: skt.Measure = RatioMeasure.SHARPE_RATIO,
+        window: int = 30,
+        *,
+        min_periods: int | None = None,
     ) -> pd.Series:
         """Compute the measure over a rolling window.
 
@@ -905,69 +909,104 @@ class BasePortfolio:
             The measure. The default measure is the Sharpe Ratio.
 
         window : int, default=30
-            The window size. The default value is `30` observations.
+            The positive window size in observations. The default value is `30`.
+
+        min_periods : int, optional
+            Minimum number of non-missing returns required in a window. Must be
+            between `1` and `window`. The default (`None`) uses `window`. A smaller
+            value evaluates leading partial windows and windows with missing returns.
+            Windows containing an infinite return produce NaN.
 
         Returns
         -------
         series : pandas Series
             The rolling measure Series.
+
+        Notes
+        -----
+        Windows with fewer than `min_periods` non-missing returns or any infinite
+        return produce NaN. Zero-weight observations count toward `min_periods`.
+        Sample weights are sliced with the returns and normalized within each
+        window by measures that support weighting. Measures without weight support
+        retain their unweighted definition. Ratios use the weighted mean in the
+        numerator, even when their risk measure is unweighted.
         """
+        _validate_positive_integer(window, "window")
+        window = int(window)
+        if min_periods is None:
+            min_periods = window
+        _validate_positive_integer(min_periods, "min_periods")
+        if min_periods > window:
+            raise ValueError(
+                "min_periods must be less than or equal to window, "
+                f"got min_periods={min_periods!r} and window={window!r}"
+            )
+
         if measure.is_annualized:
             non_annualized_measure = measure.non_annualized_measure
         else:
             non_annualized_measure = measure
 
-        if measure.is_perf:
-            perf_measure = non_annualized_measure
-            risk_measure = None
-        elif measure.is_ratio:
-            perf_measure = PerfMeasure.MEAN
-            risk_measure = non_annualized_measure.linked_risk_measure
-        else:
-            perf_measure = None
-            risk_measure = non_annualized_measure
-
-        if risk_measure is not None:
-            risk_func, risk_func_args = self._get_measure_func(measure=risk_measure)
-
-            if "drawdowns" in risk_func_args:
-                del risk_func_args["drawdowns"]
-
-                def meta_risk_func(returns: pd.Series) -> float:
-                    """Compute the drawdown-based risk measure on `returns`."""
-                    drawdowns = mt.get_drawdowns(returns, compounded=self.compounded)
-                    return risk_func(drawdowns=drawdowns, **risk_func_args)
-
-            else:
-                del risk_func_args["returns"]
-
-                def meta_risk_func(returns: pd.Series) -> float:
-                    """Compute the returns-based risk measure on `returns`."""
-                    return risk_func(returns=returns, **risk_func_args)
-
-            if perf_measure is not None:
-                perf_func = getattr(mt, str(perf_measure.value))
-
-                def func(returns: pd.Series) -> float:
-                    """Compute the excess performance over risk on `returns`."""
-                    return (perf_func(returns) - self.risk_free_rate) / meta_risk_func(
-                        returns
-                    )
-
-            else:
-                func = meta_risk_func
-        else:
-            perf_func = getattr(mt, str(perf_measure.value))
-
-            def func(returns: pd.Series) -> float:
-                """Compute the performance measure on `returns`."""
-                return perf_func(returns)
-
-        rolling = (
-            pd.Series(self.returns, index=self.observations)
-            .rolling(window=window)
-            .apply(func)
+        is_ratio = measure.is_ratio
+        base_measure = (
+            non_annualized_measure.linked_risk_measure  # ty: ignore[unresolved-attribute]
+            if is_ratio
+            else non_annualized_measure
         )
+        # Resolve fixed parameters only. Each window supplies its data and weights.
+        measure_func, measure_args = self._get_measure_func(
+            measure=base_measure,
+            exclude_args=("returns", "drawdowns", "sample_weight"),
+        )
+        measure_arg_names = args_names(measure_func)
+        uses_drawdowns = "drawdowns" in measure_arg_names
+        accepts_sample_weight = "sample_weight" in measure_arg_names
+        # Ratios use weights for their mean even if the risk measure is unweighted.
+        weights = self.sample_weight if accepts_sample_weight or is_ratio else None
+
+        def window_func(
+            returns: FloatArray, sample_weight: FloatArray | None = None
+        ) -> float:
+            """Evaluate the measure on one window."""
+            values = (
+                mt.get_drawdowns(returns, compounded=self.compounded)
+                if uses_drawdowns
+                else returns
+            )
+            if accepts_sample_weight:
+                value = measure_func(
+                    values, sample_weight=sample_weight, **measure_args
+                )
+            else:
+                value = measure_func(values, **measure_args)
+            if not is_ratio:
+                return value
+            return (
+                mt.mean(returns, sample_weight=sample_weight) - self.risk_free_rate
+            ) / value
+
+        returns = np.asarray(self.returns, dtype=float)
+        if weights is not None:
+            weights = np.asarray(weights, dtype=float)
+
+        ends = np.arange(1, len(returns) + 1)
+        starts = np.maximum(0, ends - window)
+        # Infinite returns invalidate a window regardless of min_periods.
+        valid_counts = np.r_[0, np.cumsum(np.isfinite(returns))]
+        infinite_counts = np.r_[0, np.cumsum(np.isinf(returns))]
+        eligible = (valid_counts[ends] - valid_counts[starts] >= min_periods) & (
+            infinite_counts[ends] == infinite_counts[starts]
+        )
+        values = np.full(len(returns), np.nan)
+        for start, end in zip(
+            starts[eligible].tolist(), ends[eligible].tolist(), strict=True
+        ):
+            window_slice = slice(start, end)
+            values[end - 1] = window_func(
+                returns[window_slice],
+                sample_weight=None if weights is None else weights[window_slice],
+            )
+        rolling = pd.Series(values, index=self.observations)
         if measure.is_annualized:
             if measure in [
                 PerfMeasure.ANNUALIZED_MEAN,
@@ -1008,7 +1047,7 @@ class BasePortfolio:
             e: skt.Measure
             try:
                 if e.is_ratio:
-                    base_measure = e.linked_risk_measure
+                    base_measure = e.linked_risk_measure  # ty: ignore[unresolved-attribute]
                 else:
                     base_measure = e
                 beta = getattr(self, f"{base_measure.value}_beta")
@@ -1198,6 +1237,8 @@ class BasePortfolio:
         self,
         measure: skt.Measure = RatioMeasure.SHARPE_RATIO,
         window: int = 30,
+        *,
+        min_periods: int | None = None,
     ) -> go.Figure:
         """Plot the measure over a rolling window.
 
@@ -1209,12 +1250,20 @@ class BasePortfolio:
         window : int, default=30
            The window size.
 
+        min_periods : int, optional
+            Minimum number of non-missing returns required in a window. Must be
+            between `1` and `window`. The default (`None`) uses `window`. A smaller
+            value evaluates leading partial windows and windows with missing returns.
+            Windows containing an infinite return produce NaN.
+
         Returns
         -------
         plot : Figure
             Returns the plot Figure object
         """
-        rolling = self.rolling_measure(measure=measure, window=window)
+        rolling = self.rolling_measure(
+            measure=measure, window=window, min_periods=min_periods
+        )
         rolling.name = f"{measure} {window} observations"
         fig = rolling.plot(backend="plotly")
         fig.add_hline(
@@ -1271,14 +1320,15 @@ class BasePortfolio:
 
         spacing : float, optional
             Spacing "h" of the finite difference:
-            :math:`contribution(wi)= \frac{measure(wi-h) - measure(wi+h)}{2h}`
+            :math:`contribution(w_i) = w_i \frac{measure(w_i + h) - measure(w_i - h)}{2h}`.
+            If `None`, uses `1e-5`.
 
         Returns
         -------
         plot : Figure
             The plotly Figure of assets contribution to the measure.
         """
-        df = self.contribution(measure=measure, spacing=spacing, to_df=True).T
+        df = self.contribution(measure=measure, spacing=spacing, to_df=True).T  # ty: ignore[unresolved-attribute]
         fig = px.bar(df, x=df.index, y=df.columns)
         yaxis = {
             "title": "Contribution",
@@ -1295,8 +1345,10 @@ class BasePortfolio:
         )
         return fig
 
-    def _get_measure_func(self, measure: skt.Measure) -> tuple[Callable, dict]:
-        """Return the function and arguments of a given measure."""
+    def _get_measure_func(
+        self, measure: skt.Measure, *, exclude_args: tuple[str, ...] = ()
+    ) -> tuple[FunctionType, dict]:
+        """Return the measure function and resolve its non-excluded arguments."""
         if measure.is_annualized:
             func = getattr(mt, str(measure.non_annualized_measure.value))
         else:
@@ -1304,6 +1356,8 @@ class BasePortfolio:
 
         args = {}
         for arg in args_names(func):
+            if arg in exclude_args:
+                continue
             if arg in self._measure_global_args:
                 args[arg] = getattr(self, arg)
             elif arg == "biased":

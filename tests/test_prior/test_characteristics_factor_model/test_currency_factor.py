@@ -226,8 +226,10 @@ def test_realized_attribution_uncertainty_marks_currency_as_direct():
 
     fm = model.factor_model_
     weights = np.full(fm.loading_matrix.shape[0], 1 / fm.loading_matrix.shape[0])
-    lagged_exposures, factor_returns, idio_returns = fm._aligned(
-        ["exposures", "factor_returns", "idio_returns"]
+    lagged_exposures, factor_returns, idio_returns = fm._require(
+        fields=["exposures", "factor_returns", "idio_returns"],
+        caller="test",
+        aligned=True,
     )
     asset_returns = (lagged_exposures @ factor_returns[:, :, np.newaxis]).squeeze(
         -1

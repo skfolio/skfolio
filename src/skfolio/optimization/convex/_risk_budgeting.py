@@ -18,9 +18,9 @@ import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
-from skfolio.optimization.convex._base import ConvexOptimization
+from skfolio.optimization.convex._base import ConvexOptimization, _gmd_reported_risk
 from skfolio.prior import BasePrior, EmpiricalPrior
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import ArrayLike
 from skfolio.utils.tools import args_names, check_estimator
 
 
@@ -306,20 +306,20 @@ class RiskBudgeting(ConvexOptimization):
         The default (`None`) is to use the mean.
 
     cvar_beta : float, default=0.95
-        CVaR (Conditional Value at Risk) confidence level.
-        The default value is `0.95`.
+        CVaR (Conditional Value at Risk) confidence level in [0, 1].
+        At 1, CVaR equals the largest loss with positive sample weight.
 
     evar_beta : float, default=0.95
-        EVaR (Entropic Value at Risk) confidence level.
-        The default value is `0.95`.
+        EVaR (Entropic Value at Risk) confidence level in [0, 1].
+        At 1, EVaR equals the largest loss with positive sample weight.
 
     cdar_beta : float, default=0.95
-        CDaR (Conditional Drawdown at Risk) confidence level.
-        The default value is `0.95`.
+        CDaR (Conditional Drawdown at Risk) confidence level in [0, 1].
+        At 1, CDaR equals the largest drawdown magnitude with positive sample weight.
 
     edar_beta : float, default=0.95
-        EDaR (Entropic Drawdown at Risk) confidence level.
-        The default value is `0.95`.
+        EDaR (Entropic Drawdown at Risk) confidence level in [0, 1].
+        At 1, EDaR equals the largest drawdown magnitude with positive sample weight.
 
     add_objective : Callable[[cp.Variable], cp.Expression], optional
         Add a custom objective to the existing objective expression.
@@ -406,21 +406,23 @@ class RiskBudgeting(ConvexOptimization):
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
         Fallback estimator or a list of estimators to try, in order, when the primary
-        optimization raises during `fit`. Alternatively, use `"previous_weights"` 
-        (alone or in a list) to fall back to the estimator's `previous_weights`.
-        When a fallback succeeds, its fitted `weights_` are copied back to the primary 
-        estimator so that `fit` still returns the original instance. For traceability, 
+        optimization raises during `fit`. Alternatively, use `"previous_weights"` (alone
+        or in a list) to fall back to the estimator's `previous_weights`. When a
+        fallback succeeds, its fitted `weights_` are copied back to the primary
+        estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
-        and `fallback_chain_` stores each attempt with the associated outcome.
+        and `fallback_chain_` stores each attempt with the associated outcome. See
+        :ref:`optimization_fallbacks`.
 
     raise_on_failure : bool, default=True
-        Controls error handling when fitting fails.
-        If True, any failure during `fit` is raised immediately, no `weights_` are
-        set and subsequent calls to `predict` will raise a `NotFittedError`.
-        If False, errors are not raised; instead, a warning is emitted, `weights_`
-        is set to `None` and subsequent calls to `predict` will return a
-        `FailedPortfolio`. When fallbacks are specified, this behavior applies only
-        after all fallbacks have been exhausted.
+        Controls error handling when fitting fails and no fallback succeeds. If True,
+        the estimator raises the final error. If False, the estimator emits a warning
+        and sets `weights_` to None, so subsequent calls to `predict` return a
+        :class:`~skfolio.portfolio.FailedPortfolio`. During `fit`, `raise_on_failure`
+        applies to any fitting error, including errors raised by the prior estimator.
+        See :ref:`optimization_failure_handling`. When computing multiple portfolios,
+        setting `raise_on_failure=False` preserves successful allocations and records
+        each failure separately. See :ref:`optimization_multiple_results`.
 
     Attributes
     ----------
@@ -456,9 +458,11 @@ class RiskBudgeting(ConvexOptimization):
         a valid solution, otherwise the stringified error message. For successful
         fits without any fallback, this is `None`.
 
-    error_ : str | list[str] | None
-        Captured error message(s) when `fit` fails. For multi-portfolio outputs
-        (`weights_` is 2D), this is a list aligned with portfolios.
+    error_ : str | list[str | None] | None
+        For a single portfolio, this is the recorded error message, or None after a
+        successful allocation or fallback. For multiple portfolios, it is a list with
+        one entry per row of `weights_`, containing an error message for each failed
+        portfolio and None for each successful portfolio.
 
     Notes
     -----
@@ -516,7 +520,7 @@ class RiskBudgeting(ConvexOptimization):
     def __init__(
         self,
         risk_measure: RiskMeasure = RiskMeasure.VARIANCE,
-        risk_budget: FloatArray | None = None,
+        risk_budget: dict[str, float] | ArrayLike | None = None,
         prior_estimator: BasePrior | None = None,
         min_weights: skt.MultiInput | None = 0.0,
         max_weights: skt.MultiInput | None = 1.0,
@@ -541,7 +545,7 @@ class RiskBudgeting(ConvexOptimization):
         save_problem: bool = False,
         raise_on_failure: bool = True,
         add_objective: skt.ExpressionFunction | None = None,
-        add_constraints: skt.ExpressionFunction | None = None,
+        add_constraints: skt.ConstraintFunction | None = None,
         overwrite_expected_return: skt.ExpressionFunction | None = None,
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
@@ -643,7 +647,7 @@ class RiskBudgeting(ConvexOptimization):
                 fill_value=1e-10,
                 name="risk_budget",
             )
-            risk_budget[risk_budget == 0] = 1e-10
+            risk_budget = np.where(risk_budget == 0, 1e-10, risk_budget)
 
         # Variables
         w = cp.Variable(n_assets)
@@ -698,6 +702,12 @@ class RiskBudgeting(ConvexOptimization):
                 args[arg_name] = getattr(self, arg_name)
         risk, constraints_i = risk_func(**args)
         constraints += constraints_i
+        if self.risk_measure == RiskMeasure.GINI_MEAN_DIFFERENCE:
+            reported_risk = _gmd_reported_risk(return_distribution.returns, w / factor)
+        elif self.risk_measure in [RiskMeasure.VARIANCE, RiskMeasure.SEMI_VARIANCE]:
+            reported_risk = risk / factor / factor
+        else:
+            reported_risk = risk / factor
 
         # custom objectives and constraints
         custom_objective = self._get_custom_objective(w=w)
@@ -717,8 +727,8 @@ class RiskBudgeting(ConvexOptimization):
             factor=factor,
             parameters_values=parameters_values,
             expressions={
-                "expected_return": expected_return,
-                "risk": risk,
+                "expected_return": expected_return / factor,
+                "risk": reported_risk,
                 "factor": factor,
             },
         )
