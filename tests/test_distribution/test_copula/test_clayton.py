@@ -185,8 +185,8 @@ def test_cdf_exact(X, fitted_model, rotation, expected):
 
 def test_clayton_aic_bic_exact(X, fitted_model):
     fitted_model.rotation_ = CopulaRotation.R180
-    np.isclose(fitted_model.aic(X), -3.840007906839)
-    np.isclose(fitted_model.bic(X), -4.2305699944)
+    assert np.isclose(fitted_model.aic(X), -3.840007906839)
+    assert np.isclose(fitted_model.bic(X), -4.2305699944)
 
 
 @pytest.mark.parametrize(

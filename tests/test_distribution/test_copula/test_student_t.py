@@ -213,8 +213,8 @@ def test_student_t_score_exact(X, fitted_model):
 
 
 def test_student_t_aic_bic_exact(X, fitted_model):
-    np.isclose(fitted_model.aic(X), -2.8543204817527803)
-    np.isclose(fitted_model.bic(X), -3.6354446568845797)
+    assert np.isclose(fitted_model.aic(X), -2.8543204817527803)
+    assert np.isclose(fitted_model.bic(X), -3.6354446568845797)
 
 
 def test_cdf_exact(

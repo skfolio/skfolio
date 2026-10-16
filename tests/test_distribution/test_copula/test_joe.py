@@ -221,8 +221,8 @@ def test_cdf_exact(X, fitted_model, rotation, expected):
 
 def test_joe_aic_bic_exact(X, fitted_model):
     fitted_model.rotation_ = CopulaRotation.R180
-    np.isclose(fitted_model.aic(X), -4.146027394639978)
-    np.isclose(fitted_model.bic(X), -4.536589482205877)
+    assert np.isclose(fitted_model.aic(X), -4.146027394639978)
+    assert np.isclose(fitted_model.bic(X), -4.536589482205877)
 
 
 @pytest.mark.parametrize(
