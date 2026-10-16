@@ -502,7 +502,7 @@ a `summary` method and the diagnostic statistics and plots covered in the
 
     factor_model = model.factor_model_
     factor_model.summary()
-    factor_model.factor_returns_df()
+    factor_model.factor_returns_df
 
 
 The fitted sub-estimators are also available with the usual scikit-learn trailing
@@ -2764,7 +2764,7 @@ on each subsequent test window:
     from skfolio.model_selection import online_predict
 
     portfolio = online_predict(
-        estimator=optimization,
+        estimator=mvo,
         X=X,
         warmup_size=2 * 252 + 21,
         test_size=21,
@@ -2797,7 +2797,7 @@ the estimator on every fold:
     from skfolio.model_selection import OnlineGridSearch
 
     search = OnlineGridSearch(
-        estimator=optimization,
+        estimator=mvo,
         param_grid={
             "prior_estimator__inv_idio_variance_weight_shrinkage": [0.0, 0.5, 1.0],
             "prior_estimator__exposure_lag": [1, 2],
