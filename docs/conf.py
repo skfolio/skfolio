@@ -622,6 +622,10 @@ TUTORIAL_ORDER = {
         "plot_factor_constrained_portfolio.py",
         "plot_alpha_factor_neutral_portfolio.py",
     ),
+    "parametric_portfolio_policy": (
+        "plot_parametric_portfolio_policy.py",
+        "plot_supervised_portfolio_policy.py",
+    ),
     "risk_budgeting": (
         "plot_1_risk_parity_variance.py",
         "plot_2_risk_budgeting_CVaR.py",
@@ -934,6 +938,9 @@ sphinx_gallery_conf = {
         "skfolio": None,
     },
     "examples_dirs": ["../examples"],
+    # These runnable scripts require CLI arguments and are documented in the
+    # section README rather than rendered as gallery tutorials.
+    "ignore_pattern": r"(^|/)(__|(historical_walk_forward|cash_execution_example)\.py$)",
     "gallery_dirs": ["auto_examples"],
     "subsection_order": custom_section_order,
     "within_subsection_order": TutorialOrderSortKey,
