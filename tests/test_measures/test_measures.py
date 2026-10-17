@@ -783,20 +783,19 @@ def test_kurtosis_sample_weight(returns):
         ("1d", 0.0, 1.0510848e-05),
         ("2d", None, [1.0675109e-05, 1.1070756e-05]),
         ("2d", 0.0, [1.0510848e-05, 1.0777481e-05]),
-        ("1d_nan", None, 0.0217814),
+        # Mean = 0.025; only -0.5 and -0.3 contribute, over 4 valid returns.
+        ("1d_nan", None, (0.525**4 + 0.325**4) / 4),
         ("all_nan", None, np.nan),
     ],
     indirect=["returns"],
 )
 def test_fourth_lower_partial_moment(returns, min_acceptable_return, expected):
-    (
-        np.testing.assert_almost_equal(
-            skm.fourth_lower_partial_moment(
-                returns, min_acceptable_return=min_acceptable_return
-            ),
-            expected,
+    np.testing.assert_almost_equal(
+        skm.fourth_lower_partial_moment(
+            returns, min_acceptable_return=min_acceptable_return
         ),
-        10,
+        expected,
+        decimal=10,
     )
 
 

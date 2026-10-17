@@ -23,6 +23,12 @@ def X_with_nans(X):
     return X_nan
 
 
+def _assert_positive_variance(variance):
+    assert variance.shape == (20,)
+    assert np.all(np.isfinite(variance))
+    assert np.all(variance > 0)
+
+
 class TestRegimeAdjustedEWVarianceBasic:
     def test_basic(self, X):
         """Test basic functionality with default parameters."""
@@ -57,9 +63,7 @@ class TestRegimeAdjustedEWVarianceBasic:
         """Test different STVU methods produce valid results."""
         model = RegimeAdjustedEWVariance(regime_method=regime_method, half_life=23)
         model.fit(X)
-        assert model.variance_.shape == (20,)
-        assert np.all(np.isfinite(model.variance_))
-        assert np.all(model.variance_ > 0)
+        _assert_positive_variance(model.variance_)
         assert 0.5 < model.regime_multiplier_ < 2.0
 
     def test_regime_methods_produce_different_results(self, X):
@@ -89,9 +93,7 @@ class TestRegimeAdjustedEWVarianceBasic:
             regime_method=regime_method, half_life=23, assume_centered=False
         )
         model.fit(X)
-        assert model.variance_.shape == (20,)
-        assert np.all(np.isfinite(model.variance_))
-        assert np.all(model.variance_ > 0)
+        _assert_positive_variance(model.variance_)
         assert 0.5 < model.regime_multiplier_ < 2.0
 
     def test_assume_centered_vs_not(self, X):
@@ -231,9 +233,7 @@ class TestRegimeAdjustedEWVarianceHAC:
         """Test basic HAC (Newey-West) functionality."""
         model = RegimeAdjustedEWVariance(half_life=23, hac_lags=5)
         model.fit(X)
-        assert model.variance_.shape == (20,)
-        assert np.all(np.isfinite(model.variance_))
-        assert np.all(model.variance_ > 0)
+        _assert_positive_variance(model.variance_)
         assert 0.5 < model.regime_multiplier_ < 2.0
 
     def test_hac_with_demeaning(self, X):
@@ -242,9 +242,7 @@ class TestRegimeAdjustedEWVarianceHAC:
             half_life=23, hac_lags=3, assume_centered=False
         )
         model.fit(X)
-        assert model.variance_.shape == (20,)
-        assert np.all(np.isfinite(model.variance_))
-        assert np.all(model.variance_ > 0)
+        _assert_positive_variance(model.variance_)
 
     @pytest.mark.parametrize(
         "regime_method",
@@ -260,9 +258,7 @@ class TestRegimeAdjustedEWVarianceHAC:
             regime_method=regime_method, half_life=23, hac_lags=5
         )
         model.fit(X)
-        assert model.variance_.shape == (20,)
-        assert np.all(np.isfinite(model.variance_))
-        assert np.all(model.variance_ > 0)
+        _assert_positive_variance(model.variance_)
 
     def test_hac_vs_no_hac(self, X):
         """Test that HAC produces different results than no HAC."""
@@ -406,9 +402,7 @@ class TestRegimeAdjustedEWVarianceNaN:
         model = RegimeAdjustedEWVariance(half_life=23)
         model.fit(X_with_nans)
 
-        assert model.variance_.shape == (20,)
-        assert np.all(np.isfinite(model.variance_))
-        assert np.all(model.variance_ > 0)
+        _assert_positive_variance(model.variance_)
         assert np.isfinite(model.regime_multiplier_)
 
     def test_nan_vs_no_nan(self, X, X_with_nans):
@@ -445,20 +439,18 @@ class TestRegimeAdjustedEWVarianceNaN:
         assert np.all(np.isfinite(model.variance_))
         assert np.isfinite(model.regime_multiplier_)
 
-    def test_nan_with_hac(self, X_with_nans):
-        """Test NaN handling with HAC correction."""
-        model = RegimeAdjustedEWVariance(half_life=23, hac_lags=3)
+    @pytest.mark.parametrize(
+        "params",
+        [
+            pytest.param({"half_life": 23, "hac_lags": 3}, id="nan_with_hac"),
+            pytest.param(
+                {"half_life": 23, "assume_centered": False}, id="nan_with_demeaning"
+            ),
+        ],
+    )
+    def test_nan_with_adjustments(self, X_with_nans, params):
+        model = RegimeAdjustedEWVariance(**params)
         model.fit(X_with_nans)
-
-        assert model.variance_.shape == (20,)
-        assert np.all(np.isfinite(model.variance_))
-        assert np.isfinite(model.regime_multiplier_)
-
-    def test_nan_with_demeaning(self, X_with_nans):
-        """Test NaN handling with demeaning."""
-        model = RegimeAdjustedEWVariance(half_life=23, assume_centered=False)
-        model.fit(X_with_nans)
-
         assert model.variance_.shape == (20,)
         assert np.all(np.isfinite(model.variance_))
         assert np.isfinite(model.regime_multiplier_)

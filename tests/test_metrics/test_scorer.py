@@ -18,7 +18,29 @@ from skfolio.moments import EWCovariance
 from skfolio.optimization import EqualWeighted, MeanRisk, ObjectiveFunction
 
 
-def test_default_score(X):
+@pytest.fixture(scope="module")
+def reference_scores(X):
+    """Compute independent reference scores once for the four grid searches."""
+    scores = {name: [] for name in ("sharpe_ratio", "cdar_ratio", "cvar", "custom")}
+    for train, test in sks.KFold(3).split(X):
+        fold_scores = {name: [] for name in scores}
+        for l2_coef in (0.001, 0.01):
+            model = MeanRisk(
+                objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+                max_variance=0.3**2 / 252,
+                l2_coef=l2_coef,
+            ).fit(X.take(train))
+            pred = model.predict(X.take(test))
+            fold_scores["sharpe_ratio"].append(pred.sharpe_ratio)
+            fold_scores["cdar_ratio"].append(pred.cdar_ratio)
+            fold_scores["cvar"].append(-pred.cvar)
+            fold_scores["custom"].append(pred.cvar - 2 * pred.cdar)
+        for name, values in fold_scores.items():
+            scores[name].append(tuple(values))
+    return {name: tuple(values) for name, values in scores.items()}
+
+
+def test_default_score(X, reference_scores):
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
         max_variance=0.3**2 / 252,
@@ -30,15 +52,10 @@ def test_default_score(X):
     )
     grid_search.fit(X)
 
-    res = {}
-    for i, (train, test) in enumerate(cv.split(X)):
-        d = np.zeros(2)
-        for j, l2_coef in enumerate(l2_coefs):
-            model.set_params(l2_coef=l2_coef)
-            model.fit(X.take(train))
-            pred = model.predict(X.take(test))
-            d[j] = pred.sharpe_ratio
-        res[f"split{i}_test_score"] = d
+    res = {
+        f"split{i}_test_score": values
+        for i, values in enumerate(reference_scores["sharpe_ratio"])
+    }
 
     for k, v in res.items():
         np.testing.assert_almost_equal(grid_search.cv_results_[k], v)
@@ -54,7 +71,7 @@ def test_default_score(X):
     )
 
 
-def test_measure_score_ratio(X):
+def test_measure_score_ratio(X, reference_scores):
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
         max_variance=0.3**2 / 252,
@@ -72,15 +89,10 @@ def test_measure_score_ratio(X):
     )
     grid_search.fit(X)
 
-    res = {}
-    for i, (train, test) in enumerate(cv.split(X)):
-        d = np.zeros(2)
-        for j, l2_coef in enumerate(l2_coefs):
-            model.set_params(l2_coef=l2_coef)
-            model.fit(X.take(train))
-            pred = model.predict(X.take(test))
-            d[j] = pred.cdar_ratio
-        res[f"split{i}_test_score"] = d
+    res = {
+        f"split{i}_test_score": values
+        for i, values in enumerate(reference_scores["cdar_ratio"])
+    }
 
     for k, v in res.items():
         np.testing.assert_almost_equal(grid_search.cv_results_[k], v)
@@ -96,7 +108,7 @@ def test_measure_score_ratio(X):
     )
 
 
-def test_measure_score_risk_measure(X):
+def test_measure_score_risk_measure(X, reference_scores):
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
         max_variance=0.3**2 / 252,
@@ -113,15 +125,10 @@ def test_measure_score_risk_measure(X):
     )
     grid_search.fit(X)
 
-    res = {}
-    for i, (train, test) in enumerate(cv.split(X)):
-        d = np.zeros(2)
-        for j, l2_coef in enumerate(l2_coefs):
-            model.set_params(l2_coef=l2_coef)
-            model.fit(X.take(train))
-            pred = model.predict(X.take(test))
-            d[j] = pred.cvar
-        res[f"split{i}_test_score"] = -d
+    res = {
+        f"split{i}_test_score": values
+        for i, values in enumerate(reference_scores["cvar"])
+    }
 
     for k, v in res.items():
         np.testing.assert_almost_equal(grid_search.cv_results_[k], v)
@@ -137,7 +144,7 @@ def test_measure_score_risk_measure(X):
     )
 
 
-def test_measure_score_custom(X):
+def test_measure_score_custom(X, reference_scores):
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
         max_variance=0.3**2 / 252,
@@ -159,15 +166,10 @@ def test_measure_score_custom(X):
 
     grid_search.fit(X)
 
-    res = {}
-    for i, (train, test) in enumerate(cv.split(X)):
-        d = np.zeros(2)
-        for j, l2_coef in enumerate(l2_coefs):
-            model.set_params(l2_coef=l2_coef)
-            model.fit(X.take(train))
-            pred = model.predict(X.take(test))
-            d[j] = pred.cvar - 2 * pred.cdar
-        res[f"split{i}_test_score"] = d
+    res = {
+        f"split{i}_test_score": values
+        for i, values in enumerate(reference_scores["custom"])
+    }
 
     for k, v in res.items():
         np.testing.assert_almost_equal(grid_search.cv_results_[k], v)
