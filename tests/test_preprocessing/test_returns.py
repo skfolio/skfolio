@@ -80,6 +80,21 @@ def test_returns_drop_inceptions_nan(prices):
     assert X.shape[0] == prices.shape[0] - 1
 
 
+def test_returns_drops_all_nan_column():
+    index = pd.date_range("2026-01-01", periods=5)
+    prices = pd.DataFrame(
+        {
+            "A": [100.0, 101.0, 102.0, 103.0, 104.0],
+            "B": [50.0, 51.0, 52.0, 53.0, 54.0],
+            "C": np.nan,
+        },
+        index=index,
+    )
+
+    X = prices_to_returns(X=prices)
+    pd.testing.assert_frame_equal(X, prices_to_returns(X=prices[["A", "B"]]))
+
+
 def test_returns_requires_dataframe_inputs():
     index = pd.date_range("2026-01-01", periods=3)
     prices = pd.DataFrame({"asset": [100.0, 101.0, 102.0]}, index=index)
