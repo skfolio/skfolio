@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.9.4 (2026-10-17)
+
+### Bug Fixes
+
+- **model-selection**: Handle empty calendar windows in WalkForward
+  ([#427](https://github.com/skfolio/skfolio/pull/427),
+  [`eeca25b`](https://github.com/skfolio/skfolio/commit/eeca25b2a0157a23f4ee4f7670f483461574d486))
+
+
 ## v1.9.3 (2026-10-16)
 
 ### Bug Fixes
