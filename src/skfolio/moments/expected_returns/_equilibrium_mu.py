@@ -41,6 +41,7 @@ class EquilibriumMu(BaseMu):
         Asset weights used to compute the Expected Return Equilibrium.
         The default is to use the equal-weighted equilibrium (1/N).
         For a Market Cap weighted equilibrium, you must provide the asset Market Caps.
+        The weights are rescaled to sum to one.
 
     covariance_estimator : BaseCovariance, optional
         :ref:`Covariance estimator <covariance_estimator>` used to estimate the
@@ -131,6 +132,8 @@ class EquilibriumMu(BaseMu):
         if self.weights is None:
             weights = np.ones(n_assets) / n_assets
         else:
-            weights = np.asarray(self.weights)
+            weights = np.asarray(self.weights, dtype=float)
+            # Market Caps are accepted as weights, so rescale them to sum to one.
+            weights = weights / weights.sum()
         self.mu_ = self.risk_aversion * self.covariance_estimator_.covariance_ @ weights
         return self
