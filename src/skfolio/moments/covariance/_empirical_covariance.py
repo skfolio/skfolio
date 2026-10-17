@@ -15,12 +15,16 @@ import numpy as np
 import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance._base import BaseCovariance
-from skfolio.typing import ArrayLike
-from skfolio.utils.tools import apply_window_size
+from skfolio.typing import ArrayLike, FloatArray
+from skfolio.utils.tools import (
+    _normalize_sample_weight,
+    _validate_sample_weight,
+    apply_window_size,
+)
 
 
 class EmpiricalCovariance(BaseCovariance):
-    """Empirical Covariance estimator.
+    r"""Empirical Covariance estimator.
 
     Parameters
     ----------
@@ -32,6 +36,10 @@ class EmpiricalCovariance(BaseCovariance):
         Normalization is by `(n_observations - ddof)`.
         Note that `ddof=1` will return the unbiased estimate, and `ddof=0`
         will return the simple average. The default value is `1`.
+        With `sample_weight`, the weighted second moment is divided by
+        :math:`1 - \text{ddof} \sum_i w_i^2`, where :math:`w_i` are the weights
+        rescaled to sum to one. This matches the unweighted result for uniform
+        weights. See the Notes section.
 
     assume_centered : bool, default=False
         If False (default), the data are mean-centered before computing the covariance.
@@ -77,6 +85,22 @@ class EmpiricalCovariance(BaseCovariance):
     feature_names_in_ : ndarray of shape (`n_features_in_`,)
         Names of assets seen during `fit`. Defined only when `X`
         has assets names that are all strings.
+
+    Notes
+    -----
+    With `sample_weight`, the weights are rescaled to sum to one, so only their
+    relative sizes matter. The location is the weighted mean (or zero when
+    `assume_centered=True`) and the covariance is
+
+    .. math::
+        \Sigma = \frac{\sum_i w_i (x_i - \mu)(x_i - \mu)^T}{1 - \text{ddof} \sum_i w_i^2}.
+
+    With `ddof=0` this is the covariance of the distribution that puts
+    probability :math:`w_i` on observation :math:`x_i`. With `ddof=1` it applies
+    the correction for reliability weights, which makes the estimate unbiased when
+    the weights describe the relative reliability of i.i.d. observations. When the
+    weights are arbitrary scenario probabilities, this correction does not by
+    itself make the estimate unbiased, and `ddof=0` is usually the natural choice.
     """
 
     def __init__(
@@ -97,7 +121,12 @@ class EmpiricalCovariance(BaseCovariance):
         self.window_size = window_size
         self.ddof = ddof
 
-    def fit(self, X: ArrayLike, y: None = None) -> EmpiricalCovariance:
+    def fit(
+        self,
+        X: ArrayLike,
+        y: None = None,
+        sample_weight: ArrayLike | None = None,
+    ) -> EmpiricalCovariance:
         """Fit the empirical covariance estimator.
 
         Parameters
@@ -108,12 +137,25 @@ class EmpiricalCovariance(BaseCovariance):
         y : Ignored
             Not used, present for API consistency by convention.
 
+        sample_weight : array-like of shape (n_observations,), optional
+            Relative observation weights. Must be finite and nonnegative, and are
+            rescaled to sum to one. When `window_size` is set, the weights of the
+            last `window_size` observations are used. If None (default), all
+            observations have equal weight.
+
         Returns
         -------
         self : EmpiricalCovariance
             Fitted estimator.
         """
         X = skv.validate_data(self, X)
+        if sample_weight is not None:
+            sample_weight = _validate_sample_weight(
+                sample_weight, n_observations=X.shape[0]
+            )
+            sample_weight = apply_window_size(
+                sample_weight, window_size=self.window_size
+            )
         X = apply_window_size(X, window_size=self.window_size)
 
         n_observations, _ = X.shape
@@ -125,6 +167,10 @@ class EmpiricalCovariance(BaseCovariance):
                 "ddof must be strictly less than the number of observations, "
                 f"got ddof={self.ddof} and n_observations={n_observations}"
             )
+
+        if sample_weight is not None:
+            self._set_covariance(self._weighted_covariance(X, sample_weight))
+            return self
 
         if self.assume_centered:
             self.location_ = np.zeros(X.shape[1])
@@ -138,3 +184,26 @@ class EmpiricalCovariance(BaseCovariance):
 
         self._set_covariance(covariance)
         return self
+
+    def _weighted_covariance(
+        self, X: FloatArray, sample_weight: FloatArray
+    ) -> FloatArray:
+        """Compute the weighted covariance and set `location_`."""
+        if not sample_weight.any():
+            raise ValueError("sample_weight must contain at least one positive weight.")
+        weights = _normalize_sample_weight(sample_weight)
+        correction = 1.0 - self.ddof * float(weights @ weights)
+        if correction <= 0:
+            raise ValueError(
+                "sample_weight gives too few effective observations for "
+                f"ddof={self.ddof}: the effective number of observations "
+                f"1 / sum(w**2) = {1.0 / float(weights @ weights):.6g} must be "
+                "strictly greater than ddof."
+            )
+        if self.assume_centered:
+            self.location_ = np.zeros(X.shape[1])
+            deviations = X
+        else:
+            self.location_ = weights @ X
+            deviations = X - self.location_
+        return (deviations.T * weights) @ deviations / correction

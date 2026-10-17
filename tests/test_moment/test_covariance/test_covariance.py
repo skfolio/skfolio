@@ -13,6 +13,7 @@ from sklearn.covariance import LedoitWolf as SklearnLedoitWolf
 from sklearn.covariance import ShrunkCovariance as SklearnShrunkCovariance
 from sklearn.model_selection import cross_val_score
 
+from skfolio.distance import CovarianceDistance
 from skfolio.exceptions import NonPositiveVarianceError
 from skfolio.moments import (
     OAS,
@@ -34,6 +35,7 @@ from skfolio.moments.covariance._base import _reduce_to_finite_active_block
 from skfolio.moments.covariance._geodesic_shrinkage_covariance import (
     _geodesic_interpolation,
 )
+from skfolio.optimization import HierarchicalRiskParity
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import (
     _squared_mahalanobis_dist_from_cholesky,
@@ -3111,3 +3113,143 @@ class TestGeodesicInterpolation:
     def test_non_positive_definite_end_raises(self, end):
         with pytest.raises(ValueError, match=r"end.*positive definite"):
             _geodesic_interpolation(np.identity(2), np.array(end), alpha=0.5)
+
+
+class TestEmpiricalCovarianceSampleWeight:
+    @pytest.fixture
+    def data(self):
+        rng = np.random.default_rng(0)
+        X = rng.normal(scale=0.01, size=(50, 4))
+        sample_weight = rng.uniform(0.1, 2.0, size=50)
+        return X, sample_weight
+
+    @pytest.mark.parametrize("ddof", [0, 1, 3])
+    @pytest.mark.parametrize("assume_centered", [False, True])
+    @pytest.mark.parametrize("window_size", [None, 20])
+    def test_uniform_weights_match_unweighted(
+        self, data, ddof, assume_centered, window_size
+    ):
+        X, _ = data
+        params = dict(
+            nearest=False,
+            ddof=ddof,
+            assume_centered=assume_centered,
+            window_size=window_size,
+        )
+        unweighted = EmpiricalCovariance(**params).fit(X)
+        weighted = EmpiricalCovariance(**params).fit(
+            X, sample_weight=np.full(len(X), 3.7)
+        )
+        np.testing.assert_allclose(weighted.covariance_, unweighted.covariance_)
+        np.testing.assert_allclose(weighted.location_, unweighted.location_)
+
+    @pytest.mark.parametrize("ddof", [0, 1])
+    def test_matches_numpy_reliability_weights(self, data, ddof):
+        X, sample_weight = data
+        model = EmpiricalCovariance(nearest=False, ddof=ddof).fit(
+            X, sample_weight=sample_weight
+        )
+        np.testing.assert_allclose(
+            model.covariance_,
+            np.cov(X, rowvar=False, aweights=sample_weight, ddof=ddof),
+        )
+        np.testing.assert_allclose(
+            model.location_, np.average(X, axis=0, weights=sample_weight)
+        )
+
+    def test_assume_centered(self, data):
+        X, sample_weight = data
+        model = EmpiricalCovariance(nearest=False, assume_centered=True).fit(
+            X, sample_weight=sample_weight
+        )
+        w = sample_weight / sample_weight.sum()
+        expected = (X.T * w) @ X / (1 - np.sum(w**2))
+        np.testing.assert_allclose(model.covariance_, expected)
+        np.testing.assert_array_equal(model.location_, np.zeros(X.shape[1]))
+
+    def test_scale_invariance(self, data):
+        X, sample_weight = data
+        model = EmpiricalCovariance(nearest=False)
+        a = model.fit(X, sample_weight=sample_weight).covariance_
+        b = model.fit(X, sample_weight=1e6 * sample_weight).covariance_
+        np.testing.assert_allclose(a, b)
+
+    def test_integer_weights_match_repeated_observations(self, data):
+        X, _ = data
+        counts = np.random.default_rng(1).integers(1, 4, size=len(X))
+        weighted = EmpiricalCovariance(nearest=False, ddof=0).fit(
+            X, sample_weight=counts
+        )
+        repeated = EmpiricalCovariance(nearest=False, ddof=0).fit(
+            np.repeat(X, counts, axis=0)
+        )
+        np.testing.assert_allclose(weighted.covariance_, repeated.covariance_)
+        np.testing.assert_allclose(weighted.location_, repeated.location_)
+
+    def test_zero_weights_exclude_observations(self, data):
+        X, sample_weight = data
+        sample_weight = sample_weight.copy()
+        sample_weight[:10] = 0.0
+        a = EmpiricalCovariance(nearest=False).fit(X, sample_weight=sample_weight)
+        b = EmpiricalCovariance(nearest=False).fit(
+            X[10:], sample_weight=sample_weight[10:]
+        )
+        np.testing.assert_allclose(a.covariance_, b.covariance_)
+
+    def test_window_size_slices_weights(self, data):
+        X, sample_weight = data
+        model = EmpiricalCovariance(nearest=False, window_size=20).fit(
+            X, sample_weight=sample_weight
+        )
+        np.testing.assert_allclose(
+            model.covariance_,
+            np.cov(X[-20:], rowvar=False, aweights=sample_weight[-20:]),
+        )
+
+    def test_single_asset(self, data):
+        X, sample_weight = data
+        model = EmpiricalCovariance(nearest=False).fit(
+            X[:, :1], sample_weight=sample_weight
+        )
+        assert model.covariance_.shape == (1, 1)
+        np.testing.assert_allclose(
+            model.covariance_[0, 0],
+            np.cov(X[:, 0], aweights=sample_weight),
+        )
+
+    @pytest.mark.parametrize(
+        "sample_weight, match",
+        [
+            (np.zeros(50), "at least one positive weight"),
+            (np.r_[1.0, np.zeros(49)], "too few effective observations"),
+            (-np.ones(50), "nonnegative"),
+            (np.r_[np.nan, np.ones(49)], "finite"),
+            (np.ones(10), "same length"),
+        ],
+    )
+    def test_invalid_sample_weight(self, data, sample_weight, match):
+        X, _ = data
+        with pytest.raises(ValueError, match=match):
+            EmpiricalCovariance().fit(X, sample_weight=sample_weight)
+
+    def test_metadata_routing_through_distance_and_hrp(self, data):
+        X, sample_weight = data
+        expected = np.cov(X, rowvar=False, aweights=sample_weight)
+        with config_context(enable_metadata_routing=True):
+            covariance = EmpiricalCovariance(nearest=False).set_fit_request(
+                sample_weight=True
+            )
+            distance = CovarianceDistance(covariance).fit(
+                X, sample_weight=sample_weight
+            )
+            np.testing.assert_allclose(
+                distance.covariance_estimator_.covariance_, expected
+            )
+
+            model = HierarchicalRiskParity(
+                distance_estimator=CovarianceDistance(covariance),
+                distance_from_prior=False,
+            ).fit(X, sample_weight=sample_weight)
+            np.testing.assert_allclose(
+                model.distance_estimator_.covariance_estimator_.covariance_, expected
+            )
