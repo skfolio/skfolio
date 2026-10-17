@@ -370,7 +370,7 @@ def test_walk_forward_with_train_offset_purges_training():
         np.arange(240).reshape(120, 2),
         index=pd.date_range("2026-01-01", periods=120, freq="D"),
     )
-    # Cover both offset types and every alignment, window, and final-fold policy.
+    # We cover both offset types and every alignment, window, and final-fold policy.
     for train_size, previous, expand_train, reduce_test in itertools.product(
         (pd.DateOffset(months=1), dt.timedelta(days=31)),
         (False, True),
@@ -407,7 +407,8 @@ def test_walk_forward_with_train_offset_purges_training():
             np.testing.assert_array_equal(purged_train, unpurged_train[:-1])
             np.testing.assert_array_equal(purged_test, unpurged_test)
 
-        # Pin independent boundaries so matching errors in both splitters cannot pass.
+        # We check explicit expected indices so errors shared by both splitters
+        # cannot pass.
         first_train, first_test = purged_splits[0]
         np.testing.assert_array_equal(first_train, np.arange(30))
         np.testing.assert_array_equal(first_test, np.arange(31, 59))
@@ -672,8 +673,8 @@ def test_walk_forward_accepts_numpy_integer_window_sizes(freq):
 @pytest.mark.parametrize("reduce_test", [False, True])
 def test_walk_forward_rejects_insufficient_observations(n_samples, reduce_test):
     """Reject observation schedules with no possible test observation."""
-    # Cover a short input, the full training window, and the exact
-    # train-plus-purge boundary.
+    # We cover inputs shorter than training, equal to training, and equal to
+    # training plus purging.
     X = np.zeros((n_samples, 2))
     cv = WalkForward(
         test_size=2,
@@ -1076,7 +1077,7 @@ def test_walk_forward_skips_periods_without_observations(
 ):
     """Periods without observations (weekends, holidays) give no empty test fold."""
     index = pd.bdate_range("2024-01-01", periods=60)
-    # Drop a few weekdays to mimic market holidays.
+    # We drop a few weekdays to mimic market holidays.
     index = index.drop(index[[7, 8, 20, 33]])
     X = pd.DataFrame(np.random.default_rng(0).normal(size=(len(index), 2)), index=index)
     cv = WalkForward(

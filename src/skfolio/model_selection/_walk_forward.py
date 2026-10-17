@@ -32,7 +32,7 @@ class WalkForward(sks.BaseCrossValidator):
     Provides train/test indices to split time series data samples using a walk-forward
     logic.
 
-    In each split, test indices must be higher than the previous ones; therefore,
+    In each split, test indices must be higher than the previous ones. Therefore,
     shuffling in cross-validator is inappropriate.
 
     Compared to `sklearn.model_selection.TimeSeriesSplit`, you control the train/test
@@ -52,8 +52,8 @@ class WalkForward(sks.BaseCrossValidator):
     train_size : int | pandas.offsets.DateOffset | datetime.timedelta
         Length of each training set.
         If `freq` is `None` (default), it represents the number of observations.
-        Otherwise, for integers, it represents the number of periods defined by `freq`;
-        for a pandas DateOffset or datetime timedelta, that offset is subtracted
+        Otherwise, for integers, it represents the number of periods defined by `freq`.
+        For a pandas DateOffset or datetime timedelta, that offset is subtracted
         from each test period's start date to determine when training begins.
 
     freq : str | pandas.offsets.DateOffset, optional
@@ -101,8 +101,8 @@ class WalkForward(sks.BaseCrossValidator):
 
     previous : bool, default=False
         Only used if `freq` is provided. If set to `True`, and if the period start
-        or period end is not in the `DatetimeIndex`, the previous observation is used;
-        otherwise, the next observation is used (default).
+        or period end is not in the `DatetimeIndex`, the previous observation is used.
+        Otherwise, the next observation is used (default).
 
     expand_train : bool, default=False
         If set to `True`, each subsequent training set after the first one will
@@ -110,8 +110,8 @@ class WalkForward(sks.BaseCrossValidator):
         The default is `False`.
 
     reduce_test : bool, default=False
-        If `True`, include the final split when there is not enough data for a full
-        test window. Otherwise, omit that split.
+        If `True`, the final split is included even when there is not enough data
+        for a full test window. Otherwise, that split is omitted.
         The default is `False`.
 
     purged_size : int, default=0
@@ -554,8 +554,8 @@ def _split_by_calendar(
         Offset applied to each rebalancing date.
 
     previous : bool
-        If a period's start date is missing from `ts_index`, use the preceding
-        observation when `True` or the following observation otherwise.
+        If a period's start date is missing from `ts_index`, the preceding
+        observation is used when `True`, or the following observation otherwise.
 
     purged_size : int
         Number of observations removed from the end of each training window.
@@ -564,8 +564,8 @@ def _split_by_calendar(
         If `True`, training always starts at index 0.
 
     reduce_test : bool
-        If `True`, include the final split when there is not enough data for a
-        full test window. Otherwise, omit that split.
+        If `True`, the final split is included even when there is not enough data
+        for a full test window. Otherwise, that split is omitted.
 
     ts_index : DatetimeIndex
         Datetime index of the input data.
@@ -636,20 +636,20 @@ def _calendar_window_bounds(
         Offset applied to each rebalancing date.
 
     previous : bool
-        If a period's start date is missing from `ts_index`, use the preceding
-        observation when `True` or the following observation otherwise.
+        If a period's start date is missing from `ts_index`, the preceding
+        observation is used when `True`, or the following observation otherwise.
 
     purged_size : int
         Number of observations removed from the end of each training window.
         Used to check that at least one training observation remains.
 
     expand_train : bool
-        If `True`, validate each training window as starting at index 0.
+        If `True`, each training window is validated as starting at index 0.
         The returned `train_starts` are unchanged.
 
     reduce_test : bool
-        If `True`, include the final split when there is not enough data for a
-        full test window. Otherwise, omit that split.
+        If `True`, the final split is included even when there is not enough data
+        for a full test window. Otherwise, that split is omitted.
 
     ts_index : DatetimeIndex
         Datetime index of the input data.
@@ -695,7 +695,7 @@ def _calendar_window_bounds(
         date_range, method="ffill" if previous else "bfill"
     )
     if previous and freq_offset is not None:
-        # Dates shifted before the data have no previous observation. Start those
+        # Dates shifted before the data have no previous observation. We start those
         # windows at the first observation instead of interpreting -1 as the last.
         period_idx[period_idx == -1] = 0
     n_periods = len(period_idx)
@@ -703,7 +703,7 @@ def _calendar_window_bounds(
         first_period = train_size
     else:
         lookback_idx = ts_index.get_indexer(date_range - train_size, method="ffill")
-        # Keep missing lookbacks: they identify periods without enough history.
+        # We keep missing lookbacks because they identify periods without enough history.
         if np.all(lookback_idx == -1):
             return period_idx[:0], period_idx[:0], period_idx[:0]
         first_period = int(np.argmax(lookback_idx > -1))
@@ -716,7 +716,7 @@ def _calendar_window_bounds(
     test_starts = period_idx[first_period:end_period:test_size]
     test_stops = period_idx[first_period + test_size :: test_size]
     if reduce_test:
-        # The calendar schedule ends before the final test stop; use the data's end.
+        # The calendar schedule ends before the final test stop, so we use the data's end.
         test_stops = np.concatenate((test_stops, [len(ts_index)]))
     if isinstance(train_size, int):
         train_starts = period_idx[: end_period - train_size : test_size]
@@ -725,7 +725,7 @@ def _calendar_window_bounds(
 
     # Missing periods (weekends, holidays) can share the same observation.
     nonempty = test_stops > test_starts
-    # Check every retained fold without generating its observation indices.
+    # We check every retained fold without generating its observation indices.
     if expand_train:
         empty_train = test_starts <= purged_size
     else:
