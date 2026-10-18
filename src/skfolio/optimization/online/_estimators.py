@@ -134,7 +134,7 @@ class ExponentiatedGradient(FollowTheWinner):
     all_weights_ : ndarray of shape (n_stored_observations, n_assets)
         Diagnostic targets before each stored observation, available only when
         ``store_weights=True``. This is not a record of executed trades. Use
-        ``all_weights_.copy()`` to retain an independent snapshot.
+        ``all_weights_.copy()`` for a writable snapshot of this read-only array.
     prior_estimator_ : BasePrior
         Fitted incremental prior, present when ``prior_estimator`` is supplied.
 
@@ -395,7 +395,7 @@ class AdaGrad(FollowTheWinner):
     all_weights_ : ndarray of shape (n_stored_observations, n_assets)
         Diagnostic targets before each stored observation, available only when
         ``store_weights=True``. This is not a record of executed trades. Use
-        ``all_weights_.copy()`` to retain an independent snapshot.
+        ``all_weights_.copy()`` for a writable snapshot of this read-only array.
     prior_estimator_ : BasePrior
         Fitted incremental prior, present when ``prior_estimator`` is supplied.
 
@@ -656,7 +656,7 @@ class OnlineMovingAverageReversion(FollowTheLoser):
     all_weights_ : ndarray of shape (n_stored_observations, n_assets)
         Diagnostic targets before each stored observation, available only when
         ``store_weights=True``. This is not a record of executed trades. Use
-        ``all_weights_.copy()`` to retain an independent snapshot.
+        ``all_weights_.copy()`` for a writable snapshot of this read-only array.
     prior_estimator_ : BasePrior
         Fitted incremental prior, present when ``prior_estimator`` is supplied.
 
@@ -932,7 +932,7 @@ class PassiveAggressiveMeanReversion(FollowTheLoser):
     all_weights_ : ndarray of shape (n_stored_observations, n_assets)
         Diagnostic targets before each stored observation, available only when
         ``store_weights=True``. This is not a record of executed trades. Use
-        ``all_weights_.copy()`` to retain an independent snapshot.
+        ``all_weights_.copy()`` for a writable snapshot of this read-only array.
     prior_estimator_ : BasePrior
         Fitted incremental prior, present when ``prior_estimator`` is supplied.
 

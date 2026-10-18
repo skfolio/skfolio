@@ -15,9 +15,9 @@ def test_history_grows_geometrically_and_matches_block_updates():
     buffers = []
     for row in returns:
         streamed.partial_fit(row[None, :])
-        if not buffers or buffers[-1] is not streamed._weight_history_buffer_:
-            buffers.append(streamed._weight_history_buffer_)
-    assert [len(buffer) for buffer in buffers] == [16, 32, 64, 128]
+        if not buffers or buffers[-1] is not streamed._weight_history_buffer_._buffer:
+            buffers.append(streamed._weight_history_buffer_._buffer)
+    assert [len(buffer) for buffer in buffers] == [1, 2, 4, 8, 16, 32, 64, 128]
     batch = ExponentiatedGradient(store_weights=True).fit(returns)
     np.testing.assert_allclose(streamed.all_weights_, batch.all_weights_)
     assert streamed.all_weights_.shape == returns.shape
@@ -33,7 +33,11 @@ def test_copied_history_can_continue_without_changing_source(serialize):
     returns = np.random.default_rng(41).normal(0, 0.01, (21, 3))
     source = ExponentiatedGradient(store_weights=True).fit(returns[:5])
     history = source.all_weights_.copy()
+    with pytest.raises(ValueError, match="read-only"):
+        source.all_weights_[0, 0] = 0
+    assert history.flags.writeable
     restored = serialize(source)
+    assert not restored.all_weights_.flags.writeable
     restored.partial_fit(returns[5:])
     reference = ExponentiatedGradient(store_weights=True).fit(returns)
     np.testing.assert_allclose(restored.all_weights_, reference.all_weights_)
@@ -57,3 +61,9 @@ def test_failed_block_preserves_successful_history(monkeypatch):
         model.partial_fit([[0.01, 0.02], [0.03, -0.01]])
     assert model.all_weights_.shape == (1, 2)
     assert model._needs_reset
+
+
+def test_history_disabled_after_reset():
+    model = ExponentiatedGradient(store_weights=True).fit([[0.01, 0.02]])
+    model.set_params(store_weights=False).fit([[0.02, 0.01]])
+    assert not hasattr(model, "all_weights_")

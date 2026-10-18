@@ -35,6 +35,7 @@ from skfolio.optimization.online._projection import (
 )
 from skfolio.portfolio import MultiPeriodPortfolio, Portfolio
 from skfolio.prior import BasePrior
+from skfolio.utils._array_buffer import _ArrayBuffer
 from skfolio.utils.tools import (
     _call_estimator,
     _check_method_params,
@@ -177,7 +178,7 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
     all_weights_ : ndarray of shape (n_stored_observations, n_assets)
         Diagnostic targets before each stored observation, available only when
         ``store_weights=True``. This is not a record of executed trades. Use
-        ``all_weights_.copy()`` to retain an independent snapshot.
+        ``all_weights_.copy()`` for a writable snapshot of this read-only array.
     prior_estimator_ : BasePrior
         Fitted incremental prior, present when ``prior_estimator`` is supplied.
 
@@ -702,19 +703,21 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
                 self._append_weight_history(np.asarray(target_list))
         return self
 
-    def _append_weight_history(self, history: np.ndarray) -> None:
-        """Append targets with amortized linear storage cost across a stream."""
-        size = len(self.all_weights_) if hasattr(self, "all_weights_") else 0
-        required = size + len(history)
+    @property
+    def all_weights_(self) -> np.ndarray:
+        """Read-only diagnostic history; use ``.copy()`` for a writable snapshot."""
         buffer = getattr(self, "_weight_history_buffer_", None)
-        if buffer is None or required > len(buffer):
-            capacity = max(required, 16 if buffer is None else 2 * len(buffer))
-            buffer = np.zeros((capacity, history.shape[1]), dtype=history.dtype)
-            if size:
-                buffer[:size] = self.all_weights_
-            self._weight_history_buffer_ = buffer
-        buffer[size:required] = history
-        self.all_weights_ = buffer[:required]
+        if buffer is None or buffer.array is None:
+            raise AttributeError(
+                "Weight history is unavailable; set store_weights=True"
+            )
+        return buffer.array
+
+    def _append_weight_history(self, history: np.ndarray) -> None:
+        """Append targets using the shared geometrically growing buffer."""
+        if not hasattr(self, "_weight_history_buffer_"):
+            self._weight_history_buffer_ = _ArrayBuffer()
+        self._weight_history_buffer_.append(history)
 
     @contextmanager
     def _warmup_context(self) -> Generator[None, None, None]:
