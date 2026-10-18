@@ -1250,11 +1250,18 @@ limitations apply, including its transaction-cost relaxation for EVaR and EDaR.
 These constraints invoke a convex solver at each update and can materially
 increase runtime, particularly for scenario-heavy risk measures.
 
-The internal tracking-error projector uses the same uncentred active-return
+Online estimators accept ``max_tracking_error`` and benchmark returns through
+``fit(X, y)`` or ``partial_fit(X, y)`` (also forwarded by ``online_predict``).
+The tracking-error projector uses the same uncentred active-return
 norm as ``MeanRisk``: ``norm(X @ weights - benchmark) / sqrt(n_observations - 1)``.
 A constant nonzero active return therefore consumes the tracking-error limit.
-Inputs must be finite, aligned, and contain at least two observations. Public
-causal benchmark routing remains a separate API task.
+Benchmark returns must be finite and row-aligned on every update. The cap uses
+all observations seen since ``fit`` reset, including the current row, and starts
+at the second observation. Before then only the other configured constraints
+apply. Use at least two warmup observations before evaluating constrained targets.
+Block updates consume one row at a time, so future benchmark values cannot affect
+earlier targets. Tracking history is retained even with ``store_weights=False``
+and grows with the stream.
 
 Continuous projections use the selected ``solver`` and ``solver_params`` without
 retrying with another solver or dropping options. Solver errors retain their

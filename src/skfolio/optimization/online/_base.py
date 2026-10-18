@@ -91,7 +91,8 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
     tracking_error_benchmark : array-like, optional
         Benchmark returns aligned with X_tracking.
     max_tracking_error : float, optional
-        Tracking-error limit computed from the explicit tracking inputs.
+        Tracking-error limit against ``y``, using the expanding observed history
+        from the second row onward, or against explicit internal tracking inputs.
     covariance : array-like, optional
         Fixed covariance matrix for a risk constraint; exclusive with prior_estimator.
     max_variance : float, optional
@@ -439,6 +440,14 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
                     raise ValueError(
                         "The causal prior must supply a finite covariance before an execution decision"
                     )
+        tracking_X = self.X_tracking
+        tracking_y = self.tracking_error_benchmark
+        tracking_cap = self.max_tracking_error
+        if hasattr(self, "_tracking_returns_"):
+            tracking_X = self._tracking_returns_.array
+            tracking_y = self._tracking_benchmark_.array
+            if len(self._tracking_returns_) < 2:
+                tracking_cap = None
         projection_config = ProjectionConfig(
             lower=self._clean_input(
                 value=self.min_weights,
@@ -485,9 +494,9 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
             ),
             left_inequality=self.left_inequality,
             right_inequality=self.right_inequality,
-            X_tracking=self.X_tracking,
-            tracking_error_benchmark=self.tracking_error_benchmark,
-            max_tracking_error=self.max_tracking_error,
+            X_tracking=tracking_X,
+            tracking_error_benchmark=tracking_y,
+            max_tracking_error=tracking_cap,
             covariance=covariance,
             variance_bound=self.max_variance if covariance is not None else None,
             previous_weights=self._execution_anchor,
@@ -564,6 +573,9 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         The target after observing row t is intended for period t+1. Validation
         covers the complete block before any numerical update. Targets recorded in
         ``all_weights_`` are diagnostic learning history, not trades.
+        With ``max_tracking_error``, ``y`` supplies aligned finite benchmark returns.
+        The cap uses the expanding observed history, starting at two observations;
+        the first target is constrained only by the other configured limits.
         """
         if getattr(self, "_needs_reset", False):
             raise RuntimeError(
@@ -614,8 +626,35 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
                 "Online learning requires returns greater than -1; bankrupt assets "
                 "require an explicit universe reset with fit"
             )
-        if y is not None and np.shape(y)[0] != len(returns):
+        if y is not None and (np.ndim(y) == 0 or np.shape(y)[0] != len(returns)):
             raise ValueError("y must have one row per return observation")
+        benchmark = None
+        if self.max_tracking_error is not None:
+            if self.X_tracking is not None or self.tracking_error_benchmark is not None:
+                if y is not None:
+                    raise ValueError("Use y or static tracking inputs, not both")
+            else:
+                if y is None:
+                    raise ValueError(
+                        "max_tracking_error requires benchmark returns in y"
+                    )
+                benchmark = np.asarray(y, dtype=float)
+                if benchmark.ndim == 2 and benchmark.shape[1] == 1:
+                    benchmark = benchmark[:, 0]
+                if (
+                    benchmark.shape != (len(returns),)
+                    or not np.isfinite(benchmark).all()
+                ):
+                    raise ValueError(
+                        "y must contain one finite benchmark return per row"
+                    )
+                if (
+                    hasattr(X, "index")
+                    and hasattr(y, "index")
+                    and not callable(y.index)
+                    and not X.index.equals(y.index)
+                ):
+                    raise ValueError("X and y must have aligned indices")
         if sample_weight is not None:
             _check_sample_weight(sample_weight, returns)
             if self.prior_estimator is None:
@@ -642,6 +681,12 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
         target_list = []
         try:
             for i, row in enumerate(1.0 + returns):
+                if benchmark is not None:
+                    if not hasattr(self, "_tracking_returns_"):
+                        self._tracking_returns_ = _ArrayBuffer()
+                        self._tracking_benchmark_ = _ArrayBuffer()
+                    self._tracking_returns_.append(returns[i : i + 1])
+                    self._tracking_benchmark_.append(benchmark[i : i + 1])
                 decision = not warmup or i == len(returns) - 1
                 self._prior_warmup = not decision
                 self._decision_turnover = self.max_turnover if decision else None
@@ -763,7 +808,9 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
     ) -> BaseOnlineOptimization:
         """Reset learned state and process observations causally.
 
-        Use ``partial_fit`` to continue a stream without resetting state.
+        Use ``partial_fit`` to continue a stream without resetting state. With
+        ``max_tracking_error``, supply benchmark returns in ``y``; they are consumed
+        alongside each row of ``X`` without looking ahead.
         """
         self._reset_state_for_fit()
         with self._warmup_context():

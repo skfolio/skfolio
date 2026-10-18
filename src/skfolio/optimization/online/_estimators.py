@@ -45,6 +45,11 @@ class ExponentiatedGradient(FollowTheWinner):
         Left matrix A in A @ weights <= b.
     right_inequality : skt.Inequality | None, default=None
         Right vector b in A @ weights <= b.
+    max_tracking_error : float, optional
+        Limit the uncentred tracking error against benchmark returns supplied as
+        ``y`` to ``fit`` or ``partial_fit``. Uses all observations seen since reset,
+        starting with the second observation. Requires aligned finite benchmark
+        returns on every update. Stored benchmark history grows with the stream.
     max_turnover : float | None, default=None
         Maximum L1 change from actual previous_weights. Warmup uses this only at entry.
     max_variance : float | None, default=None
@@ -185,6 +190,7 @@ class ExponentiatedGradient(FollowTheWinner):
         left_inequality: skt.Inequality | None = None,
         right_inequality: skt.Inequality | None = None,
         max_turnover: float | None = None,
+        max_tracking_error: float | None = None,
         max_variance: float | None = None,
         covariance: skt.ArrayLike | None = None,
         min_return: float | None = None,
@@ -236,6 +242,7 @@ class ExponentiatedGradient(FollowTheWinner):
             left_inequality=left_inequality,
             right_inequality=right_inequality,
             max_turnover=max_turnover,
+            max_tracking_error=max_tracking_error,
             max_variance=max_variance,
             covariance=covariance,
             min_return=min_return,
@@ -306,6 +313,11 @@ class AdaGrad(FollowTheWinner):
         Left matrix A in A @ weights <= b.
     right_inequality : skt.Inequality | None, default=None
         Right vector b in A @ weights <= b.
+    max_tracking_error : float, optional
+        Limit the uncentred tracking error against benchmark returns supplied as
+        ``y`` to ``fit`` or ``partial_fit``. Uses all observations seen since reset,
+        starting with the second observation. Requires aligned finite benchmark
+        returns on every update. Stored benchmark history grows with the stream.
     max_turnover : float | None, default=None
         Maximum L1 change from actual previous_weights. Warmup uses this only at entry.
     max_variance : float | None, default=None
@@ -447,6 +459,7 @@ class AdaGrad(FollowTheWinner):
         left_inequality: skt.Inequality | None = None,
         right_inequality: skt.Inequality | None = None,
         max_turnover: float | None = None,
+        max_tracking_error: float | None = None,
         max_variance: float | None = None,
         covariance: skt.ArrayLike | None = None,
         min_return: float | None = None,
@@ -499,6 +512,7 @@ class AdaGrad(FollowTheWinner):
             left_inequality=left_inequality,
             right_inequality=right_inequality,
             max_turnover=max_turnover,
+            max_tracking_error=max_tracking_error,
             max_variance=max_variance,
             covariance=covariance,
             min_return=min_return,
@@ -567,6 +581,11 @@ class OnlineMovingAverageReversion(FollowTheLoser):
         Left matrix A in A @ weights <= b.
     right_inequality : skt.Inequality | None, default=None
         Right vector b in A @ weights <= b.
+    max_tracking_error : float, optional
+        Limit the uncentred tracking error against benchmark returns supplied as
+        ``y`` to ``fit`` or ``partial_fit``. Uses all observations seen since reset,
+        starting with the second observation. Requires aligned finite benchmark
+        returns on every update. Stored benchmark history grows with the stream.
     max_turnover : float | None, default=None
         Maximum L1 change from actual previous_weights. Warmup uses this only at entry.
     max_variance : float | None, default=None
@@ -711,6 +730,7 @@ class OnlineMovingAverageReversion(FollowTheLoser):
         left_inequality: skt.Inequality | None = None,
         right_inequality: skt.Inequality | None = None,
         max_turnover: float | None = None,
+        max_tracking_error: float | None = None,
         max_variance: float | None = None,
         covariance: skt.ArrayLike | None = None,
         min_return: float | None = None,
@@ -763,6 +783,7 @@ class OnlineMovingAverageReversion(FollowTheLoser):
             left_inequality=left_inequality,
             right_inequality=right_inequality,
             max_turnover=max_turnover,
+            max_tracking_error=max_tracking_error,
             max_variance=max_variance,
             covariance=covariance,
             min_return=min_return,
@@ -843,6 +864,11 @@ class PassiveAggressiveMeanReversion(FollowTheLoser):
         Left matrix A in A @ weights <= b.
     right_inequality : skt.Inequality | None, default=None
         Right vector b in A @ weights <= b.
+    max_tracking_error : float, optional
+        Limit the uncentred tracking error against benchmark returns supplied as
+        ``y`` to ``fit`` or ``partial_fit``. Uses all observations seen since reset,
+        starting with the second observation. Requires aligned finite benchmark
+        returns on every update. Stored benchmark history grows with the stream.
     max_turnover : float | None, default=None
         Maximum L1 change from actual previous_weights. Warmup uses this only at entry.
     max_variance : float | None, default=None
@@ -982,6 +1008,7 @@ class PassiveAggressiveMeanReversion(FollowTheLoser):
         left_inequality: skt.Inequality | None = None,
         right_inequality: skt.Inequality | None = None,
         max_turnover: float | None = None,
+        max_tracking_error: float | None = None,
         max_variance: float | None = None,
         covariance: skt.ArrayLike | None = None,
         min_return: float | None = None,
@@ -1035,6 +1062,7 @@ class PassiveAggressiveMeanReversion(FollowTheLoser):
             left_inequality=left_inequality,
             right_inequality=right_inequality,
             max_turnover=max_turnover,
+            max_tracking_error=max_tracking_error,
             max_variance=max_variance,
             covariance=covariance,
             min_return=min_return,
