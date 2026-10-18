@@ -1289,12 +1289,11 @@ def _truncate_at_word_boundary(text: str, max_length: int) -> str:
     return f"{truncated}…"
 
 
-def get_api_meta_description(pagename, doctree) -> str:
-    """Build an API description from the documented object's summary."""
+def get_api_summary(pagename, doctree) -> str:
+    """Return the documented object's summary as one line of plain text."""
     from docutils import nodes
     from sphinx import addnodes
 
-    qualified_name = pagename.removeprefix("generated/")
     content = next(doctree.findall(addnodes.desc_content), None)
     summary_node = (
         next(
@@ -1318,13 +1317,65 @@ def get_api_meta_description(pagename, doctree) -> str:
         raise SphinxError(f"API description: empty summary found for '{pagename}'")
     if summary[-1] not in ".!?":
         summary += "."
+    return summary
 
+
+def get_api_meta_description(pagename, doctree) -> str:
+    """Build an API description from the documented object's summary."""
+    qualified_name = pagename.removeprefix("generated/")
     suffix = f"API reference for {qualified_name}."
     summary = _truncate_at_word_boundary(
-        summary,
+        get_api_summary(pagename, doctree),
         _API_DESCRIPTION_MAX_LENGTH - len(suffix) - 1,
     )
     return f"{summary} {suffix}"
+
+
+def get_first_paragraph(doctree) -> str | None:
+    """Return the first paragraph under the page title as one line of plain text."""
+    from docutils import nodes
+
+    section = next(doctree.findall(nodes.section), None)
+    if section is None:
+        return None
+    paragraph = next(
+        (child for child in section.children if isinstance(child, nodes.paragraph)),
+        None,
+    )
+    if paragraph is None:
+        return None
+    return " ".join(paragraph.astext().split()) or None
+
+
+def get_llms_txt_description(pagename, doctree) -> str | None:
+    """Return the `llms.txt` description of a page, or None to keep sphinx-llm's."""
+    if pagename.startswith("generated/skfolio."):
+        return get_api_summary(pagename, doctree)
+    if pagename in USER_GUIDE_DESCRIPTIONS:
+        return USER_GUIDE_DESCRIPTIONS[pagename]
+    if (
+        pagename.startswith("auto_examples/")
+        and pagename != "auto_examples/index"
+        and pagename not in REDIRECTS
+    ):
+        # The opening paragraph names the estimators that the example uses.
+        return get_first_paragraph(doctree)
+    return None
+
+
+def inject_llms_txt_description(app, doctree):
+    """Add the page description to the doctree as `description` metadata.
+
+    sphinx-llm describes each `llms.txt` entry with this metadata. Without it, it takes
+    the first line of the page's Markdown, which stops mid-sentence where the source
+    wraps and shows inline code as escaped backticks. The `html-page-context` hooks
+    replace this metadata in the HTML pages, and the Markdown builder skips it.
+    """
+    from docutils import nodes
+
+    description = get_llms_txt_description(app.env.docname, doctree)
+    if description:
+        doctree.insert(0, nodes.meta(content=description, name="description"))
 
 
 def get_representative_image(app, pagename: str) -> tuple[str, str] | None:
@@ -2265,6 +2316,9 @@ def setup(app):
 
     # Configure sphinx-markdown-builder for documentation-specific nodes and assets.
     app.connect("builder-inited", patch_markdown_builder)
+
+    # Describe API, user-guide and gallery pages in llms.txt.
+    app.connect("doctree-read", inject_llms_txt_description)
 
     # html page context
     # Set the homepage URL before other page-context consumers.
