@@ -281,8 +281,7 @@ class ImpliedCovariance(BaseCovariance):
             Not used, present for API consistency by convention.
 
         implied_vol : array-like of shape (n_observations, n_assets)
-            Implied volatilities of the assets. The input is not modified during
-            annualization.
+            Implied volatilities of the assets.
 
         **fit_params : dict
             Parameters to pass to the underlying estimators.
