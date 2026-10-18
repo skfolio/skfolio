@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v1.9.5 (2026-10-18)
+
+### Bug Fixes
+
+- **containers**: Reject case-colliding save fields
+  ([#437](https://github.com/skfolio/skfolio/pull/437),
+  [`40bdcd0`](https://github.com/skfolio/skfolio/commit/40bdcd019e503c818640dae2eab5fcc4e4c836c2))
+
+### Testing
+
+- Simplify repeated tests and repair ineffective assertions
+  ([#432](https://github.com/skfolio/skfolio/pull/432),
+  [`d490ee8`](https://github.com/skfolio/skfolio/commit/d490ee83cb54f125ce12eb8bde996d4d93e7a31e))
+
+
 ## v1.9.4 (2026-10-17)
 
 ### Bug Fixes
