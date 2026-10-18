@@ -2,6 +2,84 @@
 
 <!-- version list -->
 
+## v1.9.4 (2026-10-17)
+
+### Bug Fixes
+
+- **model-selection**: Handle empty calendar windows in WalkForward
+  ([#427](https://github.com/skfolio/skfolio/pull/427),
+  [`eeca25b`](https://github.com/skfolio/skfolio/commit/eeca25b2a0157a23f4ee4f7670f483461574d486))
+
+
+## v1.9.3 (2026-10-16)
+
+### Bug Fixes
+
+- **model-selection**: Include final randomized window
+  ([#433](https://github.com/skfolio/skfolio/pull/433),
+  [`70819bf`](https://github.com/skfolio/skfolio/commit/70819bf83f23346e86fbd54c2232e12b35a43ded))
+
+
+## v1.9.2 (2026-10-16)
+
+### Bug Fixes
+
+- **ShrunkMu**: Correct the Bodnar-Okhrin shrinkage coefficient
+  ([#398](https://github.com/skfolio/skfolio/pull/398),
+  [`8438a29`](https://github.com/skfolio/skfolio/commit/8438a2972ab2d8997033efe38dfe56910a538854))
+
+### Testing
+
+- **descriptor**: Assert sensitivity behaviour through public outputs
+  ([#397](https://github.com/skfolio/skfolio/pull/397),
+  [`3752795`](https://github.com/skfolio/skfolio/commit/375279564edd484a040547c6acf05d84497c6e0a))
+
+### Additional Release Information
+
+- **ShrunkMu**: ShrunkMu(method=ShrunkMuMethods.BODNAR_OKHRIN) now uses the target's quadratic form
+  in beta's denominator, matching the formula published by Bodnar, Okhrin and Parolya. This changes
+  estimated expected returns. James-Stein and Bayes-Stein estimates are unaffected.
+
+
+## v1.9.1 (2026-10-16)
+
+### Bug Fixes
+
+- **portfolio**: Use the default finite-difference step for drawdown contributions
+  ([#384](https://github.com/skfolio/skfolio/pull/384),
+  [`f066a15`](https://github.com/skfolio/skfolio/commit/f066a150e9f74aa319a62523f3b6b4dc18953994))
+
+### Documentation
+
+- Improve readme and add documentation snippet tests
+  ([#431](https://github.com/skfolio/skfolio/pull/431),
+  [`9d6bc3a`](https://github.com/skfolio/skfolio/commit/9d6bc3a764fd9b88b59dc469057bfeaaf0790d62))
+
+
+## v1.9.0 (2026-10-16)
+
+### Features
+
+- **measures**: Add probabilistic and deflated Sharpe ratios
+  ([#255](https://github.com/skfolio/skfolio/pull/255),
+  [`018dbaa`](https://github.com/skfolio/skfolio/commit/018dbaa9743490bc9dc32fcbd1d901c26efa0356))
+
+
+## v1.8.6 (2026-10-14)
+
+### Bug Fixes
+
+- **alpha**: Account for overlapping windows in the IC t-statistic
+  ([#409](https://github.com/skfolio/skfolio/pull/409),
+  [`246176c`](https://github.com/skfolio/skfolio/commit/246176ccfbbb1faabe43d44a510a38ad7f5193d1))
+
+### Continuous Integration
+
+- Validate PR titles and require approval for major releases
+  ([#428](https://github.com/skfolio/skfolio/pull/428),
+  [`878bda1`](https://github.com/skfolio/skfolio/commit/878bda1a75cba1390f2f766dbd76378703b86912))
+
+
 ## v1.8.5 (2026-10-12)
 
 ### Bug Fixes

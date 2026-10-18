@@ -16,9 +16,14 @@ best :ref:`cross validation <cross_validation>` score.
 
 Any parameter provided when constructing an estimator may be optimized in this
 manner. Specifically, to find the names and current values for all parameters
-for a given estimator, use::
+for a given estimator, use:
 
-  estimator.get_params()
+.. code-block:: python
+
+    from skfolio.optimization import MeanRisk
+
+    estimator = MeanRisk()
+    estimator.get_params()
 
 A search consists of:
 
@@ -57,7 +62,11 @@ Exhaustive Grid Search
 
 The grid search provided by `GridSearchCV` exhaustively generates
 candidates from a grid of parameter values specified with the `param_grid`
-parameter. For instance, the following `param_grid`::
+parameter. For instance, the following `param_grid`:
+
+.. code-block:: python
+
+    from skfolio import RiskMeasure
 
     param_grid = [
         {'l1_coef': [0.001, 0.01, 0.1], 'risk_measure': [RiskMeasure.SEMI_VARIANCE]},
@@ -149,7 +158,9 @@ a log-spaced parameter. For example to specify the equivalent of `l2_coef` from 
 `loguniform(0.01,  1)` can be used instead of `[0.01, 0.1, 1]`.
 
 Mirroring the example above in grid search, we can specify a continuous random
-variable that is log-uniformly distributed between `0.01` and `1`::
+variable that is log-uniformly distributed between `0.01` and `1`:
+
+.. code-block:: python
 
     import scipy.stats as stats
     {'l1_coef': stats.loguniform(0.01,  1), 'risk_measure': [RiskMeasure.SEMI_VARIANCE]}
