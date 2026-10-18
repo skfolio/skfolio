@@ -44,7 +44,6 @@ from skfolio.measures import (
     edar,
     evar,
     first_lower_partial_moment,
-    get_cumulative_returns,
     gini_mean_difference,
     log_wealth,
     mean,
@@ -739,61 +738,27 @@ def _drawdowns_and_derivatives(
     dD : ndarray of shape (T, d)
         Derivatives of drawdowns w.r.t. weights.
     """
-    T, d = net_returns.shape
-
     if compounded:
-        # Wealth-based (original implementation)
-        S, dS = _wealth_and_dwealth(net_returns, w)
-        running_max = np.empty(T, dtype=float)
-        argmax_idx = np.empty(T, dtype=int)
-        current_max = -np.inf
-        current_arg = -1
-
-        for t in range(T):
-            if S[t] > current_max:
-                current_max = S[t]
-                current_arg = t
-            running_max[t] = current_max
-            argmax_idx[t] = current_arg
-
-        D = running_max - S
-        dD = np.zeros_like(dS)
-        for t in range(T):
-            u = argmax_idx[t]
-            dD[t, :] = dS[u, :] - dS[t, :]
-        return D, dD
+        values, derivatives = _wealth_and_dwealth(net_returns, w)
+        peak = 1.0
     else:
-        # Cumsum-based (matches skfolio.measures default)
-        # C_t(w) = sum_{s<=t} r_s^T w
-        # dC_t/dw = sum_{s<=t} r_s
-        portfolio_returns = net_returns @ w  # (T,)
-        cum_returns = np.cumsum(portfolio_returns)  # (T,)
-
-        # Find running maximum and its index
-        running_max = np.empty(T, dtype=float)
-        argmax_idx = np.empty(T, dtype=int)
-        current_max = -np.inf
-        current_arg = -1
-
-        for t in range(T):
-            if cum_returns[t] > current_max:
-                current_max = cum_returns[t]
-                current_arg = t
-            running_max[t] = current_max
-            argmax_idx[t] = current_arg
-
-        # D_t = max_{s<=t} C_s - C_t
-        D = running_max - cum_returns
-
-        # dD_t/dw = dC_peak/dw - dC_t/dw
-        # where dC_s/dw = sum_{i<=s} r_i
-        dC = np.cumsum(net_returns, axis=0)  # (T, d): cumsum of returns
-        dD = np.zeros((T, d))
-        for t in range(T):
-            peak_idx = argmax_idx[t]
-            dD[t, :] = dC[peak_idx, :] - dC[t, :]
-
-        return D, dD
+        values = np.cumsum(net_returns @ w)
+        derivatives = np.cumsum(net_returns, axis=0)
+        peak = 0.0
+    peak_derivative = np.zeros_like(w, dtype=float)
+    drawdowns = np.empty(len(values))
+    gradient = np.empty_like(derivatives)
+    for t, value in enumerate(values):
+        if value > peak:
+            peak = value
+            peak_derivative = derivatives[t]
+        if compounded:
+            drawdowns[t] = 1.0 - value / peak
+            gradient[t] = value * peak_derivative / peak**2 - derivatives[t] / peak
+        else:
+            drawdowns[t] = peak - value
+            gradient[t] = peak_derivative - derivatives[t]
+    return drawdowns, gradient
 
 
 def _analytical_evar_gradient(
@@ -1412,26 +1377,38 @@ def _autograd_get_drawdowns(
     compounded : bool, default=False
         Whether returns are compounded.
     beta : float or None, default=None
-        Smoothing parameter for differentiable cummax. If None, uses exact
-        cummax via np.maximum.accumulate (not differentiable).
+        Smoothing parameter for differentiable cummax. If None, uses
+        an exact running maximum with subgradients at ties.
 
     Returns
     -------
     drawdowns : array-like
         Drawdown series.
     """
-    cumulative_returns = get_cumulative_returns(returns, compounded=compounded)
-    if beta is None:
-        # Use regular numpy for exact cummax (not differentiable)
-        running_max = np.maximum.accumulate(cumulative_returns)
-    else:
-        # Use smooth approximation (differentiable)
-        running_max = smooth_cummax(cumulative_returns, beta=beta)
+    clean = anp.where(anp.isnan(returns), 0.0, returns)
     if compounded:
-        drawdowns = cumulative_returns / running_max - 1
+        wealth = anp.ones_like(clean[0])
+        path = []
+        for row in clean:
+            wealth = wealth * (1.0 + row)
+            path.append(wealth)
+        cumulative = anp.stack(path)
     else:
-        drawdowns = cumulative_returns - running_max
-    return drawdowns
+        cumulative = anp.cumsum(clean, axis=0)
+    peak = anp.ones_like(clean[0]) if compounded else anp.zeros_like(clean[0])
+    peaks = []
+    for value in cumulative:
+        peak = (
+            anp.maximum(peak, value)
+            if beta is None
+            else anp.logaddexp(beta * peak, beta * value) / beta
+        )
+        peaks.append(peak)
+    running_max = anp.stack(peaks)
+    drawdowns = (
+        cumulative / running_max - 1.0 if compounded else cumulative - running_max
+    )
+    return anp.where(anp.isnan(returns), anp.nan, drawdowns)
 
 
 def _autograd_cdar(
@@ -1452,7 +1429,7 @@ def _autograd_cdar(
         Whether returns are compounded.
     smooth_beta : float or None, default=None
         Smoothing parameter for differentiable cummax. If None, uses exact
-        cummax (not differentiable but numerically exact).
+        running maximum with subgradients at ties.
 
     Notes
     -----
@@ -1483,7 +1460,7 @@ def _autograd_edar(
         Whether returns are compounded.
     smooth_beta : float or None, default=None
         Smoothing parameter for differentiable cummax. If None, uses exact
-        cummax (not differentiable but numerically exact).
+        running maximum with subgradients at ties.
 
     Notes
     -----

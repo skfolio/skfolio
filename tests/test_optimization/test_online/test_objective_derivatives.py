@@ -45,7 +45,8 @@ def test_drawdown_kernel_matches_independent_path_derivative(compounded):
 
     def reference(w):
         path = np.cumprod(1 + returns @ w) if compounded else np.cumsum(returns @ w)
-        return np.maximum.accumulate(path) - path
+        peak = np.maximum.accumulate(np.r_[1.0 if compounded else 0.0, path])[1:]
+        return 1.0 - path / peak if compounded else peak - path
 
     drawdown, derivative = _drawdowns_and_derivatives(returns, weights, compounded)
     assert_allclose(drawdown, reference(weights), atol=1e-12)
