@@ -11,8 +11,9 @@ Supervised portfolio policies fit a regressor to allocations generated over
 training windows. The supervised policy reuses the characteristic-processing
 helpers contributed by Cashubski in PR #341.
 
-Two command-line examples use bundled historical prices. Run from the repository
-root::
+The historical and cash-funded tutorials below use bundled equity prices and
+render their summaries and charts in the gallery. The command-line wrappers
+export the same results to CSV/JSON. Run from the repository root::
 
     PYTHONPATH=src python examples/parametric_portfolio_policy/historical_walk_forward.py --output-dir /tmp/skfolio-supervised-historical
     PYTHONPATH=src python examples/parametric_portfolio_policy/cash_execution_example.py --output-dir /tmp/skfolio-supervised-cash

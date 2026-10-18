@@ -1308,7 +1308,7 @@ Joint whole-portfolio regression and a full reproduction of Interpretable
 Supervised Portfolios remain future work.
 
 Choosing a prediction or evaluation method
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 All four methods below use an already fitted regressor. None retrains it on the
 future evaluation returns.
@@ -1359,7 +1359,7 @@ use a copy of fitted state. Decision characteristics must precede their associat
 forward returns; see the timing and initial-holdings requirements below.
 
 Risk, turnover and sequential evaluation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``max_variance`` and ``max_turnover`` add dynamic projection constraints.
 Pass ``covariance`` and ``holdings`` to ``predict_weights`` explicitly. Covariance
@@ -1431,15 +1431,21 @@ observations are not inferred from characteristic fields. Explicit covariance
 and a custom prior cannot both be supplied. Direct ``predict_weights`` still
 requires covariance when risk-constrained because it receives no return stream.
 
-The reproducible ``examples/parametric_portfolio_policy/historical_walk_forward.py`` example
+The :ref:`historical walk-forward tutorial
+<sphx_glr_auto_examples_parametric_portfolio_policy_plot_historical_walk_forward.py>`
 uses bundled equity prices, three yearly model refits, a constrained equal-weight
 baseline and an execution CSV. Its fixed historical universe is not a
 point-in-time constituent universe, and the example is not evidence of investment
-performance. Run it with ``--output-dir`` to save the summary and execution
-reports; see the parametric portfolio policy examples for commands.
+performance. Run its ``historical_walk_forward.py`` command-line wrapper with
+``--output-dir`` to save the summary and execution reports; see the parametric
+portfolio policy examples for commands.
+The :ref:`cash-funded execution tutorial
+<sphx_glr_auto_examples_parametric_portfolio_policy_plot_cash_execution.py>`
+shows rendered wealth, cash and trading-cost diagnostics, including a synthetic
+all-cash interval.
 
 Cash-funded execution and eligibility changes
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``evaluate_execution`` is the explicit cash-ledger alternative to
 ``evaluate_sequential``. It returns ``PortfolioExecution`` rather than a
@@ -1497,7 +1503,7 @@ eligible assets and require at least two complete past observations; assets with
 insufficient history need explicit covariance or a later eligibility date.
 
 Metadata-dependent priors
-~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Both evaluation methods accept ``prior_fit_params`` containing dated Series,
 DataFrames or AssetPanels. Values are sliced to precisely the historical return
