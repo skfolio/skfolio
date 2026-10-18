@@ -84,8 +84,10 @@ class Portfolio(BasePortfolio):
         Portfolio weights.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset weight) and `X` must be a DataFrame with assets names
-        in columns. Every key must identify an asset in `X`; unknown names raise
-        a `ValueError`. Assets omitted from the dictionary have zero weight.
+        in columns. Weights are aligned to the column order of `X`: keys absent
+        from `X` are ignored, and assets omitted from the dictionary have zero
+        weight. The remaining weights are not renormalized. This allows reusing
+        a full-universe dictionary, including `weights_dict`, on a subset of assets.
 
     transaction_costs : float | dict[str, float] | array-like of shape (n_assets, ), optional
         Linear transaction costs of the assets. The Portfolio total transaction cost
@@ -578,16 +580,6 @@ class Portfolio(BasePortfolio):
         if not weights_provided:
             weights = np.full(n_assets, np.nan)
         else:
-            # Current allocations must stay within X; previous positions can be exits.
-            if isinstance(weights, dict) and assets is not None:
-                asset_names = set(assets)
-                unknown_assets = [
-                    asset for asset in weights if asset not in asset_names
-                ]
-                if unknown_assets:
-                    raise ValueError(
-                        f"Unknown asset names in `weights`: {unknown_assets!r}"
-                    )
             liquidation_turnover, liquidation_cost = _get_liquidation_turnover_and_cost(
                 previous_weights=previous_weights,
                 transaction_costs=transaction_costs,
