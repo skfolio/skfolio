@@ -2223,6 +2223,89 @@ class TestConcat:
 
 
 class TestPersistence:
+    @pytest.mark.parametrize("field_name", ["momentum", "sector", "exposures"])
+    @pytest.mark.parametrize("overwrite", [False, True])
+    def test_save_rejects_case_colliding_fields(self, tmp_path, field_name, overwrite):
+        """Reject ambiguous payload and metadata paths before changing the destination."""
+        panel = _make_full_panel()
+        other = panel.fields[field_name].copy(deep=True)
+        # Distinct payloads or category labels expose both data and metadata aliases.
+        if isinstance(other, FieldCategorical):
+            other.levels = other.levels[::-1].copy()
+        else:
+            other.values += 1
+        panel[field_name.upper()] = other
+        original = panel.copy(deep=True)
+        path = tmp_path / "parent" / "panel"
+        previous = _make_full_panel()
+        before = {}
+        if overwrite:
+            previous.save(path)
+            before = {
+                file.relative_to(path): file.read_bytes()
+                for file in path.rglob("*")
+                if file.is_file()
+            }
+
+        with pytest.raises(ValueError, match="unique ignoring case") as error:
+            panel.save(path, overwrite=overwrite)
+
+        assert repr(field_name) in str(error.value)
+        assert repr(field_name.upper()) in str(error.value)
+        _assert_panels_equal(panel, original)
+        if overwrite:
+            after = {
+                file.relative_to(path): file.read_bytes()
+                for file in path.rglob("*")
+                if file.is_file()
+            }
+            assert after == before
+            _assert_panels_equal(AssetPanel.load(path), previous)
+        else:
+            assert not path.parent.exists()
+
+    @pytest.mark.parametrize("mmap_mode", [None, "r"])
+    @pytest.mark.parametrize("overwrite", [False, True])
+    def test_save_keeps_distinct_case_prefixed_fields(
+        self, tmp_path, mmap_mode, overwrite
+    ):
+        """Keep distinct filenames and typed metadata on both save paths."""
+        panel = _make_full_panel().rename(
+            {
+                "momentum": "Price",
+                "sector": "price.levels",
+                "exposures": "PRICE_exposures",
+            }
+        )
+        path = tmp_path / "panel"
+        if overwrite:
+            _make_panel().save(path)
+
+        panel.save(path, overwrite=overwrite)
+
+        _assert_panels_equal(AssetPanel.load(path, mmap_mode=mmap_mode), panel)
+
+    @pytest.mark.parametrize("destination", ["file", "directory", "saved_panel"])
+    def test_case_colliding_fields_preserve_destination_errors(
+        self, tmp_path, destination
+    ):
+        """Keep existing destination errors ahead of field-name validation."""
+        path = tmp_path / "panel"
+        if destination == "file":
+            path.write_text("keep this file")
+            expected_error, message = ValueError, "is a file"
+        elif destination == "directory":
+            path.mkdir()
+            expected_error, message = ValueError, "not a saved AssetPanel"
+        else:
+            _make_panel().save(path)
+            expected_error, message = FileExistsError, "overwrite=True"
+        panel = _make_panel()
+        panel["X"] = panel["x"].copy()
+
+        with pytest.raises(expected_error, match=message):
+            panel.save(path)
+
     def test_round_trip_preserves_values_and_metadata(self, tmp_path):
         observations = np.datetime64("2024-01-01") + np.arange(N_OBS)
         panel = _make_full_panel(observations=observations)

@@ -993,6 +993,8 @@ class AssetPanel(_BaseAssetPanel):
         categorical and third-axis labels and a `_metadata.json` manifest.
         Object-dtype axis labels and field metadata labels are converted to strings
         so the panel is loaded with `allow_pickle=False`.
+        Field names must be unique ignoring case to keep saved files distinct on
+        case-insensitive filesystems.
 
         Parameters
         ----------
@@ -1002,9 +1004,16 @@ class AssetPanel(_BaseAssetPanel):
         overwrite : bool, default=False
             If `True`, replace an existing saved panel at `path`. Existing directories
             that do not contain `_metadata.json` are never overwritten.
+
+        Raises
+        ------
+        ValueError
+            If `path` is a file or an existing directory that is not a saved panel,
+            or a field name is invalid or conflicts with another name ignoring case.
         """
         path = Path(path)
-        if path.exists():
+        path_exists = path.exists()
+        if path_exists:
             if path.is_file():
                 raise ValueError(f"Path '{path}' is a file, not a directory.")
             if not (path / _METADATA_FILENAME).exists():
@@ -1017,11 +1026,21 @@ class AssetPanel(_BaseAssetPanel):
                     f"Directory '{path}' already contains a saved AssetPanel. "
                     "Use overwrite=True to replace it."
                 )
-            shutil.rmtree(path)
 
+        # Validate every field path before removing an existing saved panel.
+        file_names: dict[str, str] = {}
         for name in self.fields:
             _validate_field_name(name)
+            folded_name = name.casefold()
+            if folded_name in file_names:
+                raise ValueError(
+                    "Field names must be unique ignoring case when saving: "
+                    f"{file_names[folded_name]!r} and {name!r}."
+                )
+            file_names[folded_name] = name
 
+        if path_exists:
+            shutil.rmtree(path)
         path.mkdir(parents=True)
         fields_dir = path / "fields"
         fields_dir.mkdir()
