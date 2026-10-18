@@ -56,6 +56,7 @@ from skfolio.measures import (
     worst_realization,
 )
 from skfolio.measures._enums import BaseMeasure, PerfMeasure, RiskMeasure
+from skfolio.measures._measures import _unweighted_evar_tilt
 from skfolio.optimization.online._utils import CLIP_EPSILON
 
 
@@ -552,113 +553,27 @@ def _analytical_gini_mean_difference_gradient(
 # ============================================================================
 
 
-def _find_theta_star_empirical(
-    x: np.ndarray, beta: float = 0.95, tol: float = 1e-8, maxiter: int = 200
-) -> float:
-    """Find theta > 0 minimizing F(theta) = (1/theta)(log(mean(exp(theta*x))) - log(1-beta)).
+def _evar_probabilities(losses: np.ndarray, beta: float) -> np.ndarray:
+    """Return envelope probabilities using the shared stabilized EVaR root search.
 
-    Uses Newton's method with safe bracketing fallback.
-
-    Parameters
-    ----------
-    x : ndarray of shape (N,)
-        Loss or drawdown values (nonnegative).
-    beta : float, default=0.95
-        Confidence level.
-    tol : float, default=1e-8
-        Convergence tolerance for derivative.
-    maxiter : int, default=200
-        Maximum iterations.
-
-    Returns
-    -------
-    float
-        Optimal theta value.
+    At the maximum-loss limit, equal mass on tied maxima is a valid subgradient.
+    At confidence zero or for constant losses, use uniform probabilities.
     """
-    x = np.asarray(x, dtype=float)
-    n = x.size
-    if n == 0:
-        return 1.0
-
-    # If all equal, any theta works
-    if np.allclose(x, x[0]):
-        return 1.0
-
-    log1mbeta = np.log(1.0 - beta)
-
-    def F_and_dF(theta: float) -> tuple[float, float]:
-        """Compute F(theta) and dF/dtheta with numerical stability."""
-        a = theta * x
-        a_max = np.max(a)
-        shifted = np.exp(a - a_max)
-        M = shifted.mean() * np.exp(a_max)
-        M1 = (x * shifted).mean() * np.exp(a_max)
-        F = (np.log(M) - log1mbeta) / theta
-        dF = -(np.log(M) - log1mbeta) / (theta * theta) + (M1 / M) / theta
-        return F, dF
-
-    # Initialize bracket
-    theta = 1.0
-    _F0, dF0 = F_and_dF(theta)
-    low = 1e-12
-    high = None
-    sign0 = np.sign(dF0)
-
-    # Find bracket where dF changes sign
-    for it in range(80):
-        theta_try = theta * (2.0**it)
-        _F_try, dF_try = F_and_dF(theta_try)
-        if np.sign(dF_try) != sign0:
-            low = min(theta, theta_try)
-            high = max(theta, theta_try)
-            break
-
-    if high is None:
-        low = 1e-12
-        high = max(1.0, theta * (2.0**8))
-
-    # Newton with backtracking
-    theta_k = max(1e-8, min(1.0, (low + high) / 2.0))
-    for _ in range(maxiter):
-        _Fk, dFk = F_and_dF(theta_k)
-        if abs(dFk) < tol:
-            return float(theta_k)
-
-        # Numerical second derivative
-        eps = 1e-6 * max(1.0, theta_k)
-        _, dF_plus = F_and_dF(theta_k + eps)
-        _, dF_minus = F_and_dF(theta_k - eps)
-        d2 = (dF_plus - dF_minus) / (2 * eps)
-
-        if d2 == 0 or not np.isfinite(d2):
-            theta_k = 0.5 * (low + high)
-            continue
-
-        delta = dFk / d2
-        theta_new = theta_k - delta
-
-        # Clamp to bracket
-        if theta_new <= low or theta_new >= high or not np.isfinite(theta_new):
-            theta_new = 0.5 * (theta_k + (high if dFk > 0 else low))
-
-        # Update bracket
-        _F_new, dF_new = F_and_dF(theta_new)
-        if abs(dF_new) < tol:
-            return float(theta_new)
-
-        if np.sign(dF_new) == np.sign(dFk):
-            if dFk > 0:
-                high = theta_new
-            else:
-                low = theta_new
-        else:
-            if dFk > 0:
-                low = theta_new
-            else:
-                high = theta_new
-        theta_k = theta_new
-
-    return float(theta_k)
+    losses = np.asarray(losses, dtype=float)
+    if not 0 <= beta <= 1:
+        raise ValueError("beta must be between zero and one")
+    if losses.size == 0 or not np.isfinite(losses).all():
+        raise ValueError("EVaR gradients require nonempty finite losses")
+    maximum = losses.max()
+    spread = maximum - losses.min()
+    if beta == 0 or spread == 0:
+        return np.full(losses.shape, 1.0 / losses.size)
+    scaled = (losses - maximum) / spread
+    tilt = np.inf if beta == 1 else _unweighted_evar_tilt(scaled, beta)
+    probabilities = (
+        (losses == maximum).astype(float) if np.isinf(tilt) else np.exp(tilt * scaled)
+    )
+    return probabilities / probabilities.sum()
 
 
 def _wealth_and_dwealth(
@@ -786,27 +701,7 @@ def _analytical_evar_gradient(
     beta = kwargs.get("beta", 0.95)
     R = np.asarray(net_returns, dtype=float)
     w = np.asarray(weights, dtype=float)
-    _N, _d = R.shape
-
-    # Losses L_i = -(r_i^T w)
-    L = -(R @ w)
-
-    # Find optimal theta
-    theta_star = _find_theta_star_empirical(L, beta=beta)
-
-    # Compute Gibbs weights p_i ∝ exp(theta* * L_i)
-    a = theta_star * L
-    a_max = np.max(a)
-    exp_shift = np.exp(a - a_max)
-    denom = exp_shift.sum()
-
-    if denom == 0:
-        return np.zeros_like(w)
-
-    p = exp_shift / denom
-    # Gradient: -Σ r_i * p_i
-    grad = -(R.T @ p)
-    return grad
+    return -(R.T @ _evar_probabilities(-(R @ w), beta))
 
 
 def _analytical_cdar_gradient(
@@ -898,22 +793,7 @@ def _analytical_edar_gradient(
     # Compute drawdowns and derivatives (default: cumsum-based)
     D, dD = _drawdowns_and_derivatives(R, w, compounded=compounded)
 
-    # Find optimal theta
-    theta_star = _find_theta_star_empirical(D, beta=beta)
-
-    # Compute weights p_t ∝ exp(theta* * D_t)
-    a = theta_star * D
-    a_max = np.max(a)
-    exp_shift = np.exp(a - a_max)
-    denom = exp_shift.sum()
-
-    if denom == 0:
-        return np.zeros_like(w)
-
-    weights_t = exp_shift / denom
-    # Gradient: Σ dD_t * p_t
-    grad = dD.T @ weights_t
-    return grad
+    return dD.T @ _evar_probabilities(D, beta)
 
 
 def _analytical_cvar_gradient(
@@ -1268,47 +1148,31 @@ def _autograd_cvar(returns: np.ndarray, **kwargs: Any) -> np.ndarray:
 
 
 def _autograd_evar(returns: np.ndarray, **kwargs: Any) -> np.ndarray:
-    """Autograd-friendly EVaR via smooth-min over a theta grid (axis-aware).
-
-    - Uses a log-sum-exp softmin over a logarithmic grid of theta values to
-      approximate min_theta phi(theta), where
-      phi(theta) = theta * (log(mean(exp(-returns/theta))) - log(1-beta)).
-    - Fully differentiable through autograd (anp operations only).
-
-    Shapes
-    - Input: (T,) or (T, n)
-    - Output: scalar if 1D, (n,) if 2D
-
-    Reference
-    - skfolio.measures.evar
-    """
-    returns = anp.asarray(returns)
+    """Evaluate the shared EVaR measure with its envelope derivative registered below."""
     beta = kwargs.get("beta", 0.95)
+    values = np.asarray(returns)
+    if values.ndim == 1:
+        return np.asarray(evar(values, beta=beta))
+    return np.asarray([evar(column, beta=beta) for column in values.T])
 
-    # Construct theta grid based on scale of losses
-    max_loss = anp.max(-returns)
-    max_loss = anp.where(max_loss <= 0, 1.0, max_loss)
-    theta_min = max_loss / 200.0
-    theta_max = max_loss / 2.0
-    thetas = anp.exp(anp.linspace(anp.log(theta_min), anp.log(theta_max), 256))
 
-    # Compute phi(theta) for each theta
-    if returns.ndim == 1:
-        phi_vals = []
-        for theta in thetas:
-            exp_term = anp.exp(-returns / theta)
-            mean_exp = anp.mean(exp_term)
-            phi_vals.append(theta * (anp.log(mean_exp) - anp.log(1.0 - beta)))
-        phi = anp.stack(phi_vals, axis=0)
-        return anp.min(phi)
-    else:
-        phi_cols = []
-        for theta in thetas:
-            exp_term = anp.exp(-returns / theta)  # (T, n)
-            mean_exp = anp.mean(exp_term, axis=0)  # (n,)
-            phi_cols.append(theta * (anp.log(mean_exp) - anp.log(1.0 - beta)))
-        phi = anp.stack(phi_cols, axis=0)  # (N, n)
-        return anp.min(phi, axis=0)
+def _evar_vjp(answer: np.ndarray, returns: np.ndarray, **kwargs: Any) -> Callable:
+    """Build the vector-Jacobian product from the shared EVaR envelope weights."""
+    beta = kwargs.get("beta", 0.95)
+    values = np.asarray(returns)
+    probabilities = (
+        _evar_probabilities(-values, beta)
+        if values.ndim == 1
+        else np.column_stack(
+            [_evar_probabilities(-column, beta) for column in values.T]
+        )
+    )
+    return lambda upstream: -probabilities * upstream
+
+
+if anp is not np:
+    _autograd_evar = import_module("autograd.extend").primitive(_autograd_evar)
+    import_module("autograd.extend").defvjp(_autograd_evar, _evar_vjp)
 
 
 def _autograd_worst_realization(returns: np.ndarray, **kwargs: Any) -> np.ndarray:
@@ -1448,7 +1312,7 @@ def _autograd_edar(
     compounded: bool = False,
     smooth_beta: float | None = None,
 ) -> np.ndarray:
-    """Compute EDaR (Entropic Drawdown at Risk) - approximated via EVaR on drawdowns.
+    """Compute EDaR using the shared EVaR measure on drawdowns.
 
     Parameters
     ----------
@@ -1464,9 +1328,8 @@ def _autograd_edar(
 
     Notes
     -----
-    This approximates EDaR using CVaR on drawdowns (since true EVaR requires
-    optimization). For numerical accuracy in testing, use smooth_beta=None.
-    For gradient computation in OCO, use smooth_beta=1000 or higher.
+    The default uses exact drawdowns and the shared EVaR root search.
+    Optional smoothing changes the running-peak approximation only.
     """
     drawdowns = _autograd_get_drawdowns(
         returns, compounded=compounded, beta=smooth_beta

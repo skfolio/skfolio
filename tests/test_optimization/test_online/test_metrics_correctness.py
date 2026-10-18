@@ -184,8 +184,8 @@ AUTOGRAD_MEASURE_MAPPING = {
     RiskMeasure.EVAR: (
         _autograd_evar,
         ref_evar_from_returns,
-        1e-3,
-    ),  # Grid approximation
+        None,
+    ),
     RiskMeasure.WORST_REALIZATION: (
         _autograd_worst_realization,
         worst_realization,
@@ -200,8 +200,8 @@ AUTOGRAD_MEASURE_MAPPING = {
     RiskMeasure.EDAR: (
         _autograd_edar,
         ref_edar_from_returns,
-        1e-3,
-    ),  # Grid approximation
+        None,
+    ),
 }
 
 

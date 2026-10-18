@@ -1639,12 +1639,21 @@ def _unweighted_evar(losses: FloatArray, beta: float) -> float:
     value : float
         EVaR of the standardized losses, between -1 and 0.
     """
+    t = _unweighted_evar_tilt(losses, beta)
+    if np.isinf(t):
+        return 0.0
     c = np.log(losses.size) + np.log1p(-beta)
+    return (np.log(np.exp(t * losses).sum()) - c) / t
 
-    def objective(log_t: float) -> float:
-        """Compute :math:`f(t)`, where `log_t` is the log of :math:`t`."""
-        t = np.exp(log_t)
-        return (np.log(np.exp(t * losses).sum()) - c) / t
+
+def _unweighted_evar_tilt(losses: FloatArray, beta: float) -> float:
+    """Return the optimal exponential tilt for losses standardized to [-1, 0].
+
+    This is the shared root search for the EVaR value and envelope gradient.
+    An infinite tilt denotes the maximum-loss limit. Inputs must be nonconstant
+    with a maximum of zero and confidence strictly between zero and one.
+    """
+    c = np.log(losses.size) + np.log1p(-beta)
 
     def gradient_sign(log_t: float) -> float:
         """Compute :math:`g(t)`, where `log_t` is the log of :math:`t`."""
@@ -1660,8 +1669,8 @@ def _unweighted_evar(losses: FloatArray, beta: float) -> float:
     if gradient_sign(upper) <= 0:
         # The infimum is reached as theta tends to 0, and f is within 1e-7 of its
         # limit 0 past `upper`.
-        return 0.0
-    return objective(sco.brentq(gradient_sign, lower, upper))
+        return np.inf
+    return np.exp(sco.brentq(gradient_sign, lower, upper))
 
 
 def _weighted_evar(
