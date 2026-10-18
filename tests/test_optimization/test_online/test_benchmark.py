@@ -111,8 +111,9 @@ def test_best_constant_rejects_invalid_measure(X_small):
         best_constant.fit(X_small)
 
 
-def test_best_constant_solver_warns_on_nonconvergence():
-    """_solve_best_constant_weights must emit a warning when max_iter is reached."""
+def test_best_constant_solver_rejects_infeasible_nonconvergence():
+    """An inaccurate infeasible allocation cannot serve as a regret comparator."""
+    from skfolio.exceptions import ConvexOptimizationError
     from skfolio.optimization.online._regret import _solve_best_constant_weights
 
     # Construct data where BestConstantRebalancedPortfolio is far from uniform (one asset dominates),
@@ -121,8 +122,9 @@ def test_best_constant_solver_warns_on_nonconvergence():
     relatives = 1.0 + rng.standard_normal((100, 5)) * 0.02
     relatives[:, 0] += 0.05  # asset 0 strongly dominates
 
-    with pytest.warns(UserWarning, match="not converge"):
-        _solve_best_constant_weights(relatives, max_iter=1)
+    with pytest.warns(UserWarning, match="inaccurate"):
+        with pytest.raises(ConvexOptimizationError, match="infeasible"):
+            _solve_best_constant_weights(relatives, solver_params={"max_iter": 1})
 
 
 @pytest.mark.parametrize("weights", [[0.8, 0.2], [0.4, 0.1], [1.2, -0.2]])

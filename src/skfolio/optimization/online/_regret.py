@@ -12,8 +12,10 @@ import numpy as np
 import plotly.graph_objects as go
 from numpy.typing import ArrayLike
 
+from skfolio.exceptions import ConvexOptimizationError
 from skfolio.optimization._base import BaseOptimization
 from skfolio.optimization.online._base import BaseOnlineOptimization
+from skfolio.optimization.online._benchmark import BestConstantRebalancedPortfolio
 from skfolio.utils.tools import AutoEnum
 
 
@@ -155,48 +157,28 @@ def _worst_case_dynamic_weights(relatives: np.ndarray) -> np.ndarray:
 def _solve_best_constant_weights(
     relatives: np.ndarray,
     *,
-    init: np.ndarray | None = None,
-    tol: float = 1e-9,
-    max_iter: int = 2000,
+    solver: str = "CLARABEL",
+    solver_params: dict | None = None,
 ) -> np.ndarray:
-    r"""Compute best constant rebalanced portfolio (BestConstantRebalancedPortfolio) for log wealth."""
-    R = np.asarray(relatives, dtype=float)
-    if R.ndim != 2:
+    """Fit the shared log-wealth comparator with its solver and failure semantics."""
+    relatives = np.asarray(relatives, dtype=float)
+    if relatives.ndim != 2:
         raise ValueError("relatives must have shape (T, n)")
-    T, n = R.shape
-    if T == 0 or n == 0:
-        return np.zeros(n, dtype=float)
-
-    weights = cp.Variable(n)
-    if init is not None:
-        initial = np.asarray(init, dtype=float)
-        if initial.shape != (n,):
-            raise ValueError("init must have shape (n_assets,)")
-        weights.value = initial
-    problem = cp.Problem(
-        cp.Maximize(cp.sum(cp.log(R @ weights))),
-        [weights >= 0, cp.sum(weights) == 1],
-    )
-    problem.solve(
-        solver="CLARABEL",
-        max_iter=max_iter,
-        tol_gap_abs=tol,
-        tol_gap_rel=tol,
-        tol_feas=tol,
-    )
-    if problem.status != cp.OPTIMAL:
-        import warnings
-
-        warnings.warn(
-            f"BestConstantRebalancedPortfolio solver did not converge to optimal status: {problem.status}",
-            UserWarning,
-            stacklevel=2,
+    if 0 in relatives.shape:
+        return np.zeros(relatives.shape[1], dtype=float)
+    comparator = BestConstantRebalancedPortfolio(
+        solver=solver, solver_params=solver_params, raise_on_failure=True
+    ).fit(relatives - 1.0)
+    weights = comparator.weights_
+    if (
+        not np.isfinite(weights).all()
+        or np.any(weights < -1e-8)
+        or not np.isclose(weights.sum(), 1.0, atol=1e-8, rtol=0)
+    ):
+        raise ConvexOptimizationError(
+            "Best-constant comparator returned infeasible weights"
         )
-    if weights.value is None:
-        raise RuntimeError("BestConstantRebalancedPortfolio optimization failed")
-    # Remove tiny solver residuals at the simplex boundary.
-    result = np.maximum(np.asarray(weights.value, dtype=float), 0.0)
-    return result / result.sum()
+    return weights.copy()
 
 
 def _universal_dynamic_weights(
@@ -248,7 +230,7 @@ def _universal_dynamic_weights(
 
     # Special case: path_length == 0 -> STATIC comparator (one constant u) = BestConstantRebalancedPortfolio
     if path_length is not None and path_length <= 1e-18:
-        w = _solve_best_constant_weights(R)
+        w = _solve_best_constant_weights(R, solver=solver, solver_params=solver_params)
         return np.repeat(w[None, :], T, axis=0)
 
     # Decision variable: one weight vector per t

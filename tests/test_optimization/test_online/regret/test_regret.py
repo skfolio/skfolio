@@ -196,7 +196,11 @@ def test_universal_dynamic_path_length_zero():
         estimator=est,
         X=X,
         regret_type=RegretType.DYNAMIC_UNIVERSAL,
-        dynamic_config={"path_length": 0.0, "solver": "SCS"},
+        dynamic_config={
+            "path_length": 0.0,
+            "solver": "SCS",
+            "solver_params": {"eps": 1e-9},
+        },
     )
     reg_static = regret(estimator=est, X=X, regret_type=RegretType.STATIC)
     assert np.allclose(reg_uni, reg_static)
