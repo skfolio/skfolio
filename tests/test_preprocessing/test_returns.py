@@ -95,6 +95,42 @@ def test_returns_drops_all_nan_column():
     pd.testing.assert_frame_equal(X, prices_to_returns(X=prices[["A", "B"]]))
 
 
+@pytest.mark.parametrize("nan_threshold", [0.3, 1])
+def test_returns_drops_all_nan_column_with_nan_threshold(nan_threshold):
+    index = pd.date_range("2026-01-01", periods=5)
+    prices = pd.DataFrame(
+        {
+            "A": [100.0, np.nan, 102.0, 103.0, 104.0],
+            "B": [50.0, 51.0, 52.0, 53.0, 54.0],
+            "C": np.nan,
+        },
+        index=index,
+    )
+
+    X = prices_to_returns(X=prices, nan_threshold=nan_threshold, fill_nan=False)
+    expected = prices_to_returns(
+        X=prices[["A", "B"]], nan_threshold=nan_threshold, fill_nan=False
+    )
+    pd.testing.assert_frame_equal(X, expected)
+    assert X.shape[0] == 3
+
+
+def test_returns_drops_all_nan_factor_column():
+    index = pd.date_range("2026-01-01", periods=5)
+    prices = pd.DataFrame(
+        {"A": [100.0, 101.0, 102.0, 103.0, 104.0]},
+        index=index,
+    )
+    factors = pd.DataFrame(
+        {"F1": [10.0, 11.0, 12.0, 13.0, 14.0], "F2": np.nan},
+        index=index,
+    )
+
+    X, y = prices_to_returns(X=prices, y=factors)
+    assert X.shape == (4, 1)
+    pd.testing.assert_frame_equal(y, prices_to_returns(X=factors[["F1"]]))
+
+
 def test_returns_requires_dataframe_inputs():
     index = pd.date_range("2026-01-01", periods=3)
     prices = pd.DataFrame({"asset": [100.0, 101.0, 102.0]}, index=index)
