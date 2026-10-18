@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.9.6 (2026-10-18)
+
+### Bug Fixes
+
+- **moments**: Preserve caller implied volatility arrays
+  ([#438](https://github.com/skfolio/skfolio/pull/438),
+  [`5359407`](https://github.com/skfolio/skfolio/commit/5359407cd41e1f2cae066bb706e52814707eaa19))
+
+
 ## v1.9.5 (2026-10-18)
 
 ### Bug Fixes
