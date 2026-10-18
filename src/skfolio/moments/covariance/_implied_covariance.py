@@ -333,8 +333,14 @@ class ImpliedCovariance(BaseCovariance):
 
         X = skv.validate_data(self, X)
         _, n_assets = X.shape
-        implied_vol = check_implied_vol(implied_vol=implied_vol, X=X)
-        implied_vol /= np.sqrt(self.annualization_factor)
+        # Annualization must not modify the input array.
+        implied_vol = check_implied_vol(
+            implied_vol=implied_vol,
+            X=X,
+            copy=self.annualization_factor != 1,
+        )
+        if self.annualization_factor != 1:
+            implied_vol /= np.sqrt(self.annualization_factor)
 
         if self.volatility_risk_premium_adj is not None:
             if np.isscalar(self.volatility_risk_premium_adj):
@@ -473,7 +479,12 @@ def _compute_implied_vol(implied_vol: FloatArray, window_size: int) -> FloatArra
     ]
 
 
-def check_implied_vol(implied_vol: ArrayLike, X: FloatArray) -> FloatArray:
+def check_implied_vol(
+    implied_vol: ArrayLike,
+    X: FloatArray,
+    *,
+    copy: bool = False,
+) -> FloatArray:
     """Validate implied volatilities.
 
     Parameters
@@ -483,6 +494,10 @@ def check_implied_vol(implied_vol: ArrayLike, X: FloatArray) -> FloatArray:
 
     X : ndarray of shape (n_observations, n_assets)
         Validated price returns of the assets.
+
+    copy : bool, default=False
+        If True, return an array that does not share memory with the input.
+        If False, a copy may still be needed for dtype or layout conversion.
 
     Returns
     -------
@@ -500,8 +515,7 @@ def check_implied_vol(implied_vol: ArrayLike, X: FloatArray) -> FloatArray:
             ensure_2d=False,
             dtype=[np.float64, np.float32],
             order="C",
-            # Annualization in fit must not overwrite caller-owned observations.
-            copy=True,
+            copy=copy,
             input_name="implied_vol",
         )
         if implied_vol.ndim != 2:

@@ -19,21 +19,32 @@ from skfolio.prior import EmpiricalPrior
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
 @pytest.mark.parametrize("read_only", [False, True])
 @pytest.mark.parametrize("premium", [None, 1.5])
-def test_implied_covariance_preserves_array(dtype, read_only, premium):
+@pytest.mark.parametrize("annualization_factor", [1, 252])
+def test_implied_covariance_preserves_array(
+    dtype, read_only, premium, annualization_factor
+):
     """Annualization preserves caller units and repeat-fit results in both modes."""
     X = np.random.default_rng(52).normal(0, 0.01, (90, 3))
     implied_vol = np.tile([0.16, 0.24, 0.32], (90, 1)).astype(dtype)
     original = implied_vol.copy()
     implied_vol.flags.writeable = not read_only
-    model = ImpliedCovariance(volatility_risk_premium_adj=premium)
+    model = ImpliedCovariance(
+        annualization_factor=annualization_factor,
+        volatility_risk_premium_adj=premium,
+    )
 
     for _ in range(2):
         model.fit(X, implied_vol=implied_vol)
         np.testing.assert_array_equal(implied_vol, original)
         assert implied_vol.flags.writeable == (not read_only)
         if premium is not None:
-            # Annualized sigma / sqrt(252) / premium gives daily volatility.
-            expected_vol = original[-1].astype(np.float64) / np.sqrt(252) / premium
+            assert model.pred_realised_vols_.dtype == dtype
+            # Convert to the returns frequency, then adjust for the risk premium.
+            expected_vol = (
+                original[-1].astype(np.float64)
+                / np.sqrt(annualization_factor)
+                / premium
+            )
             expected = np.corrcoef(X, rowvar=False) * np.outer(
                 expected_vol, expected_vol
             )
