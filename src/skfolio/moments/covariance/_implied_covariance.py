@@ -281,7 +281,8 @@ class ImpliedCovariance(BaseCovariance):
             Not used, present for API consistency by convention.
 
         implied_vol : array-like of shape (n_observations, n_assets)
-            Implied volatilities of the assets.
+            Implied volatilities of the assets. The input is not modified during
+            annualization.
 
         **fit_params : dict
             Parameters to pass to the underlying estimators.
@@ -499,7 +500,8 @@ def check_implied_vol(implied_vol: ArrayLike, X: FloatArray) -> FloatArray:
             ensure_2d=False,
             dtype=[np.float64, np.float32],
             order="C",
-            copy=False,
+            # Annualization in fit must not overwrite caller-owned observations.
+            copy=True,
             input_name="implied_vol",
         )
         if implied_vol.ndim != 2:
