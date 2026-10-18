@@ -2195,6 +2195,7 @@ _LLMS_TRUNCATED_SECONDARY_LINK_RE = re.compile(
     r"\[(?P<label>[^\]\r\n]+)\]\(" r"https://skfolio\.org(?:/[^)\r\n]*)?\.\.\.(?=\r?$)",
     flags=re.MULTILINE,
 )
+_LLMS_TXT_ENTRY_URL_RE = re.compile(r"^- \[[^\]]*\]\((?P<url>[^)\s]+)\.html\.md\)")
 
 
 def _sanitize_llm_markdown_text(text: str) -> tuple[str, int, int]:
@@ -2230,14 +2231,82 @@ def _repair_truncated_llms_txt_links(text: str) -> tuple[str, int]:
     )
 
 
+def _llms_txt_section_titles(app) -> dict[str, str]:
+    """Map each page in the toctree to its `llms.txt` section title.
+
+    The title is the page's path through the toctree, e.g. "Examples / Mean-Risk".
+    API pages also get their module section of `api.rst`.
+    """
+    from docutils import nodes
+    from sphinx import addnodes
+
+    env = app.env
+    root_doc = app.config.root_doc
+    parents = {
+        child: parent
+        for parent, children in env.toctree_includes.items()
+        for child in children
+    }
+
+    api_sections = {}
+    api_title_section = next(env.get_doctree("api").findall(nodes.section))
+    for section in api_title_section.children:
+        if isinstance(section, nodes.section):
+            for toctree in section.findall(addnodes.toctree):
+                for _, docname in toctree["entries"]:
+                    api_sections.setdefault(docname, section[0].astext())
+
+    titles = {}
+    for docname in env.found_docs:
+        path = []
+        current = docname if docname in env.toctree_includes else parents.get(docname)
+        while current is not None and current != root_doc:
+            path.insert(0, env.titles[current].astext())
+            current = parents.get(current)
+        if current != root_doc:
+            continue
+        if docname in api_sections:
+            path.append(api_sections[docname])
+        titles[docname] = " / ".join(path) or "Overview"
+    return titles
+
+
+def _group_llms_txt_sections(app, text: str) -> tuple[str, int]:
+    """Split the flat `## Pages` list of `llms.txt` into toctree sections.
+
+    sphinx-llm lists every page under one heading, in toctree order. Grouping them
+    keeps the hierarchy of the documentation, e.g. that an example belongs to the
+    Mean-Risk gallery. Pages outside the toctree go to a final "Other" section.
+    """
+    head, separator, rest = text.partition("\n## Pages\n")
+    if not separator:
+        return text, 0
+    pages, optional_separator, optional = rest.partition("\n## Optional\n")
+    section_titles = _llms_txt_section_titles(app)
+    sections = {}
+    for line in pages.splitlines():
+        if not line.strip():
+            continue
+        match = _LLMS_TXT_ENTRY_URL_RE.match(line)
+        docname = urlparse(match.group("url")).path.lstrip("/") if match else None
+        sections.setdefault(section_titles.get(docname, "Other"), []).append(line)
+    if "Other" in sections:
+        sections["Other"] = sections.pop("Other")
+    body = "\n\n".join(
+        f"## {title}\n\n" + "\n".join(lines) for title, lines in sections.items()
+    )
+    return f"{head}\n{body}\n{optional_separator}{optional}", len(sections)
+
+
 def postprocess_llm_markdown_artifacts(app, exception):
     """Post-process sphinx-llm markdown files after the HTML build.
 
     Runs after sphinx-llm's own `build-finished` hook (priority > 500) so the per-page
     `*.html.md`, `llms-full.txt` and `llms.txt` files already exist on disk. Strips
     inline Plotly HTML, removes leftover numpydoc/sphinx-gallery metadata comments,
-    normalises whitespace, repairs truncated description links and ensures sitemap
-    links use URL separators on every platform.
+    normalises whitespace, repairs truncated description links, ensures sitemap
+    links use URL separators on every platform and groups the `llms.txt` pages into
+    toctree sections.
     """
     if exception is not None:
         return
@@ -2265,6 +2334,7 @@ def postprocess_llm_markdown_artifacts(app, exception):
     total_normalized_urls = 0
     total_repaired_links = 0
     total_files = 0
+    llms_txt_sections = 0
     for path in targets:
         original = path.read_text(encoding="utf-8")
         text, n_plotly, n_comments = _sanitize_llm_markdown_text(original)
@@ -2273,6 +2343,7 @@ def postprocess_llm_markdown_artifacts(app, exception):
         if path == llms_index:
             text, n_normalized_urls = _normalize_llms_txt_urls(text)
             text, n_repaired_links = _repair_truncated_llms_txt_links(text)
+            text, llms_txt_sections = _group_llms_txt_sections(app, text)
         if (
             n_plotly
             or n_comments
@@ -2291,7 +2362,8 @@ def postprocess_llm_markdown_artifacts(app, exception):
         f"{total_plotly} Plotly block(s), {total_comments} HTML comment(s), "
         f"{total_normalized_urls} URL(s) normalized, "
         f"{total_repaired_links} truncated link(s) repaired, "
-        f"{stale_files} stale file(s) removed"
+        f"{stale_files} stale file(s) removed, "
+        f"{llms_txt_sections} llms.txt section(s)"
     )
 
 
