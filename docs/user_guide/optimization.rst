@@ -1307,6 +1307,57 @@ Ridge without an intercept is used and ``alpha`` sets its penalty.
 Joint whole-portfolio regression and a full reproduction of Interpretable
 Supervised Portfolios remain future work.
 
+Choosing a prediction or evaluation method
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+All four methods below use an already fitted regressor. None retrains it on the
+future evaluation returns.
+
+.. list-table:: Supervised policy prediction and evaluation
+   :header-rows: 1
+   :widths: 18 28 24 30
+
+   * - Method
+     - Inputs and purpose
+     - Result
+     - Accounting and constraints
+   * - ``predict(X)``
+     - Evaluate the last fitted allocation on a return sample. Does not use new
+       characteristics or schedule policy rebalancing.
+     - ``Portfolio`` using ``weights_`` and ``portfolio_params``.
+     - Standard Portfolio accounting. Disabled when ``max_variance`` or
+       ``max_turnover`` is enabled; use a sequential evaluator instead.
+   * - ``predict_weights(characteristics)``
+     - Generate targets from later characteristics, without simulating trades.
+     - DataFrame of target weights, one row per decision date.
+     - Projects onto policy constraints. Supply causal covariance and actual
+       pre-trade holdings explicitly when their respective limits are enabled.
+       No realized returns, cash ledger or transaction-cost accounting.
+   * - ``evaluate_sequential(X, characteristics, ...)``
+     - Evaluate scheduled rebalancing on forward returns, starting from explicit
+       fully invested holdings.
+     - ``MultiPeriodPortfolio`` with targets, drifted holdings and turnover.
+     - Uses Portfolio's additive transaction-cost convention, without an explicit
+       cash ledger. Risk estimates can be supplied or estimated causally.
+   * - ``evaluate_execution(X, characteristics, ...)``
+     - Evaluate funded trades, cash and eligibility changes, starting from
+       explicit risky holdings and cash.
+     - ``PortfolioExecution`` with targets, trades and a cash/wealth/cost ledger.
+     - Deducts fees from available funds and reconciles post-fee positions.
+       Risk estimates can be supplied or estimated causally. Margin, borrowing
+       fees and trade execution realism are outside scope.
+
+Choose ``predict_weights`` to inspect targets or supply them to your own execution
+system. Use an evaluation method to measure the returns of the changing policy;
+passing those returns to ``predict`` would evaluate only the last fitted allocation.
+The two evaluators use different cost-accounting conventions, so their net returns
+need not agree when fees are nonzero.
+
+Prediction leaves fitted exposure state unchanged unless
+``predict_weights(..., update_state=True)`` is requested. Both evaluation helpers
+use a copy of fitted state. Decision characteristics must precede their associated
+forward returns; see the timing and initial-holdings requirements below.
+
 Risk, turnover and sequential evaluation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
