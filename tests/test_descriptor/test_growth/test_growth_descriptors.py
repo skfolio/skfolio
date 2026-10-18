@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import warnings
+from functools import partial
+from itertools import pairwise
 
 import numpy as np
 import pytest
@@ -19,7 +21,7 @@ from skfolio.descriptor import (
 )
 
 
-def _assert_streaming_correct(make, panel):
+def _assert_streaming_correct(make, panel, boundaries=(0, 7, 14, 21)):
     """Verify chunked partial_fit_transform matches fit_transform."""
     full = make(lag=3).fit_transform(panel)
 
@@ -28,7 +30,9 @@ def _assert_streaming_correct(make, panel):
 
     # 3 chunks
     d = make(lag=3)
-    parts = [d.partial_fit_transform(panel[s : s + 7]) for s in range(0, 20, 7)]
+    parts = [
+        d.partial_fit_transform(panel[start:end]) for start, end in pairwise(boundaries)
+    ]
     np.testing.assert_array_almost_equal(np.concatenate(parts), full)
 
     # Chunks smaller than lag
@@ -117,63 +121,6 @@ class TestGrowthRate:
         result = GrowthRate("sales_ttm", lag=n_obs).fit_transform(simple_panel)
         assert np.all(np.isnan(result))
 
-    def test_partial_fit_matches_fit(self, simple_panel):
-        """partial_fit_transform in one shot matches fit_transform."""
-        lag = 3
-        descriptor = GrowthRate("sales_ttm", lag=lag)
-        full = descriptor.fit_transform(simple_panel)
-
-        descriptor2 = GrowthRate("sales_ttm", lag=lag)
-        partial = descriptor2.partial_fit_transform(simple_panel)
-
-        np.testing.assert_array_equal(full, partial)
-
-    def test_partial_fit_chunked(self, simple_panel):
-        """Chunked partial_fit_transform matches fit_transform."""
-        lag = 3
-        full = GrowthRate("sales_ttm", lag=lag).fit_transform(simple_panel)
-
-        descriptor = GrowthRate("sales_ttm", lag=lag)
-        # Split into 3 chunks
-        chunk1 = simple_panel[:7]
-        chunk2 = simple_panel[7:13]
-        chunk3 = simple_panel[13:]
-
-        r1 = descriptor.partial_fit_transform(chunk1)
-        r2 = descriptor.partial_fit_transform(chunk2)
-        r3 = descriptor.partial_fit_transform(chunk3)
-
-        combined = np.concatenate([r1, r2, r3], axis=0)
-        np.testing.assert_array_almost_equal(combined, full)
-
-    def test_partial_fit_small_chunks(self, simple_panel):
-        """Chunks smaller than lag still produce correct results."""
-        lag = 5
-        full = GrowthRate("sales_ttm", lag=lag).fit_transform(simple_panel)
-
-        descriptor = GrowthRate("sales_ttm", lag=lag)
-        # Chunks of 2 (smaller than lag=5)
-        chunks = []
-        for start in range(0, 20, 2):
-            view = simple_panel[start : start + 2]
-            chunks.append(descriptor.partial_fit_transform(view))
-
-        combined = np.concatenate(chunks, axis=0)
-        np.testing.assert_array_almost_equal(combined, full)
-
-    def test_fit_transform_resets_state(self, simple_panel):
-        """fit_transform resets state from a previous run."""
-        lag = 3
-        descriptor = GrowthRate("sales_ttm", lag=lag)
-
-        # First run: partial with a chunk
-        descriptor.partial_fit_transform(simple_panel[:10])
-
-        # Second run: fit_transform should reset and produce clean result
-        result = descriptor.fit_transform(simple_panel)
-        expected = GrowthRate("sales_ttm", lag=lag).fit_transform(simple_panel)
-        np.testing.assert_array_equal(result, expected)
-
 
 class TestEarningsChangeToPrice:
     """Tests for EarningsChangeToPrice descriptor."""
@@ -235,63 +182,6 @@ class TestEarningsChangeToPrice:
         descriptor = EarningsChangeToPrice()
         assert descriptor.lag == 252
 
-    def test_partial_fit_matches_fit(self, simple_panel):
-        """partial_fit_transform in one shot matches fit_transform."""
-        lag = 3
-        descriptor = EarningsChangeToPrice(lag=lag)
-        full = descriptor.fit_transform(simple_panel)
-
-        descriptor2 = EarningsChangeToPrice(lag=lag)
-        partial = descriptor2.partial_fit_transform(simple_panel)
-
-        np.testing.assert_array_equal(full, partial)
-
-    def test_partial_fit_chunked(self, simple_panel):
-        """Chunked partial_fit_transform matches fit_transform."""
-        lag = 3
-        full = EarningsChangeToPrice(lag=lag).fit_transform(simple_panel)
-
-        descriptor = EarningsChangeToPrice(lag=lag)
-        # Split into 3 chunks
-        chunk1 = simple_panel[:7]
-        chunk2 = simple_panel[7:13]
-        chunk3 = simple_panel[13:]
-
-        r1 = descriptor.partial_fit_transform(chunk1)
-        r2 = descriptor.partial_fit_transform(chunk2)
-        r3 = descriptor.partial_fit_transform(chunk3)
-
-        combined = np.concatenate([r1, r2, r3], axis=0)
-        np.testing.assert_array_almost_equal(combined, full)
-
-    def test_partial_fit_small_chunks(self, simple_panel):
-        """Chunks smaller than lag still produce correct results."""
-        lag = 5
-        full = EarningsChangeToPrice(lag=lag).fit_transform(simple_panel)
-
-        descriptor = EarningsChangeToPrice(lag=lag)
-        # Chunks of 2 (smaller than lag=5)
-        chunks = []
-        for start in range(0, 20, 2):
-            view = simple_panel[start : start + 2]
-            chunks.append(descriptor.partial_fit_transform(view))
-
-        combined = np.concatenate(chunks, axis=0)
-        np.testing.assert_array_almost_equal(combined, full)
-
-    def test_fit_transform_resets_state(self, simple_panel):
-        """fit_transform resets state from a previous run."""
-        lag = 3
-        descriptor = EarningsChangeToPrice(lag=lag)
-
-        # First run: partial with a chunk
-        descriptor.partial_fit_transform(simple_panel[:10])
-
-        # Second run: fit_transform should reset and produce clean result
-        result = descriptor.fit_transform(simple_panel)
-        expected = EarningsChangeToPrice(lag=lag).fit_transform(simple_panel)
-        np.testing.assert_array_equal(result, expected)
-
 
 class TestChangeToScale:
     """Tests for ChangeToScale descriptor."""
@@ -308,51 +198,10 @@ class TestChangeToScale:
         expected = (ni[lag:] - ni[: len(ni) - lag]) / mc[lag:]
         np.testing.assert_array_equal(result[lag:], expected)
 
-    def test_first_lag_rows_are_nan(self, simple_panel):
-        lag = 5
-        result = self._make(lag).fit_transform(simple_panel)
-        assert np.all(np.isnan(result[:lag]))
-        assert not np.all(np.isnan(result[lag:]))
-
-    def test_raises_on_non_positive_scale(self, simple_panel):
-        simple_panel["market_cap"][3, 0] = 0.0
-        with pytest.raises(ValueError, match="non-positive"):
-            self._make(3).fit_transform(simple_panel)
-
-    def test_raises_on_negative_scale(self, simple_panel):
-        simple_panel["market_cap"][3, 0] = -1.0
-        with pytest.raises(ValueError, match="non-positive"):
-            self._make(3).fit_transform(simple_panel)
-
-    def test_raises_on_infinite_field(self, simple_panel):
-        simple_panel["net_income_ttm"][3, 0] = np.inf
-        with pytest.raises(ValueError, match="infinite values"):
-            self._make(3).fit_transform(simple_panel)
-
-    def test_raises_on_infinite_scale(self, simple_panel):
-        simple_panel["market_cap"][3, 0] = np.inf
-        with pytest.raises(ValueError, match="infinite values"):
-            self._make(3).fit_transform(simple_panel)
-
-    def test_nan_propagation(self, simple_panel):
-        simple_panel["net_income_ttm"][5, 0] = np.nan
-        simple_panel["market_cap"][6, 1] = np.nan
-        result = self._make(3).fit_transform(simple_panel)
-        assert np.isnan(result[5, 0])
-        assert np.isnan(result[8, 0])
-        assert np.isnan(result[6, 1])
-
     def test_change_to_scale_fitted_attribute(self, simple_panel):
         descriptor = self._make(3)
         result = descriptor.fit_transform(simple_panel)
         np.testing.assert_array_equal(descriptor.change_to_scale_, result[-1])
-
-    def test_raises_on_invalid_lag(self, simple_panel):
-        with pytest.raises(ValueError, match="lag must be a positive integer"):
-            self._make(0).fit_transform(simple_panel)
-
-    def test_streaming(self, simple_panel):
-        _assert_streaming_correct(self._make, simple_panel)
 
 
 class TestChangeInIntensity:
@@ -371,51 +220,10 @@ class TestChangeInIntensity:
         expected = ratio[lag:] - ratio[: len(ratio) - lag]
         np.testing.assert_array_almost_equal(result[lag:], expected)
 
-    def test_first_lag_rows_are_nan(self, simple_panel):
-        lag = 5
-        result = self._make(lag).fit_transform(simple_panel)
-        assert np.all(np.isnan(result[:lag]))
-        assert not np.all(np.isnan(result[lag:]))
-
-    def test_raises_on_non_positive_scale(self, simple_panel):
-        simple_panel["market_cap"][3, 0] = 0.0
-        with pytest.raises(ValueError, match="non-positive"):
-            self._make(3).fit_transform(simple_panel)
-
-    def test_raises_on_negative_scale(self, simple_panel):
-        simple_panel["market_cap"][3, 0] = -1.0
-        with pytest.raises(ValueError, match="non-positive"):
-            self._make(3).fit_transform(simple_panel)
-
-    def test_raises_on_infinite_field(self, simple_panel):
-        simple_panel["net_income_ttm"][3, 0] = np.inf
-        with pytest.raises(ValueError, match="infinite values"):
-            self._make(3).fit_transform(simple_panel)
-
-    def test_raises_on_infinite_scale(self, simple_panel):
-        simple_panel["market_cap"][3, 0] = np.inf
-        with pytest.raises(ValueError, match="infinite values"):
-            self._make(3).fit_transform(simple_panel)
-
-    def test_nan_propagation(self, simple_panel):
-        simple_panel["net_income_ttm"][5, 0] = np.nan
-        simple_panel["market_cap"][6, 1] = np.nan
-        result = self._make(3).fit_transform(simple_panel)
-        assert np.isnan(result[5, 0])
-        assert np.isnan(result[8, 0])
-        assert np.isnan(result[6, 1])
-
     def test_change_in_intensity_fitted_attribute(self, simple_panel):
         descriptor = self._make(3)
         result = descriptor.fit_transform(simple_panel)
         np.testing.assert_array_equal(descriptor.change_in_intensity_, result[-1])
-
-    def test_raises_on_invalid_lag(self, simple_panel):
-        with pytest.raises(ValueError, match="lag must be a positive integer"):
-            self._make(0).fit_transform(simple_panel)
-
-    def test_streaming(self, simple_panel):
-        _assert_streaming_correct(self._make, simple_panel)
 
 
 class TestCapexToAssetsChangeInIntensity:
@@ -444,54 +252,94 @@ class TestCapexToAssetsChangeInIntensity:
         np.testing.assert_array_almost_equal(result, expected)
 
 
-class TestSalesGrowthRate:
-    """Tests for SalesGrowthRate descriptor."""
-
-    def test_default_parameters(self):
-        """Default parameters are field=sales_ttm, lag=252."""
-        descriptor = SalesGrowthRate()
-        assert descriptor.field == "sales_ttm"
-        assert descriptor.lag == 252
-
-    def test_values_match_growth_rate(self, simple_panel):
-        """Output matches GrowthRate(sales_ttm)."""
-        lag = 3
-        expected = GrowthRate(field="sales_ttm", lag=lag).fit_transform(simple_panel)
-        result = SalesGrowthRate(lag=lag).fit_transform(simple_panel)
-        np.testing.assert_array_equal(result, expected)
+@pytest.mark.parametrize(
+    "make",
+    [
+        pytest.param(partial(GrowthRate, "sales_ttm"), id="growth"),
+        pytest.param(EarningsChangeToPrice, id="earnings-price"),
+    ],
+)
+def test_growth_streaming(simple_panel, make):
+    _assert_streaming_correct(make, simple_panel, boundaries=(0, 7, 13, 20))
 
 
-class TestTotalAssetsGrowthRate:
-    """Tests for TotalAssetsGrowthRate descriptor."""
-
-    def test_default_parameters(self):
-        """Default parameters are field=total_assets, lag=252."""
-        descriptor = AssetsGrowthRate()
-        assert descriptor.field == "total_assets"
-        assert descriptor.lag == 252
-
-    def test_values_match_growth_rate(self, simple_panel):
-        """Output matches GrowthRate(total_assets)."""
-        lag = 3
-        expected = GrowthRate(field="total_assets", lag=lag).fit_transform(simple_panel)
-        result = AssetsGrowthRate(lag=lag).fit_transform(simple_panel)
-        np.testing.assert_array_equal(result, expected)
+@pytest.mark.parametrize("change_cls", [ChangeToScale, ChangeInIntensity])
+def test_first_lag_rows_are_nan(simple_panel, change_cls):
+    make = partial(change_cls, "net_income_ttm", "market_cap")
+    lag = 5
+    result = make(lag).fit_transform(simple_panel)
+    assert np.all(np.isnan(result[:lag]))
+    assert not np.all(np.isnan(result[lag:]))
 
 
-class TestIssuanceGrowthRate:
-    """Tests for IssuanceGrowthRate descriptor."""
+@pytest.mark.parametrize("change_cls", [ChangeToScale, ChangeInIntensity])
+def test_raises_on_non_positive_scale(simple_panel, change_cls):
+    make = partial(change_cls, "net_income_ttm", "market_cap")
+    simple_panel["market_cap"][3, 0] = 0.0
+    with pytest.raises(ValueError, match="non-positive"):
+        make(3).fit_transform(simple_panel)
 
-    def test_default_parameters(self):
-        """Default parameters are field=adj_shares_outstanding, lag=252."""
-        descriptor = IssuanceGrowthRate()
-        assert descriptor.field == "adj_shares_outstanding"
-        assert descriptor.lag == 252
 
-    def test_values_match_growth_rate(self, simple_panel):
-        """Output matches GrowthRate(adj_shares_outstanding)."""
-        lag = 3
-        expected = GrowthRate(field="adj_shares_outstanding", lag=lag).fit_transform(
-            simple_panel
-        )
-        result = IssuanceGrowthRate(lag=lag).fit_transform(simple_panel)
-        np.testing.assert_array_equal(result, expected)
+@pytest.mark.parametrize("change_cls", [ChangeToScale, ChangeInIntensity])
+def test_raises_on_negative_scale(simple_panel, change_cls):
+    make = partial(change_cls, "net_income_ttm", "market_cap")
+    simple_panel["market_cap"][3, 0] = -1.0
+    with pytest.raises(ValueError, match="non-positive"):
+        make(3).fit_transform(simple_panel)
+
+
+@pytest.mark.parametrize("change_cls", [ChangeToScale, ChangeInIntensity])
+def test_raises_on_infinite_field(simple_panel, change_cls):
+    make = partial(change_cls, "net_income_ttm", "market_cap")
+    simple_panel["net_income_ttm"][3, 0] = np.inf
+    with pytest.raises(ValueError, match="infinite values"):
+        make(3).fit_transform(simple_panel)
+
+
+@pytest.mark.parametrize("change_cls", [ChangeToScale, ChangeInIntensity])
+def test_raises_on_infinite_scale(simple_panel, change_cls):
+    make = partial(change_cls, "net_income_ttm", "market_cap")
+    simple_panel["market_cap"][3, 0] = np.inf
+    with pytest.raises(ValueError, match="infinite values"):
+        make(3).fit_transform(simple_panel)
+
+
+@pytest.mark.parametrize("change_cls", [ChangeToScale, ChangeInIntensity])
+def test_nan_propagation(simple_panel, change_cls):
+    make = partial(change_cls, "net_income_ttm", "market_cap")
+    simple_panel["net_income_ttm"][5, 0] = np.nan
+    simple_panel["market_cap"][6, 1] = np.nan
+    result = make(3).fit_transform(simple_panel)
+    assert np.isnan(result[5, 0])
+    assert np.isnan(result[8, 0])
+    assert np.isnan(result[6, 1])
+
+
+@pytest.mark.parametrize("change_cls", [ChangeToScale, ChangeInIntensity])
+def test_raises_on_invalid_lag(simple_panel, change_cls):
+    make = partial(change_cls, "net_income_ttm", "market_cap")
+    with pytest.raises(ValueError, match="lag must be a positive integer"):
+        make(0).fit_transform(simple_panel)
+
+
+@pytest.mark.parametrize("change_cls", [ChangeToScale, ChangeInIntensity])
+def test_streaming(simple_panel, change_cls):
+    make = partial(change_cls, "net_income_ttm", "market_cap")
+    _assert_streaming_correct(make, simple_panel)
+
+
+@pytest.mark.parametrize(
+    "descriptor_cls,field",
+    [
+        (SalesGrowthRate, "sales_ttm"),
+        (AssetsGrowthRate, "total_assets"),
+        (IssuanceGrowthRate, "adj_shares_outstanding"),
+    ],
+)
+def test_named_growth_rate(simple_panel, descriptor_cls, field):
+    descriptor = descriptor_cls()
+    assert descriptor.field == field
+    assert descriptor.lag == 252
+    expected = GrowthRate(field=field, lag=3).fit_transform(simple_panel)
+    result = descriptor_cls(lag=3).fit_transform(simple_panel)
+    np.testing.assert_array_equal(result, expected)

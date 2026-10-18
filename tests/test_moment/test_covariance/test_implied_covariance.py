@@ -12,6 +12,131 @@ from skfolio.moments.covariance._implied_covariance import (
     _compute_implied_vol,
     _compute_realised_vol,
 )
+from skfolio.optimization import MeanRisk
+from skfolio.prior import EmpiricalPrior
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("read_only", [False, True])
+@pytest.mark.parametrize("premium", [None, 1.5])
+@pytest.mark.parametrize("annualization_factor", [1, 252])
+def test_implied_covariance_preserves_array(
+    dtype, read_only, premium, annualization_factor
+):
+    """Annualization preserves caller units and repeat-fit results in both modes."""
+    X = np.random.default_rng(52).normal(0, 0.01, (90, 3))
+    implied_vol = np.tile([0.16, 0.24, 0.32], (90, 1)).astype(dtype)
+    original = implied_vol.copy()
+    implied_vol.flags.writeable = not read_only
+    model = ImpliedCovariance(
+        annualization_factor=annualization_factor,
+        volatility_risk_premium_adj=premium,
+    )
+
+    for _ in range(2):
+        model.fit(X, implied_vol=implied_vol)
+        np.testing.assert_array_equal(implied_vol, original)
+        assert implied_vol.flags.writeable == (not read_only)
+        if premium is not None:
+            assert model.pred_realised_vols_.dtype == dtype
+            # Convert to the returns frequency, then adjust for the risk premium.
+            expected_vol = (
+                original[-1].astype(np.float64)
+                / np.sqrt(annualization_factor)
+                / premium
+            )
+            expected = np.corrcoef(X, rowvar=False) * np.outer(
+                expected_vol, expected_vol
+            )
+            np.testing.assert_allclose(model.covariance_, expected, rtol=5e-7)
+        if _ == 0:
+            first = model.covariance_.copy()
+        else:
+            np.testing.assert_array_equal(model.covariance_, first)
+
+
+@pytest.mark.parametrize(
+    "params, error, message",
+    [
+        ({"volatility_risk_premium_adj": 0}, ValueError, "must be strictly positive"),
+        ({"volatility_risk_premium_adj": np.nan}, ValueError, "must contain a value"),
+        ({"volatility_risk_premium_adj": [1, 2]}, ValueError, "must be a of shape"),
+        ({"window_size": 0}, ValueError, "window must be strictly greater than 2"),
+        ({"window_size": 40}, ValueError, "Not enough observations"),
+        ({"linear_regressor": 1}, TypeError, "Expected type"),
+    ],
+)
+def test_implied_covariance_preserves_array_on_rejection(params, error, message):
+    """Later premium and regression validation must not rescale caller metadata."""
+    X = np.random.default_rng(52).normal(0, 0.01, (90, 3))
+    implied_vol = np.tile([0.16, 0.24, 0.32], (90, 1))
+    original = implied_vol.copy()
+
+    with pytest.raises(error, match=message):
+        ImpliedCovariance(**params).fit(X, implied_vol=implied_vol)
+
+    np.testing.assert_array_equal(implied_vol, original)
+
+
+@pytest.mark.parametrize("nested", [False, True])
+def test_implied_covariance_preserves_routed_array(nested):
+    """The first covariance consumer must preserve metadata for every later fit."""
+    X = np.random.default_rng(52).normal(0, 0.01, (90, 3))
+    implied_vol = np.tile([0.16, 0.24, 0.32], (90, 1))
+    original = implied_vol.copy()
+    expected_vol = original[-1] / np.sqrt(252)
+    expected = np.corrcoef(X, rowvar=False) * np.outer(expected_vol, expected_vol)
+
+    with config_context(enable_metadata_routing=True):
+        child = (
+            ImpliedCovariance(volatility_risk_premium_adj=1).set_fit_request(
+                implied_vol=True
+            )
+            if nested
+            else None
+        )
+        model = MeanRisk(
+            prior_estimator=EmpiricalPrior(
+                covariance_estimator=ImpliedCovariance(
+                    prior_covariance_estimator=child, volatility_risk_premium_adj=1
+                ).set_fit_request(implied_vol=True)
+            )
+        )
+        for _ in range(2):
+            model.fit(X, implied_vol=implied_vol)
+            np.testing.assert_array_equal(implied_vol, original)
+            np.testing.assert_allclose(
+                model.prior_estimator_.return_distribution_.covariance, expected
+            )
+
+
+@pytest.mark.parametrize("representation", ["fortran", "slice", "frame", "nullable"])
+def test_implied_covariance_preserves_representations(representation):
+    """Copying retains native layout conversion and labeled-column alignment."""
+    X = np.random.default_rng(52).normal(0, 0.01, (90, 3))
+    values = np.tile([0.16, 0.24, 0.32], (90, 1))
+    if representation == "fortran":
+        implied_vol = np.asfortranarray(values)
+    elif representation == "slice":
+        implied_vol = np.repeat(values, 2, axis=1)[:, ::2]
+    else:
+        X = pd.DataFrame(X, columns=["a", "b", "c"])
+        implied_vol = pd.DataFrame(values, columns=X.columns).reindex(
+            columns=["c", "a", "b"]
+        )
+        if representation == "nullable":
+            implied_vol = implied_vol.astype("Float64")
+    original = implied_vol.copy()
+    model = ImpliedCovariance(volatility_risk_premium_adj=1)
+    model.fit(X, implied_vol=implied_vol)
+    expected_vol = values[-1] / np.sqrt(252)
+    expected = np.corrcoef(X, rowvar=False) * np.outer(expected_vol, expected_vol)
+    np.testing.assert_allclose(model.covariance_, expected)
+    if isinstance(implied_vol, pd.DataFrame):
+        pd.testing.assert_frame_equal(implied_vol, original)
+        np.testing.assert_array_equal(model.feature_names_in_, X.columns)
+    else:
+        np.testing.assert_array_equal(implied_vol, original)
 
 
 def test_compute_realised_vol(X):

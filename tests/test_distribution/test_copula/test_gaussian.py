@@ -175,8 +175,8 @@ def test_gaussian_score_exact(X, fitted_model):
 
 
 def test_gaussian_aic_bic_exact(X, fitted_model):
-    np.isclose(fitted_model.aic(X), -4.5465996070890515)
-    np.isclose(fitted_model.bic(X), -4.937161694654951)
+    assert np.isclose(fitted_model.aic(X), -4.5465996070890515)
+    assert np.isclose(fitted_model.bic(X), -4.937161694654951)
 
 
 def test_cdf_exact(

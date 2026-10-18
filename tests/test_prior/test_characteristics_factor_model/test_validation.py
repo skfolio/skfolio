@@ -532,94 +532,43 @@ class TestNeutralizeExposureValidation:
         valid_size[3, 1] = False
         assert np.all(np.isfinite(exp[:, :, 1][valid_size]))
 
-    def test_overlap_self_neutralization_raises(self):
-        """`{'momentum': ['momentum']}` is direct self-neutralization."""
+    @pytest.mark.parametrize(
+        "neutralize_against,match",
+        [
+            pytest.param(
+                {"momentum": ["momentum"]},
+                "overlap",
+                id="overlap_self_neutralization_raises",
+            ),
+            pytest.param(
+                {"style": ["style"]},
+                "overlap",
+                id="overlap_family_self_neutralization_raises",
+            ),
+            pytest.param(
+                {"style": ["momentum"]}, "overlap", id="overlap_family_vs_member_raises"
+            ),
+            pytest.param(
+                {"style": ["style", "industry"]},
+                "overlap",
+                id="overlap_mixed_family_and_factor_raises",
+            ),
+            pytest.param(
+                {"nonexistent": ["industry"]}, "'nonexistent'", id="unknown_key_raises"
+            ),
+            pytest.param(
+                {"style": ["nonexistent"]}, "'nonexistent'", id="unknown_target_raises"
+            ),
+        ],
+    )
+    def test_invalid_neutralization(self, neutralize_against, match):
         rng = np.random.default_rng(42)
         exp = self._make_exposures(rng, self.N_OBS, self.N_ASSETS, 5)
         wt = self._make_weights(self.N_OBS, self.N_ASSETS)
-
-        with pytest.raises(ValueError, match="overlap"):
+        with pytest.raises(ValueError, match=match):
             _neutralize_exposures(
                 cs_regressor=self._regressor(),
-                neutralize_against={"momentum": ["momentum"]},
-                exposures=exp,
-                benchmark_weights=wt,
-                factor_names=self.FACTOR_NAMES,
-                factor_families=self.FACTOR_FAMILIES,
-            )
-
-    def test_overlap_family_self_neutralization_raises(self):
-        """`{'style': ['style']}` is family-level self-neutralization."""
-        rng = np.random.default_rng(42)
-        exp = self._make_exposures(rng, self.N_OBS, self.N_ASSETS, 5)
-        wt = self._make_weights(self.N_OBS, self.N_ASSETS)
-
-        with pytest.raises(ValueError, match="overlap"):
-            _neutralize_exposures(
-                cs_regressor=self._regressor(),
-                neutralize_against={"style": ["style"]},
-                exposures=exp,
-                benchmark_weights=wt,
-                factor_names=self.FACTOR_NAMES,
-                factor_families=self.FACTOR_FAMILIES,
-            )
-
-    def test_overlap_family_vs_member_raises(self):
-        """`{'style': ['momentum']}` overlaps because momentum is in style."""
-        rng = np.random.default_rng(42)
-        exp = self._make_exposures(rng, self.N_OBS, self.N_ASSETS, 5)
-        wt = self._make_weights(self.N_OBS, self.N_ASSETS)
-
-        with pytest.raises(ValueError, match="overlap"):
-            _neutralize_exposures(
-                cs_regressor=self._regressor(),
-                neutralize_against={"style": ["momentum"]},
-                exposures=exp,
-                benchmark_weights=wt,
-                factor_names=self.FACTOR_NAMES,
-                factor_families=self.FACTOR_FAMILIES,
-            )
-
-    def test_overlap_mixed_family_and_factor_raises(self):
-        """`{'style': ['style', 'industry']}` overlaps on style members."""
-        rng = np.random.default_rng(42)
-        exp = self._make_exposures(rng, self.N_OBS, self.N_ASSETS, 5)
-        wt = self._make_weights(self.N_OBS, self.N_ASSETS)
-
-        with pytest.raises(ValueError, match="overlap"):
-            _neutralize_exposures(
-                cs_regressor=self._regressor(),
-                neutralize_against={"style": ["style", "industry"]},
-                exposures=exp,
-                benchmark_weights=wt,
-                factor_names=self.FACTOR_NAMES,
-                factor_families=self.FACTOR_FAMILIES,
-            )
-
-    def test_unknown_key_raises(self):
-        rng = np.random.default_rng(42)
-        exp = self._make_exposures(rng, self.N_OBS, self.N_ASSETS, 5)
-        wt = self._make_weights(self.N_OBS, self.N_ASSETS)
-
-        with pytest.raises(ValueError, match="'nonexistent'"):
-            _neutralize_exposures(
-                cs_regressor=self._regressor(),
-                neutralize_against={"nonexistent": ["industry"]},
-                exposures=exp,
-                benchmark_weights=wt,
-                factor_names=self.FACTOR_NAMES,
-                factor_families=self.FACTOR_FAMILIES,
-            )
-
-    def test_unknown_target_raises(self):
-        rng = np.random.default_rng(42)
-        exp = self._make_exposures(rng, self.N_OBS, self.N_ASSETS, 5)
-        wt = self._make_weights(self.N_OBS, self.N_ASSETS)
-
-        with pytest.raises(ValueError, match="'nonexistent'"):
-            _neutralize_exposures(
-                cs_regressor=self._regressor(),
-                neutralize_against={"style": ["nonexistent"]},
+                neutralize_against=neutralize_against,
                 exposures=exp,
                 benchmark_weights=wt,
                 factor_names=self.FACTOR_NAMES,
