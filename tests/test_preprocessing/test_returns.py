@@ -115,6 +115,23 @@ def test_returns_drops_all_nan_column_with_nan_threshold(nan_threshold):
     assert X.shape[0] == 3
 
 
+def test_returns_drops_column_emptied_by_nan_threshold():
+    index = pd.date_range("2026-01-01", periods=3)
+    prices = pd.DataFrame(
+        {
+            "A": [100.0, 101.0, np.nan],
+            "B": [np.nan, np.nan, 10.0],
+            "C": [50.0, 51.0, np.nan],
+        },
+        index=index,
+    )
+
+    # the threshold removes the last row, which leaves B with no values
+    X = prices_to_returns(X=prices, nan_threshold=0.4)
+    expected = pd.DataFrame({"A": [0.01], "C": [0.02]}, index=index[1:2])
+    pd.testing.assert_frame_equal(X, expected)
+
+
 def test_returns_drops_all_nan_factor_column():
     index = pd.date_range("2026-01-01", periods=5)
     prices = pd.DataFrame(

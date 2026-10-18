@@ -116,6 +116,9 @@ def prices_to_returns(
         to_drop = count_nan[count_nan > n_assets * nan_threshold].index
         if len(to_drop) > 0:
             df.drop(to_drop, axis=0, inplace=True)
+        # Dropping rows can leave a column with no values; drop it again so the row
+        # filtering below doesn't remove every row
+        df.dropna(axis=1, how="all", inplace=True)
 
     # Forward fill missing values
     if fill_nan:
