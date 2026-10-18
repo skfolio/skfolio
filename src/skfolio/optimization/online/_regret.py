@@ -171,7 +171,8 @@ def _solve_best_constant_weights(
     ).fit(relatives - 1.0)
     weights = comparator.weights_
     if (
-        not np.isfinite(weights).all()
+        weights is None
+        or not np.isfinite(weights).all()
         or np.any(weights < -1e-8)
         or not np.isclose(weights.sum(), 1.0, atol=1e-8, rtol=0)
     ):

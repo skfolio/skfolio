@@ -26,3 +26,15 @@ def test_zero_path_forwards_options_and_solver_errors():
         _universal_dynamic_weights(
             relatives, path_length=0, solver_params={"invalid_option": 1}
         )
+
+
+def test_missing_comparator_weights_raise_clear_error(monkeypatch):
+    from skfolio.exceptions import ConvexOptimizationError
+
+    def fit_without_weights(self, X):
+        self.weights_ = None
+        return self
+
+    monkeypatch.setattr(BestConstantRebalancedPortfolio, "fit", fit_without_weights)
+    with pytest.raises(ConvexOptimizationError, match="infeasible weights"):
+        _solve_best_constant_weights(np.array([[1.01, 0.99], [0.99, 1.01]]))

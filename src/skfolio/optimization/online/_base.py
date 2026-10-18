@@ -652,7 +652,7 @@ class BaseOnlineOptimization(BaseOptimization, OnlineParameterConstraintsMixin):
                     hasattr(X, "index")
                     and hasattr(y, "index")
                     and not callable(y.index)
-                    and not X.index.equals(y.index)
+                    and not X.index.equals(y.index)  # ty: ignore[unresolved-attribute]
                 ):
                     raise ValueError("X and y must have aligned indices")
         if sample_weight is not None:
