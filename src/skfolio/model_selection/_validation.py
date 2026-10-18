@@ -275,6 +275,8 @@ def cross_val_predict(
     X, y = safe_split(X, y, indices=column_indices, axis=1)
     X, y = sku.indexable(X, y)
 
+    # Resolve default/integer CV before routing parameters to the splitter.
+    cv = sks.check_cv(cv, y)
     routed_params = _route_params(
         estimator,
         params,
@@ -395,6 +397,8 @@ def _cross_val_predict_collection(
     X, y = safe_split(X, y, indices=column_indices, axis=1)
     X, y = sku.indexable(X, y)
 
+    # Resolve default/integer CV before routing parameters to the splitter.
+    cv = sks.check_cv(cv, y)
     routed_params = _route_collection_params(
         [estimator for _, estimator, _, _ in strategies],
         params,

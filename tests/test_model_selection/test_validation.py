@@ -1321,3 +1321,43 @@ def test_collection_unrequested_metadata_raises(X_small):
             )
 
     assert "set_fit_request" in str(exc_info.value)
+
+
+@pytest.mark.parametrize("cv", [None, 3])
+@pytest.mark.parametrize("collection", [False, True])
+@pytest.mark.parametrize("routing", [False, True])
+@pytest.mark.parametrize("with_metadata", [False, True])
+def test_default_and_integer_cv(X_small, cv, collection, routing, with_metadata):
+    """Default and integer CV retain fold alignment and training-only metadata."""
+    X = X_small.iloc[:30, :3]
+    scale = np.linspace(0.5, 1.5, len(X))
+    with config_context(enable_metadata_routing=routing):
+        estimator = ScaledWeightsOptimization()
+        if routing and with_metadata:
+            estimator = estimator.set_fit_request(scale=True)
+        models = (
+            [("first", estimator), ("second", estimator)] if collection else estimator
+        )
+        prediction = cross_val_predict(
+            models,
+            X,
+            cv=cv,
+            params={"scale": scale} if with_metadata else None,
+        )
+
+    if collection:
+        assert isinstance(prediction, Population)
+        assert [path.name for path in prediction] == ["first", "second"]
+        paths = list(prediction)
+    else:
+        assert isinstance(prediction, MultiPeriodPortfolio)
+        paths = [prediction]
+    folds = list(KFold(n_splits=5 if cv is None else cv).split(X))
+    for path in paths:
+        assert len(path) == len(folds)
+        for portfolio, (train, test) in zip(path, folds, strict=True):
+            factor = scale[train].mean() if with_metadata else 1.0
+            weights = np.full(X.shape[1], factor / X.shape[1])
+            np.testing.assert_allclose(portfolio.weights, weights)
+            np.testing.assert_array_equal(portfolio.observations, X.index[test])
+            np.testing.assert_allclose(portfolio.returns, X.iloc[test] @ weights)
