@@ -1261,16 +1261,52 @@ Only training returns may be passed to ``fit``. The fitted
 ``weights_history_`` uses coefficients learned over the entire training sample
 and must not be interpreted as an out-of-sample backtest.
 
+The following example uses bundled stock prices and a trailing momentum
+characteristic. It uses an equal-weight benchmark and reserves later observations
+for prediction and the two evaluation examples below.
+
 .. code-block:: python
 
+    import pandas as pd
     from sklearn.ensemble import RandomForestRegressor
+    from skfolio.containers import AssetPanel
+    from skfolio.datasets import load_sp500_dataset
+    from skfolio.descriptor import Passthrough
+    from skfolio.factor_exposure import FixedWeightedFactor
     from skfolio.optimization import InverseVolatility, SupervisedPortfolioPolicy
+
+    prices = load_sp500_dataset().loc["2019":"2020"].iloc[:240, :5]
+    returns = prices.pct_change(fill_method=None).dropna().iloc[20:]
+    momentum = prices.pct_change(20, fill_method=None).loc[returns.index]
+
+    def characteristic_panel(index):
+        return AssetPanel(
+            fields={"momentum": momentum.loc[index].to_numpy()},
+            asset_names=returns.columns.to_numpy(),
+            observations=index,
+        )
+
+    X_train = returns.iloc[:160]
+    characteristics_train = characteristic_panel(X_train.index)
+    # Characteristics at t are used to trade before observing the return at t+1.
+    decision_dates = returns.index[160:-1]
+    characteristics_test = characteristic_panel(decision_dates)
+    characteristics_at_decisions = characteristics_test
+    X_forward_returns = returns.iloc[161:]
+    exposures = [
+        ("momentum", FixedWeightedFactor(
+            descriptors=[("momentum", Passthrough(field="momentum"))],
+            outlier_transformer="passthrough",
+            scoring_transformer="passthrough",
+        )),
+    ]
 
     model = SupervisedPortfolioPolicy(
         characteristics_exposures=exposures,
         optimizer=InverseVolatility(),
         window_size=20,
         regressor=RandomForestRegressor(n_estimators=100, random_state=0),
+        benchmark_mcap_power=0,  # equal-weight benchmark; no market caps required
         long_only=True,
         max_weights=0.4,
     )
@@ -1390,8 +1426,9 @@ portfolios expose targets, previous holdings, ending holdings and turnover.
 
 .. code-block:: python
 
-    model.set_params(max_variance=0.0002, max_turnover=0.1)
+    model.set_params(max_variance=0.001, max_turnover=0.1)
     model.fit(X_train, characteristics=characteristics_train)
+    initial_weights = model.weights_.copy()
     evaluation = model.evaluate_sequential(
         X_forward_returns,
         characteristics_at_decisions,
@@ -1455,7 +1492,12 @@ must sum to one; all-cash initial conditions are supported.
 
 .. code-block:: python
 
-    model.set_params(long_only=True, allow_universe_changes=True)
+    # Allow the initial purchase from cash and the later full exit/reentry.
+    model.set_params(long_only=True, allow_universe_changes=True, max_turnover=1.2)
+    eligible_at_decisions = pd.DataFrame(
+        True, index=decision_dates, columns=X_train.columns
+    )
+    eligible_at_decisions.iloc[20:25] = False  # synthetic all-cash interval
     model.fit(X_train, characteristics=characteristics_train)
     execution = model.evaluate_execution(
         X_forward_returns,
