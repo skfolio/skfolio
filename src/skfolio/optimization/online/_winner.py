@@ -44,6 +44,7 @@ from skfolio.optimization.online._projection import IdentityProjector
 from skfolio.optimization.online._sword import SwordMeta
 from skfolio.optimization.online._utils import CLIP_EPSILON
 from skfolio.prior import BasePrior
+from skfolio.exceptions import OnlineStrategyNotFoundError
 
 
 class FollowTheWinner(BaseOnlineOptimization):
@@ -684,7 +685,9 @@ class FollowTheWinner(BaseOnlineOptimization):
                         eta_meta=effective_learning_rate,  # tie meta-eta to learning_rate
                     )
                 case _:
-                    raise ValueError(f"Unknown strategy provided {self.strategy}")
+                    raise OnlineStrategyNotFoundError(
+                        f"Unknown strategy provided {self.strategy}"
+                    )
 
             # Finally initialize the FOCO engine to be used in the fit method
             if self._foco_engine is None:

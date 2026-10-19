@@ -49,6 +49,7 @@ from skfolio.optimization.online._strategies import (
 )
 from skfolio.optimization.online._utils import CLIP_EPSILON
 from skfolio.prior import BasePrior
+from skfolio.exceptions import OnlineStrategyNotFoundError
 
 
 class FollowTheLoser(BaseOnlineOptimization):
@@ -554,7 +555,7 @@ class FollowTheLoser(BaseOnlineOptimization):
             case FTLStrategy.RMR:
                 self._init_rmr_components(d)
             case _:
-                raise ValueError(f"Unknown strategy: {self.strategy}")
+                raise OnlineStrategyNotFoundError(f"Unknown strategy: {self.strategy}")
 
         # Initialize strategy implementation
         if self._strategy_impl is None:
