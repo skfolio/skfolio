@@ -1088,6 +1088,44 @@ def test_entropic_risk_measure_sample_weight(returns):
     )
 
 
+@pytest.mark.parametrize("returns", [[-0.02, 0.01, 0.03], [0.01, 0.02, 0.03]])
+@pytest.mark.parametrize("sample_weight", [None, [1.0, 2.0, 3.0]])
+@pytest.mark.parametrize("two_dimensional", [False, True])
+def test_entropic_risk_measure_small_theta(returns, sample_weight, two_dimensional):
+    returns = np.array(returns)
+    theta, beta = 1e-5, 0.95
+    probability = 1 / 3 if sample_weight is None else 1 / 6
+    # All other exponential terms are smaller by at least exp(-1000), so the
+    # worst return's contribution gives the reference to floating-point precision.
+    expected = -returns[0] + theta * np.log(probability / (1 - beta))
+    if two_dimensional:
+        returns = np.column_stack([returns, returns + 0.04])
+        expected = np.array([expected, expected - 0.04])
+
+    with np.errstate(over="raise", divide="raise", invalid="raise"):
+        actual = skm.entropic_risk_measure(
+            returns, theta=theta, beta=beta, sample_weight=sample_weight
+        )
+
+    np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-15)
+
+
+@pytest.mark.parametrize("two_dimensional", [False, True])
+def test_entropic_risk_measure_tiny_relative_weight(two_dimensional):
+    returns = np.array([-0.02, 0.01])
+    expected = -returns[1] - np.log1p(-0.95)
+    if two_dimensional:
+        returns = np.column_stack([returns, returns + 0.04])
+        expected = np.array([expected, expected - 0.04])
+
+    with np.errstate(over="raise", divide="raise", invalid="raise"):
+        actual = skm.entropic_risk_measure(
+            returns, sample_weight=np.array([1e-320, 1.0])
+        )
+
+    np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-15)
+
+
 @pytest.mark.parametrize(
     "returns,expected",
     [
