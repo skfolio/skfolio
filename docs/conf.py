@@ -1289,7 +1289,23 @@ def _truncate_at_word_boundary(text: str, max_length: int) -> str:
     return f"{truncated}…"
 
 
-def get_api_summary(pagename, doctree) -> str:
+def _node_text(node, math_delimiter: str = "") -> str:
+    """Return the text of a doctree node on one line.
+
+    Inline math is wrapped in `math_delimiter`, e.g. "$" to match the Markdown pages.
+    """
+    from docutils import nodes
+
+    if math_delimiter:
+        node = node.deepcopy()
+        for math in list(node.findall(nodes.math)):
+            math.replace_self(
+                nodes.Text(f"{math_delimiter}{math.astext()}{math_delimiter}")
+            )
+    return " ".join(node.astext().split())
+
+
+def get_api_summary(pagename, doctree, math_delimiter: str = "") -> str:
     """Return the documented object's summary as one line of plain text."""
     from docutils import nodes
     from sphinx import addnodes
@@ -1312,7 +1328,7 @@ def get_api_summary(pagename, doctree) -> str:
             f"API description: no summary paragraph found for '{pagename}'"
         )
 
-    summary = " ".join(summary_node.astext().split())
+    summary = _node_text(summary_node, math_delimiter)
     if not summary:
         raise SphinxError(f"API description: empty summary found for '{pagename}'")
     if summary[-1] not in ".!?":
@@ -1332,7 +1348,7 @@ def get_api_meta_description(pagename, doctree) -> str:
 
 
 def get_first_paragraph(doctree) -> str | None:
-    """Return the first paragraph under the page title as one line of plain text."""
+    """Return the first paragraph under the page title as one line, math as `$...$`."""
     from docutils import nodes
 
     section = next(doctree.findall(nodes.section), None)
@@ -1344,13 +1360,13 @@ def get_first_paragraph(doctree) -> str | None:
     )
     if paragraph is None:
         return None
-    return " ".join(paragraph.astext().split()) or None
+    return _node_text(paragraph, math_delimiter="$") or None
 
 
 def get_llms_txt_description(pagename, doctree) -> str | None:
     """Return the `llms.txt` description of a page, or None to keep sphinx-llm's."""
     if pagename.startswith("generated/skfolio."):
-        return get_api_summary(pagename, doctree)
+        return get_api_summary(pagename, doctree, math_delimiter="$")
     if pagename in USER_GUIDE_DESCRIPTIONS:
         return USER_GUIDE_DESCRIPTIONS[pagename]
     if (
