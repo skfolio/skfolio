@@ -25,6 +25,7 @@ import scipy.sparse.linalg as scl
 import scipy.spatial.distance as scd
 import scipy.special as scs
 from scipy.sparse import csr_matrix
+from scipy.stats import rankdata
 
 from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray
 from skfolio.utils.tools import (
@@ -1443,8 +1444,8 @@ def cs_pearson_correlation(
 def cs_rank(a: FloatArray, axis: int = 0) -> FloatArray:
     """Cross-sectional rank along an axis.
 
-    Ranks are 1-based. `NaN` values remain `NaN` and are excluded from the ranking
-    (i.e. only finite values receive ranks).
+    Ranks are 1-based, with ties assigned the average of their occupied ranks.
+    Nonfinite values receive `NaN` and are excluded from the ranking.
 
     Parameters
     ----------
@@ -1457,15 +1458,16 @@ def cs_rank(a: FloatArray, axis: int = 0) -> FloatArray:
     Returns
     -------
     ranks : ndarray
-        Same shape as *a*, dtype `float64`.
+        Same shape as *a*, dtype `float64`. Scalar inputs return a one-element array.
     """
     a = np.asarray(a, dtype=float)
+    # Preserve NumPy's scalar promotion and axis validation, including empty arrays.
+    a = np.moveaxis(np.atleast_1d(a), axis, -1)
     valid = np.isfinite(a)
     a_filled = np.where(valid, a, np.inf)
-    order = np.argsort(np.argsort(a_filled, axis=axis), axis=axis)
-    ranks = order.astype(float) + 1.0
+    ranks = rankdata(a_filled, method="average", axis=-1)
     ranks[~valid] = np.nan
-    return ranks
+    return np.moveaxis(ranks, -1, axis)
 
 
 def cs_spearman_correlation(
@@ -1479,7 +1481,7 @@ def cs_spearman_correlation(
 
     Ranks the jointly finite values of *a* and *b* along `axis` with :func:`cs_rank`,
     then computes their Pearson correlation via :func:`cs_pearson_correlation`
-    (unweighted).
+    (unweighted). Ties receive average ranks; constant ranks return `NaN`.
 
     Parameters
     ----------
