@@ -192,12 +192,14 @@ class EmpiricalCovariance(BaseCovariance):
         if not sample_weight.any():
             raise ValueError("sample_weight must contain at least one positive weight.")
         weights = _normalize_sample_weight(sample_weight)
-        correction = 1.0 - self.ddof * float(weights @ weights)
-        if correction <= 0:
+        sum_squared_weights = float(weights @ weights)
+        correction = 1.0 - self.ddof * sum_squared_weights
+        # Rounding can leave a correction of a few eps where it is exactly zero.
+        if correction <= len(weights) * np.finfo(float).eps:
             raise ValueError(
                 "sample_weight gives too few effective observations for "
                 f"ddof={self.ddof}: the effective number of observations "
-                f"1 / sum(w**2) = {1.0 / float(weights @ weights):.6g} must be "
+                f"1 / sum(w**2) = {1.0 / sum_squared_weights:.6g} must be "
                 "strictly greater than ddof."
             )
         if self.assume_centered:

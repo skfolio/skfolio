@@ -3232,6 +3232,21 @@ class TestEmpiricalCovarianceSampleWeight:
         with pytest.raises(ValueError, match=match):
             EmpiricalCovariance().fit(X, sample_weight=sample_weight)
 
+    def test_ddof_equal_to_effective_observations_raises(self, data):
+        # 24 equal weights give exactly 24 effective observations, but the
+        # rounded correction 1 - ddof * sum(w**2) is eps instead of zero.
+        X, _ = data
+        sample_weight = np.r_[np.ones(24), 0.0]
+        with pytest.raises(ValueError, match="too few effective observations"):
+            EmpiricalCovariance(ddof=24).fit(X[:25], sample_weight=sample_weight)
+        model = EmpiricalCovariance(ddof=23, nearest=False).fit(
+            X[:25], sample_weight=sample_weight
+        )
+        np.testing.assert_allclose(
+            model.covariance_,
+            np.cov(X[:24], rowvar=False, ddof=23),
+        )
+
     def test_metadata_routing_through_distance_and_hrp(self, data):
         X, sample_weight = data
         expected = np.cov(X, rowvar=False, aweights=sample_weight)
