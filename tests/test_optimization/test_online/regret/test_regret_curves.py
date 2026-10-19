@@ -40,7 +40,7 @@ def _iid_relatives(T: int, n: int, seed: int = 0, sigma: float = 0.02) -> np.nda
 def test_static_regret_matches_manual(objective):
     """
     Verify that regret(estimator, X, STATIC, average=False) equals the manual cumulative difference
-    between online losses and BestConstantRebalancedPortfolio losses. Also check final static regret is >= -tol.
+    between online losses and best-constant portfolio losses. Also check final static regret is >= -tol.
     """
     T, n = 60, 6
     relatives = _iid_relatives(T=T, n=n, seed=1)

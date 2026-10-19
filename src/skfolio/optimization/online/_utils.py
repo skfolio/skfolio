@@ -24,6 +24,21 @@ def net_to_relatives(X: ArrayLike) -> np.ndarray:
     return np.maximum(1.0 + X_arr, CLIP_EPSILON)
 
 
+def relatives_to_net(X: ArrayLike) -> np.ndarray:
+    """Convert finite nonnegative price relatives to net returns.
+
+    Accepts one observation or a matrix and returns shape (T, n_assets).
+    Zero relatives represent a total loss and convert to -1 without clipping.
+    Algorithms may impose stricter positivity requirements.
+    """
+    relatives = np.asarray(X, dtype=float)
+    if relatives.ndim not in (1, 2):
+        raise ValueError("Price relatives must be a 1D or 2D array")
+    if not np.all(np.isfinite(relatives)) or np.any(relatives < 0):
+        raise ValueError("Price relatives must be finite and nonnegative")
+    return np.atleast_2d(relatives) - 1.0
+
+
 def evaluate_learning_rate(
     schedule: float | np.ndarray | Callable[[int], float], t: int
 ) -> float:

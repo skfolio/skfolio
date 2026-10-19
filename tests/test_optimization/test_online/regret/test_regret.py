@@ -2,10 +2,14 @@ import numpy as np
 import pytest
 
 from skfolio.optimization._base import BaseOptimization
+from skfolio.optimization.convex import MeanRisk, ObjectiveFunction
 from skfolio.optimization.online import RegretType
-from skfolio.optimization.online._benchmark import BestConstantRebalancedPortfolio
 from skfolio.optimization.online._mixins import FTWStrategy
-from skfolio.optimization.online._regret import _running_regret, regret
+from skfolio.optimization.online._regret import (
+    _log_wealth_expr,
+    _running_regret,
+    regret,
+)
 from skfolio.optimization.online._winner import FollowTheWinner
 
 
@@ -16,7 +20,12 @@ from skfolio.optimization.online._winner import FollowTheWinner
 def test_regret_shape_and_finiteness(X_small, avg_flag, regret_type):
     est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate="auto")
     kwargs = (
-        {"comparator": BestConstantRebalancedPortfolio()}
+        {
+            "comparator": MeanRisk(
+                objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+                overwrite_expected_return=_log_wealth_expr,
+            )
+        }
         if regret_type == RegretType.STATIC
         else {"dynamic_config": {"path_length": 5.0}}
     )
@@ -35,21 +44,30 @@ def test_running_vs_final_average_agreement_at_T(X_small):
     r_cum = regret(
         estimator=est,
         X=X_small,
-        comparator=BestConstantRebalancedPortfolio(),
+        comparator=MeanRisk(
+            objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+            overwrite_expected_return=_log_wealth_expr,
+        ),
         average=False,
     )
     # running average (R_t / t)
     r_run = regret(
         estimator=est,
         X=X_small,
-        comparator=BestConstantRebalancedPortfolio(),
+        comparator=MeanRisk(
+            objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+            overwrite_expected_return=_log_wealth_expr,
+        ),
         average="running",
     )
     # final average constant curve
     r_final = regret(
         estimator=est,
         X=X_small,
-        comparator=BestConstantRebalancedPortfolio(),
+        comparator=MeanRisk(
+            objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+            overwrite_expected_return=_log_wealth_expr,
+        ),
         average="final",
     )
 
@@ -64,21 +82,30 @@ def test_windowed_running_and_final_average(X_small):
     r_win = regret(
         estimator=est,
         X=X_small,
-        comparator=BestConstantRebalancedPortfolio(),
+        comparator=MeanRisk(
+            objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+            overwrite_expected_return=_log_wealth_expr,
+        ),
         average=False,
         window=w,
     )
     r_win_run = regret(
         estimator=est,
         X=X_small,
-        comparator=BestConstantRebalancedPortfolio(),
+        comparator=MeanRisk(
+            objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+            overwrite_expected_return=_log_wealth_expr,
+        ),
         average="running",
         window=w,
     )
     r_win_final = regret(
         estimator=est,
         X=X_small,
-        comparator=BestConstantRebalancedPortfolio(),
+        comparator=MeanRisk(
+            objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+            overwrite_expected_return=_log_wealth_expr,
+        ),
         average="final",
         window=w,
     )
@@ -94,8 +121,15 @@ def test_windowed_running_and_final_average(X_small):
 
 def test_comparator_instance_required(X_small):
     est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate="auto")
-    # Should accept instance or None (defaults to BestConstantRebalancedPortfolio())
-    r1 = regret(estimator=est, X=X_small, comparator=BestConstantRebalancedPortfolio())
+    # Should accept instance or None (defaults to MeanRisk(objective_function=ObjectiveFunction.MAXIMIZE_RETURN, overwrite_expected_return=_log_wealth_expr))
+    r1 = regret(
+        estimator=est,
+        X=X_small,
+        comparator=MeanRisk(
+            objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+            overwrite_expected_return=_log_wealth_expr,
+        ),
+    )
     r2 = regret(estimator=est, X=X_small, comparator=None)
     assert r1.shape == r2.shape
 
@@ -106,14 +140,20 @@ def test_invalid_window_raises(X_small):
         regret(
             estimator=est,
             X=X_small,
-            comparator=BestConstantRebalancedPortfolio(),
+            comparator=MeanRisk(
+                objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+                overwrite_expected_return=_log_wealth_expr,
+            ),
             window=0,
         )
     with pytest.raises(ValueError):
         regret(
             estimator=est,
             X=X_small,
-            comparator=BestConstantRebalancedPortfolio(),
+            comparator=MeanRisk(
+                objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+                overwrite_expected_return=_log_wealth_expr,
+            ),
             window=X_small.shape[0] + 1,
         )
 

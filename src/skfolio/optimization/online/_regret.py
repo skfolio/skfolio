@@ -14,8 +14,9 @@ from numpy.typing import ArrayLike
 
 from skfolio.exceptions import ConvexOptimizationError
 from skfolio.optimization._base import BaseOptimization
+from skfolio.optimization.convex import MeanRisk, ObjectiveFunction
 from skfolio.optimization.online._base import BaseOnlineOptimization
-from skfolio.optimization.online._benchmark import BestConstantRebalancedPortfolio
+from skfolio.optimization.online._utils import relatives_to_net
 from skfolio.utils.tools import AutoEnum
 
 
@@ -154,6 +155,12 @@ def _worst_case_dynamic_weights(relatives: np.ndarray) -> np.ndarray:
     return W
 
 
+def _log_wealth_expr(w: cp.Variable, estimator: MeanRisk) -> cp.Expression:
+    """Total log wealth for the fixed-weight hindsight comparator."""
+    returns = estimator.prior_estimator_.return_distribution_.returns
+    return cp.sum(cp.log(1.0 + returns @ w))
+
+
 def _solve_best_constant_weights(
     relatives: np.ndarray,
     *,
@@ -166,9 +173,19 @@ def _solve_best_constant_weights(
         raise ValueError("relatives must have shape (T, n)")
     if 0 in relatives.shape:
         return np.zeros(relatives.shape[1], dtype=float)
-    comparator = BestConstantRebalancedPortfolio(
-        solver=solver, solver_params=solver_params, raise_on_failure=True
-    ).fit(relatives - 1.0)
+    returns = relatives_to_net(relatives)
+    if np.any(relatives == 0):
+        raise ValueError("Returns must be greater than -1")
+    comparator = MeanRisk(
+        objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+        overwrite_expected_return=_log_wealth_expr,
+        min_weights=0.0,
+        max_weights=1.0,
+        budget=1.0,
+        solver=solver,
+        solver_params=solver_params,
+        raise_on_failure=True,
+    ).fit(returns)
     weights = comparator.weights_
     if (
         weights is None
@@ -200,7 +217,7 @@ def _universal_dynamic_weights(
                      or penalized with path_penalty * sum ||u_t - u_{t-1}||_p
 
     - Use norm='l1' (default) or 'l2'. L1 matches many path-length results in the literature.
-    - If path_length=0, this reduces to STATIC BestConstantRebalancedPortfolio (one u_t constant), which we can detect.
+    - If path_length=0, this reduces to STATIC best-constant portfolio (one u_t constant), which we can detect.
 
     This implements the canonical universal dynamic regret comparator used in OCO,
     where non-stationarity is captured by the path-length PT, a key regularity in
@@ -229,7 +246,7 @@ def _universal_dynamic_weights(
     if path_penalty is not None and (not np.isfinite(path_penalty) or path_penalty < 0):
         raise ValueError("path_penalty must be nonnegative.")
 
-    # Special case: path_length == 0 -> STATIC comparator (one constant u) = BestConstantRebalancedPortfolio
+    # Special case: path_length == 0 -> STATIC comparator (one constant u) = best-constant portfolio
     if path_length is not None and path_length <= 1e-18:
         w = _solve_best_constant_weights(R, solver=solver, solver_params=solver_params)
         return np.repeat(w[None, :], T, axis=0)
@@ -321,7 +338,7 @@ def regret(
     comparator with a path penalty but reports unpenalized log-wealth differences.
     Sliding windows sum these same losses; comparators are not refitted per window.
 
-    - For path_length=0, DYNAMIC_UNIVERSAL reduces to STATIC comparator (BestConstantRebalancedPortfolio).
+    - For path_length=0, DYNAMIC_UNIVERSAL reduces to STATIC comparator (best-constant portfolio).
     - For L1 norm and sufficiently large path_length (≥ 2*(T-1)), the universal dynamic comparator approaches the worst-case dynamic comparator (can change fully every round).
 
     Returns
