@@ -16,6 +16,7 @@ import numpy.typing as npt
 from sklearn.utils._param_validation import Interval, StrOptions
 
 import skfolio.typing as skt
+from skfolio.exceptions import OnlineStrategyNotFoundError
 from skfolio.measures._enums import ExtraRiskMeasure, PerfMeasure, RiskMeasure
 from skfolio.optimization.online._autograd_objectives import create_objective
 from skfolio.optimization.online._base import BaseOnlineOptimization
@@ -44,7 +45,6 @@ from skfolio.optimization.online._projection import IdentityProjector
 from skfolio.optimization.online._sword import SwordMeta
 from skfolio.optimization.online._utils import CLIP_EPSILON
 from skfolio.prior import BasePrior
-from skfolio.exceptions import OnlineStrategyNotFoundError
 
 
 class FollowTheWinner(BaseOnlineOptimization):

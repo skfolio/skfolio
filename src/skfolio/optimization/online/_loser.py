@@ -16,6 +16,7 @@ import numpy.typing as npt
 from sklearn.utils._param_validation import Interval, StrOptions
 
 import skfolio.typing as skt
+from skfolio.exceptions import OnlineStrategyNotFoundError
 from skfolio.optimization.online._autograd_objectives import (
     BaseObjective,
     create_mean_reversion_objective,
@@ -49,7 +50,6 @@ from skfolio.optimization.online._strategies import (
 )
 from skfolio.optimization.online._utils import CLIP_EPSILON
 from skfolio.prior import BasePrior
-from skfolio.exceptions import OnlineStrategyNotFoundError
 
 
 class FollowTheLoser(BaseOnlineOptimization):
