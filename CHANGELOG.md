@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.9.7 (2026-10-20)
+
+### Bug Fixes
+
+- **preprocessing**: Drop all-missing price columns before dropping rows
+  ([#435](https://github.com/skfolio/skfolio/pull/435),
+  [`2e8c784`](https://github.com/skfolio/skfolio/commit/2e8c78492118800f1ba5bfc82de63a9e5af3ab0d))
+
+
 ## v1.9.6 (2026-10-18)
 
 ### Bug Fixes
