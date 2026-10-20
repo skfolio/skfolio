@@ -43,8 +43,14 @@ class BaseUnivariateDist(BaseDistribution, ABC):
 
     @property
     def n_params(self) -> int:
-        """Number of model parameters."""
-        return len(self._scipy_params)
+        """Number of estimated model parameters.
+
+        Parameters fixed by the user at initialization (`loc` and/or `scale`) are
+        not estimated and are therefore excluded, so that the AIC and BIC penalize
+        only the free parameters.
+        """
+        n_fixed = sum(getattr(self, name, None) is not None for name in ("loc", "scale"))
+        return len(self._scipy_params) - n_fixed
 
     @property
     def fitted_repr(self) -> str:

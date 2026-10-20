@@ -45,6 +45,29 @@ def test_n_params(dummy_model):
     assert dummy_model.n_params == 2
 
 
+@pytest.mark.parametrize(
+    "estimator,kwargs,expected",
+    [
+        (Gaussian, {}, 2),
+        (Gaussian, {"loc": 0.0}, 1),
+        (Gaussian, {"loc": 0.0, "scale": 0.01}, 0),
+        (StudentT, {}, 3),
+        (StudentT, {"loc": 0.0}, 2),
+        (StudentT, {"loc": 0.0, "scale": 0.01}, 1),
+        (JohnsonSU, {"scale": 0.01}, 3),
+        (NormalInverseGaussian, {"loc": 0.0, "scale": 0.01}, 2),
+    ],
+)
+def test_n_params_excludes_fixed_parameters(estimator, kwargs, expected):
+    X = sct.norm.rvs(size=(500, 1), scale=0.01, random_state=0)
+    model = estimator(**kwargs).fit(X)
+    assert model.n_params == expected
+    # The information criteria penalize the estimated parameters only.
+    log_likelihood = model.score(X)
+    assert model.aic(X) == pytest.approx(2 * expected - 2 * log_likelihood)
+    assert model.bic(X) == pytest.approx(expected * np.log(len(X)) - 2 * log_likelihood)
+
+
 def test_score_samples(dummy_model):
     """Test that score_samples returns log-density values."""
     X = np.array([[-1.0], [0.0], [1.0]])
