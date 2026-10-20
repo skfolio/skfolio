@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import numpy as np
+import scipy.integrate as si
 import scipy.optimize as so
 import scipy.special as sp
 import scipy.stats as st
@@ -243,7 +244,7 @@ class StudentTCopula(BaseBivariateCopula):
         return self
 
     def cdf(self, X: ArrayLike) -> FloatArray:
-        """Compute the CDF of the bivariate Student-t copula.
+        r"""Compute the CDF of the bivariate Student-t copula.
 
         Parameters
         ----------
@@ -256,16 +257,22 @@ class StudentTCopula(BaseBivariateCopula):
         -------
         cdf : ndarray of shape (n_observations,)
             CDF values for each observation in X.
+
+        Notes
+        -----
+        The CDF is computed by deterministic adaptive quadrature of the conditional
+        distribution of the first margin given the second, in the Student's t scale:
+
+        .. math:: C(u, v) = \int_{-\infty}^{t_{\nu}^{-1}(v)} f_{\nu}(s)\,
+            T_{\nu+1}\left(\frac{t_{\nu}^{-1}(u) - \rho s}
+            {\sqrt{(1-\rho^2)(\nu + s^2)/(\nu+1)}}\right) ds
+
+        with :math:`f_{\nu}` and :math:`T_{\nu}` the density and the CDF of the
+        univariate Student's t distribution.
         """
         skv.check_is_fitted(self)
         X = self._validate_X(X, reset=False)
-        cdf = st.multivariate_t.cdf(
-            x=sp.stdtrit(self.dof_, X),
-            loc=np.array([0, 0]),
-            shape=np.array([[1, self.rho_], [self.rho_, 1]]),
-            df=self.dof_,
-        )
-        return cdf
+        return _bivariate_t_cdf(X, rho=self.rho_, dof=self.dof_)
 
     def partial_derivative(
         self, X: ArrayLike, first_margin: bool = False
@@ -416,6 +423,46 @@ class StudentTCopula(BaseBivariateCopula):
     def fitted_repr(self) -> str:
         """String representation of the fitted copula."""
         return f"{self.__class__.__name__}(rho={self.rho_:0.3f}, dof={self.dof_:0.2f})"
+
+
+def _bivariate_t_cdf(X: FloatArray, rho: float, dof: float) -> FloatArray:
+    """Compute the CDF of the bivariate Student's t copula by quadrature.
+
+    The bivariate CDF is written as the integral over the second margin of the
+    conditional CDF of the first margin, which is a scaled Student's t with
+    `dof + 1` degrees of freedom. The integral is evaluated with adaptive
+    quadrature, so the result is deterministic and accurate in the tails, unlike
+    the quasi-Monte Carlo estimate of `scipy.stats.multivariate_t.cdf`.
+
+    Parameters
+    ----------
+    X : ndarray of shape (n_observations, 2)
+        Bivariate uniform inputs `(u, v)`.
+
+    rho : float
+        Correlation parameter of the copula.
+
+    dof : float
+        Degrees of freedom of the copula.
+
+    Returns
+    -------
+    cdf : ndarray of shape (n_observations,)
+        CDF values for each observation in X.
+    """
+    if X.shape[0] == 0:
+        return np.empty(0)
+    x = sp.stdtrit(dof, X[:, 0])
+    y = sp.stdtrit(dof, X[:, 1])
+    scale = np.sqrt((dof + 1.0) / (1.0 - rho**2))
+
+    def integrand(w: float) -> FloatArray:
+        s = y - w
+        z = (x - rho * s) * scale / np.sqrt(dof + s * s)
+        return st.t.pdf(s, dof) * st.t.cdf(z, dof + 1.0)
+
+    cdf, _ = si.quad_vec(integrand, 0.0, np.inf, epsabs=1e-12, epsrel=1e-10)
+    return np.clip(cdf, 0.0, 1.0)
 
 
 def _neg_log_likelihood(dof: float, rho: float, X: FloatArray) -> float:

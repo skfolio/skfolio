@@ -4,7 +4,9 @@ import numpy as np
 import pytest
 from scipy.stats import norm
 
-from skfolio.distribution import BaseUnivariateDist
+from skfolio.distribution import (
+    BaseUnivariateDist,
+)
 
 
 class DummyUnivariate(BaseUnivariateDist):

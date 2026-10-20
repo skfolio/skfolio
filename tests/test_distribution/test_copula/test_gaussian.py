@@ -63,6 +63,11 @@ def test_gaussian_copula_fit_mle(random_data):
     assert -1 < model.rho_ < 1
 
 
+def test_gaussian_cdf_single_row_shape(fitted_model):
+    cdf = fitted_model.cdf(np.array([[0.3, 0.4]]))
+    assert cdf.shape == (1,)
+
+
 def test_gaussian_cdf_shape(random_data):
     """Test cdf() returns correct shape."""
     model = GaussianCopula().fit(random_data)

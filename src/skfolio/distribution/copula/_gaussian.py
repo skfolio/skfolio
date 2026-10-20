@@ -213,7 +213,7 @@ class GaussianCopula(BaseBivariateCopula):
             mean=np.array([0, 0]),
             cov=np.array([[1, self.rho_], [self.rho_, 1]]),
         )
-        return cdf
+        return np.atleast_1d(cdf)
 
     def partial_derivative(
         self, X: ArrayLike, first_margin: bool = False

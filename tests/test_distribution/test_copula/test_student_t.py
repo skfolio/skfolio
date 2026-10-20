@@ -3,6 +3,9 @@ from __future__ import annotations
 import numpy as np
 import plotly.graph_objects as go
 import pytest
+import scipy.integrate
+import scipy.special
+import scipy.stats
 
 from skfolio.distribution import StudentTCopula
 from skfolio.distribution.copula._base import _RHO_BOUNDS
@@ -92,6 +95,47 @@ def test_student_t_shape(random_data):
     assert cdf.shape == (100,)
     # All values should remain in (0,1) for a well-behaved CDF
     assert np.all(cdf >= 0) and np.all(cdf <= 1)
+
+
+def test_student_t_cdf_single_row_shape(fitted_model):
+    cdf = fitted_model.cdf(np.array([[0.3, 0.4]]))
+    assert cdf.shape == (1,)
+
+
+def test_student_t_cdf_is_deterministic(X, fitted_model):
+    """The CDF must not depend on a random stream nor on `random_state`."""
+    first = fitted_model.cdf(X)
+    second = fitted_model.cdf(X)
+    np.testing.assert_array_equal(first, second)
+    other = StudentTCopula(random_state=123)
+    other.rho_, other.dof_ = fitted_model.rho_, fitted_model.dof_
+    np.testing.assert_array_equal(other.cdf(X), first)
+
+
+@pytest.mark.parametrize("rho,dof", [(0.5, 4.0), (-0.7, 2.5), (0.0, 10.0)])
+def test_student_t_cdf_matches_bivariate_t_integral(rho, dof):
+    """C(u, v) equals the bivariate Student's t CDF integrated numerically."""
+    model = StudentTCopula()
+    model.rho_, model.dof_ = rho, dof
+    X = np.array([[0.3, 0.4], [1e-4, 1e-4]])
+    mvt = scipy.stats.multivariate_t(loc=[0, 0], shape=[[1, rho], [rho, 1]], df=dof)
+    expected = np.array(
+        [
+            scipy.integrate.dblquad(
+                lambda b, a: mvt.pdf([a, b]),
+                -np.inf,
+                scipy.special.stdtrit(dof, u),
+                -np.inf,
+                scipy.special.stdtrit(dof, v),
+                epsabs=0,
+                epsrel=1e-10,
+            )[0]
+            for u, v in X
+        ]
+    )
+    np.testing.assert_allclose(model.cdf(X), expected, rtol=1e-8)
+    # Exchangeability of the copula.
+    np.testing.assert_allclose(model.cdf(X[:, ::-1]), model.cdf(X), rtol=1e-8)
 
 
 @pytest.mark.parametrize(
