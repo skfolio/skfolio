@@ -347,10 +347,16 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         X, y = sku.indexable(X, y)
         n_samples = X.shape[0]
         min_fold_size = n_samples // self.n_folds
-        if self.purged_size + self.embargo_size >= min_fold_size - 1:
+        # A train fold between two test folds is purged on both sides and
+        # embargoed once, so it can lose up to 2 * purged_size + embargo_size
+        # observations.
+        max_removed = 2 * self.purged_size + self.embargo_size
+        if max_removed >= min_fold_size:
             raise ValueError(
-                "The sum of `purged_size` and `embargo_size` must be smaller than the"
-                f" size of a train fold which is {min_fold_size}"
+                f"`purged_size={self.purged_size}` and"
+                f" `embargo_size={self.embargo_size}` can remove up to {max_removed}"
+                f" observations from a train fold of size {min_fold_size}, leaving"
+                " it empty. Reduce `purged_size` and/or `embargo_size`."
             )
 
         fold_index_num = np.minimum(

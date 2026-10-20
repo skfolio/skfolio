@@ -443,7 +443,7 @@ def test_combinatorial_purged_cv_split_rejects_too_large_purge_and_embargo():
     cv = CombinatorialPurgedCV(n_folds=3, n_test_folds=2, purged_size=2, embargo_size=1)
     with pytest.raises(
         ValueError,
-        match="sum of `purged_size` and `embargo_size` must be smaller than the size",
+        match="leaving it empty",
     ):
         list(cv.split(X))
 
@@ -517,3 +517,19 @@ def test_combinatorial_purged_cv_uneven_folds_purge_and_embargo(
         np.testing.assert_array_equal(test, expected_folds[fold_id])
     # Adjacent test folds form one block: their shared boundary must not be purged.
     assert np.all(cv.index_train_test_[np.concatenate(tests), split_id] == 1)
+
+
+def test_combinatorial_purge_embargo_cannot_empty_a_train_fold():
+    """A train fold between two test folds is purged on both sides, so the
+    validation must bound 2 * purged_size + embargo_size."""
+    X = np.zeros((30, 2))
+    # Fold size 10: purging 8 on both sides of the middle fold would empty it.
+    cv = CombinatorialPurgedCV(n_folds=3, n_test_folds=2, purged_size=8)
+    with pytest.raises(ValueError, match="leaving it empty"):
+        list(cv.split(X))
+    cv = CombinatorialPurgedCV(n_folds=3, n_test_folds=2, purged_size=4, embargo_size=1)
+    for train, _ in cv.split(X):
+        assert len(train) > 0
+    cv = CombinatorialPurgedCV(n_folds=3, n_test_folds=2, purged_size=4, embargo_size=2)
+    with pytest.raises(ValueError, match="leaving it empty"):
+        list(cv.split(X))
