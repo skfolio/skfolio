@@ -624,13 +624,16 @@ def _online_walk_forward(
         yield last_test_slice
 
     if refit_last and last_test_slice is not None:
-        if last_test_slice.stop > last_train_end:
+        # Train through the end of the sample, not only through the last full
+        # test window, so that the estimator has seen every observation.
+        n_samples = len(X)
+        if n_samples > last_train_end:
             fit_single_estimator(
                 estimator,
                 X,
                 y,
                 fit_params=routed_params.estimator_params,
-                indices=slice(last_train_end, last_test_slice.stop),
+                indices=slice(last_train_end, n_samples),
                 method="partial_fit",
             )
 

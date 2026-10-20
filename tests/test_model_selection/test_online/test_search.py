@@ -533,6 +533,34 @@ class TestOnlineGridSearch:
         search.fit(X)
         assert hasattr(search.best_estimator_, "covariance_")
 
+    def test_best_estimator_is_refitted_through_the_end_of_the_sample(self, X):
+        """With reduce_test=False the observations after the last full test
+        window are not part of any split but must still be fed to the best
+        estimator, which is documented as trained on all available data."""
+        tail = 27
+        X = X.iloc[: WARMUP + 3 * 50 + tail]
+        search = OnlineGridSearch(
+            EWCovariance(),
+            param_grid={"half_life": [20, 40]},
+            warmup_size=WARMUP,
+            test_size=50,
+            reduce_test=False,
+        )
+        search.fit(X)
+        half_life = search.best_params_["half_life"]
+
+        reference = EWCovariance(half_life=half_life)
+        reference.partial_fit(X.iloc[:WARMUP])
+        for start in range(WARMUP, len(X), 50):
+            reference.partial_fit(X.iloc[start : start + 50])
+        np.testing.assert_allclose(
+            search.best_estimator_.covariance_, reference.covariance_
+        )
+
+        short = EWCovariance(half_life=half_life)
+        short.partial_fit(X.iloc[: len(X) - tail])
+        assert not np.allclose(search.best_estimator_.covariance_, short.covariance_)
+
     def test_not_fitted_predict_raises(self, X):
         """predict before fit raises."""
         search = OnlineGridSearch(
