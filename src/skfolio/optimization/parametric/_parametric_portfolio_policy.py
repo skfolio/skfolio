@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 
 import numpy as np
@@ -13,6 +14,7 @@ import pandas as pd
 import scipy.optimize as sco
 import sklearn as sk
 import sklearn.utils.validation as skv
+from sklearn.exceptions import ConvergenceWarning
 
 import skfolio.typing as skt
 from skfolio._constants import _BENCHMARK_WEIGHTS, _MARKET_CAP
@@ -24,7 +26,6 @@ from skfolio.utils.tools import (
     _validate_non_negative_integer,
     _validate_non_negative_real,
     _validate_positive_real,
-    input_to_array,
 )
 from skfolio.utils.validation import validate_asset_panel
 
@@ -343,7 +344,8 @@ class ParametricPortfolioPolicy(BaseOptimization):
         X : DataFrame of shape (n_observations, n_assets)
             Returns of the assets in the investment universe. The columns define the
             assets and their order, and must all be present in `characteristics`. The
-            index must match `characteristics.observations`.
+            index must match `characteristics.observations`. Missing returns are NaN
+            and contribute zero for a held asset; infinite returns raise.
 
         y : Ignored
             Not used, present for API consistency by convention.
@@ -369,6 +371,10 @@ class ParametricPortfolioPolicy(BaseOptimization):
         returns = np.asarray(
             skv.validate_data(self, X, ensure_all_finite=False), dtype=float
         )
+        if np.isinf(returns).any():
+            raise ValueError(
+                "`X` contains infinite returns. Use NaN for missing returns."
+            )
         n_assets = returns.shape[1]
 
         characteristics = self._validate_characteristics(characteristics, X)
@@ -380,14 +386,7 @@ class ParametricPortfolioPolicy(BaseOptimization):
 
         previous_weights = None
         if self.previous_weights is not None:
-            previous_weights = input_to_array(
-                items=self.previous_weights,
-                n_assets=n_assets,
-                fill_value=0.0,
-                dim=1,
-                assets_names=getattr(self, "feature_names_in_", None),
-                name="previous_weights",
-            )
+            previous_weights = self._clean_previous_weights(n_assets=n_assets)
 
         # Objective on the realized path: weights at t are evaluated on the returns
         # of t + 1. Observations with no eligible asset are excluded.
@@ -794,6 +793,17 @@ class ParametricPortfolioPolicy(BaseOptimization):
         if not np.isfinite(result.fun):
             raise ValueError(
                 f"The solver failed to find a feasible policy: {result.message}"
+            )
+        if not result.success:
+            warnings.warn(
+                f"The solver did not report convergence ({result.message}); the "
+                "coefficients may not be optimal. Inspect `solver_result_`, increase "
+                "`max_iter`, adjust `tol` or `solver_params`, or choose another "
+                "`solver`. With `long_only=True` or `transaction_costs > 0` the "
+                "objective has kinks, and gradient-based solvers can stop at a kink "
+                "with this flag set even when it is the optimum.",
+                ConvergenceWarning,
+                stacklevel=3,
             )
         result.benchmark_utility = benchmark_utility
         return np.asarray(result.x, dtype=float), result

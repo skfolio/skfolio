@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.exceptions import ConvergenceWarning
 
 from skfolio import Portfolio
 from skfolio.containers import AssetPanel
@@ -177,7 +180,8 @@ class TestFit:
     def test_higher_risk_aversion_shrinks_tilt(self):
         panel, X = _signal_panel()
         coefs = []
-        for gamma in (1.0, 5.0, 20.0):
+        # The signal is nearly noise-free, so below gamma = 3 the optimum is unbounded
+        for gamma in (3.0, 5.0, 20.0):
             model = ParametricPortfolioPolicy(
                 characteristics_exposures=_signal_exposure(), risk_aversion=gamma
             ).fit(X, characteristics=panel)
@@ -413,6 +417,23 @@ class TestValidation:
         )
         np.testing.assert_almost_equal(model.weights_.sum(), 1.0)
 
+    @pytest.mark.parametrize("value", [np.inf, -np.inf])
+    def test_infinite_returns_raise(self, value):
+        panel, X = _signal_panel()
+        X.iloc[10, 3] = value
+        with pytest.raises(ValueError, match="infinite returns"):
+            ParametricPortfolioPolicy(characteristics_exposures=_signal_exposure()).fit(
+                X, characteristics=panel
+            )
+
+    def test_missing_returns_are_allowed(self):
+        panel, X = _signal_panel()
+        X.iloc[10, 3] = np.nan
+        model = ParametricPortfolioPolicy(
+            characteristics_exposures=_signal_exposure()
+        ).fit(X, characteristics=panel)
+        assert np.isfinite(model.coef_).all()
+
 
 class TestConstraintsAndCosts:
     def test_long_only_weights(self):
@@ -450,6 +471,9 @@ class TestConstraintsAndCosts:
         assert 0 < costly.coef_[0] < free.coef_[0]
         assert costly.utility_ <= free.utility_
 
+    # A 5% cost makes the benchmark optimal; it sits on the kink of the turnover
+    # term, where L-BFGS-B stops with its line-search flag set.
+    @pytest.mark.filterwarnings("ignore::sklearn.exceptions.ConvergenceWarning")
     def test_transaction_costs_use_previous_weights(self):
         panel, X = _signal_panel(n_observations=60)
         n_assets = X.shape[1]
@@ -468,6 +492,20 @@ class TestConstraintsAndCosts:
         ).fit(X, characteristics=panel)
         assert from_cash.utility_ < from_nothing.utility_
         assert from_benchmark.utility_ == pytest.approx(from_nothing.utility_)
+
+    def test_scalar_previous_weights_are_broadcast(self):
+        panel, X = _signal_panel(n_observations=60)
+        kwargs = dict(
+            characteristics_exposures=_signal_exposure(), transaction_costs=0.001
+        )
+        scalar = ParametricPortfolioPolicy(previous_weights=0.0, **kwargs).fit(
+            X, characteristics=panel
+        )
+        array = ParametricPortfolioPolicy(
+            previous_weights=np.zeros(X.shape[1]), **kwargs
+        ).fit(X, characteristics=panel)
+        np.testing.assert_allclose(scalar.coef_, array.coef_)
+        assert scalar.utility_ == pytest.approx(array.utility_)
 
     def test_solver_override(self, panel, X):
         default = ParametricPortfolioPolicy(characteristics_exposures=_exposures()).fit(
@@ -587,3 +625,20 @@ class TestSolver:
         )
         assert np.all(1.0 + path > 0)
         assert np.isfinite(model.utility_)
+
+    def test_unconverged_solver_warns(self):
+        panel, X = _signal_panel()
+        model = ParametricPortfolioPolicy(
+            characteristics_exposures=_signal_exposure(), max_iter=1
+        )
+        with pytest.warns(ConvergenceWarning, match="did not report convergence"):
+            model.fit(X, characteristics=panel)
+        assert not model.solver_result_.success
+
+    def test_converged_solver_does_not_warn(self):
+        panel, X = _signal_panel()
+        model = ParametricPortfolioPolicy(characteristics_exposures=_signal_exposure())
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", ConvergenceWarning)
+            model.fit(X, characteristics=panel)
+        assert model.solver_result_.success
