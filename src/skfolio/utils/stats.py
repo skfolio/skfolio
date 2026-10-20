@@ -623,26 +623,30 @@ def compute_optimal_n_clusters(distance: FloatArray, linkage_matrix: FloatArray)
     It applies the two-order difference of the within-cluster dispersion to replace the
     reference null distribution in the Gap statistic.
 
-    The number of cluster :math:`k` is determined by:
+    The number of clusters :math:`k` is the one maximizing the (centered) two-order
+    difference of the within-cluster dispersion:
 
     .. math::  \begin{cases}
                 \begin{aligned}
-                &\max_{k} & & W_{k+2} + W_{k} - 2 W_{k+1} \\
-                &\text{s.t.} & & 1 \ge c \ge max\bigl(8, \sqrt{n}\bigr) \\
+                &\max_{k} & & W_{k-1} + W_{k+1} - 2 W_{k} \\
+                &\text{s.t.} & & 2 \le k \le K - 1 \\
                 \end{aligned}
                 \end{cases}
 
-    with :math:`n` the sample size and :math:`W_{k}` the within-cluster dispersions
-    defined as:
+    with :math:`K = \min\bigl(n, \max(8, \lfloor\sqrt{n}\rceil)\bigr)` the largest
+    number of clusters considered, :math:`n` the number of assets and :math:`W_{k}`
+    the within-cluster dispersion of the dendrogram cut into :math:`k` clusters,
+    defined as the sum over the clusters of their mean pairwise distance:
 
-    .. math:: W_{k} = \sum_{i=1}^{k} \frac{D_{i}}{2|C_{i}|}
+    .. math:: W_{k} = \sum_{i=1}^{k} \frac{D_{i}}{|C_{i}| \, (|C_{i}| - 1)}
 
-    where :math:`|C_{i}|` is the cardinality of cluster :math:`i` and :math:`D_{i}` its
-    density defined as:
+    where :math:`|C_{i}|` is the cardinality of cluster :math:`i` and :math:`D_{i}`
+    its density defined as:
 
     .. math:: D_{i} = \sum_{u \in C_{i}} \sum_{v \in C_{i}} d(u,v)
 
-    with :math:`d(u,v)` the distance between u and v.
+    with :math:`d(u,v)` the distance between u and v. Singleton clusters contribute
+    zero. With two assets, two clusters are returned.
 
     Parameters
     ----------

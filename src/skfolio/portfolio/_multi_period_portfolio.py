@@ -763,7 +763,7 @@ class MultiPeriodPortfolio(BasePortfolio):
             :math:`contribution(w_i) = w_i \frac{measure(w_i + h) - measure(w_i - h)}{2h}`.
             If `None`, uses `1e-5`.
 
-        to_df : bool, default=False
+        to_df : bool, default=True
             If this is set to True, a DataFrame with asset names in index and portfolio
             names in columns is returned, otherwise a list of numpy array is returned.
             When a DataFrame is returned, the assets with zero weights are removed.
