@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, Literal
 
 import numpy as np
@@ -504,8 +505,9 @@ class DistanceCorrelation(BaseDistance):
 
     Parameters
     ----------
-    threshold : float, default=0.5
-        Distance correlation threshold.
+    threshold : float, optional
+        Deprecated and ignored: this parameter has never affected the estimator.
+        Passing a value emits a `FutureWarning`. It will be removed in version 2.0.
 
     Attributes
     ----------
@@ -528,7 +530,7 @@ class DistanceCorrelation(BaseDistance):
         Gábor J. Szekely , 2005
     """
 
-    def __init__(self, threshold: float = 0.5) -> None:
+    def __init__(self, threshold: float | None = None) -> None:
         self.threshold = threshold
 
     @staticmethod
@@ -559,6 +561,13 @@ class DistanceCorrelation(BaseDistance):
         self : DistanceCorrelation
             Fitted estimator.
         """
+        if self.threshold is not None:
+            warnings.warn(
+                "`threshold` is deprecated and will be removed in version 2.0. "
+                "It has no effect on `DistanceCorrelation`.",
+                FutureWarning,
+                stacklevel=2,
+            )
         X = skv.validate_data(self, X)
         n_assets = X.shape[1]
         corr = np.ones((n_assets, n_assets))
