@@ -408,3 +408,32 @@ def test_split_rejects_non_integer_parameters():
     cv = MultipleRandomizedCV(walk_forward=wf, n_subsamples=2.0, asset_subset_size=2)
     with pytest.raises(TypeError, match="`num_subsamples` must be an integer"):
         list(cv.split(X))
+
+
+def test_multiple_randomized_cv_accepts_random_state_instance():
+    """`random_state` is documented as accepting a RandomState instance."""
+    X = np.zeros((10, 5))
+    params = dict(
+        walk_forward=WalkForward(test_size=1, train_size=2),
+        n_subsamples=2,
+        asset_subset_size=3,
+        window_size=4,
+    )
+    splits_a = list(
+        MultipleRandomizedCV(**params, random_state=np.random.RandomState(0)).split(X)
+    )
+    splits_b = list(
+        MultipleRandomizedCV(**params, random_state=np.random.RandomState(0)).split(X)
+    )
+    splits_c = list(
+        MultipleRandomizedCV(**params, random_state=np.random.RandomState(1)).split(X)
+    )
+    assert len(splits_a) == len(splits_b) == len(splits_c) > 0
+    for a, b in zip(splits_a, splits_b, strict=True):
+        for x, y in zip(a, b, strict=True):
+            np.testing.assert_array_equal(x, y)
+    assert any(
+        not np.array_equal(x, y)
+        for a, c in zip(splits_a, splits_c, strict=True)
+        for x, y in zip(a, c, strict=True)
+    )

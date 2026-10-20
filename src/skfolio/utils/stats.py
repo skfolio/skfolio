@@ -842,7 +842,10 @@ def combination_by_index(idx: int, n: int, k: int) -> IntArray:
 
 
 def sample_unique_subsets(
-    n: int, k: int, n_subsets: int, random_state: int | None = None
+    n: int,
+    k: int,
+    n_subsets: int,
+    random_state: int | np.random.RandomState | None = None,
 ) -> IntArray:
     """
     Generate unique k-element subsets from a universe of size n using combinatorial
@@ -891,6 +894,10 @@ def sample_unique_subsets(
             f"n_subsets={n_subsets} must satisfy 0 <= n_subsets <= C({n},{k})={total}."
         )
 
+    if isinstance(random_state, np.random.RandomState):
+        # `random.Random` only accepts hashable seeds, so we draw one from the
+        # provided generator instead.
+        random_state = int(random_state.randint(np.iinfo(np.int32).max))
     rng = random.Random(random_state)
     ranks = rng.sample(range(total), k=n_subsets)
     # random.sample has a special-case for range objects that avoids building a list of

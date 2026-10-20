@@ -203,7 +203,7 @@ class MultipleRandomizedCV:
         n_subsamples: int,
         asset_subset_size: int,
         window_size: int | None = None,
-        random_state: int | None = None,
+        random_state: int | np.random.RandomState | None = None,
     ) -> None:
         self.walk_forward = walk_forward
         self.n_subsamples = n_subsamples
