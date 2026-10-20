@@ -1126,6 +1126,21 @@ def test_entropic_risk_measure_tiny_relative_weight(two_dimensional):
     np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-15)
 
 
+@pytest.mark.parametrize("sample_weight", [None, [1.0, 2.0]])
+@pytest.mark.parametrize("two_dimensional", [False, True])
+def test_entropic_risk_measure_without_usable_returns(sample_weight, two_dimensional):
+    returns = np.full(2, np.nan)
+    expected = np.nan
+    if two_dimensional:
+        returns = np.column_stack([returns, np.full(2, 0.01)])
+        expected = np.array([np.nan, -0.01 - np.log1p(-0.95)])
+
+    with np.errstate(over="raise", divide="raise", invalid="raise"):
+        actual = skm.entropic_risk_measure(returns, sample_weight=sample_weight)
+
+    np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-15)
+
+
 @pytest.mark.parametrize(
     "returns,expected",
     [
