@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.9.10 (2026-10-21)
+
+### Bug Fixes
+
+- **moments**: Calibrate diagonal first-moment STVU
+  ([#445](https://github.com/skfolio/skfolio/pull/445),
+  [`e398f4d`](https://github.com/skfolio/skfolio/commit/e398f4d159e6629442851df27c41db22bf1502a6))
+
+
 ## v1.9.9 (2026-10-21)
 
 ### Bug Fixes
