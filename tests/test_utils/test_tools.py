@@ -693,6 +693,51 @@ def test_safe_indexing_slice_on_columns():
     )
 
 
+@pytest.mark.parametrize("axis", [0, 1])
+@pytest.mark.parametrize("indices", [slice(1, 3), slice(None, None, -1), slice(3, 1)])
+def test_safe_indexing_dataframe_slice(axis, indices):
+    X = pd.DataFrame(
+        np.arange(20).reshape(5, 4), index=list("edcba"), columns=list("DCBA")
+    )
+
+    result = safe_indexing(X, indices, axis=axis)
+
+    expected = X.iloc[indices] if axis == 0 else X.iloc[:, indices]
+    pd.testing.assert_frame_equal(result, expected)
+
+
+def test_safe_split_dataframe_column_slice():
+    X = pd.DataFrame(np.arange(20).reshape(5, 4), columns=list("DCBA"))
+    y = X * 2
+
+    X_subset, y_subset = safe_split(X, y, indices=slice(1, 3), axis=1)
+
+    pd.testing.assert_frame_equal(X_subset, X.iloc[:, 1:3])
+    pd.testing.assert_frame_equal(y_subset, y.iloc[:, 1:3])
+
+
+@pytest.mark.parametrize("as_series", [False, True])
+def test_safe_indexing_labelled_row_slice(as_series):
+    X = pd.DataFrame({"a": range(5)}, index=list("abcde"))
+    if as_series:
+        X = X["a"]
+
+    result = safe_indexing(X, slice("b", "d"))
+
+    if as_series:
+        pd.testing.assert_series_equal(result, X.loc["b":"d"])
+    else:
+        pd.testing.assert_frame_equal(result, X.loc["b":"d"])
+
+
+def test_safe_indexing_datetime_labelled_row_slice():
+    X = pd.DataFrame({"a": range(5)}, index=pd.date_range("2020-01-01", periods=5))
+
+    result = safe_indexing(X, slice("2020-01-02", "2020-01-04"))
+
+    pd.testing.assert_frame_equal(result, X.loc["2020-01-02":"2020-01-04"])
+
+
 class TestCacheMethod:
     class _Cached:
         def __init__(self, cache):
