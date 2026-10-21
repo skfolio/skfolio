@@ -1120,11 +1120,9 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
                         RegimeAdjustmentTarget.MAHALANOBIS
                         | RegimeAdjustmentTarget.DIAGONAL
                     ):
-                        # E[chi_n]. For DIAGONAL this is exact when the
-                        # standardized returns are independent, consistent with
-                        # the LOG kappa. Correlation lowers E[d] further, while
-                        # sqrt(n) = sqrt(E[d^2]) is an upper bound on E[d] that
-                        # would bias the multiplier below one.
+                        # E[chi_n] avoids the sqrt(n) bias for independent standard normal returns.
+                        # DIAGONAL calibration remains approximate with correlation,
+                        # non-Gaussian returns, or estimated variances.
                         denom = np.sqrt(2.0) * np.exp(
                             scs.gammaln(0.5 * (n_active + 1))
                             - scs.gammaln(0.5 * n_active)
