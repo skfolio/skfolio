@@ -1629,6 +1629,44 @@ def test_vine_score_samples_log_transform(small_returns):
     assert np.all(np.isfinite(scores))
 
 
+def test_vine_score_samples_log_transform_is_a_density_of_returns(small_returns):
+    """With log_transform the score includes the -log1p(X) Jacobian (#451).
+
+    A vine fitted on log1p(X) without the transform scores log1p(X); the density of
+    the returns X differs from it by -sum(log1p(X)).
+    """
+    kwargs = dict(
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula()],
+        random_state=0,
+    )
+    X = np.asarray(small_returns)
+    transformed = VineCopula(log_transform=True, **kwargs).fit(X)
+    plain = VineCopula(log_transform=False, **kwargs).fit(np.log1p(X))
+    np.testing.assert_allclose(
+        transformed.score_samples(X),
+        plain.score_samples(np.log1p(X)) - np.log1p(X).sum(axis=1),
+    )
+
+
+def test_vine_score_samples_log_transform_only_on_selected_assets(small_returns):
+    kwargs = dict(
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula()],
+        random_state=0,
+    )
+    X = np.asarray(small_returns)
+    mask = [True, False, False]
+    partial = VineCopula(log_transform=mask, **kwargs).fit(X)
+    Y = X.copy()
+    Y[:, 0] = np.log1p(Y[:, 0])
+    plain = VineCopula(log_transform=False, **kwargs).fit(Y)
+    np.testing.assert_allclose(
+        partial.score_samples(X),
+        plain.score_samples(Y) - np.log1p(X[:, 0]),
+    )
+
+
 def test_vine_score_samples_without_marginals(small_uniforms):
     model = VineCopula(
         fit_marginals=False, copula_candidates=[GaussianCopula()], random_state=0

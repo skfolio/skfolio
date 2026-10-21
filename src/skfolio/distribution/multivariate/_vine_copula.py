@@ -483,13 +483,21 @@ class VineCopula(BaseMultivariateDist):
         Returns
         -------
         density : ndarray of shape (n_observations,)
-            The log-likelihood of each sample under the fitted vine copula.
+            The log-likelihood of each sample under the fitted vine copula. It is a
+            density of the returns `X`: for assets with `log_transform=True`, the
+            model is fitted on `log1p(X)` and the change of variable term
+            `-log1p(X)` is added, so the result is comparable across
+            `log_transform` settings.
         """
         skv.check_is_fitted(self)
         X = skv.validate_data(self, X, dtype=np.float64, reset=False)
         self.clear_cache()
 
+        log_jacobian = 0.0
         if np.any(self._log_transform):
+            # Change of variable y = log1p(x): p_X(x) = p_Y(y) / (1 + x), hence
+            # log p_X(x) = log p_Y(y) - log1p(x).
+            log_jacobian = -np.log1p(X[:, self._log_transform]).sum(axis=1)
             X = np.where(self._log_transform, np.log1p(X), X)
 
         if not self.fit_marginals:
@@ -520,7 +528,7 @@ class VineCopula(BaseMultivariateDist):
                 score_samples += edge.copula.score_samples(X=edge.get_X())
         self.clear_cache()
 
-        return score_samples
+        return score_samples + log_jacobian
 
     def sample(
         self,
