@@ -281,7 +281,7 @@ class ImpliedCovariance(BaseCovariance):
             Not used, present for API consistency by convention.
 
         implied_vol : array-like of shape (n_observations, n_assets)
-            Nonnegative implied volatilities of the assets.
+            Implied volatilities of the assets.
 
         **fit_params : dict
             Parameters to pass to the underlying estimators.
@@ -489,7 +489,7 @@ def check_implied_vol(
     Parameters
     ----------
     implied_vol : array-like of shape (n_observations, n_assets)
-        Nonnegative implied volatilities of the assets.
+        Implied volatilities of the assets.
 
     X : ndarray of shape (n_observations, n_assets)
         Validated price returns of the assets.
