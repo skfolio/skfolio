@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v1.9.8 (2026-10-21)
+
+### Bug Fixes
+
+- **moments**: Reject negative implied volatilities
+  ([#443](https://github.com/skfolio/skfolio/pull/443),
+  [`9c1af18`](https://github.com/skfolio/skfolio/commit/9c1af18fc4efa66b5f2b9697a4860dde4930e49a))
+
+### Documentation
+
+- Complete llms.txt descriptions and group pages into sections
+  ([#441](https://github.com/skfolio/skfolio/pull/441),
+  [`e1af0ef`](https://github.com/skfolio/skfolio/commit/e1af0ef5a2da4d8845b65f367957ac2b0e793306))
+
+
 ## v1.9.7 (2026-10-20)
 
 ### Bug Fixes
