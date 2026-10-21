@@ -1116,16 +1116,17 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
                 match self.regime_target:
                     case RegimeAdjustmentTarget.PORTFOLIO:
                         denom = np.sqrt(n_active) * np.sqrt(2.0 / np.pi)
-                    case RegimeAdjustmentTarget.MAHALANOBIS:
+                    case (
+                        RegimeAdjustmentTarget.MAHALANOBIS
+                        | RegimeAdjustmentTarget.DIAGONAL
+                    ):
+                        # E[chi_n] avoids the sqrt(n) bias for independent standard normal returns.
+                        # DIAGONAL calibration remains approximate with correlation,
+                        # non-Gaussian returns, or estimated variances.
                         denom = np.sqrt(2.0) * np.exp(
                             scs.gammaln(0.5 * (n_active + 1))
                             - scs.gammaln(0.5 * n_active)
                         )
-                    case RegimeAdjustmentTarget.DIAGONAL:
-                        # Diagonal STVU ignores correlations, so only the second
-                        # moment calibration is exact in general. Keep the
-                        # first-moment normalization as the diagonal-risk proxy.
-                        denom = np.sqrt(n_active)
                 transformed_values = sqrt_stats / denom
             case RegimeAdjustmentMethod.LOG:
                 transformed_values = (
