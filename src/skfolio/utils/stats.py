@@ -25,7 +25,6 @@ import scipy.sparse.linalg as scl
 import scipy.spatial.distance as scd
 import scipy.special as scs
 from scipy.sparse import csr_matrix
-from scipy.stats import rankdata
 
 from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray
 from skfolio.utils.tools import (
@@ -1441,6 +1440,24 @@ def cs_pearson_correlation(
     return float(corr) if corr.ndim == 0 else corr
 
 
+def _average_rank_1d(a: FloatArray) -> FloatArray:
+    """Assign average ranks to finite values in a one-dimensional array."""
+    valid = np.isfinite(a)
+
+    # Put nonfinite values last; mask their ranks below.
+    _, inverse, counts = np.unique(
+        np.where(valid, a, np.inf),
+        return_inverse=True,
+        return_counts=True,
+    )
+
+    # Each group's last rank minus half its span gives its average rank.
+    group_ranks = np.cumsum(counts) - (counts - 1) * 0.5
+    ranks = group_ranks[inverse]
+    ranks[~valid] = np.nan
+    return ranks
+
+
 def cs_rank(a: FloatArray, axis: int = 0) -> FloatArray:
     """Cross-sectional rank along an axis.
 
@@ -1460,13 +1477,14 @@ def cs_rank(a: FloatArray, axis: int = 0) -> FloatArray:
     ranks : ndarray
         Same shape as *a*, dtype `float64`. Scalar inputs return a one-element array.
     """
-    a = np.asarray(a, dtype=float)
+    a = np.atleast_1d(np.asarray(a, dtype=float))
     # Preserve NumPy's scalar promotion and axis validation, including empty arrays.
-    a = np.moveaxis(np.atleast_1d(a), axis, -1)
-    valid = np.isfinite(a)
-    a_filled = np.where(valid, a, np.inf)
-    ranks = rankdata(a_filled, method="average", axis=-1)
-    ranks[~valid] = np.nan
+    values = np.moveaxis(a, axis, -1)
+    if a.size == 0:
+        return np.empty_like(a)
+
+    # Bound temporary allocations to one cross-section for large factor arrays.
+    ranks = np.apply_along_axis(_average_rank_1d, -1, values)
     return np.moveaxis(ranks, -1, axis)
 
 
@@ -1516,8 +1534,10 @@ def cs_spearman_correlation(
             f"`a` and `b` must be broadcastable, got shapes {a.shape} and {b.shape}."
         ) from None
 
-    a = np.broadcast_to(a, shape)
-    b = np.broadcast_to(b, shape)
+    # Match dimensions without repeating fully finite cross-sections before ranking.
+    # Missing values still require the pair-specific ranks computed below.
+    a = a.reshape((1,) * (len(shape) - a.ndim) + a.shape)
+    b = b.reshape((1,) * (len(shape) - b.ndim) + b.shape)
     valid = np.isfinite(a) & np.isfinite(b)
 
     if np.all(valid):

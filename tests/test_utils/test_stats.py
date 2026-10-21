@@ -1582,6 +1582,37 @@ class TestCsRank:
 class TestCsSpearmanCorrelation:
     """Tests for cs_spearman_correlation."""
 
+    @pytest.mark.parametrize("axis", [1, -1])
+    @pytest.mark.parametrize("missing", [False, True])
+    @pytest.mark.parametrize("min_count", [3, 4])
+    def test_broadcast_inputs_of_different_dimensions(self, axis, missing, min_count):
+        """Broadcast ranks use each pair's finite observations and sample count."""
+        a = np.array([1.0, 1.0, 2.0, 3.0])
+        b = np.array([[1.0, 2.0, 2.0, 4.0], [1.0, 2.0, 3.0, 4.0]])
+        if missing:
+            b[1, 1] = np.nan
+        before_a, before_b = a.copy(), b.copy()
+        a.setflags(write=False)
+        b.setflags(write=False)
+
+        # Midranks give 5/6 and 3/sqrt(10); removing the second asset leaves
+        # identical ranks [1, 2, 3] in the second pair, with only three samples.
+        second = 1.0 if missing else 3.0 / np.sqrt(10.0)
+        if missing and min_count == 4:
+            second = np.nan
+        assert_allclose(
+            cs_spearman_correlation(a, b, axis=axis, min_count=min_count),
+            [5.0 / 6.0, second],
+        )
+        np.testing.assert_array_equal(a, before_a)
+        np.testing.assert_array_equal(b, before_b)
+
+    def test_broadcast_constant_along_rank_axis(self):
+        """A repeated scalar stays constant across the broadcast ranking axis."""
+        a = np.ones((2, 1))
+        b = np.array([[1.0, 2.0, 3.0, 4.0], [4.0, 3.0, 2.0, 1.0]])
+        assert_allclose(cs_spearman_correlation(a, b, axis=1), [np.nan, np.nan])
+
     @pytest.mark.parametrize("axis", [0, 1, -1])
     def test_ties_with_pairwise_mask_and_broadcasting(self, axis):
         """Joint masking precedes midranking across broadcast factor axes."""
