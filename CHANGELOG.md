@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.9.9 (2026-10-21)
+
+### Bug Fixes
+
+- **utils**: Support pandas column slices in safe_indexing
+  ([#444](https://github.com/skfolio/skfolio/pull/444),
+  [`bdb0de5`](https://github.com/skfolio/skfolio/commit/bdb0de5bb358201482dbf8e6270772da80eb8e17))
+
+
 ## v1.9.8 (2026-10-21)
 
 ### Bug Fixes
