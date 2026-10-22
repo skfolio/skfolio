@@ -20,3 +20,11 @@ def test_constraint_tolerance_is_respected(helper, kind):
     helper(weights, atol=1e-7)
     with pytest.raises(AssertionError):
         helper(weights, atol=1e-9)
+
+
+def test_budget_tolerance_does_not_relax_bounds():
+    assert_box_budget(np.array([0.5, 0.5 + 5e-7]), budget_atol=1e-6)
+    with pytest.raises(AssertionError):
+        assert_box_budget(np.array([0.5, 0.5 + 2e-6]), budget_atol=1e-6)
+    with pytest.raises(AssertionError):
+        assert_box_budget(np.array([-5e-8, 1 + 5e-8]), budget_atol=1e-6)

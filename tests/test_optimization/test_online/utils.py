@@ -7,9 +7,16 @@ def assert_box_budget(
     upper: float = 1.0,
     budget: float = 1.0,
     atol=1e-8,
+    *,
+    budget_atol: float | None = None,
 ):
+    if budget_atol is None:
+        budget_atol = atol
     assert np.isfinite(w).all(), "Infinite weights!"
-    assert np.all(abs(np.sum(w) - budget) <= atol), "budget constraint not respected"
+    budget_error = abs(np.sum(w) - budget)
+    assert budget_error <= budget_atol, (
+        f"budget error {budget_error:.3g} exceeds tolerance {budget_atol:.3g}"
+    )
     assert np.all(np.max(w) - upper <= atol), "box constraint (upper) not respected"
     assert np.all(np.min(w) - lower >= -atol), "box constraint (lower) not respected"
 

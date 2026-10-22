@@ -131,15 +131,20 @@ def test_eg_tilde_implementation(X_small):
 )
 def test_update_mode(method, X_small):
     """Test that FTRL and OMD modes run and produce different results."""
+    # Older conic solvers need a 1e-6 budget tolerance; keep bounds at 1e-8.
     # OMD mode (default)
     est_omd = FollowTheWinner(strategy=method, update_mode="omd")
     est_omd.fit(X_small)
-    assert_box_budget(w=est_omd.weights_, lower=0.0, upper=1.0, budget=1.0)
+    assert_box_budget(
+        w=est_omd.weights_, lower=0.0, upper=1.0, budget=1.0, budget_atol=1e-6
+    )
 
     # FTRL mode
     est_ftrl = FollowTheWinner(strategy=method, update_mode="ftrl")
     est_ftrl.fit(X_small)
-    assert_box_budget(w=est_ftrl.weights_, lower=0.0, upper=1.0, budget=1.0)
+    assert_box_budget(
+        w=est_ftrl.weights_, lower=0.0, upper=1.0, budget=1.0, budget_atol=1e-6
+    )
 
 
 @pytest.mark.parametrize(
@@ -148,10 +153,12 @@ def test_update_mode(method, X_small):
 )
 def test_learning_rate(strategy, learning_rate, X_small):
     """Test that a callable learning_rate runs correctly."""
-    # Constant learning_rate
+    # Allow the conic solver budget residual without relaxing weight bounds.
     est = FollowTheWinner(strategy=strategy, learning_rate=learning_rate)
     est.fit(X_small)
-    assert_box_budget(w=est.weights_, lower=0.0, upper=1.0, budget=1.0)
+    assert_box_budget(
+        w=est.weights_, lower=0.0, upper=1.0, budget=1.0, budget_atol=1e-6
+    )
 
 
 def test_entropy_omd_matches_exponentiated_gradient():
