@@ -52,6 +52,16 @@ def test_gumbel_copula_init():
     assert model.kendall_tau is None
 
 
+def test_gumbel_cdf_large_theta(fitted_model):
+    fitted_model.theta_ = 80.0
+    q = np.array([1e-12, 0.01, 0.5, 1 - 1e-5, 1 - 1e-12])
+    # On the diagonal C(q, q) = q**(2**(1/theta)).
+    expected = q ** (2 ** (1 / 80))
+    np.testing.assert_allclose(
+        fitted_model.cdf(np.column_stack((q, q))), expected, rtol=1e-14, atol=0
+    )
+
+
 def test_gumbel_copula_fit_with_kendall_tau(random_data):
     """Test fit() using Kendall's tau inversion (default)."""
     model = GumbelCopula(itau=True).fit(random_data)

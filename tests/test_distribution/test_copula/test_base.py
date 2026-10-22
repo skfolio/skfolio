@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from skfolio.distribution import BaseBivariateCopula, GaussianCopula
+from skfolio.distribution.copula._base import UNIFORM_MARGINAL_EPSILON
 
 
 @pytest.fixture
@@ -38,6 +39,16 @@ def test_validate_X_wrong_shape():
     with pytest.raises(ValueError, match="X must contain two columns"):
         data_3cols = np.random.rand(10, 3)
         cop._validate_X(data_3cols, reset=True)
+
+
+def test_validate_X_clipping():
+    cop = GaussianCopula()
+    X = np.array([[0.0, 1.0], [1e-12, 1 - 1e-12]])
+    np.testing.assert_array_equal(
+        cop._validate_X(X, reset=True),
+        np.clip(X, UNIFORM_MARGINAL_EPSILON, 1 - UNIFORM_MARGINAL_EPSILON),
+    )
+    np.testing.assert_array_equal(cop._validate_X(X, reset=False, clip=False), X)
 
 
 def test_validate_X_out_of_bounds():

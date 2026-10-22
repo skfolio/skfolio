@@ -7,7 +7,10 @@
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
+import scipy.integrate as si
 import scipy.optimize as so
 import scipy.special as sp
 import scipy.stats as st
@@ -243,7 +246,7 @@ class StudentTCopula(BaseBivariateCopula):
         return self
 
     def cdf(self, X: ArrayLike) -> FloatArray:
-        """Compute the CDF of the bivariate Student-t copula.
+        r"""Compute the CDF of the bivariate Student-t copula.
 
         Parameters
         ----------
@@ -256,16 +259,67 @@ class StudentTCopula(BaseBivariateCopula):
         -------
         cdf : ndarray of shape (n_observations,)
             CDF values for each observation in X.
+
+        Raises
+        ------
+        RuntimeError
+            If the numerical integration does not converge.
+
+        Notes
+        -----
+        The CDF is computed by deterministic adaptive quadrature over a finite
+        angular interval. For interior inputs, let :math:`x=t_\nu^{-1}(u)`,
+        :math:`y=t_\nu^{-1}(v)`, :math:`a=(x+y)/(2\sqrt{\nu})`, and
+        :math:`b=(x-y)/(2\sqrt{\nu})`. Then
+
+        .. math::
+            C(u,v) = \max(u+v-1, 0) + \frac{1}{2\pi}
+            \int_0^{\arccos(-\rho)}
+            \left(1 + \frac{a^2}{\sin^2(\theta/2)}
+            + \frac{b^2}{\cos^2(\theta/2)}\right)^{-\nu/2} d\theta.
+
+        This follows by integrating the CDF's derivative with respect to
+        correlation from -1 to :math:`\rho`, with the substitution
+        :math:`r=-\cos(\theta)`.
         """
         skv.check_is_fitted(self)
-        X = self._validate_X(X, reset=False)
-        cdf = st.multivariate_t.cdf(
-            x=sp.stdtrit(self.dof_, X),
-            loc=np.array([0, 0]),
-            shape=np.array([[1, self.rho_], [self.rho_, 1]]),
-            df=self.dof_,
-        )
-        return cdf
+        X = self._validate_X(X, reset=False, clip=False)
+        return _student_t_copula_cdf(X, rho=self.rho_, dof=self.dof_)
+
+    def survival_probability(self, X: ArrayLike) -> FloatArray:
+        r"""Return the probability that both variables exceed their respective
+        thresholds.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, 2)
+            Uniform marginal probability levels `(u, v)` in `[0, 1]`. Each row
+            specifies the thresholds for the two variables.
+
+        Returns
+        -------
+        probabilities : ndarray of shape (n_observations,)
+            Joint probabilities :math:`P(U > u, V > v)` for each row in X.
+
+        Raises
+        ------
+        RuntimeError
+            If the numerical integration does not converge.
+
+        See Also
+        --------
+        cdf : Probability that both variables are below their respective thresholds.
+        tail_concentration : Conditional probabilities at a common quantile.
+
+        Notes
+        -----
+        Radial symmetry gives :math:`S(u, v) = C(1-u, 1-v)`. Evaluating the
+        reflected CDF avoids subtracting nearly equal probabilities in the upper
+        tail. It uses the same deterministic quadrature as :meth:`cdf`.
+        """
+        skv.check_is_fitted(self)
+        X = self._validate_X(X, reset=False, clip=False)
+        return _student_t_copula_cdf(1.0 - X, rho=self.rho_, dof=self.dof_)
 
     def partial_derivative(
         self, X: ArrayLike, first_margin: bool = False
@@ -416,6 +470,60 @@ class StudentTCopula(BaseBivariateCopula):
     def fitted_repr(self) -> str:
         """String representation of the fitted copula."""
         return f"{self.__class__.__name__}(rho={self.rho_:0.3f}, dof={self.dof_:0.2f})"
+
+
+def _student_t_copula_cdf(X: FloatArray, rho: float, dof: float) -> FloatArray:
+    """Evaluate the Student-t copula CDF using the angular integral in `cdf`."""
+    smaller = np.min(X, axis=1)
+    larger = np.max(X, axis=1)
+    lower = np.maximum(smaller - (1 - larger), 0)
+    cdf = smaller.copy()
+    interior = np.flatnonzero((smaller > 0) & (larger < 1))
+    quantiles = sp.stdtrit(dof, X[interior])
+    upper_angle = math.acos(-rho)
+    scale = 2 * math.sqrt(dof)
+    exponent = -float(dof) / 2
+
+    def integrand(angle: float, a: float, b: float) -> float:
+        """Evaluate the nonnegative angular integrand in logarithmic form."""
+        sin_term = a / math.sin(angle / 2)
+        cos_term = b / math.cos(angle / 2)
+        return math.exp(
+            exponent * math.log1p(sin_term * sin_term + cos_term * cos_term)
+        ) / (2 * math.pi)
+
+    for i, (x, y) in zip(interior, quantiles, strict=True):
+        # Use Python scalars to avoid NumPy overhead in the quadrature callback.
+        a = float((x + y) / scale)
+        b = float((x - y) / scale)
+        # Near x = -y, the integrand changes on a narrow scale at angle zero.
+        # Geometric breakpoints keep adaptive quadrature from missing this layer.
+        width = 2 * math.atan2(abs(a), math.hypot(1, b))
+        points = []
+        if width > 0:
+            while width < upper_angle:
+                points.append(width)
+                width *= 8
+
+        # Scaling the absolute tolerance preserves accuracy when C(q, q) is
+        # divided by q to compute tail concentration.
+        result = si.quad(
+            integrand,
+            0,
+            upper_angle,
+            args=(a, b),
+            points=points,
+            epsabs=1e-8 * smaller[i],
+            epsrel=1e-8,
+            limit=200,
+            full_output=True,
+        )
+        if len(result) > 3:
+            raise RuntimeError(f"Student-t copula CDF integration failed: {result[3]}")
+        # Enforce the Frechet bounds against floating-point rounding only after
+        # checking that the integration converged.
+        cdf[i] = min(max(lower[i] + result[0], lower[i]), smaller[i])
+    return cdf
 
 
 def _neg_log_likelihood(dof: float, rho: float, X: FloatArray) -> float:
