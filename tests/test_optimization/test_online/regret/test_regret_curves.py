@@ -6,7 +6,7 @@ from skfolio.optimization.online._mixins import FTWStrategy
 from skfolio.optimization.online._regret import (
     _solve_best_constant_weights,
 )
-from skfolio.optimization.online._utils import CLIP_EPSILON, net_to_relatives
+from skfolio.optimization.online._utils import CLIP_EPSILON
 from skfolio.optimization.online._winner import FollowTheWinner
 
 
@@ -60,7 +60,7 @@ def test_static_regret_matches_manual(objective):
     est_manual = FollowTheWinner(strategy=objective, learning_rate=0.1)
     est_manual.fit_predict(X_net)
     W_online = est_manual.all_weights_
-    R = net_to_relatives(X_net)
+    R = 1.0 + X_net
     online_losses = _manual_losses_from_weights(R, W_online)
 
     w_star = _solve_best_constant_weights(R)
@@ -130,7 +130,7 @@ def test_windowed_regret_consistency():
     est_m = FollowTheWinner(strategy=FTWStrategy.OGD, learning_rate=0.1)
     est_m.fit_predict(X_net)
     W_online = est_m.all_weights_
-    R = net_to_relatives(X_net)
+    R = 1.0 + X_net
     online_losses = _manual_losses_from_weights(R, W_online)
 
     w_star = _solve_best_constant_weights(R)
@@ -199,7 +199,7 @@ def test_worst_case_regret_dominates_fixed_comparator():
     est = FollowTheWinner(strategy=FTWStrategy.EG, learning_rate=0.05)
     est.fit_predict(X_net)
     W_online = est.all_weights_
-    R = net_to_relatives(X_net)
+    R = 1.0 + X_net
     online_losses = _manual_losses_from_weights(R, W_online)
 
     comp_weights = _solve_best_constant_weights(R)

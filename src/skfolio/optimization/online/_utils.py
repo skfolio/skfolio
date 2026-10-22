@@ -13,17 +13,6 @@ from numpy.typing import ArrayLike
 CLIP_EPSILON = 1e-12
 
 
-def net_to_relatives(X: ArrayLike) -> np.ndarray:
-    """Convert net returns to price relatives robustly.
-
-    Accepts 1D or 2D inputs and always returns a 2D array of shape (T, n).
-    """
-    X_arr = np.asarray(X, dtype=float)
-    if X_arr.ndim == 1:
-        X_arr = X_arr.reshape(1, -1)
-    return np.maximum(1.0 + X_arr, CLIP_EPSILON)
-
-
 def relatives_to_net(X: ArrayLike) -> np.ndarray:
     """Convert finite nonnegative price relatives to net returns.
 
