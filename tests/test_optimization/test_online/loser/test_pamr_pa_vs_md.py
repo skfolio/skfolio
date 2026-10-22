@@ -75,74 +75,63 @@ class TestPAMRModeEquivalence:
                 err_msg=f"{update_mode} should not update when constraint satisfied",
             )
 
-    def test_pamr_multi_step_with_adaptive_eta(self, simple_data):
-        """
-        Test multi-step comparison where we adapt eta at each step.
-
-        This is conceptual: in practice MD uses fixed eta, but we can
-        test if the single-step logic is correct by adapting eta.
-        """
-        X = simple_data.iloc[:5].values  # 5 periods
-        epsilon = 0.5
-
-        # Run PA mode (full sequence)
-        model_pa = FollowTheLoser(
-            strategy=FTLStrategy.PAMR,
-            pamr_variant=PAMRVariant.SIMPLE,
-            epsilon=epsilon,
-            update_mode="pa",
-            transaction_costs=0.0,
-            management_fees=0.0,
+    @pytest.mark.parametrize(
+        "mode,rate", [("pa", 1.0), ("md", 0.01), ("md", 0.1), ("md", 0.5), ("md", 1.0)]
+    )
+    def test_pamr_multi_step_reference_updates(self, mode, rate):
+        """Check PA and optimistic MD against their distinct two-asset recurrences."""
+        returns = np.array(
+            [[0.02, -0.01], [-0.03, 0.04], [0.01, 0.02], [-0.02, 0.01], [0.03, -0.02]]
         )
-        model_pa.fit(X)
-
-        # For MD, we'd need to adapt eta at each step, which isn't directly
-        # supported. Instead, let's check if using a fixed "good" eta gives
-        # similar results
-
-        for eta in [0.01, 0.1, 0.5, 1.0]:
-            model_md = FollowTheLoser(
-                strategy=FTLStrategy.PAMR,
-                pamr_variant=PAMRVariant.SIMPLE,
-                epsilon=epsilon,
-                update_mode="md",
-                learning_rate=eta,
-                mirror="euclidean",
-                transaction_costs=0.0,
-                management_fees=0.0,
-            )
-            model_md.fit(X)
+        model = FollowTheLoser(
+            strategy="pamr", epsilon=1.0, update_mode=mode, learning_rate=rate
+        )
+        expected = np.array([0.5, 0.5])
+        last_gradient = np.zeros(2)
+        previous_prediction = np.zeros(2)
+        active_updates = 0
+        for row in returns:
+            relatives = 1.0 + row
+            direction = relatives - relatives.mean()
+            loss = max(0.0, expected @ relatives - 1.0)
+            if mode == "pa":
+                step = loss / (direction @ direction)
+                candidate = expected - step * direction
+            else:
+                gradient = direction if loss > 0 else np.zeros(2)
+                # The default MD engine predicts with the preceding gradient;
+                # consequently multi-step MD need not equal plain PA.
+                candidate = expected - rate * (
+                    gradient + last_gradient - previous_prediction
+                )
+                previous_prediction = last_gradient.copy()
+                last_gradient = gradient.copy()
+            # Two-asset simplex projection is clipping plus the complement.
+            first = np.clip(candidate[0], 0.0, 1.0)
+            expected = np.array([first, 1.0 - first])
+            active_updates += loss > 0
+            model.partial_fit(row)
+            assert_allclose(model.weights_, expected, atol=1e-10)
+        assert active_updates >= 2
 
     def test_pamr_gradient_computation(self, simple_data):
-        """
-        Test that gradients are computed correctly in both modes.
-
-        For PA: gradient is c = x - mean(x)*1
-        For MD: gradient is g = x (then centered: g - mean(g))
-
-        They should be identical when constraint is violated.
-        """
-        X_single = simple_data.iloc[:1].values
-        x_t = 1.0 + X_single[0]
-        w_init = np.ones(5) / 5
-        epsilon = 0.5
-
-        # PA gradient
-        margin = float(x_t @ w_init)
-        max(0.0, margin - epsilon)
-        c_pa = x_t - np.mean(x_t)
-
-        # MD gradient (when violated)
-        g_md_raw = x_t
-        g_md_centered = g_md_raw - np.mean(g_md_raw)
-
-        # They should be identical
-        assert_allclose(
-            c_pa,
-            g_md_centered,
-            rtol=1e-12,
-            err_msg="PA and MD centered gradients should match",
+        """The actual interior MD update follows the centered PAMR gradient."""
+        row = simple_data.iloc[0].values
+        relatives = 1.0 + row
+        initial = np.full(len(row), 1 / len(row))
+        eta = 0.1
+        expected = initial - eta * (relatives - relatives.mean())
+        assert initial @ relatives > 0.5
+        assert np.all((expected > 0) & (expected < 1))
+        model = FollowTheLoser(
+            strategy="pamr",
+            epsilon=0.5,
+            update_mode="md",
+            initial_weights=initial,
+            learning_rate=eta,
         )
+        model.partial_fit(row)
+        assert_allclose(model.weights_, expected, rtol=1e-12, atol=1e-12)
 
     def test_pamr_projection_consistency(self, simple_data):
         """
@@ -270,15 +259,13 @@ class TestPAMRModeEquivalence:
             model_md.partial_fit(X_single)
             weights_md = model_md.weights_.copy()
 
-            if variant == 0:
-                # Variant 0 should match exactly
-                assert_allclose(
-                    weights_pa,
-                    weights_md,
-                    rtol=1e-6,
-                    atol=1e-8,
-                    err_msg=f"Variant {variant} should match",
-                )
+            assert_allclose(
+                weights_pa,
+                weights_md,
+                rtol=1e-6,
+                atol=1e-8,
+                err_msg=f"PA and MD should match for {variant} with its matching step size",
+            )
 
 
 @pytest.mark.parametrize("variant", list(PAMRVariant))

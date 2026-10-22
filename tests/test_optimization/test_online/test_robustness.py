@@ -8,58 +8,48 @@ from skfolio.optimization.online._mixins import FTLStrategy, FTWStrategy
 from skfolio.optimization.online._winner import FollowTheWinner
 
 
-def test_rmr_outlier_resistance():
-    """
-    Test that RMR (Robust Median Reversion) outperforms standard OLMAR
-    in the presence of significant outliers.
-    """
-    # Generate stationary data where mean reversion works well
-    n_assets = 5
-    n_periods = 500
+@pytest.mark.parametrize("strategy", [FTLStrategy.OLMAR, FTLStrategy.RMR])
+def test_mean_reversion_execution_with_outliers(strategy):
+    """Real losses and gains preserve finite allocations and gross accounting."""
     rng = np.random.default_rng(42)
-    X = make_stationary_returns(T=n_periods, n=n_assets, gap=0.01)
-
-    # Inject outliers: random massive spikes
-    n_outliers = 20
-    outlier_indices = rng.choice(n_periods, n_outliers, replace=False)
-    asset_indices = rng.choice(n_assets, n_outliers, replace=True)
-
-    # Create a copy to corrupt
-    X_corrupted = X.copy()
-    for t, i in zip(outlier_indices, asset_indices, strict=True):
-        # Massive 50% drop (0.5 relative) or 100% gain (2.0 relative)
-        # to confuse mean estimators
-        X_corrupted[t, i] = 2.0 if rng.random() > 0.5 else 0.5
-
-    # Train OLMAR (sensitive to mean)
-    olmar = FollowTheLoser(
-        strategy=FTLStrategy.OLMAR,
-        olmar_predictor="sma",
-        olmar_window=5,
-        update_mode="pa",
+    returns = make_stationary_returns(T=500, n=5, gap=0.01)
+    times = rng.choice(len(returns), 20, replace=False)
+    assets = rng.choice(returns.shape[1], 20, replace=True)
+    for t, asset in zip(times, assets, strict=True):
+        returns[t, asset] = 1.0 if rng.random() > 0.5 else -0.5
+    assert np.any(returns == -0.5)
+    assert np.any(returns == 1.0)
+    model = FollowTheLoser(
+        strategy=strategy, olmar_window=5, rmr_window=5, update_mode="pa"
     )
+    portfolio = model.fit_predict(returns)
+    weights = model.all_weights_
+    assert np.isfinite(weights).all()
+    assert np.all(weights >= -1e-10)
+    np.testing.assert_allclose(weights.sum(axis=1), 1.0, atol=1e-10)
+    expected_returns = np.sum(weights * returns, axis=1)
+    np.testing.assert_allclose(portfolio.returns, expected_returns, atol=1e-12)
+    wealth = np.cumprod(1 + portfolio.returns)
+    assert np.isfinite(wealth).all()
+    assert np.all(wealth > 0)
 
-    # Train RMR (robust median)
-    rmr = FollowTheLoser(
-        strategy=FTLStrategy.RMR,
-        rmr_window=5,  # Window size for RMR
-        update_mode="pa",
-    )
 
-    olmar_wealth = np.prod(1 + olmar.fit_predict(X_corrupted).returns)
-    rmr_wealth = np.prod(1 + rmr.fit_predict(X_corrupted).returns)
+@pytest.mark.parametrize("outlier_price", [0.5, 2.0])
+def test_rmr_median_resists_transient_price_outlier(outlier_price):
+    """Four identical prices anchor the median despite one large price shock."""
+    from skfolio.optimization.online._prediction import RMRPredictor
 
-    # RMR should generally handle these outliers better or at least not crash
-    # In this specific setup, we expect RMR to be more stable.
-    # We check if RMR wealth is reasonable and ideally better or comparable to OLMAR
-    # given the corruption.
-    assert rmr_wealth > 0.5  # Basic sanity check
-
-    # Check that RMR weights are less volatile around outliers?
-    # Or simply that it runs without error.
-    # Let's assert RMR outperforms OLMAR in this specific corrupted scenario
-    # Note: This might be stochastic, so we use a fixed seed.
-    assert rmr_wealth > olmar_wealth
+    predictor = RMRPredictor(window=5)
+    predictor.reset(2)
+    prices = np.ones((6, 2))
+    prices[3, 0] = outlier_price
+    relatives = np.vstack([np.ones(2), prices[1:] / prices[:-1]])
+    for relative in relatives:
+        forecast = predictor.update_and_predict(relative)
+    np.testing.assert_allclose(forecast, np.ones(2), atol=1e-9)
+    # The corresponding arithmetic-mean forecast is moved by this same shock.
+    mean_forecast = prices[-5:].mean(axis=0) / prices[-1]
+    assert abs(mean_forecast[0] - 1) >= 0.09
 
 
 def test_universal_regret_is_finite():

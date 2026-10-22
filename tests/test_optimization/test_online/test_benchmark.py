@@ -13,9 +13,16 @@ from skfolio.optimization.online._benchmark import (
 def test_constant_rebalanced_with_custom_weights(X_small):
     """Test ConstantRebalancedPortfolio with custom weights."""
     n_assets = X_small.shape[1]
-    weights = np.ones(n_assets) / n_assets
+    weights = np.arange(1, n_assets + 1, dtype=float)
+    weights /= weights.sum()
     constant_rebalanced = ConstantRebalancedPortfolio(weights=weights)
     constant_rebalanced.fit(X_small)
+    np.testing.assert_allclose(constant_rebalanced.weights_, weights)
+    np.testing.assert_allclose(
+        constant_rebalanced.all_weights_, np.tile(weights, (len(X_small), 1))
+    )
+    expected_wealth = np.r_[1.0, np.cumprod(1 + np.asarray(X_small) @ weights)]
+    np.testing.assert_allclose(constant_rebalanced.all_wealth_, expected_wealth)
 
 
 def test_comparator_uniform_weights(X_small):

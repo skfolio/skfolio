@@ -42,40 +42,27 @@ class TestOLMARModeEquivalence:
         return net_returns
 
     def test_olmar_gradient_direction(self, simple_data):
-        """
-        Test gradient direction for OLMAR.
-
-        OLMAR tries to move toward phi (reversion target).
-        PA: w_new = w + lambda * (phi - mean(phi))
-        MD: w_new = w - eta * g, where g = -(phi - mean(phi)) when violated
-
-        So MD gradient should be -c_pa.
-        """
-        X = simple_data.iloc[:2].values
-        alpha = 0.5
-
-        # Compute phi for OLMAR-2
-        x_0 = 1.0 + X[0]
-        phi = alpha * np.ones_like(x_0) + (1.0 - alpha) * (1.0 / np.maximum(x_0, 1e-10))
-
-        # PA direction
-        c_pa = phi - np.mean(phi)
-
-        # MD direction (should be -c_pa since OLMAR maximizes phi^T w)
-        # When violated (phi^T w < epsilon), we want to increase phi^T w
-        # Gradient of loss L = max(0, epsilon - phi^T w) is -phi
-        # So we move in direction -(-phi) = phi
-        g_md_raw = -phi  # Gradient of hinge loss
-        g_md_centered = g_md_raw - np.mean(g_md_raw)
-
-        # PA moves in +c direction, MD moves in -g direction
-        # So we need c = -g, or equivalently, c + g = 0
-        assert_allclose(
-            c_pa,
-            -g_md_centered,
-            rtol=1e-12,
-            err_msg="OLMAR PA and MD directions should be opposite (c = -g)",
-        )
+        """The actual interior MD update follows the causal EWMA forecast."""
+        returns = simple_data.iloc[:2].values
+        initial = np.full(returns.shape[1], 1 / returns.shape[1])
+        phi = np.ones(returns.shape[1])
+        for row in returns:
+            phi = 0.5 + 0.5 * phi / (1 + row)
+        eta = 0.1
+        expected = initial + eta * (phi - phi.mean())
+        assert initial @ phi < 2.0
+        assert np.all((expected > 0) & (expected < 1))
+        model = FollowTheLoser(
+            strategy="olmar",
+            olmar_predictor="ewma",
+            olmar_alpha=0.5,
+            epsilon=2.0,
+            update_mode="md",
+            initial_weights=initial,
+            learning_rate=eta,
+            apply_fees_to_phi=False,
+        ).fit(returns)
+        assert_allclose(model.weights_, expected, rtol=1e-12, atol=1e-12)
 
     def test_olmar_no_violation_case(self, simple_data):
         """
@@ -98,8 +85,12 @@ class TestOLMARModeEquivalence:
             )
             model.fit(X)
 
-            # Should remain uniform (or close to it if there's any update)
-            # With very low epsilon, OLMAR typically doesn't violate
+            assert_allclose(
+                model.weights_, np.full(X.shape[1], 1 / X.shape[1]), atol=1e-12
+            )
+            assert_allclose(
+                model.all_weights_, np.full_like(X, 1 / X.shape[1]), atol=1e-12
+            )
 
     def test_olmar_projection_consistency(self, simple_data):
         """
@@ -176,51 +167,33 @@ class TestOLMARModeEquivalence:
                 err_msg=f"OLMAR PA and MD should match with constraints {constraints}",
             )
 
-    def test_olmar_both_variants(self, simple_data):
-        """
-        Test both OLMAR-1 (cumprod variant) and OLMAR-2 for PA vs MD equivalence.
-        """
+    @pytest.mark.parametrize("predictor,n_rows", [("sma", 4), ("ewma", 3)])
+    @pytest.mark.parametrize("mode", ["pa", "md"])
+    def test_olmar_both_variants(self, simple_data, predictor, n_rows, mode):
+        """Each predictor/mode preserves causal results across block and row updates."""
+        from sklearn.base import clone
 
-        window = 3
-        X1 = simple_data.iloc[: window + 1].values
-        epsilon = 2.0
-
-        # OLMAR-1 with cumprod variant
-        for update_mode in ["pa", "md"]:
-            kwargs = dict(
-                strategy="olmar",
-                olmar_predictor="sma",
-                olmar_window=window,
-                epsilon=epsilon,
-                update_mode=update_mode,
-                transaction_costs=0.0,
-                management_fees=0.0,
-                apply_fees_to_phi=False,
-            )
-            if update_mode == "md":
-                kwargs["learning_rate"] = 1.0
-
-            model = FollowTheLoser(**kwargs)
-            model.fit(X1)
-
-        X2 = simple_data.iloc[:3].values
-
-        for update_mode in ["pa", "md"]:
-            kwargs = dict(
-                strategy="olmar",
-                olmar_predictor="ewma",
-                olmar_alpha=0.5,
-                epsilon=epsilon,
-                update_mode=update_mode,
-                transaction_costs=0.0,
-                management_fees=0.0,
-                apply_fees_to_phi=False,
-            )
-            if update_mode == "md":
-                kwargs["learning_rate"] = 1.0
-
-            model = FollowTheLoser(**kwargs)
-            model.fit(X2)
+        returns = simple_data.iloc[:n_rows].values
+        batch = FollowTheLoser(
+            strategy="olmar",
+            olmar_predictor=predictor,
+            olmar_window=3,
+            olmar_alpha=0.5,
+            epsilon=2.0,
+            update_mode=mode,
+            learning_rate=1.0,
+            apply_fees_to_phi=False,
+        )
+        streaming = clone(batch)
+        batch.fit(returns)
+        for row in returns:
+            streaming.partial_fit(row)
+        assert_allclose(streaming.weights_, batch.weights_, atol=1e-12)
+        assert_allclose(streaming.all_weights_, batch.all_weights_, atol=1e-12)
+        assert np.isfinite(batch.weights_).all()
+        assert np.all(batch.weights_ >= -1e-12)
+        assert batch.weights_.sum() == pytest.approx(1.0)
+        assert not np.allclose(batch.weights_, 1 / returns.shape[1])
 
 
 @pytest.mark.parametrize("predictor", ["sma", "ewma"])
