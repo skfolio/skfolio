@@ -239,8 +239,8 @@ class TestCreateObjective:
         assert obj.cvar_beta == 0.99
 
 
-class TestAnalyticalGradientUniqueness:
-    """Test that all analytical gradients produce unique results."""
+class TestAnalyticalGradientReferences:
+    """Check analytical gradients against references and input changes."""
 
     # Measures with analytical gradient implementations
     ANALYTICAL_MEASURES: ClassVar[list] = [
@@ -280,58 +280,28 @@ class TestAnalyticalGradientUniqueness:
             assert not np.any(np.isnan(grad)), f"{measure}: gradient contains NaN"
             assert not np.any(np.isinf(grad)), f"{measure}: gradient contains inf"
 
-    def test_all_analytical_gradients_are_unique_timeseries(self):
-        """Test that all analytical gradients produce different results for time series (T>1).
-
-        For time series data, different measures should produce different gradients.
-        This is the primary test for detecting bugs in gradient implementations.
-
-        Note: LOG_WEALTH is excluded as it's a per-observation measure not designed
-        for time series gradients.
-        """
-        from itertools import combinations
-
-        # Test data: time series with enough variation to distinguish measures
-        np.random.seed(42)
+    @pytest.mark.parametrize(
+        "measure",
+        [m for m in ANALYTICAL_MEASURES if m != PerfMeasure.LOG_WEALTH],
+        ids=str,
+    )
+    def test_timeseries_gradient_matches_reference(self, measure):
+        """Differentiate the shared measure, independently of the objective loss."""
+        rng = np.random.RandomState(42)
         weights = np.array([0.3, 0.2, 0.2, 0.15, 0.15])
-
-        # Generate returns with both positive and negative values,
-        # including some downside to activate downside measures
-        net_returns_timeseries = np.random.randn(50, 5) * 0.015
-        # Add a slight negative drift to ensure downside measures are active
-        net_returns_timeseries[:20] -= 0.005
-
-        # Exclude LOG_WEALTH (per-observation measure, not for time series)
-        timeseries_measures = [
-            m for m in self.ANALYTICAL_MEASURES if m != PerfMeasure.LOG_WEALTH
-        ]
-
-        # Compute all gradients
-        gradients = {}
-        for measure in timeseries_measures:
-            obj = MeasureObjective(measure=measure, use_autograd=False)
-            grad = obj.grad(weights, net_returns_timeseries)
-            gradients[measure] = grad
-
-        # For T>1, ALL measures should be mathematically distinct
-        # No exceptions - if any pair is identical, it's a bug
-        failures = []
-        for measure1, measure2 in combinations(timeseries_measures, 2):
-            grad1 = gradients[measure1]
-            grad2 = gradients[measure2]
-
-            # Two different measures must have different gradients for T>1
-            if np.allclose(grad1, grad2, rtol=1e-10, atol=1e-12):
-                failures.append((measure1, measure2, grad1, grad2))
-
-        if failures:
-            msg = "The following measure pairs have identical gradients (BUG!):\n"
-            msg += "For time series (T>1), all measures should be mathematically distinct.\n"
-            for m1, m2, g1, g2 in failures:
-                msg += f"\n  {m1} == {m2}"
-                msg += f"\n    Gradient 1: {g1}"
-                msg += f"\n    Gradient 2: {g2}"
-            raise AssertionError(msg)
+        returns = rng.randn(50, 5) * 0.015
+        returns[:20] -= 0.005
+        _, reference = AUTOGRAD_MEASURE_MAPPING[measure]
+        sign = -1 if measure == PerfMeasure.MEAN else 1
+        expected = finite_difference_gradient(
+            lambda w: sign * reference(returns @ w), weights
+        )
+        actual = MeasureObjective(measure=measure, use_autograd=False).grad(
+            weights, returns
+        )
+        assert np.isfinite(expected).all()
+        assert np.isfinite(actual).all()
+        np.testing.assert_allclose(actual, expected, rtol=1e-4, atol=1e-7)
 
     def test_analytical_gradient_varies_with_data(self):
         """Test that analytical gradients vary with different input data.
