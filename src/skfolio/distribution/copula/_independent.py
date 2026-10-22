@@ -89,9 +89,36 @@ class IndependentCopula(BaseBivariateCopula):
             CDF values for each observation in X.
         """
         skv.check_is_fitted(self)
-        X = self._validate_X(X, reset=False)
+        X = self._validate_X(X, reset=False, clip=False)
         cdf = X.prod(axis=1)
         return cdf
+
+    def joint_survival_probability(self, X: ArrayLike) -> FloatArray:
+        r"""Return the probability that both components exceed their thresholds.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, 2)
+            Uniform marginal probability levels `(u, v)` in `[0, 1]`. Each row
+            specifies the thresholds for the two components.
+
+        Returns
+        -------
+        probabilities : ndarray of shape (n_observations,)
+            Joint probabilities :math:`P(U > u, V > v)` for each row in X.
+
+        See Also
+        --------
+        cdf : Probability that both components are below their thresholds.
+        tail_concentration : Conditional probabilities at a common quantile.
+
+        Notes
+        -----
+        Independence gives :math:`S(u, v) = (1-u)(1-v)`.
+        """
+        skv.check_is_fitted(self)
+        X = self._validate_X(X, reset=False, clip=False)
+        return (1.0 - X).prod(axis=1)
 
     def partial_derivative(
         self, X: ArrayLike, first_margin: bool = False

@@ -187,6 +187,25 @@ fig.update_layout(scene_camera=dict(eye=dict(x=-1.2, y=1.4, z=0.8)))
 fig
 
 # %%
+# Joint Probabilities
+# -------------------
+# The copula CDF gives the probability that **both** returns are below their
+# respective marginal quantiles. The joint survival probability gives the
+# probability that **both** returns exceed their respective quantiles:
+thresholds = [[0.95, 0.99]]
+print(f"Both below their thresholds: {copula.cdf(thresholds)[0]:.2%}")
+print(
+    f"Both above their thresholds: {copula.joint_survival_probability(thresholds)[0]:.2%}"
+)
+
+# %%
+# In contrast, :math:`1 - C(u, v)` is the probability that **at least one** return
+# exceeds its threshold. For two components, the joint survival probability is
+# :math:`S(u, v) = 1 - u - v + C(u, v)`. Prefer
+# :meth:`~skfolio.distribution.BaseBivariateCopula.joint_survival_probability`
+# to computing this expression yourself. For Gaussian and Student-t copulas,
+# the method uses a more accurate calculation when both thresholds are near one.
+#
 # Tail Dependencies
 # -----------------
 # For a bivariate random vector :math:`(X,Y)` with marginal distribution functions
@@ -219,8 +238,12 @@ print(f"Upper Tail Dependence: {copula.upper_tail_dependence:.2%}")
 # %%
 # Tail Concentration
 # --------------------
-# Tail concentration refers to how much probability mass is concentrated at the tails
-# of a distribution.
+# Tail concentration is a **conditional** probability at a common quantile:
+# :math:`C(q, q)/q` for :math:`0 < q \le 0.5` and
+# :math:`S(q, q)/(1-q)` for :math:`0.5 < q < 1`. For example, at :math:`q=0.95`,
+# it is the probability that JPM exceeds its 95th percentile given that BAC does.
+# At zero and one, the method returns the theoretical tail dependence limits.
+# These differ from the joint probabilities, which have no conditioning event.
 # Let's plot the tail concentration of the copula model versus the historical data:
 copula.plot_tail_concentration(X)
 
