@@ -194,15 +194,13 @@ fig
 # probability that **both** returns exceed their respective quantiles:
 thresholds = [[0.95, 0.99]]
 print(f"Both below their thresholds: {copula.cdf(thresholds)[0]:.2%}")
-print(
-    f"Both above their thresholds: {copula.joint_survival_probability(thresholds)[0]:.2%}"
-)
+print(f"Both above their thresholds: {copula.survival_probability(thresholds)[0]:.2%}")
 
 # %%
 # In contrast, :math:`1 - C(u, v)` is the probability that **at least one** return
 # exceeds its threshold. For two components, the joint survival probability is
 # :math:`S(u, v) = 1 - u - v + C(u, v)`. Prefer
-# :meth:`~skfolio.distribution.BaseBivariateCopula.joint_survival_probability`
+# :meth:`~skfolio.distribution.BaseBivariateCopula.survival_probability`
 # to computing this expression yourself. For Gaussian and Student-t copulas,
 # the method uses a more accurate calculation when both thresholds are near one.
 #

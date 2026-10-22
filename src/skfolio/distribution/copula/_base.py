@@ -152,14 +152,15 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         """
         ...
 
-    def joint_survival_probability(self, X: ArrayLike) -> FloatArray:
-        r"""Return the probability that both components exceed their thresholds.
+    def survival_probability(self, X: ArrayLike) -> FloatArray:
+        r"""Return the probability that both variables exceed their respective
+        thresholds.
 
         Parameters
         ----------
         X : array-like of shape (n_observations, 2)
             Uniform marginal probability levels `(u, v)` in `[0, 1]`. Each row
-            specifies the thresholds for the two components.
+            specifies the thresholds for the two variables.
 
         Returns
         -------
@@ -168,7 +169,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
 
         See Also
         --------
-        cdf : Probability that both components are below their thresholds.
+        cdf : Probability that both variables are below their respective thresholds.
         tail_concentration : Conditional probabilities at a common quantile.
 
         Notes
@@ -186,7 +187,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         --------
         >>> from skfolio.distribution import IndependentCopula
         >>> copula = IndependentCopula().fit([[0.2, 0.3], [0.7, 0.8]])
-        >>> copula.joint_survival_probability([[0.5, 0.75]])
+        >>> copula.survival_probability([[0.5, 0.75]])
         array([0.125])
         """
         # cdf checks fitted state and validates X, including DataFrame column names.
@@ -364,7 +365,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
 
         See Also
         --------
-        joint_survival_probability : Joint upper-tail probabilities.
+        survival_probability : Joint upper-tail probabilities.
         lower_tail_dependence : Limit of the lower tail concentration at zero.
         upper_tail_dependence : Limit of the upper tail concentration at one.
 
@@ -392,7 +393,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         if np.any(lower):
             concentration[lower] = self.cdf(X[lower]) / quantiles[lower]
         if np.any(upper):
-            concentration[upper] = self.joint_survival_probability(X[upper]) / (
+            concentration[upper] = self.survival_probability(X[upper]) / (
                 1.0 - quantiles[upper]
             )
         return concentration

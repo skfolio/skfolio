@@ -93,14 +93,15 @@ class IndependentCopula(BaseBivariateCopula):
         cdf = X.prod(axis=1)
         return cdf
 
-    def joint_survival_probability(self, X: ArrayLike) -> FloatArray:
-        r"""Return the probability that both components exceed their thresholds.
+    def survival_probability(self, X: ArrayLike) -> FloatArray:
+        r"""Return the probability that both variables exceed their respective
+        thresholds.
 
         Parameters
         ----------
         X : array-like of shape (n_observations, 2)
             Uniform marginal probability levels `(u, v)` in `[0, 1]`. Each row
-            specifies the thresholds for the two components.
+            specifies the thresholds for the two variables.
 
         Returns
         -------
@@ -109,7 +110,7 @@ class IndependentCopula(BaseBivariateCopula):
 
         See Also
         --------
-        cdf : Probability that both components are below their thresholds.
+        cdf : Probability that both variables are below their respective thresholds.
         tail_concentration : Conditional probabilities at a common quantile.
 
         Notes

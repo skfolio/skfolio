@@ -94,7 +94,7 @@ def test_student_t_shape(random_data):
     assert np.all(cdf >= 0) and np.all(cdf <= 1)
 
 
-@pytest.mark.parametrize("method", ["cdf", "joint_survival_probability"])
+@pytest.mark.parametrize("method", ["cdf", "survival_probability"])
 def test_student_t_probability_is_deterministic(X, fitted_model, method):
     """Probabilities must not depend on a random stream nor on `random_state`."""
     first = getattr(fitted_model, method)(X)
@@ -145,7 +145,7 @@ def test_student_t_cdf_midpoint(rho, dof):
 
 @pytest.mark.parametrize("rho", [-0.999, -0.7, 0.0, 0.5, 0.999])
 @pytest.mark.parametrize("dof", [2.0, 2.5, 50.0])
-@pytest.mark.parametrize("method", ["cdf", "joint_survival_probability"])
+@pytest.mark.parametrize("method", ["cdf", "survival_probability"])
 def test_student_t_probability_batch_consistency(rho, dof, method):
     model = StudentTCopula()
     model.rho_, model.dof_ = rho, dof
@@ -182,11 +182,11 @@ def test_student_t_cdf_identities(rho, dof):
 
 @pytest.mark.parametrize("rho", [-0.999, -0.7, 0.0, 0.5, 0.999])
 @pytest.mark.parametrize("dof", [2.0, 2.5, 50.0])
-def test_student_t_joint_survival_probability_reflection(rho, dof):
+def test_student_t_survival_probability_reflection(rho, dof):
     model = StudentTCopula()
     model.rho_, model.dof_ = rho, dof
     X = np.array([[2.0**-40, 0.125], [2.0**-40, 2.0**-40], [0.75, 0.5]])
-    np.testing.assert_array_equal(model.joint_survival_probability(1 - X), model.cdf(X))
+    np.testing.assert_array_equal(model.survival_probability(1 - X), model.cdf(X))
 
 
 def test_student_t_cdf_integration_failure(fitted_model, monkeypatch):

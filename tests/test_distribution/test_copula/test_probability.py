@@ -28,7 +28,7 @@ COPULA_CLASSES = (
     GumbelCopula,
     JoeCopula,
 )
-PROBABILITY_METHODS = ("cdf", "joint_survival_probability")
+PROBABILITY_METHODS = ("cdf", "survival_probability")
 COPULA_CASES = [
     pytest.param((cls, rotation), id=f"{cls.__name__}-{rotation.name}")
     for cls in COPULA_CLASSES
@@ -80,9 +80,7 @@ def test_probability_boundaries(copula):
             (np.column_stack((q, one)), q, zero),
         ):
             np.testing.assert_array_equal(copula.cdf(X), cdf)
-            np.testing.assert_array_equal(
-                copula.joint_survival_probability(X), survival
-            )
+            np.testing.assert_array_equal(copula.survival_probability(X), survival)
 
 
 @pytest.mark.parametrize("method", PROBABILITY_METHODS)
@@ -116,7 +114,7 @@ def test_probability_identities_and_monotonicity(copula):
     with warnings.catch_warnings():
         warnings.simplefilter("error", RuntimeWarning)
         cdf = copula.cdf(X)
-        survival = copula.joint_survival_probability(X)
+        survival = copula.survival_probability(X)
     for values, margins, direction in ((cdf, X, 1), (survival, 1 - X, -1)):
         assert np.all(np.isfinite(values))
         assert np.all((values >= 0) & (values <= 1))
@@ -215,14 +213,12 @@ class CustomCopula(BaseBivariateCopula):
     fitted_repr = IndependentCopula.fitted_repr
 
 
-def test_base_joint_survival_probability_default():
+def test_base_survival_probability_default():
     X = pd.DataFrame([[0.25, 0.5], [0.75, 0.25]], columns=["first", "second"])
     model = CustomCopula().fit(X)
     with warnings.catch_warnings():
         warnings.simplefilter("error", UserWarning)
-        np.testing.assert_array_equal(
-            model.joint_survival_probability(X), [0.375, 0.1875]
-        )
+        np.testing.assert_array_equal(model.survival_probability(X), [0.375, 0.1875])
 
 
 def test_independent_tail_probabilities():
@@ -232,7 +228,7 @@ def test_independent_tail_probabilities():
     X = np.array([[2.0**-40, 0.25], [1 - 2.0**-40, 0.75]])
     np.testing.assert_array_equal(model.cdf(X), X[:, 0] * X[:, 1])
     np.testing.assert_array_equal(
-        model.joint_survival_probability(X), (1 - X[:, 0]) * (1 - X[:, 1])
+        model.survival_probability(X), (1 - X[:, 0]) * (1 - X[:, 1])
     )
 
 
@@ -270,7 +266,7 @@ def test_archimedean_probability_extreme_parameters(cls, theta, rotation):
     X = np.array(np.meshgrid(q, q)).reshape(2, -1).T
     with warnings.catch_warnings():
         warnings.simplefilter("error", RuntimeWarning)
-        for method, margins in (("cdf", X), ("joint_survival_probability", 1 - X)):
+        for method, margins in (("cdf", X), ("survival_probability", 1 - X)):
             values = getattr(model, method)(X)
             assert np.all(np.isfinite(values))
             assert np.all((values >= 0) & (values <= 1))

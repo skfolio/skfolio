@@ -73,7 +73,7 @@ def test_gaussian_cdf_shape(random_data):
 
 
 @pytest.mark.parametrize("rho", [-0.999, -0.7, 0.0, 0.5, 0.999])
-@pytest.mark.parametrize("method", ["cdf", "joint_survival_probability"])
+@pytest.mark.parametrize("method", ["cdf", "survival_probability"])
 def test_gaussian_probability_batch_consistency(rho, method):
     model = GaussianCopula()
     model.rho_ = rho
@@ -87,11 +87,11 @@ def test_gaussian_probability_batch_consistency(rho, method):
 
 
 @pytest.mark.parametrize("rho", [-0.999, -0.7, 0.0, 0.5, 0.999])
-def test_gaussian_joint_survival_probability_reflection(rho):
+def test_gaussian_survival_probability_reflection(rho):
     model = GaussianCopula()
     model.rho_ = rho
     X = np.array([[2.0**-40, 0.125], [2.0**-40, 2.0**-40], [0.75, 0.5]])
-    np.testing.assert_array_equal(model.joint_survival_probability(1 - X), model.cdf(X))
+    np.testing.assert_array_equal(model.survival_probability(1 - X), model.cdf(X))
 
 
 @pytest.mark.parametrize("rho", [-0.999, 0.0, 0.999])
@@ -104,7 +104,7 @@ def test_gaussian_probability_bounds_near_endpoints(rho):
     assert np.all((concentration >= 0) & (concentration <= 1))
 
     X = np.array(np.meshgrid(q, q)).reshape(2, -1).T
-    for method, margins in (("cdf", X), ("joint_survival_probability", 1 - X)):
+    for method, margins in (("cdf", X), ("survival_probability", 1 - X)):
         values = getattr(model, method)(X)
         assert np.all((values >= 0) & (values <= margins.min(axis=1)))
 
