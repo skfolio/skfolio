@@ -51,3 +51,39 @@ def test_stationary_bootstrap_does_not_change_global_random_state(seed):
             )
     finally:
         np.random.set_state(previous_state)
+
+
+@pytest.mark.parametrize("dtype", [np.float16, np.float32, np.float64, np.int32])
+@pytest.mark.parametrize("block_size", [1, 3, np.inf])
+def test_stationary_bootstrap_preserves_samples_and_draws(dtype, block_size):
+    """Dense samples retain the circular row schedule, dtype and RNG state."""
+    returns = np.arange(24).reshape(8, 3).astype(dtype)
+    before = returns.copy()
+    returns.setflags(write=False)
+    rng = np.random.RandomState(42)
+    starts = rng.randint(8, size=(4, 8))
+    continues = rng.rand(4, 8) >= 1 / block_size
+    expected = np.empty((4, 8, 3), dtype=dtype)
+    # A scalar circular walk is independent of the duplicated-array indexing.
+    for sample in range(4):
+        row = starts[sample, 0]
+        for observation in range(8):
+            if observation:
+                row = (
+                    row + 1
+                    if continues[sample, observation]
+                    else starts[sample, observation]
+                )
+            expected[sample, observation] = before[row % 8]
+
+    expected_state = np.random.get_state()
+    actual = stationary_bootstrap(returns, 4, block_size=block_size, seed=42)
+
+    np.testing.assert_array_equal(actual, expected)
+    assert actual.dtype == expected.dtype
+    actual_state = np.random.get_state()
+    np.testing.assert_array_equal(actual_state[1], expected_state[1])
+    assert actual_state[0] == expected_state[0]
+    assert actual_state[2:] == expected_state[2:]
+    np.testing.assert_array_equal(returns, before)
+    assert not returns.flags.writeable

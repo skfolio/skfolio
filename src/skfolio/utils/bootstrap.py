@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from skfolio.typing import FloatArray
+from skfolio.typing import FloatArray, IntArray
 
 __all__ = ["stationary_bootstrap"]
 
@@ -100,6 +100,23 @@ def stationary_bootstrap(
            The sample returns of shape (reps, nb observations, nb assets)
 
     """
+    x, indices = _stationary_bootstrap_indices(
+        returns, n_bootstrap_samples, block_size, seed
+    )
+    return x[indices, :]
+
+
+def _stationary_bootstrap_indices(
+    returns: FloatArray,
+    n_bootstrap_samples: int,
+    block_size: float | None,
+    seed: int | None,
+) -> tuple[FloatArray, IntArray]:
+    """Prepare duplicated returns and the complete bootstrap index schedule.
+
+    Keep preparation eager and shared with the dense public sampler so consumers
+    retain the same random draws, block estimation and preparation error timing.
+    """
     rng = np.random.RandomState(seed=seed)
     n_observations, n_assets = returns.shape
     x = np.vstack((returns, returns))
@@ -117,4 +134,4 @@ def stationary_bootstrap(
             if cond[i, j]:
                 indices[i, j] = indices[i, j - 1] + 1
     indices[indices > 2 * n_observations] = 0
-    return x[indices, :]
+    return x, indices
