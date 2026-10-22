@@ -9,7 +9,7 @@ def assert_box_budget(
     atol=1e-8,
 ):
     assert np.isfinite(w).all(), "Infinite weights!"
-    assert np.all(abs(np.sum(w) - budget) <= 1e-6), "budget constraint not respected"
+    assert np.all(abs(np.sum(w) - budget) <= atol), "budget constraint not respected"
     assert np.all(np.max(w) - upper <= atol), "box constraint (upper) not respected"
     assert np.all(np.min(w) - lower >= -atol), "box constraint (lower) not respected"
 
@@ -31,6 +31,6 @@ def make_stationary_returns(T=200, gap=0.01, n=2):
 
 def assert_simplex_trajectory(W: np.ndarray, atol=1e-9):
     s = np.sum(W, axis=1)
-    assert np.all(W >= -1e-12)
-    assert np.all(W <= 1 + 1e-12)
+    assert np.all(W >= -atol)
+    assert np.all(W <= 1 + atol)
     assert np.all(np.abs(s - 1.0) <= atol)
