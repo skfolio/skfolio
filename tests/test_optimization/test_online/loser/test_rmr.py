@@ -45,8 +45,8 @@ def test_l1_median_vs_scipy():
     """Compare L1-median against scipy minimize with L1 objective."""
     from scipy.optimize import minimize
 
-    np.random.seed(42)
-    X = np.random.randn(10, 3)
+    rng = np.random.RandomState(42)
+    X = rng.randn(10, 3)
 
     # Our implementation
     our_median = l1median_vazhz_vec(X)
@@ -151,8 +151,8 @@ def test_rmr_param_validation():
 
 def test_rmr_vs_olmar_on_clean_data():
     """On outlier-free data, RMR and OLMAR should behave similarly."""
-    np.random.seed(123)
-    X = 0.01 * np.random.randn(20, 3)
+    rng = np.random.RandomState(123)
+    X = 0.01 * rng.randn(20, 3)
 
     rmr_model = _make_rmr(rmr_window=5)
     olmar_model = FollowTheLoser(

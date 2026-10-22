@@ -46,15 +46,15 @@ def _assert_gradient_matches_finite_difference(*, obj, weights, net_returns, ato
 @pytest.fixture(scope="module")
 def net_returns_single():
     """Single observation of net returns."""
-    np.random.seed(42)
-    return np.random.randn(5) * 0.02
+    rng = np.random.RandomState(42)
+    return rng.randn(5) * 0.02
 
 
 @pytest.fixture(scope="module")
 def net_returns_timeseries():
     """Time series of net returns."""
-    np.random.seed(42)
-    return np.random.randn(50, 5) * 0.02 + 0.001
+    rng = np.random.RandomState(42)
+    return rng.randn(50, 5) * 0.02 + 0.001
 
 
 @pytest.fixture(scope="module")
@@ -312,7 +312,7 @@ class TestAnalyticalGradientReferences:
         Tests both single observations (for all measures) and time series
         (for non-LOG_WEALTH measures).
         """
-        np.random.seed(42)
+        rng = np.random.RandomState(42)
         weights = np.array([0.3, 0.2, 0.2, 0.15, 0.15])
 
         # Test single observation data - use returns that produce negative portfolio return
@@ -341,8 +341,8 @@ class TestAnalyticalGradientReferences:
                 failures.append((measure, "single", grad_1, grad_2))
 
         # Also test time series (excluding LOG_WEALTH)
-        ts_1 = np.random.randn(20, 5) * 0.01
-        ts_2 = np.random.randn(20, 5) * 0.015 + 0.002
+        ts_1 = rng.randn(20, 5) * 0.01
+        ts_2 = rng.randn(20, 5) * 0.015 + 0.002
 
         for measure in self.ANALYTICAL_MEASURES:
             if measure == PerfMeasure.LOG_WEALTH:
@@ -383,9 +383,8 @@ class TestAnalyticalGradients:
     def test_analytical_vs_autograd_single(self, measure, weights, net_returns_single):
         """Test analytical gradient matches autograd for single observation.
 
-        Note: EVAR, CDAR, EDAR excluded as their autograd implementations
-        use grid search/cummax which aren't fully autograd-compatible for gradients.
-        These are tested separately using analytical gradients as reference.
+        Entropic and drawdown gradients are checked separately against finite
+        differences, covering theta optimization and running wealth peaks.
         """
         obj_analytical = MeasureObjective(measure=measure, use_autograd=False)
         obj_autograd = MeasureObjective(measure=measure, use_autograd=True)
@@ -459,9 +458,8 @@ class TestAnalyticalGradients:
 class TestAdvancedAnalyticalGradients:
     """Test analytical gradients for EVaR, CDaR, EDaR against finite differences.
 
-    These measures use analytical gradients with theta optimization and drawdown derivatives.
-    They cannot use autograd for gradient computation (grid search/cummax not autograd-compatible),
-    so we validate against finite differences.
+    Finite differences provide an independent check of theta optimization and
+    drawdown derivatives.
     """
 
     @pytest.mark.parametrize(
@@ -491,8 +489,8 @@ class TestAdvancedAnalyticalGradients:
 @pytest.mark.parametrize("measure", AUTOGRAD_MEASURE_MAPPING, ids=str)
 def test_scalar_metrics_match_reference(measure):
     # Keep the original sample for risks; log wealth requires returns above -1.
-    np.random.seed(42)
-    returns = np.random.randn(100)
+    rng = np.random.RandomState(42)
+    returns = rng.randn(100)
     if measure == PerfMeasure.LOG_WEALTH:
         returns = np.expm1(returns * 0.02)
     autograd_func, ref_func = AUTOGRAD_MEASURE_MAPPING[measure]
@@ -500,23 +498,13 @@ def test_scalar_metrics_match_reference(measure):
     actual = autograd_func(returns)
     assert np.isfinite(ref_val)
     assert np.isfinite(actual)
-    is_approx = measure in (RiskMeasure.EVAR, RiskMeasure.EDAR)
-    rtol = 1e-3 if is_approx else 1e-7
-    try:
-        np.testing.assert_allclose(
-            actual,
-            ref_val,
-            rtol=rtol,
-            err_msg=f"Metric {measure} differs from reference",
-        )
-    except AssertionError as error:
-        if not is_approx:
-            raise
-        relative_error = np.abs((actual - ref_val) / ref_val)
-        if relative_error > rtol:
-            raise AssertionError(
-                f"Metric {measure} exceeds tolerance: {relative_error} > {rtol}"
-            ) from error
+    rtol = 1e-3 if measure in (RiskMeasure.EVAR, RiskMeasure.EDAR) else 1e-7
+    np.testing.assert_allclose(
+        actual,
+        ref_val,
+        rtol=rtol,
+        err_msg=f"Metric {measure} differs from reference",
+    )
 
 
 @pytest.mark.parametrize("factory", [MeasureObjective, create_objective])

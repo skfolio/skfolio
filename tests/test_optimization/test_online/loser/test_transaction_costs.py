@@ -50,7 +50,6 @@ def test_higher_costs_reduce_turnover_more(X_small, strategy, update_mode):
 @pytest.mark.parametrize("strategy", ["olmar", "pamr", "rmr"])
 def test_management_fees_affect_weights(X_small, strategy):
     """Management fees should affect portfolio weights."""
-    np.random.seed(42)
 
     model_no_fee = FollowTheLoser(
         strategy=strategy,
@@ -77,7 +76,6 @@ def test_management_fees_affect_weights(X_small, strategy):
 @pytest.mark.parametrize("strategy", ["olmar", "rmr"])
 def test_apply_fees_to_phi(X_small, strategy):
     """Test apply_fees_to_phi parameter affects predictor."""
-    np.random.seed(42)
     fees = 0.001
 
     model_fees_to_phi = FollowTheLoser(
@@ -134,7 +132,6 @@ def test_combined_effects(X_small, strategy, update_mode):
 @pytest.mark.parametrize("update_mode", ["pa", "md"])
 def test_costs_fees_consistency(X_small, strategy, update_mode):
     """Test that costs and fees work consistently across modes."""
-    np.random.seed(42)
 
     model = FollowTheLoser(
         strategy=strategy,

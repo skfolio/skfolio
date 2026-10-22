@@ -94,30 +94,19 @@ class PAMRStrategy(BaseStrategy):
     def _pa_step(
         self, trade_w: np.ndarray, arr: np.ndarray, projector: AutoProjector
     ) -> np.ndarray:
-        """PAMR passive-aggressive step using objective.
+        """Reduce the margin when it exceeds epsilon, then project the weights.
 
-        PAMR wants w^T x <= epsilon, so loss = max(0, w^T x - epsilon).
-        This is opposite to OLMAR which wants phi^T w >= epsilon.
-
-        The objective is designed for OLMAR semantics, so we pass -x_t
-        to flip the sign: loss(w, -x) = max(0, ε - w^T(-x)) = max(0, ε + w^T x)
-        is wrong, so instead we negate the gradient result.
+        The passive-aggressive loss is max(0, w^T x - epsilon).
         """
-        x_t = arr  # For PAMR, arr is x_t
+        x_t = arr
 
-        # PAMR semantics: pass -x_t to objective to flip sign
-        # loss(w, -x_t) = max(0, ε - w^T(-x_t)) = max(0, ε + w^T x_t)
-        # But we want: max(0, w^T x_t - ε)
-        # So let's compute directly for PAMR
         margin = float(np.dot(trade_w, x_t))
         loss = max(0.0, margin - self.epsilon)
 
         if loss <= 0.0:  # passive case, no update
             return projector.project(trade_w)
 
-        # PAMR gradient: +x_t when violated (want to reduce w^T x)
-        # Objective returns -phi, so negate: -(-x_t) = x_t
-        # Actually, let's compute directly for clarity
+        # Center the loss gradient to preserve the budget before projection.
         c = x_t - np.mean(x_t)
 
         # Trading penalties affect decisions; Portfolio books actual costs once.
@@ -136,8 +125,7 @@ class PAMRStrategy(BaseStrategy):
         if c_norm_sq < 1e-16:
             return projector.project(trade_w)
 
-        # Compute tau based on PAMR variant
-        # All variants use the loss value directly (design decision: option a)
+        # Select the step size for the requested slack penalty.
         match self.variant:
             case PAMRVariant.SIMPLE:
                 tau = loss / c_norm_sq
@@ -160,8 +148,7 @@ class PAMRStrategy(BaseStrategy):
         PAMR wants w^T x <= epsilon. When violated (w^T x > epsilon),
         gradient points in direction of x to reduce the margin.
 
-        Since the objective is designed for OLMAR semantics (grad = -phi),
-        we need to negate to get PAMR semantics (grad = +x).
+        Compute the loss gradient directly before the engine update.
         """
         if self.engine is None:
             raise ValueError("MD mode requires engine to be initialized")

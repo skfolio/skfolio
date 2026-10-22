@@ -47,8 +47,8 @@ def net_returns(X):
 @pytest.fixture(scope="module")
 def weights(net_returns):
     """Generate random portfolio weights."""
-    np.random.seed(42)  # For reproducibility
-    weights = np.random.randn(net_returns.shape[1])
+    rng = np.random.RandomState(42)  # For reproducibility
+    weights = rng.randn(net_returns.shape[1])
     return weights / np.sum(np.abs(weights))
 
 
@@ -158,7 +158,7 @@ ANALYTICAL_GRADIENT_MAPPING = {
         1e-5,
         1e-7,
     ),
-    # Advanced measures: use finite differences (autograd can't differentiate through grid search/cummax)
+    # Independently check entropic and drawdown gradients with finite differences.
     RiskMeasure.EVAR: (
         _autograd_evar,
         _analytical_evar_gradient,

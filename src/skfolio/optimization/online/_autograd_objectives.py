@@ -1879,10 +1879,10 @@ def create_objective(
     >>> # Default log-wealth
     >>> obj = create_objective(None)
 
-    >>> # CVaR with analytical gradient (not available, will fall back to autograd)
+    >>> # CVaR with an analytical gradient
     >>> obj = create_objective(RiskMeasure.CVAR, use_autograd=False, cvar_beta=0.95)
 
-    >>> # Variance with autograd
+    >>> # Variance with the default analytical gradient
     >>> obj = create_objective(RiskMeasure.VARIANCE)
     """
     return MeasureObjective(measure=measure, use_autograd=use_autograd, **kwargs)
