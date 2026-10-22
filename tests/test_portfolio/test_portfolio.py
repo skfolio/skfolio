@@ -316,7 +316,7 @@ def test_portfolio_methods(X, weights):
     np.testing.assert_almost_equal(portfolio.nonzero_assets_index, idx)
     names_1 = np.array(X.columns[idx])
     assert np.array_equal(portfolio.nonzero_assets, names_1)
-    names_2 = portfolio.composition.index.to_numpy()
+    names_2 = portfolio.composition.index.to_numpy(copy=True)
     names_2.sort()
     names_1.sort()
     assert np.array_equal(names_1, names_2)
