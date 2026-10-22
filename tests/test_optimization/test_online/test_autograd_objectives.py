@@ -520,12 +520,16 @@ class TestAdvancedAnalyticalGradients:
 
 @pytest.mark.parametrize("measure", AUTOGRAD_MEASURE_MAPPING, ids=str)
 def test_scalar_metrics_match_reference(measure):
-    # Preserve the original scalar-series sample and per-measure tolerances.
+    # Keep the original sample for risks; log wealth requires returns above -1.
     np.random.seed(42)
     returns = np.random.randn(100)
+    if measure == PerfMeasure.LOG_WEALTH:
+        returns = np.expm1(returns * 0.02)
     autograd_func, ref_func = AUTOGRAD_MEASURE_MAPPING[measure]
     ref_val = ref_func(returns)
     actual = autograd_func(returns)
+    assert np.isfinite(ref_val)
+    assert np.isfinite(actual)
     is_approx = measure in (RiskMeasure.EVAR, RiskMeasure.EDAR)
     rtol = 1e-3 if is_approx else 1e-7
     try:
