@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.10.0 (2026-10-22)
+
+### Features
+
+- **distribution**: Add joint survival probabilities for copulas
+  ([#462](https://github.com/skfolio/skfolio/pull/462),
+  [`5ffd32f`](https://github.com/skfolio/skfolio/commit/5ffd32f2070f670278033f03ecb4edde835c06a6))
+
+
 ## v1.9.13 (2026-10-22)
 
 ### Bug Fixes
