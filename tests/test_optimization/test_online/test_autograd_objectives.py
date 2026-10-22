@@ -12,6 +12,10 @@ from typing import ClassVar
 
 import numpy as np
 import pytest
+from tests.test_optimization.test_online.objective_utils import (
+    AUTOGRAD_MEASURE_MAPPING,
+    finite_difference_gradient,
+)
 
 from skfolio.measures._enums import PerfMeasure, RiskMeasure
 from skfolio.optimization.online._autograd_objectives import (
@@ -27,18 +31,7 @@ def _finite_difference_gradient(
     eps: float = 1e-6,
 ) -> np.ndarray:
     """Compute gradient using finite differences for testing."""
-    grad_numerical = np.zeros_like(weights)
-    for i in range(len(weights)):
-        weights_plus = weights.copy()
-        weights_plus[i] += eps
-        weights_minus = weights.copy()
-        weights_minus[i] -= eps
-
-        loss_plus = obj.loss(weights_plus, net_returns)
-        loss_minus = obj.loss(weights_minus, net_returns)
-        grad_numerical[i] = (loss_plus - loss_minus) / (2 * eps)
-
-    return grad_numerical
+    return finite_difference_gradient(lambda w: obj.loss(w, net_returns), weights, eps)
 
 
 def _assert_gradient_matches_finite_difference(*, obj, weights, net_returns, atol):
@@ -525,136 +518,31 @@ class TestAdvancedAnalyticalGradients:
         )
 
 
-class TestAutogradVsReferenceImplementations:
-    """Test that autograd implementations match skfolio.measures reference implementations.
-
-    This ensures the autograd metrics are numerically correct.
-    """
-
-    def test_all_metrics_match_reference(self):
-        """Test all autograd metrics match their skfolio.measures counterparts."""
-        from skfolio.measures import (
-            cdar,
-            cvar,
-            edar,
-            evar,
-            first_lower_partial_moment,
-            get_drawdowns,
-            gini_mean_difference,
-            log_wealth,
-            mean,
-            mean_absolute_deviation,
-            semi_deviation,
-            semi_variance,
-            standard_deviation,
-            variance,
-            worst_realization,
+@pytest.mark.parametrize("measure", AUTOGRAD_MEASURE_MAPPING, ids=str)
+def test_scalar_metrics_match_reference(measure):
+    # Preserve the original scalar-series sample and per-measure tolerances.
+    np.random.seed(42)
+    returns = np.random.randn(100)
+    autograd_func, ref_func = AUTOGRAD_MEASURE_MAPPING[measure]
+    ref_val = ref_func(returns)
+    actual = autograd_func(returns)
+    is_approx = measure in (RiskMeasure.EVAR, RiskMeasure.EDAR)
+    rtol = 1e-3 if is_approx else 1e-7
+    try:
+        np.testing.assert_allclose(
+            actual,
+            ref_val,
+            rtol=rtol,
+            err_msg=f"Metric {measure} differs from reference",
         )
-        from skfolio.optimization.online._autograd_objectives import (
-            _autograd_cdar,
-            _autograd_cvar,
-            _autograd_edar,
-            _autograd_evar,
-            _autograd_first_lower_partial_moment,
-            _autograd_gini_mean_difference,
-            _autograd_log_wealth,
-            _autograd_mean,
-            _autograd_mean_absolute_deviation,
-            _autograd_semi_deviation,
-            _autograd_semi_variance,
-            _autograd_standard_deviation,
-            _autograd_variance,
-            _autograd_worst_realization,
-        )
-
-        # Set random seed for reproducibility
-        np.random.seed(42)
-        X = np.random.randn(100)
-
-        # For drawdown-based measures, autograd functions accept returns and compute drawdowns internally
-        def ref_cdar_from_returns(returns, beta=0.95):
-            drawdowns = get_drawdowns(returns, compounded=False)
-            return cdar(drawdowns, beta=beta)
-
-        def ref_edar_from_returns(returns, beta=0.95):
-            drawdowns = get_drawdowns(returns, compounded=False)
-            return edar(drawdowns, beta=beta)
-
-        tests = [
-            ("log_wealth", _autograd_log_wealth, log_wealth, 1e-7, False),
-            ("mean", _autograd_mean, mean, 1e-7, False),
-            ("variance", _autograd_variance, variance, 1e-7, False),
-            (
-                "standard_deviation",
-                _autograd_standard_deviation,
-                standard_deviation,
-                1e-7,
-                False,
-            ),
-            ("semi_variance", _autograd_semi_variance, semi_variance, 1e-7, False),
-            ("semi_deviation", _autograd_semi_deviation, semi_deviation, 1e-7, False),
-            (
-                "mean_absolute_deviation",
-                _autograd_mean_absolute_deviation,
-                mean_absolute_deviation,
-                1e-7,
-                False,
-            ),
-            (
-                "first_lower_partial_moment",
-                _autograd_first_lower_partial_moment,
-                first_lower_partial_moment,
-                1e-7,
-                False,
-            ),
-            ("cvar", _autograd_cvar, cvar, 1e-7, False),
-            ("evar", _autograd_evar, evar, 1e-3, True),  # Grid approximation
-            (
-                "worst_realization",
-                _autograd_worst_realization,
-                worst_realization,
-                1e-7,
-                False,
-            ),
-            (
-                "gini_mean_difference",
-                _autograd_gini_mean_difference,
-                gini_mean_difference,
-                1e-7,
-                False,
-            ),
-            ("cdar", _autograd_cdar, ref_cdar_from_returns, 1e-7, False),
-            (
-                "edar",
-                _autograd_edar,
-                ref_edar_from_returns,
-                1e-3,
-                True,
-            ),  # Grid approximation
-        ]
-
-        for name, autograd_func, ref_func, rtol, is_approx in tests:
-            ref_val = ref_func(X)
-            autograd_val = autograd_func(X)
-
-            try:
-                np.testing.assert_allclose(
-                    autograd_val,
-                    ref_val,
-                    rtol=rtol,
-                    err_msg=f"Metric {name} differs from reference",
-                )
-            except AssertionError as e:
-                if is_approx:
-                    # For approximations, show relative error instead of failing
-                    rel_error = np.abs((autograd_val - ref_val) / ref_val)
-                    if rel_error > rtol:
-                        raise AssertionError(
-                            f"Metric {name} (approximation) exceeds tolerance: "
-                            f"rel_error={rel_error:.4%}, threshold={rtol:.4%}"
-                        ) from e
-                else:
-                    raise
+    except AssertionError as error:
+        if not is_approx:
+            raise
+        relative_error = np.abs((actual - ref_val) / ref_val)
+        if relative_error > rtol:
+            raise AssertionError(
+                f"Metric {measure} exceeds tolerance: {relative_error} > {rtol}"
+            ) from error
 
 
 @pytest.mark.parametrize("factory", [MeasureObjective, create_objective])

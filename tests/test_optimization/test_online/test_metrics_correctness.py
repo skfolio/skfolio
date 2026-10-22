@@ -1,24 +1,11 @@
 import numpy as np
 import pytest
 from autograd import grad
-
-from skfolio.measures import (
-    cdar,
-    cvar,
-    edar,
-    evar,
-    first_lower_partial_moment,
-    get_drawdowns,
-    gini_mean_difference,
-    log_wealth,
-    mean,
-    mean_absolute_deviation,
-    semi_deviation,
-    semi_variance,
-    standard_deviation,
-    variance,
-    worst_realization,
+from tests.test_optimization.test_online.objective_utils import (
+    AUTOGRAD_MEASURE_MAPPING,
+    finite_difference_gradient,
 )
+
 from skfolio.measures._enums import PerfMeasure, RiskMeasure
 from skfolio.optimization.online._autograd_objectives import (
     _analytical_cdar_gradient,
@@ -40,7 +27,6 @@ from skfolio.optimization.online._autograd_objectives import (
     _autograd_evar,
     _autograd_first_lower_partial_moment,
     _autograd_gini_mean_difference,
-    _autograd_log_wealth,
     _autograd_mean,
     _autograd_mean_absolute_deviation,
     _autograd_semi_deviation,
@@ -77,156 +63,7 @@ def make_autograd_weight_function(measure_fn, net_returns, **kwargs):
     return weight_objective
 
 
-def _finite_difference_gradient_from_measure(
-    measure_fn, weights, net_returns, eps=1e-6, **kwargs
-):
-    """Compute gradient using finite differences for a measure function.
-
-    Parameters
-    ----------
-    measure_fn : callable
-        Measure function that takes portfolio_returns and returns a scalar.
-    weights : ndarray
-        Portfolio weights.
-    net_returns : ndarray
-        Net returns matrix (T, n_assets).
-    eps : float
-        Perturbation size for finite differences.
-    **kwargs
-        Additional parameters for measure_fn.
-
-    Returns
-    -------
-    ndarray
-        Gradient vector computed via finite differences.
-    """
-    grad_numerical = np.zeros_like(weights)
-    for i in range(len(weights)):
-        weights_plus = weights.copy()
-        weights_plus[i] += eps
-        weights_minus = weights.copy()
-        weights_minus[i] -= eps
-
-        portfolio_returns_plus = net_returns @ weights_plus
-        portfolio_returns_minus = net_returns @ weights_minus
-
-        loss_plus = measure_fn(portfolio_returns_plus, **kwargs)
-        loss_minus = measure_fn(portfolio_returns_minus, **kwargs)
-        grad_numerical[i] = (loss_plus - loss_minus) / (2 * eps)
-
-    return grad_numerical
-
-
-# For drawdown-based measures, autograd functions accept returns and compute drawdowns internally,
-# while reference functions expect pre-computed drawdowns. Create wrappers for consistent testing.
-def ref_cdar_from_returns(returns, beta=0.95):
-    """Wrapper to compute CDaR from returns (computes drawdowns first)."""
-    drawdowns = get_drawdowns(returns, compounded=False)
-    return cdar(drawdowns, beta=beta)
-
-
-def ref_edar_from_returns(returns, beta=0.95):
-    """Wrapper to compute EDaR from returns (computes drawdowns first).
-
-    The reference edar expects a 1D drawdown series; if a 2D matrix is provided,
-    compute EDaR per asset (along axis=0).
-    """
-    drawdowns = get_drawdowns(returns, compounded=False)
-    drawdowns = np.asarray(drawdowns)
-    if drawdowns.ndim == 1:
-        return edar(drawdowns, beta=beta)
-    n = drawdowns.shape[1]
-    out = np.empty(n, dtype=float)
-    for j in range(n):
-        out[j] = edar(drawdowns[:, j], beta=beta)
-    return out
-
-
-def ref_evar_from_returns(returns, beta=0.95):
-    """Wrapper to compute EVaR from returns for 1D or 2D inputs.
-
-    The reference evar expects a 1D series; if a 2D matrix is provided,
-    compute EVaR per asset (along axis=0).
-    """
-    returns = np.asarray(returns)
-    if returns.ndim == 1:
-        return evar(returns, beta=beta)
-    n = returns.shape[1]
-    out = np.empty(n, dtype=float)
-    for j in range(n):
-        out[j] = evar(returns[:, j], beta=beta)
-    return out
-
-
-# Mapping from measure enums to their implementations
-AUTOGRAD_MEASURE_MAPPING = {
-    PerfMeasure.LOG_WEALTH: (_autograd_log_wealth, log_wealth, None),
-    PerfMeasure.MEAN: (_autograd_mean, mean, None),
-    RiskMeasure.VARIANCE: (_autograd_variance, variance, None),
-    RiskMeasure.STANDARD_DEVIATION: (
-        _autograd_standard_deviation,
-        standard_deviation,
-        None,
-    ),
-    RiskMeasure.SEMI_VARIANCE: (_autograd_semi_variance, semi_variance, None),
-    RiskMeasure.SEMI_DEVIATION: (_autograd_semi_deviation, semi_deviation, None),
-    RiskMeasure.MEAN_ABSOLUTE_DEVIATION: (
-        _autograd_mean_absolute_deviation,
-        mean_absolute_deviation,
-        None,
-    ),
-    RiskMeasure.FIRST_LOWER_PARTIAL_MOMENT: (
-        _autograd_first_lower_partial_moment,
-        first_lower_partial_moment,
-        None,
-    ),
-    RiskMeasure.CVAR: (_autograd_cvar, cvar, None),
-    RiskMeasure.EVAR: (
-        _autograd_evar,
-        ref_evar_from_returns,
-        None,
-    ),
-    RiskMeasure.WORST_REALIZATION: (
-        _autograd_worst_realization,
-        worst_realization,
-        None,
-    ),
-    RiskMeasure.GINI_MEAN_DIFFERENCE: (
-        _autograd_gini_mean_difference,
-        gini_mean_difference,
-        None,
-    ),
-    RiskMeasure.CDAR: (_autograd_cdar, ref_cdar_from_returns, None),
-    RiskMeasure.EDAR: (
-        _autograd_edar,
-        ref_edar_from_returns,
-        None,
-    ),
-}
-
-
-@pytest.mark.parametrize(
-    "measure",
-    [
-        pytest.param(m, id=str(m))
-        for m in [
-            PerfMeasure.LOG_WEALTH,
-            PerfMeasure.MEAN,
-            RiskMeasure.VARIANCE,
-            RiskMeasure.STANDARD_DEVIATION,
-            RiskMeasure.SEMI_VARIANCE,
-            RiskMeasure.SEMI_DEVIATION,
-            RiskMeasure.MEAN_ABSOLUTE_DEVIATION,
-            RiskMeasure.FIRST_LOWER_PARTIAL_MOMENT,
-            RiskMeasure.CVAR,
-            RiskMeasure.EVAR,
-            RiskMeasure.WORST_REALIZATION,
-            RiskMeasure.GINI_MEAN_DIFFERENCE,
-            RiskMeasure.CDAR,
-            RiskMeasure.EDAR,
-        ]
-    ],
-)
+@pytest.mark.parametrize("measure", AUTOGRAD_MEASURE_MAPPING, ids=str)
 def test_autograd_objective_against_reference(net_returns, measure):
     """Test that autograd objective functions match skfolio.measures reference functions.
 
@@ -237,24 +74,15 @@ def test_autograd_objective_against_reference(net_returns, measure):
     measure : PerfMeasure | RiskMeasure
         Measure to test.
     """
-    autograd_func, ref_func, special_rtol = AUTOGRAD_MEASURE_MAPPING[measure]
-    assert np.shape(ref_func(net_returns)) == np.shape(autograd_func(net_returns)), (
+    autograd_func, ref_func = AUTOGRAD_MEASURE_MAPPING[measure]
+    expected = ref_func(net_returns)
+    actual = autograd_func(net_returns)
+    assert np.shape(expected) == np.shape(actual), (
         f"Shapes mismatch for metric {measure}"
     )
-    # Use relaxed tolerance for measures with approximations (EVaR, EDaR)
-    if special_rtol is not None:
-        np.testing.assert_allclose(
-            ref_func(net_returns),
-            autograd_func(net_returns),
-            rtol=special_rtol,
-            err_msg=f"Autograd {measure} differs from reference (grid approximation)",
-        )
-    else:
-        np.testing.assert_allclose(
-            ref_func(net_returns),
-            autograd_func(net_returns),
-            err_msg=f"Autograd {measure} differs from reference",
-        )
+    np.testing.assert_allclose(
+        actual, expected, err_msg=f"Autograd {measure} differs from reference"
+    )
 
 
 # Mapping from measure enums to their gradient implementations
@@ -355,27 +183,7 @@ ANALYTICAL_GRADIENT_MAPPING = {
 }
 
 
-@pytest.mark.parametrize(
-    "measure",
-    [
-        pytest.param(m, id=str(m))
-        for m in [
-            PerfMeasure.MEAN,
-            RiskMeasure.VARIANCE,
-            RiskMeasure.STANDARD_DEVIATION,
-            RiskMeasure.SEMI_VARIANCE,
-            RiskMeasure.SEMI_DEVIATION,
-            RiskMeasure.MEAN_ABSOLUTE_DEVIATION,
-            RiskMeasure.FIRST_LOWER_PARTIAL_MOMENT,
-            RiskMeasure.CVAR,
-            RiskMeasure.WORST_REALIZATION,
-            RiskMeasure.GINI_MEAN_DIFFERENCE,
-            RiskMeasure.EVAR,
-            RiskMeasure.CDAR,
-            RiskMeasure.EDAR,
-        ]
-    ],
-)
+@pytest.mark.parametrize("measure", ANALYTICAL_GRADIENT_MAPPING, ids=str)
 def test_analytical_gradient(net_returns, weights, measure):
     """Test analytical gradients against autograd or finite differences.
 
@@ -409,8 +217,8 @@ def test_analytical_gradient(net_returns, weights, measure):
         )
     elif method == "finite_diff":
         # Compute gradients via finite differences
-        finite_diff_grad = _finite_difference_gradient_from_measure(
-            measure_fn=measure_fn, weights=weights, net_returns=net_returns, eps=1e-6
+        finite_diff_grad = finite_difference_gradient(
+            lambda w: measure_fn(net_returns @ w), weights, eps=1e-6
         )
         analytical_grad = analytical_grad_fn(weights, net_returns)
 
