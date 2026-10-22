@@ -2,6 +2,20 @@
 
 <!-- version list -->
 
+## v1.9.12 (2026-10-22)
+
+### Bug Fixes
+
+- Restore pandas 3.1 compatibility ([#458](https://github.com/skfolio/skfolio/pull/458),
+  [`1aa2b48`](https://github.com/skfolio/skfolio/commit/1aa2b483102c69807776b68ba9512d41a6258385))
+
+### Documentation
+
+- **moments**: Clarify that EquilibriumMu weights are used as given
+  ([#446](https://github.com/skfolio/skfolio/pull/446),
+  [`c995dcd`](https://github.com/skfolio/skfolio/commit/c995dcdba31c200b3b3fee73f7f5392c3c8a4596))
+
+
 ## v1.9.11 (2026-10-21)
 
 ### Bug Fixes
