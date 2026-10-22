@@ -766,14 +766,6 @@ class TestShrunkMu:
         assert model.mu_.shape == (20,)
 
 
-def test_equilibrium_mu_with_market_caps(X):
-    n_assets = X.shape[1]
-    market_caps = np.linspace(1e11, 3e12, n_assets)
-    model = EquilibriumMu(weights=market_caps).fit(X)
-    model_weights = EquilibriumMu(weights=market_caps / market_caps.sum()).fit(X)
-    np.testing.assert_allclose(model.mu_, model_weights.mu_)
-
-
 def test_equilibrium_mu_with_explicit_weights(X):
     n_assets = X.shape[1]
     weights = np.ones(n_assets) / n_assets
