@@ -224,6 +224,7 @@ def _positions_from_unique_labels(labels: AnyArray, selected: Any) -> slice | In
     if isinstance(selected, slice):
         return index.slice_indexer(selected.start, selected.stop, selected.step)
     if isinstance(selected, (str, bytes)) or np.isscalar(selected):
+        # Exact lookups on unique asset labels return an integer position.
         loc = cast(int, index.get_loc(selected))
         return slice(int(loc), int(loc) + 1)
 

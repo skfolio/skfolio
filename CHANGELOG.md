@@ -2,6 +2,109 @@
 
 <!-- version list -->
 
+## v1.9.13 (2026-10-22)
+
+### Bug Fixes
+
+- **distribution**: Apply the log1p jacobian when scoring a log-transformed vine
+  ([#456](https://github.com/skfolio/skfolio/pull/456),
+  [`092cd6a`](https://github.com/skfolio/skfolio/commit/092cd6a6d1a20d7526d991f7215bc31cf8001cc0))
+
+
+## v1.9.12 (2026-10-22)
+
+### Bug Fixes
+
+- Restore pandas 3.1 compatibility ([#458](https://github.com/skfolio/skfolio/pull/458),
+  [`1aa2b48`](https://github.com/skfolio/skfolio/commit/1aa2b483102c69807776b68ba9512d41a6258385))
+
+### Documentation
+
+- **moments**: Clarify that EquilibriumMu weights are used as given
+  ([#446](https://github.com/skfolio/skfolio/pull/446),
+  [`c995dcd`](https://github.com/skfolio/skfolio/commit/c995dcdba31c200b3b3fee73f7f5392c3c8a4596))
+
+
+## v1.9.11 (2026-10-21)
+
+### Bug Fixes
+
+- **alpha**: Use average ranks for ties ([#442](https://github.com/skfolio/skfolio/pull/442),
+  [`c8b1202`](https://github.com/skfolio/skfolio/commit/c8b120257918bb0a23ff13725565afe0fb89fcc0))
+
+### Documentation
+
+- **portfolio**: Document dictionary weight alignment
+  ([#434](https://github.com/skfolio/skfolio/pull/434),
+  [`d2616bd`](https://github.com/skfolio/skfolio/commit/d2616bd25f7bd917dc27e67f339948f38e5c17ce))
+
+
+## v1.9.10 (2026-10-21)
+
+### Bug Fixes
+
+- **moments**: Calibrate diagonal first-moment STVU
+  ([#445](https://github.com/skfolio/skfolio/pull/445),
+  [`e398f4d`](https://github.com/skfolio/skfolio/commit/e398f4d159e6629442851df27c41db22bf1502a6))
+
+
+## v1.9.9 (2026-10-21)
+
+### Bug Fixes
+
+- **utils**: Support pandas column slices in safe_indexing
+  ([#444](https://github.com/skfolio/skfolio/pull/444),
+  [`bdb0de5`](https://github.com/skfolio/skfolio/commit/bdb0de5bb358201482dbf8e6270772da80eb8e17))
+
+
+## v1.9.8 (2026-10-21)
+
+### Bug Fixes
+
+- **moments**: Reject negative implied volatilities
+  ([#443](https://github.com/skfolio/skfolio/pull/443),
+  [`9c1af18`](https://github.com/skfolio/skfolio/commit/9c1af18fc4efa66b5f2b9697a4860dde4930e49a))
+
+### Documentation
+
+- Complete llms.txt descriptions and group pages into sections
+  ([#441](https://github.com/skfolio/skfolio/pull/441),
+  [`e1af0ef`](https://github.com/skfolio/skfolio/commit/e1af0ef5a2da4d8845b65f367957ac2b0e793306))
+
+
+## v1.9.7 (2026-10-20)
+
+### Bug Fixes
+
+- **preprocessing**: Drop all-missing price columns before dropping rows
+  ([#435](https://github.com/skfolio/skfolio/pull/435),
+  [`2e8c784`](https://github.com/skfolio/skfolio/commit/2e8c78492118800f1ba5bfc82de63a9e5af3ab0d))
+
+
+## v1.9.6 (2026-10-18)
+
+### Bug Fixes
+
+- **moments**: Preserve caller implied volatility arrays
+  ([#438](https://github.com/skfolio/skfolio/pull/438),
+  [`5359407`](https://github.com/skfolio/skfolio/commit/5359407cd41e1f2cae066bb706e52814707eaa19))
+
+
+## v1.9.5 (2026-10-18)
+
+### Bug Fixes
+
+- **containers**: Reject case-colliding save fields
+  ([#437](https://github.com/skfolio/skfolio/pull/437),
+  [`40bdcd0`](https://github.com/skfolio/skfolio/commit/40bdcd019e503c818640dae2eab5fcc4e4c836c2))
+
+### Testing
+
+- Simplify repeated tests and repair ineffective assertions
+  ([#432](https://github.com/skfolio/skfolio/pull/432),
+  [`d490ee8`](https://github.com/skfolio/skfolio/commit/d490ee83cb54f125ce12eb8bde996d4d93e7a31e))
+
+
 ## v1.9.4 (2026-10-17)
 
 ### Bug Fixes

@@ -38,9 +38,20 @@ class EquilibriumMu(BaseMu):
         The default value is `1.0`.
 
     weights : array-like of shape (n_assets,), optional
-        Asset weights used to compute the Expected Return Equilibrium.
-        The default is to use the equal-weighted equilibrium (1/N).
-        For a Market Cap weighted equilibrium, you must provide the asset Market Caps.
+        Reference portfolio weights used to compute the implied excess returns.
+        Supplied weights are used as given, without normalization. They may
+        contain negative values and need not sum to one. Their scale is
+        preserved, so changing the portfolio exposure changes the estimated
+        returns.
+
+        For a market-cap-weighted equilibrium, provide normalized market
+        capitalizations: `market_caps / market_caps.sum()`.
+
+        Other weights define a reverse-optimization prior for the chosen
+        reference portfolio, which may be leveraged, long-short, or
+        market-neutral.
+
+        The default (`None`) is to use equal weights (1/N).
 
     covariance_estimator : BaseCovariance, optional
         :ref:`Covariance estimator <covariance_estimator>` used to estimate the

@@ -140,7 +140,7 @@ def test_hrp_factor_model(X, factors):
 
 def test_hrp(X, linkage_method, risk_measure):
     model = HierarchicalRiskParity(
-        risk_measure=RiskMeasure.STANDARD_DEVIATION,
+        risk_measure=risk_measure,
         hierarchical_clustering_estimator=HierarchicalClustering(
             linkage_method=linkage_method
         ),

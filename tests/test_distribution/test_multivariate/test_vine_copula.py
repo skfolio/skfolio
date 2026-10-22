@@ -1629,6 +1629,72 @@ def test_vine_score_samples_log_transform(small_returns):
     assert np.all(np.isfinite(scores))
 
 
+def test_vine_score_samples_log_transform_applies_jacobian(small_returns):
+    """Scoring a log-transformed vine returns the density in return space.
+
+    Fitting on ``log1p(X)`` maps the density, so the log-density of ``X``
+    carries the change-of-variables term ``-sum(log1p(x))``.
+    """
+    params = dict(
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula()],
+        random_state=0,
+    )
+    scores = (
+        VineCopula(log_transform=True, **params)
+        .fit(small_returns)
+        .score_samples(small_returns)
+    )
+    log_returns = np.log1p(small_returns)
+    untransformed = (
+        VineCopula(log_transform=False, **params)
+        .fit(log_returns)
+        .score_samples(log_returns)
+    )
+    np.testing.assert_allclose(scores, untransformed - np.sum(log_returns, axis=1))
+
+
+@pytest.mark.parametrize("mask", [[True, False, False], [1, 0, 0], [1.0, 0.0, 0.0]])
+def test_vine_score_samples_log_transform_partial_mask(small_returns, mask):
+    """Only the transformed columns contribute their Jacobian term."""
+    params = dict(
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula()],
+        random_state=0,
+    )
+    scores = (
+        VineCopula(log_transform=mask, **params)
+        .fit(small_returns)
+        .score_samples(small_returns)
+    )
+    transformed = np.column_stack(
+        [np.log1p(small_returns[:, 0]), small_returns[:, 1], small_returns[:, 2]]
+    )
+    untransformed = (
+        VineCopula(log_transform=False, **params)
+        .fit(transformed)
+        .score_samples(transformed)
+    )
+    np.testing.assert_allclose(scores, untransformed - np.log1p(small_returns[:, 0]))
+
+
+@pytest.mark.parametrize("log_transform", [True, [True, False, False]])
+def test_vine_score_samples_log_transform_without_marginals(
+    small_uniforms, log_transform
+):
+    """An independent copula contributes only the log-transform Jacobian."""
+    X = np.where(log_transform, np.expm1(small_uniforms), small_uniforms)
+    model = VineCopula(
+        fit_marginals=False,
+        log_transform=log_transform,
+        copula_candidates=[IndependentCopula()],
+        random_state=0,
+    ).fit(X)
+
+    expected = -np.sum(np.where(log_transform, small_uniforms, 0.0), axis=1)
+    np.testing.assert_allclose(model.score_samples(X), expected)
+
+
 def test_vine_score_samples_without_marginals(small_uniforms):
     model = VineCopula(
         fit_marginals=False, copula_candidates=[GaussianCopula()], random_state=0
