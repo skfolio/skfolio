@@ -12,6 +12,7 @@ from __future__ import annotations
 import datetime as dt
 import numbers
 from collections.abc import Generator
+from contextlib import nullcontext
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -20,6 +21,7 @@ import sklearn as sk
 import sklearn.base as skb
 import sklearn.utils as sku
 from sklearn.pipeline import Pipeline
+from sklearn.utils.validation import _num_samples
 
 import skfolio.typing as skt
 from skfolio.measures import BaseMeasure, RatioMeasure
@@ -570,6 +572,31 @@ def _online_walk_forward(
     test_slice : slice
         Slice into `X` for the current test window.
     """
+    if warmup_size == 0:
+        if test_size != 1 or freq is not None or purged_size:
+            raise ValueError("Continuation requires contiguous one-period evaluation")
+        for i in range(_num_samples(X)):
+            if i:
+                fit_single_estimator(
+                    estimator,
+                    X,
+                    y,
+                    fit_params=routed_params.estimator_params,
+                    indices=slice(i - 1, i),
+                    method="partial_fit",
+                )
+            yield slice(i, i + 1)
+        if refit_last and _num_samples(X):
+            fit_single_estimator(
+                estimator,
+                X,
+                y,
+                fit_params=routed_params.estimator_params,
+                indices=slice(_num_samples(X) - 1, _num_samples(X)),
+                method="partial_fit",
+            )
+        return
+
     cv = WalkForward(
         test_size=test_size,
         train_size=warmup_size,
@@ -582,6 +609,13 @@ def _online_walk_forward(
     )
 
     splits = list(cv.split(X))
+    if getattr(estimator, "_requires_single_period_evaluation", False) and any(
+        len(test) != 1 for _, test in splits
+    ):
+        raise ValueError(
+            "Online portfolio selection requires one observation per test window "
+            "(test_size=1). Larger-window execution semantics are not defined."
+        )
 
     if len(splits) == 0:
         raise ValueError(
@@ -590,18 +624,34 @@ def _online_walk_forward(
             f"purged_size={purged_size}."
         )
 
+    if getattr(estimator, "_requires_single_period_evaluation", False) and purged_size:
+        raise ValueError(
+            "Online portfolio selection does not support purged execution gaps"
+        )
+
+    if getattr(estimator, "_requires_single_period_evaluation", False):
+        expected_start = int(splits[0][0][-1]) + 1
+        for train, test in splits:
+            if int(test[0]) != expected_start or int(train[-1]) + 1 != expected_start:
+                raise ValueError(
+                    "Online portfolio selection requires contiguous execution"
+                )
+            expected_start = int(test[-1]) + 1
+
     # WalkForward with expand_train=True produces contiguous index arrays,
     # so converting first/last to a slice is safe and avoids a copy.
     initial_train = splits[0][0]
     warmup_slice = slice(int(initial_train[0]), int(initial_train[-1]) + 1)
-    fit_single_estimator(
-        estimator,
-        X,
-        y,
-        fit_params=routed_params.estimator_params,
-        indices=warmup_slice,
-        method="partial_fit",
-    )
+    warmup_context = getattr(estimator, "_warmup_context", nullcontext)
+    with warmup_context():
+        fit_single_estimator(
+            estimator,
+            X,
+            y,
+            fit_params=routed_params.estimator_params,
+            indices=warmup_slice,
+            method="partial_fit",
+        )
 
     last_train_end = warmup_slice.stop
     last_test_slice = None
@@ -1030,3 +1080,23 @@ def _validate_scoring(scoring: skt.Scoring, is_portfolio: bool) -> None:
                     "For non-predictor estimators, `scoring` must be `None`, a "
                     "callable, or a dict[str, callable]."
                 )
+
+
+def _continue_online_predict(
+    estimator: skb.BaseEstimator,
+    X: ArrayLike,
+    y: ArrayLike | None,
+    *,
+    refit_last: bool,
+) -> MultiPeriodPortfolio:
+    """Evaluate an already initialized learner through the shared accounting path."""
+    X, y = sku.indexable(X, y)
+    return _online_predict(
+        estimator,
+        X,
+        y,
+        sku.Bunch(estimator_params={}),
+        warmup_size=0,
+        test_size=1,
+        refit_last=refit_last,
+    )

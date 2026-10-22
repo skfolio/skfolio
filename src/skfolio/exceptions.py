@@ -64,6 +64,10 @@ class FactorNotFoundError(SkfolioError):
     """Factor name not found in factor_groups or loading_matrix not provided."""
 
 
+class OnlineStrategyNotFoundError(SkfolioError):
+    """Strategy name not found in BaseOnlineOptimization init."""
+
+
 class DuplicateGroupsError(SkfolioError):
     """Group name appear in multiple group levels."""
 

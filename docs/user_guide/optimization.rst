@@ -1196,3 +1196,209 @@ call as a whole.
 
 For a complete tutorial illustrating failure handling and fallbacks, see
 :ref:`sphx_glr_auto_examples_mean_risk_plot_17_failure_and_fallbacks.py`.
+
+
+.. _online_portfolio_selection:
+
+Online Portfolio Selection
+==========================
+
+:class:`~skfolio.optimization.online.ExponentiatedGradient`
+and :class:`~skfolio.optimization.online.AdaGrad` use the same OCO engine with entropy
+and adaptive diagonal geometry respectively.
+:class:`~skfolio.optimization.online.OnlineMovingAverageReversion` uses the shared
+mean-reversion predictor and passive-aggressive strategy.
+
+:class:`~skfolio.optimization.online.PassiveAggressiveMeanReversion`
+exposes the PAMR kernel. PAMR uses the latest price relatives directly. Its ``variant`` selects the
+original update or linear/quadratic slack, controlled by ``aggressiveness``.
+
+``fit(X)`` resets all learned state. ``partial_fit(X)`` continues, processing one
+row or a block sequentially. After observing row t, ``weights_`` is the target for
+t+1. ``initial_weights`` specifies the learning reference before the first row;
+constraints may project this reference. EG defaults to follow-the-regularized-leader (FTRL);
+``update_mode="omd"`` selects local mirror descent. FTRL uses accumulated gradients
+and its regularizer, so a nonuniform initial reference is not a persistent center.
+AdaGrad defaults to OMD. OLMAR's window includes the current price and window-1
+past prices; its predictor is neutral until that history is available.
+
+Algorithm state, statistical estimates and account holdings have separate owners.
+An optional ``prior_estimator`` must implement ``partial_fit``. It is cloned and
+updated once per observed row, with metadata sliced to that row. No prior is
+created by default. ``max_variance`` uses either this prior's covariance or a fixed
+``covariance``; gradient curvature is never interpreted as return covariance.
+
+**Minimum return and distribution risk limits**
+
+``min_return`` constrains expected return after transaction costs and management
+fees. In addition to ``max_variance``, online estimators support
+``max_standard_deviation``, ``max_semi_variance``, ``max_semi_deviation``,
+``max_mean_absolute_deviation``, ``max_first_lower_partial_moment``,
+``max_worst_realization``, ``max_cvar``, ``max_evar``, ``max_max_drawdown``,
+``max_average_drawdown``, ``max_cdar``, ``max_edar``, ``max_ulcer_index`` and
+``max_gini_mean_difference``. These scalar limits reuse the convex expressions
+from :class:`~skfolio.optimization.MeanRisk`, including scenario probabilities
+and its additive drawdown convention. They constrain the next target; they do
+not change the algorithm's learning objective or guarantee future realized risk.
+
+These additional limits require an incremental ``prior_estimator``. Its return
+distribution contains only observations available at the decision time.
+Historical warmup can defer constraints until statistics become finite, but the
+final warmup target and every subsequent decision require usable statistics.
+Scenario-based limits require at least two observations in the prior's history.
+Use :func:`~skfolio.model_selection.online_predict` with ``warmup_size`` for
+out-of-sample evaluation; ``fit_predict`` cannot execute an initial allocation
+before the required prior is ready. Cost-aware constraints also require explicit
+previous holdings at each decision; historical warmup does not incur trades.
+
+The ``*_beta`` parameters set tail confidence levels; ``min_acceptable_return``
+and ``risk_free_rate`` retain their MeanRisk meanings. The same MeanRisk
+limitations apply, including its transaction-cost relaxation for EVaR and EDaR.
+These constraints invoke a convex solver at each update and can materially
+increase runtime, particularly for scenario-heavy risk measures.
+
+Online estimators accept ``max_tracking_error`` and benchmark returns through
+``fit(X, y)`` or ``partial_fit(X, y)`` (also forwarded by ``online_predict``).
+The tracking-error projector uses the same uncentred active-return
+norm as ``MeanRisk``: ``norm(X @ weights - benchmark) / sqrt(n_observations - 1)``.
+A constant nonzero active return therefore consumes the tracking-error limit.
+Benchmark returns must be finite and row-aligned on every update. The cap uses
+all observations seen since ``fit`` reset, including the current row, and starts
+at the second observation. Before then only the other configured constraints
+apply. Use at least two warmup observations before evaluating constrained targets.
+Block updates consume one row at a time, so future benchmark values cannot affect
+earlier targets. Tracking history is retained even with ``store_weights=False``
+and grows with the stream.
+
+Continuous projections use the selected ``solver`` and ``solver_params`` without
+retrying with another solver or dropping options. Solver errors retain their
+original cause; invalid options and modeling errors propagate directly.
+Continuous solutions require an optimal or optimal-inaccurate status and finite
+weights. CVXPY may warn for inaccurate solutions. Infeasible, unbounded and
+interrupted results are rejected even if the solver returns candidate weights.
+
+**Cardinality constraints**
+
+``cardinality`` limits the number of nonzero positions. ``group_cardinalities``
+limits the number within each named group and requires ``groups``; unknown group
+names raise. Both reuse the batch mixed-integer constraint formulation and require
+finite weight bounds. They can be combined with the other projection constraints.
+
+Select a mixed-integer solver explicitly, for example ``solver="SCIP"`` (install
+with ``pip install cvxpy[SCIP]``). ``solver_params`` supplies additional solver
+options. The solver must support every cone in the complete problem: being a
+mixed-integer solver alone is insufficient. Unsupported solvers and cones raise;
+there is no fallback to a continuous relaxation. A discrete update requires an
+optimal solver status, so an interrupted or time-limited solve is not accepted.
+
+Discrete updates are supported for AdaGrad, OnlineMovingAverageReversion and
+PassiveAggressiveMeanReversion through their quadratic geometries. Entropy and
+other nonquadratic mirror updates are explicitly rejected, including active
+cardinality constraints on ExponentiatedGradient. These non-convex feasible sets
+remove the usual convex-domain online-update guarantees. Solves may also be much
+slower and tied optima can select different supports. These are opt-in constraints,
+not a change to the default algorithms.
+
+**Minimum position thresholds**
+
+``threshold_long`` requires every nonzero position to reach a minimum weight;
+it does not require every asset to be held. It accepts a scalar, an aligned array
+or a dictionary keyed by asset name. Unspecified dictionary entries default to
+zero. Thresholds must be finite and nonnegative; all-zero thresholds need no
+mixed-integer solver. Unlike ``min_weights``, positive thresholds permit an
+asset's weight to be exactly zero.
+
+For example, limit a portfolio to five positions, each at least 10%::
+
+    from skfolio.optimization.online import PassiveAggressiveMeanReversion
+
+    estimator = PassiveAggressiveMeanReversion(
+        cardinality=5,
+        threshold_long=0.10,
+        solver="SCIP",
+    )
+
+Thresholds share the cardinality solver and geometry requirements above. They
+are enforced jointly with bounds, groups, risk limits, custom constraints and
+turnover. A threshold exceeding an asset's upper bound forces that asset to zero;
+if the remaining assets cannot meet the budget, the update fails. Zero-turnover
+holdings below an active threshold are likewise infeasible. Public online
+estimators remain long-only; short-position thresholds are not exposed.
+
+**Custom constraints**
+
+The four online estimators accept ``add_constraints``, using the same callback
+interface as convex estimators. The function receives the CVXPY weight variable
+and optionally the online estimator, and returns a constraint or a list::
+
+    import cvxpy as cp
+    from skfolio.optimization.online import ExponentiatedGradient
+
+    estimator = ExponentiatedGradient(
+        add_constraints=lambda w: cp.sum_squares(w) <= 0.2,
+    )
+
+Constraints are rebuilt for each projection, including native mirror updates.
+A two-argument callback can read ``model.prior_estimator_.return_distribution_``
+after the current observation has updated the prior. It must use only information
+available at that decision and should not mutate the estimator or retain CVXPY
+variables between calls. It can run more than once per observation.
+
+When a prior is configured, callbacks are deferred for the initial learning
+reference before the first prior update. They run during subsequent warmup
+updates as well as execution decisions, so the callback must handle incomplete
+warmup statistics explicitly. Prior-dependent callbacks should be evaluated with
+``online_predict`` and a suitable ``warmup_size``. Without warmup, callbacks are
+still enforced on the first executed allocation; unavailable inputs raise rather
+than silently dropping constraints.
+
+Only continuous convex (DCP) constraints are supported. Invalid callback results,
+non-convex constraints and integer variables raise explicit errors. Infeasible
+constraints fail the update and require a fresh ``fit``, as with other numerical
+failures. Custom constraints invoke the convex solver rather than the fast
+simplex projection.
+
+Warmup may have incomplete statistics, but entry decisions require finite estimates.
+
+Use the existing evaluation interface::
+
+    from skfolio.model_selection import online_predict
+    from skfolio.optimization.online import ExponentiatedGradient
+
+    estimator = ExponentiatedGradient(
+        update_mode="omd",
+        portfolio_params={"weight_drift": True},
+    )
+    portfolio = online_predict(estimator, X, warmup_size=20, test_size=1)
+
+Portfolio handles drift, trading costs, management fees and wealth. ``previous_weights``
+means actual holdings at rebalance time. A turnover limit requires explicit entry
+holdings; evaluation then supplies each period's ending holdings. Historical warmup
+is learning-only, and turnover applies to the final entry target. Outside warmup,
+execution-constrained calls must contain one row. Diagnostic ``all_weights_`` is
+available with ``store_weights=True`` and is not a record of executed trades.
+The default is False to avoid accumulating unbounded target history.
+
+Current scope is a fixed asset universe, finite returns strictly greater than -1,
+and contiguous one-period evaluation. Larger windows and purged gaps raise.
+A numerical or prior failure can leave partially advanced state and requires a
+fresh ``fit``; automatic rollback and recovery are not implemented. Shared box,
+budget and named group/asset/factor constraints use the same expressions as batch convex
+optimization, while the update objective retains the algorithm's own geometry.
+Broader family factories remain private pending API and algorithm review.
+
+Online factor constraints use the prior updated through the current observation.
+Unknown names raise at decision time instead of dropping the constraint. The
+initial learning reference precedes the first prior update and cannot yet apply
+factor constraints; it is not an executed allocation.
+
+Online weight bounds are finite and nonnegative, whether supplied as scalars,
+arrays or dictionaries. Short positions are not supported by this API. Bounds
+above one are allowed, as are finite nonnegative equality budgets and budget
+limits. A zero equality budget leaves no risky-asset allocation; a budget above
+one permits leveraged long exposure. These settings extend the textbook simplex
+constraint and do not add borrowing fees or margin accounting. ``budget=None``
+removes the equality constraint; use it when specifying budget limits.
+
+Both ``left_inequality`` and ``right_inequality`` must be supplied for matrix
+constraints. Missing sides raise before the online state advances.
