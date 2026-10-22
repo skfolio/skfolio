@@ -224,7 +224,7 @@ def _positions_from_unique_labels(labels: AnyArray, selected: Any) -> slice | In
         return index.slice_indexer(selected.start, selected.stop, selected.step)
     if isinstance(selected, (str, bytes)) or np.isscalar(selected):
         loc = index.get_loc(selected)
-        # Exact labels on the validated unique axis resolve to a scalar position.
+        # Exact lookups on unique asset labels return an integer position.
         return slice(int(loc), int(loc) + 1)  # ty: ignore[invalid-argument-type]
 
     positions = []
@@ -251,7 +251,6 @@ def _positions_from_labels(labels: AnyArray, selected: Any) -> slice | IntArray:
         if isinstance(loc, slice):
             return loc
         if isinstance(loc, np.ndarray):
-            # The dtype check converts Boolean masks; other arrays hold positions.
             return np.flatnonzero(loc) if loc.dtype == np.bool_ else loc  # ty: ignore[invalid-return-type]
         return slice(int(loc), int(loc) + 1)
 
