@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.9.13 (2026-10-22)
+
+### Bug Fixes
+
+- **distribution**: Apply the log1p jacobian when scoring a log-transformed vine
+  ([#456](https://github.com/skfolio/skfolio/pull/456),
+  [`092cd6a`](https://github.com/skfolio/skfolio/commit/092cd6a6d1a20d7526d991f7215bc31cf8001cc0))
+
+
 ## v1.9.12 (2026-10-22)
 
 ### Bug Fixes
