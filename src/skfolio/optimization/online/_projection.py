@@ -140,8 +140,8 @@ class IdentityProjector(BaseProjector):
         return np.asarray(y, dtype=float)
 
 
-class FastProjector(BaseProjector):
-    """Fast projector using box+sum and optional L1 turnover cap."""
+class _ConfiguredProjector(BaseProjector):
+    """Common configuration and native-update dispatch for concrete projectors."""
 
     def __init__(self, config: ProjectionConfig) -> None:
         self.config = config
@@ -154,6 +154,10 @@ class FastProjector(BaseProjector):
     ) -> np.ndarray:
         """Dispatch the update through the common geometry-aware constraint path."""
         return AutoProjector(self.config).solve_update(mirror, dual, gradient)
+
+
+class FastProjector(_ConfiguredProjector):
+    """Fast projector using box+sum and optional L1 turnover cap."""
 
     def project(self, y: np.ndarray) -> np.ndarray:
         """Project candidate weights onto the configured feasible set."""
@@ -167,20 +171,8 @@ class FastProjector(BaseProjector):
         )
 
 
-class ConvexProjector(BaseProjector):
+class ConvexProjector(_ConfiguredProjector):
     """Convex projector using cvxpy with rich constraints (see ProjectionConfig)."""
-
-    def __init__(self, config: ProjectionConfig) -> None:
-        self.config = config
-
-    def solve_update(
-        self,
-        mirror: BaseMirrorMap,
-        dual: np.ndarray,
-        gradient: np.ndarray | None = None,
-    ) -> np.ndarray:
-        """Dispatch the update through the common geometry-aware constraint path."""
-        return AutoProjector(self.config).solve_update(mirror, dual, gradient)
 
     def project(self, y: np.ndarray) -> np.ndarray:
         """Project candidate weights onto the configured feasible set."""

@@ -38,7 +38,6 @@ def test_rmr_outlier_resistance():
         olmar_window=5,
         update_mode="pa",
     )
-    olmar.fit(X_corrupted)
 
     # Train RMR (robust median)
     rmr = FollowTheLoser(
@@ -46,7 +45,6 @@ def test_rmr_outlier_resistance():
         rmr_window=5,  # Window size for RMR
         update_mode="pa",
     )
-    rmr.fit(X_corrupted)
 
     olmar_wealth = np.prod(1 + olmar.fit_predict(X_corrupted).returns)
     rmr_wealth = np.prod(1 + rmr.fit_predict(X_corrupted).returns)
@@ -71,7 +69,6 @@ def test_universal_regret_is_finite():
     X = make_stationary_returns(T=100, n=3)
 
     model = FollowTheWinner(strategy=FTWStrategy.EG)
-    model.fit(X)
 
     from skfolio.optimization.online._regret import regret
 
@@ -94,7 +91,6 @@ def test_zero_liquidity_handling():
     X = np.zeros((50, 3))  # Flat market (0% return -> relative 1.0)
 
     model = FollowTheWinner(strategy=FTWStrategy.EG)
-    model.fit(X)
 
     # In a flat market, wealth should stay 1.0 (minus fees if any)
     assert np.isclose(np.prod(1 + model.fit_predict(X).returns), 1.0)

@@ -549,9 +549,9 @@ class FollowTheLoser(BaseOnlineOptimization):
             case FTLStrategy.OLMAR:
                 self._init_olmar_components(d)
             case FTLStrategy.PAMR:
-                self._init_pamr_components(d)
+                self._initialize_objective_and_engine()
             case FTLStrategy.CWMR:
-                self._init_cwmr_components(d)
+                pass  # CWMR initializes its distribution in the strategy implementation.
             case FTLStrategy.RMR:
                 self._init_rmr_components(d)
             case _:
@@ -580,15 +580,6 @@ class FollowTheLoser(BaseOnlineOptimization):
             self._predictor.reset(d)
 
         self._initialize_objective_and_engine()
-
-    def _init_pamr_components(self, d: int) -> None:
-        """Initialize PAMR-specific components."""
-        self._initialize_objective_and_engine()
-
-    def _init_cwmr_components(self, d: int) -> None:
-        """Initialize CWMR-specific components."""
-        # CWMR doesn't need separate initialization
-        pass
 
     def _init_rmr_components(self, d: int) -> None:
         """Initialize RMR-specific components: predictor, objective, and engine.

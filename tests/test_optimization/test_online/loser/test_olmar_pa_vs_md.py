@@ -68,15 +68,6 @@ class TestOLMARModeEquivalence:
         g_md_raw = -phi  # Gradient of hinge loss
         g_md_centered = g_md_raw - np.mean(g_md_raw)
 
-        print("\n" + "=" * 80)
-        print("OLMAR Gradient Direction")
-        print("=" * 80)
-        print(f"Phi (predictor): {phi}")
-        print(f"PA direction (c): {c_pa}")
-        print(f"MD gradient (g): {g_md_centered}")
-        print(f"Check: c = -g? {np.allclose(c_pa, -g_md_centered)}")
-        print(f"Difference (c + g): {c_pa + g_md_centered}")
-
         # PA moves in +c direction, MD moves in -g direction
         # So we need c = -g, or equivalently, c + g = 0
         assert_allclose(
@@ -109,9 +100,6 @@ class TestOLMARModeEquivalence:
 
             # Should remain uniform (or close to it if there's any update)
             # With very low epsilon, OLMAR typically doesn't violate
-            print(
-                f"\n{update_mode.upper()} mode with low epsilon: weights = {model.weights_}"
-            )
 
     def test_olmar_projection_consistency(self, simple_data):
         """
@@ -127,11 +115,7 @@ class TestOLMARModeEquivalence:
             {"min_weights": 0.0, "max_weights": 0.5, "budget": 1.0},
         ]
 
-        for i, constraints in enumerate(constraint_configs):
-            print(f"\n{'=' * 80}")
-            print(f"OLMAR Projection Test {i + 1}: {constraints}")
-            print("=" * 80)
-
+        for constraints in constraint_configs:
             # Compute lambda from PA
             x_0 = 1.0 + X[0]
             phi = 0.5 * np.ones_like(x_0) + 0.5 * (1.0 / np.maximum(x_0, 1e-10))
@@ -174,13 +158,6 @@ class TestOLMARModeEquivalence:
             model_md.fit(X)
             weights_md = model_md.weights_.copy()
 
-            diff = np.abs(weights_pa - weights_md)
-            max_diff = np.max(diff)
-
-            print(f"PA weights:  {weights_pa}")
-            print(f"MD weights:  {weights_md}")
-            print(f"Max diff:    {max_diff:.9f}")
-
             # Verify both respect constraints
             assert np.all(weights_pa >= constraints["min_weights"] - 1e-8)
             assert np.all(weights_pa <= constraints["max_weights"] + 1e-8)
@@ -203,9 +180,6 @@ class TestOLMARModeEquivalence:
         """
         Test both OLMAR-1 (cumprod variant) and OLMAR-2 for PA vs MD equivalence.
         """
-        print("\n" + "=" * 80)
-        print("Testing OLMAR-1 (cumprod variant)")
-        print("=" * 80)
 
         window = 3
         X1 = simple_data.iloc[: window + 1].values
@@ -228,11 +202,6 @@ class TestOLMARModeEquivalence:
 
             model = FollowTheLoser(**kwargs)
             model.fit(X1)
-            print(f"{update_mode.upper()} final weights: {model.weights_}")
-
-        print("\n" + "=" * 80)
-        print("Testing OLMAR-2")
-        print("=" * 80)
 
         X2 = simple_data.iloc[:3].values
 
@@ -252,12 +221,6 @@ class TestOLMARModeEquivalence:
 
             model = FollowTheLoser(**kwargs)
             model.fit(X2)
-            print(f"{update_mode.upper()} final weights: {model.weights_}")
-
-
-if __name__ == "__main__":
-    # Run tests with verbose output
-    pytest.main([__file__, "-v", "-s"])
 
 
 @pytest.mark.parametrize("predictor", ["sma", "ewma"])

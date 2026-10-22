@@ -75,10 +75,6 @@ class TestPAMRModeEquivalence:
                 err_msg=f"{update_mode} should not update when constraint satisfied",
             )
 
-            print(
-                f"\n{update_mode.upper()} mode with no violation: weights remain uniform ✓"
-            )
-
     def test_pamr_multi_step_with_adaptive_eta(self, simple_data):
         """
         Test multi-step comparison where we adapt eta at each step.
@@ -88,10 +84,6 @@ class TestPAMRModeEquivalence:
         """
         X = simple_data.iloc[:5].values  # 5 periods
         epsilon = 0.5
-
-        print("\n" + "=" * 80)
-        print("PAMR Multi-Step: Adaptive eta to match tau")
-        print("=" * 80)
 
         # Run PA mode (full sequence)
         model_pa = FollowTheLoser(
@@ -103,12 +95,6 @@ class TestPAMRModeEquivalence:
             management_fees=0.0,
         )
         model_pa.fit(X)
-        weights_pa_final = model_pa.weights_.copy()
-        all_weights_pa = model_pa.all_weights_.copy()
-
-        print("\nPA mode:")
-        print(f"  Final weights: {weights_pa_final}")
-        print(f"  All weights shape: {all_weights_pa.shape}")
 
         # For MD, we'd need to adapt eta at each step, which isn't directly
         # supported. Instead, let's check if using a fixed "good" eta gives
@@ -126,14 +112,6 @@ class TestPAMRModeEquivalence:
                 management_fees=0.0,
             )
             model_md.fit(X)
-            weights_md_final = model_md.weights_.copy()
-
-            diff = np.abs(weights_pa_final - weights_md_final)
-            max_diff = np.max(diff)
-
-            print(f"\nMD mode with eta={eta:.2f}:")
-            print(f"  Final weights: {weights_md_final}")
-            print(f"  Max diff from PA: {max_diff:.6f}")
 
     def test_pamr_gradient_computation(self, simple_data):
         """
@@ -158,14 +136,6 @@ class TestPAMRModeEquivalence:
         g_md_raw = x_t
         g_md_centered = g_md_raw - np.mean(g_md_raw)
 
-        print("\n" + "=" * 80)
-        print("Gradient Comparison")
-        print("=" * 80)
-        print(f"Relatives (x): {x_t}")
-        print(f"PA centered gradient (c): {c_pa}")
-        print(f"MD centered gradient (g): {g_md_centered}")
-        print(f"Difference: {c_pa - g_md_centered}")
-
         # They should be identical
         assert_allclose(
             c_pa,
@@ -188,11 +158,7 @@ class TestPAMRModeEquivalence:
             {"min_weights": 0.0, "max_weights": 0.5, "budget": 1.0},
         ]
 
-        for i, constraints in enumerate(constraint_configs):
-            print(f"\n{'=' * 80}")
-            print(f"Projection Test {i + 1}: {constraints}")
-            print("=" * 80)
-
+        for constraints in constraint_configs:
             # Compute tau from PA to use as eta in MD
             x_t = 1.0 + X_single[0]
             w_init = np.ones(5) / 5
@@ -230,13 +196,6 @@ class TestPAMRModeEquivalence:
             model_md.partial_fit(X_single)
             weights_md = model_md.weights_.copy()
 
-            diff = np.abs(weights_pa - weights_md)
-            max_diff = np.max(diff)
-
-            print(f"PA weights:  {weights_pa}")
-            print(f"MD weights:  {weights_md}")
-            print(f"Max diff:    {max_diff:.9f}")
-
             # Verify both respect constraints
             assert np.all(weights_pa >= constraints["min_weights"] - 1e-8)
             assert np.all(weights_pa <= constraints["max_weights"] + 1e-8)
@@ -268,10 +227,6 @@ class TestPAMRModeEquivalence:
             PAMRVariant.SLACK_LINEAR,
             PAMRVariant.SLACK_QUADRATIC,
         ]:
-            print(f"\n{'=' * 80}")
-            print(f"Testing PAMR variant {variant}")
-            print("=" * 80)
-
             # Compute tau for this variant
             x_t = 1.0 + X_single[0]
             w_init = np.ones(5) / 5
@@ -286,8 +241,6 @@ class TestPAMRModeEquivalence:
                 tau = min(C, ell / denom) if denom > 0 else 0.0
             elif variant == PAMRVariant.SLACK_QUADRATIC:
                 tau = ell / (denom + 1.0 / (2.0 * C)) if denom > 0 else 0.0
-
-            print(f"Computed tau: {tau:.6f}")
 
             # PA mode
             model_pa = FollowTheLoser(
@@ -317,13 +270,6 @@ class TestPAMRModeEquivalence:
             model_md.partial_fit(X_single)
             weights_md = model_md.weights_.copy()
 
-            diff = np.abs(weights_pa - weights_md)
-            max_diff = np.max(diff)
-
-            print(f"PA weights: {weights_pa}")
-            print(f"MD weights: {weights_md}")
-            print(f"Max diff:   {max_diff:.9f}")
-
             if variant == 0:
                 # Variant 0 should match exactly
                 assert_allclose(
@@ -333,16 +279,6 @@ class TestPAMRModeEquivalence:
                     atol=1e-8,
                     err_msg=f"Variant {variant} should match",
                 )
-            else:
-                # Variants 1 and 2 modify tau, so MD won't match unless
-                # we account for the modification
-                # For now, just report the difference
-                print(f"Note: Variant {variant} has modified tau computation")
-
-
-if __name__ == "__main__":
-    # Run tests with verbose output
-    pytest.main([__file__, "-v", "-s"])
 
 
 @pytest.mark.parametrize("variant", list(PAMRVariant))

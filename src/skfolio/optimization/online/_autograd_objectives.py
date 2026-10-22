@@ -1468,29 +1468,6 @@ class MeasureObjective(BaseObjective):
         returns = anp.dot(net_returns_2d, weights)  # Shape: (T,)
         return self._sign * _get_autograd_measure_fn(self.measure)(returns, **kwargs)
 
-    def _autograd_measure(self, returns: np.ndarray, **kwargs: Any) -> np.ndarray:
-        """Dispatch to individual measure functions.
-
-        Parameters
-        ----------
-        portfolio_returns : array-like of shape (T,)
-            Portfolio returns over T observations.
-        **kwargs
-            Additional parameters (min_acceptable_return, beta, etc.).
-
-        Returns
-        -------
-        float
-            Measure value.
-
-        Notes
-        -----
-        For T=1, some measures use simplified proxies since statistical measures
-        like variance are undefined for a single sample. Each measure has its own
-        dedicated function for clarity and testability.
-        """
-        return _get_autograd_measure_fn(self.measure)(returns, **kwargs)
-
     def _get_analytical_grad_fn(self) -> Callable:
         """Get analytical gradient function for the measure.
 
