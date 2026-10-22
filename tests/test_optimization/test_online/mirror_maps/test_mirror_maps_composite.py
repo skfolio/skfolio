@@ -543,255 +543,141 @@ class TestAdaBarronsCorrectImplementation:
         assert_allclose(z_actual, z_expected, rtol=1e-12)
 
 
-class TestTwoComponentCompositions:
-    """Test all pairs of basic mirror map compositions."""
-
-    def test_barrier_plus_euclidean(self):
-        """LogBarrier + Euclidean composition."""
-        rng = np.random.default_rng(200)
-        d = 6
-
-        barrier = LogBarrierMap(barrier_coef=2.0)
-        barrier.ensure_dim(d)
-        barrier._D = rng.random(d) + 1.0
-
-        euclid = EuclideanMap(d_coef=1.5)
-
-        comp = barrier + euclid
-        w = _rand_positive_simplex(d, rng)
-        z = comp.grad_psi(w)
-        w_rec = comp.grad_psi_star(z)
-
-        assert np.all(w_rec > 0)
-        assert_allclose(w_rec, w, rtol=1e-10, atol=1e-12)
-
-    def test_barrier_plus_diagonal(self):
-        """LogBarrier + DiagonalQuadratic composition."""
-        rng = np.random.default_rng(201)
-        d = 5
-
-        barrier = LogBarrierMap(barrier_coef=1.0)
-        barrier.ensure_dim(d)
-        barrier._D = rng.random(d) + 0.5
-
-        diag = DiagonalQuadraticMap(beta=0.3)
-        diag.ensure_dim(d)
-        diag._H_diag = rng.random(d) + 2.0
-
-        comp = barrier + diag
-        w = _rand_positive_simplex(d, rng)
-        z = comp.grad_psi(w)
-        w_rec = comp.grad_psi_star(z)
-
-        assert np.all(w_rec > 0)
-        assert_allclose(w_rec, w, rtol=1e-10, atol=1e-12)
-
-    def test_euclidean_plus_diagonal(self):
-        """Euclidean + DiagonalQuadratic composition."""
-        rng = np.random.default_rng(202)
-        d = 7
-
-        euclid = EuclideanMap(d_coef=2.0)
-
-        diag = DiagonalQuadraticMap(beta=0.5)
-        diag.ensure_dim(d)
-        diag._H_diag = rng.random(d) + 1.0
-
-        comp = euclid + diag
-        w = _rand_positive_simplex(d, rng)
-        z = comp.grad_psi(w)
-        w_rec = comp.grad_psi_star(z)
-
-        assert np.all(w_rec > 0)
-        assert_allclose(w_rec, w, rtol=1e-10, atol=1e-12)
-
-    def test_barrier_plus_full_quadratic(self):
-        """LogBarrier + FullQuadratic composition (requires Newton)."""
-        rng = np.random.default_rng(203)
-        d = 5
-
-        barrier = LogBarrierMap(barrier_coef=1.5)
-        barrier.ensure_dim(d)
-        barrier._D = rng.random(d) + 0.8
-
-        full = FullQuadraticMap(beta=0.2)
-        full.ensure_dim(d)
+def _composition(rng, d, *, barrier=None, euclidean=None, diagonal=None, full=None):
+    """Build independent component states in their original random-draw order."""
+    components = []
+    if barrier is not None:
+        coefficient, scale, offset = barrier
+        component = LogBarrierMap(barrier_coef=coefficient)
+        component.ensure_dim(d)
+        component._D = rng.random(d) * scale + offset
+        components.append(component)
+    if euclidean is not None:
+        components.append(EuclideanMap(d_coef=euclidean))
+    if diagonal is not None:
+        beta, scale, offset = diagonal
+        component = DiagonalQuadraticMap(beta=beta)
+        component.ensure_dim(d)
+        component._H_diag = rng.random(d) * scale + offset
+        components.append(component)
+    if full is not None:
+        component = FullQuadraticMap(beta=full)
+        component.ensure_dim(d)
         B = rng.normal(size=(d, d))
-        full._A = (B.T @ B) / d
-
-        comp = barrier + full
-        w = _rand_positive_simplex(d, rng)
-        z = comp.grad_psi(w)
-        w_rec = comp.grad_psi_star(z)
-
-        assert np.all(w_rec > 0)
-        # Newton solver: slightly larger tolerance
-        assert_allclose(w_rec, w, rtol=1e-8, atol=1e-10)
-
-    def test_euclidean_plus_full_quadratic(self):
-        """Euclidean + FullQuadratic composition (requires Newton)."""
-        rng = np.random.default_rng(204)
-        d = 6
-
-        euclid = EuclideanMap(d_coef=1.0)
-
-        full = FullQuadraticMap(beta=0.1)
-        full.ensure_dim(d)
-        B = rng.normal(size=(d, d))
-        full._A = (B.T @ B) / d
-
-        comp = euclid + full
-        w = _rand_positive_simplex(d, rng)
-        z = comp.grad_psi(w)
-        w_rec = comp.grad_psi_star(z)
-
-        assert np.all(w_rec > 0)
-        # Newton solver
-        assert_allclose(w_rec, w, rtol=1e-8, atol=1e-10)
-
-    def test_diagonal_plus_full_quadratic(self):
-        """DiagonalQuadratic + FullQuadratic composition (requires Newton)."""
-        rng = np.random.default_rng(205)
-        d = 5
-
-        diag = DiagonalQuadraticMap(beta=0.4)
-        diag.ensure_dim(d)
-        diag._H_diag = rng.random(d) + 1.5
-
-        full = FullQuadraticMap(beta=0.15)
-        full.ensure_dim(d)
-        B = rng.normal(size=(d, d))
-        full._A = (B.T @ B) / d
-
-        comp = diag + full
-        w = _rand_positive_simplex(d, rng)
-        z = comp.grad_psi(w)
-        w_rec = comp.grad_psi_star(z)
-
-        assert np.all(w_rec > 0)
-        # Newton solver
-        assert_allclose(w_rec, w, rtol=1e-8, atol=1e-10)
+        component._A = (B.T @ B) / d
+        components.append(component)
+    result = components[0]
+    for component in components[1:]:
+        result = result + component
+    return result
 
 
-class TestThreeComponentVariations:
-    """Test various orderings and coefficient choices for 3-component compositions."""
+@pytest.mark.parametrize(
+    "seed,d,components,rtol,atol",
+    [
+        pytest.param(
+            200,
+            6,
+            dict(barrier=(2.0, 1.0, 1.0), euclidean=1.5),
+            1e-10,
+            1e-12,
+            id="barrier-euclidean",
+        ),
+        pytest.param(
+            201,
+            5,
+            dict(barrier=(1.0, 1.0, 0.5), diagonal=(0.3, 1.0, 2.0)),
+            1e-10,
+            1e-12,
+            id="barrier-diagonal",
+        ),
+        pytest.param(
+            202,
+            7,
+            dict(euclidean=2.0, diagonal=(0.5, 1.0, 1.0)),
+            1e-10,
+            1e-12,
+            id="euclidean-diagonal",
+        ),
+        pytest.param(
+            203,
+            5,
+            dict(barrier=(1.5, 1.0, 0.8), full=0.2),
+            1e-8,
+            1e-10,
+            id="barrier-full",
+        ),
+        pytest.param(
+            204, 6, dict(euclidean=1.0, full=0.1), 1e-8, 1e-10, id="euclidean-full"
+        ),
+        pytest.param(
+            205,
+            5,
+            dict(diagonal=(0.4, 1.0, 1.5), full=0.15),
+            1e-8,
+            1e-10,
+            id="diagonal-full",
+        ),
+    ],
+)
+def test_two_component_roundtrip(seed, d, components, rtol, atol):
+    rng = np.random.default_rng(seed)
+    comp = _composition(rng, d, **components)
+    w = _rand_positive_simplex(d, rng)
+    recovered = comp.grad_psi_star(comp.grad_psi(w))
+    assert np.all(recovered > 0)
+    assert_allclose(recovered, w, rtol=rtol, atol=atol)
 
-    def test_all_positive_coefficients(self):
-        """All components with substantial positive coefficients."""
-        rng = np.random.default_rng(300)
-        d = 5
 
-        barrier = LogBarrierMap(barrier_coef=3.0)
-        barrier.ensure_dim(d)
-        barrier._D = rng.random(d) + 2.0
-
-        euclid = EuclideanMap(d_coef=5.0)
-
-        diag = DiagonalQuadraticMap(beta=1.0)
-        diag.ensure_dim(d)
-        diag._H_diag = rng.random(d) + 3.0
-
-        comp = barrier + euclid + diag
-        w = _rand_positive_simplex(d, rng) * 2.0
-        z = comp.grad_psi(w)
-        w_rec = comp.grad_psi_star(z)
-
-        assert np.all(w_rec > 0)
-        assert_allclose(w_rec, w, rtol=1e-9, atol=1e-11)
-
-    def test_small_coefficients(self):
-        """All components with small coefficients."""
-        rng = np.random.default_rng(301)
-        d = 6
-
-        barrier = LogBarrierMap(barrier_coef=0.01)
-        barrier.ensure_dim(d)
-        barrier._D = rng.random(d) * 0.05 + 0.01
-
-        euclid = EuclideanMap(d_coef=0.01)
-
-        diag = DiagonalQuadraticMap(beta=0.01)
-        diag.ensure_dim(d)
-        diag._H_diag = rng.random(d) * 0.1 + 0.05
-
-        comp = barrier + euclid + diag
-        w = _rand_positive_simplex(d, rng)
-        z = comp.grad_psi(w)
-        w_rec = comp.grad_psi_star(z)
-
-        assert np.all(w_rec > 0)
-        assert_allclose(w_rec, w, rtol=1e-9, atol=1e-11)
-
-    def test_mixed_magnitude_coefficients(self):
-        """One large, one medium, one small coefficient."""
-        rng = np.random.default_rng(302)
-        d = 5
-
-        # Large barrier
-        barrier = LogBarrierMap(barrier_coef=10.0)
-        barrier.ensure_dim(d)
-        barrier._D = rng.random(d) + 5.0
-
-        # Medium Euclidean
-        euclid = EuclideanMap(d_coef=1.0)
-
-        # Small diagonal
-        diag = DiagonalQuadraticMap(beta=0.01)
-        diag.ensure_dim(d)
-        diag._H_diag = rng.random(d) * 0.1 + 0.05
-
-        comp = barrier + euclid + diag
-        w = _rand_positive_simplex(d, rng)
-        z = comp.grad_psi(w)
-        w_rec = comp.grad_psi_star(z)
-
-        assert np.all(w_rec > 0)
-        assert_allclose(w_rec, w, rtol=1e-9, atol=1e-11)
-
-    def test_barrier_dominant(self):
-        """Barrier term dominates (Euclidean and diagonal are tiny)."""
-        rng = np.random.default_rng(303)
-        d = 4
-
-        barrier = LogBarrierMap(barrier_coef=5.0)
-        barrier.ensure_dim(d)
-        barrier._D = rng.random(d) + 3.0
-
-        euclid = EuclideanMap(d_coef=1e-6)
-        diag = DiagonalQuadraticMap(beta=1e-6)
-        diag.ensure_dim(d)
-        diag._H_diag = rng.random(d) + 1.0
-
-        comp = barrier + euclid + diag
-        w = _rand_positive_simplex(d, rng)
-        z = comp.grad_psi(w)
-        w_rec = comp.grad_psi_star(z)
-
-        assert np.all(w_rec > 0)
-        assert_allclose(w_rec, w, rtol=1e-9, atol=1e-11)
-
-    def test_quadratic_dominant(self):
-        """Quadratic terms dominate (barrier is tiny)."""
-        rng = np.random.default_rng(304)
-        d = 5
-
-        barrier = LogBarrierMap(barrier_coef=1e-6)
-        barrier.ensure_dim(d)
-        barrier._D = rng.random(d) * 1e-5 + 1e-6
-
-        euclid = EuclideanMap(d_coef=10.0)
-
-        diag = DiagonalQuadraticMap(beta=5.0)
-        diag.ensure_dim(d)
-        diag._H_diag = rng.random(d) + 5.0
-
-        comp = barrier + euclid + diag
-        w = _rand_positive_simplex(d, rng)
-        z = comp.grad_psi(w)
-        w_rec = comp.grad_psi_star(z)
-
-        assert np.all(w_rec > 0)
-        assert_allclose(w_rec, w, rtol=1e-9, atol=1e-11)
+@pytest.mark.parametrize(
+    "seed,d,components,weight_scale",
+    [
+        pytest.param(
+            300,
+            5,
+            dict(barrier=(3.0, 1.0, 2.0), euclidean=5.0, diagonal=(1.0, 1.0, 3.0)),
+            2.0,
+            id="positive",
+        ),
+        pytest.param(
+            301,
+            6,
+            dict(
+                barrier=(0.01, 0.05, 0.01), euclidean=0.01, diagonal=(0.01, 0.1, 0.05)
+            ),
+            1.0,
+            id="small",
+        ),
+        pytest.param(
+            302,
+            5,
+            dict(barrier=(10.0, 1.0, 5.0), euclidean=1.0, diagonal=(0.01, 0.1, 0.05)),
+            1.0,
+            id="mixed",
+        ),
+        pytest.param(
+            303,
+            4,
+            dict(barrier=(5.0, 1.0, 3.0), euclidean=1e-6, diagonal=(1e-6, 1.0, 1.0)),
+            1.0,
+            id="barrier-dominant",
+        ),
+        pytest.param(
+            304,
+            5,
+            dict(barrier=(1e-6, 1e-5, 1e-6), euclidean=10.0, diagonal=(5.0, 1.0, 5.0)),
+            1.0,
+            id="quadratic-dominant",
+        ),
+    ],
+)
+def test_three_component_roundtrip(seed, d, components, weight_scale):
+    rng = np.random.default_rng(seed)
+    comp = _composition(rng, d, **components)
+    w = _rand_positive_simplex(d, rng) * weight_scale
+    recovered = comp.grad_psi_star(comp.grad_psi(w))
+    assert np.all(recovered > 0)
+    assert_allclose(recovered, w, rtol=1e-9, atol=1e-11)
 
 
 class TestAdaptiveMapsCompositions:
@@ -873,94 +759,57 @@ class TestAdaptiveMapsCompositions:
         assert_allclose(w_rec, w, rtol=1e-9, atol=1e-11)
 
 
-class TestFourComponentCompositions:
-    """Test compositions with all four component types (requires Newton)."""
-
-    def test_full_stack_barrier_euclidean_diagonal_full(self):
-        """LogBarrier + Euclidean + Diagonal + FullQuadratic."""
-        rng = np.random.default_rng(500)
-        d = 6
-
-        barrier = LogBarrierMap(barrier_coef=1.0)
-        barrier.ensure_dim(d)
-        barrier._D = rng.random(d) + 0.5
-
-        euclid = EuclideanMap(d_coef=1.0)
-
-        diag = DiagonalQuadraticMap(beta=0.3)
-        diag.ensure_dim(d)
-        diag._H_diag = rng.random(d) + 1.0
-
-        full = FullQuadraticMap(beta=0.1)
-        full.ensure_dim(d)
-        B = rng.normal(size=(d, d))
-        full._A = (B.T @ B) / d
-
-        comp = barrier + euclid + diag + full
-        w = _rand_positive_simplex(d, rng)
-        z = comp.grad_psi(w)
-        w_rec = comp.grad_psi_star(z)
-
-        assert np.all(w_rec > 0)
-        # Newton solver with full coupling
-        assert_allclose(w_rec, w, rtol=1e-7, atol=1e-9)
-
-    def test_full_stack_weak_coupling(self):
-        """Full stack with weak full-quadratic coupling."""
-        rng = np.random.default_rng(501)
-        d = 5
-
-        barrier = LogBarrierMap(barrier_coef=2.0)
-        barrier.ensure_dim(d)
-        barrier._D = rng.random(d) + 1.0
-
-        euclid = EuclideanMap(d_coef=2.0)
-
-        diag = DiagonalQuadraticMap(beta=0.5)
-        diag.ensure_dim(d)
-        diag._H_diag = rng.random(d) + 2.0
-
-        full = FullQuadraticMap(beta=0.01)  # Weak coupling
-        full.ensure_dim(d)
-        B = rng.normal(size=(d, d))
-        full._A = (B.T @ B) / d
-
-        comp = barrier + euclid + diag + full
-        w = _rand_positive_simplex(d, rng)
-        z = comp.grad_psi(w)
-        w_rec = comp.grad_psi_star(z)
-
-        assert np.all(w_rec > 0)
-        assert_allclose(w_rec, w, rtol=1e-7, atol=1e-9)
-
-    def test_full_stack_strong_coupling(self):
-        """Full stack with strong full-quadratic coupling."""
-        rng = np.random.default_rng(502)
-        d = 4
-
-        barrier = LogBarrierMap(barrier_coef=1.0)
-        barrier.ensure_dim(d)
-        barrier._D = rng.random(d) + 0.5
-
-        euclid = EuclideanMap(d_coef=1.0)
-
-        diag = DiagonalQuadraticMap(beta=0.2)
-        diag.ensure_dim(d)
-        diag._H_diag = rng.random(d) + 1.0
-
-        full = FullQuadraticMap(beta=1.0)  # Strong coupling
-        full.ensure_dim(d)
-        B = rng.normal(size=(d, d))
-        full._A = (B.T @ B) / d
-
-        comp = barrier + euclid + diag + full
-        w = _rand_positive_simplex(d, rng)
-        z = comp.grad_psi(w)
-        w_rec = comp.grad_psi_star(z)
-
-        assert np.all(w_rec > 0)
-        # Strong coupling may require slightly looser tolerance
-        assert_allclose(w_rec, w, rtol=1e-6, atol=1e-8)
+@pytest.mark.parametrize(
+    "seed,d,components,rtol,atol",
+    [
+        pytest.param(
+            500,
+            6,
+            dict(
+                barrier=(1.0, 1.0, 0.5),
+                euclidean=1.0,
+                diagonal=(0.3, 1.0, 1.0),
+                full=0.1,
+            ),
+            1e-7,
+            1e-9,
+            id="full-stack",
+        ),
+        pytest.param(
+            501,
+            5,
+            dict(
+                barrier=(2.0, 1.0, 1.0),
+                euclidean=2.0,
+                diagonal=(0.5, 1.0, 2.0),
+                full=0.01,
+            ),
+            1e-7,
+            1e-9,
+            id="weak-coupling",
+        ),
+        pytest.param(
+            502,
+            4,
+            dict(
+                barrier=(1.0, 1.0, 0.5),
+                euclidean=1.0,
+                diagonal=(0.2, 1.0, 1.0),
+                full=1.0,
+            ),
+            1e-6,
+            1e-8,
+            id="strong-coupling",
+        ),
+    ],
+)
+def test_four_component_roundtrip(seed, d, components, rtol, atol):
+    rng = np.random.default_rng(seed)
+    comp = _composition(rng, d, **components)
+    w = _rand_positive_simplex(d, rng)
+    recovered = comp.grad_psi_star(comp.grad_psi(w))
+    assert np.all(recovered > 0)
+    assert_allclose(recovered, w, rtol=rtol, atol=atol)
 
 
 class TestExtremeConditions:
