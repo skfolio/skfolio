@@ -349,7 +349,7 @@ class VineCopula(BaseMultivariateDist):
                 dim=1,
                 assets_names=getattr(self, "feature_names_in_", None),
                 name="log_transform",
-            )
+            ).astype(bool, copy=False)
 
         if np.any(self._log_transform):
             X = np.where(self._log_transform, np.log1p(X), X)
