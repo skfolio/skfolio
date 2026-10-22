@@ -2,6 +2,20 @@
 
 <!-- version list -->
 
+## v1.9.11 (2026-10-21)
+
+### Bug Fixes
+
+- **alpha**: Use average ranks for ties ([#442](https://github.com/skfolio/skfolio/pull/442),
+  [`c8b1202`](https://github.com/skfolio/skfolio/commit/c8b120257918bb0a23ff13725565afe0fb89fcc0))
+
+### Documentation
+
+- **portfolio**: Document dictionary weight alignment
+  ([#434](https://github.com/skfolio/skfolio/pull/434),
+  [`d2616bd`](https://github.com/skfolio/skfolio/commit/d2616bd25f7bd917dc27e67f339948f38e5c17ce))
+
+
 ## v1.9.10 (2026-10-21)
 
 ### Bug Fixes

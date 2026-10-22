@@ -184,6 +184,56 @@ def evaluation_with_diagnostics():
 class TestAlphaForecastEvaluation:
     """Test alpha forecast evaluation diagnostics."""
 
+    @pytest.mark.parametrize("constant", [False, True])
+    @pytest.mark.parametrize("missing_asset", [False, True])
+    @pytest.mark.parametrize("swap_tied_assets", [False, True])
+    def test_tied_forecasts(self, constant, missing_asset, swap_tied_assets):
+        """Public diagnostics use midranks without arbitrary tied-asset positions."""
+        signal = np.array([1.0, 1.0, 2.0, 3.0])
+        returns = np.array([0.01, 0.02, 0.02, 0.04])
+        if constant:
+            signal[:] = 1.0
+        if missing_asset:
+            signal = np.append(signal, 0.0)
+            returns = np.append(returns, np.nan)
+        order = np.arange(len(signal))
+        if swap_tied_assets:
+            order[:2] = [1, 0]
+        signal = np.tile(signal[order], (8, 1))
+        returns = np.tile(returns[order], (8, 1))
+        panel = AssetPanel(
+            fields={"signal": signal.copy(), _IDIO_RETURNS: returns.copy()},
+            observations=pd.bdate_range("2020-01-01", periods=8).to_numpy(),
+            asset_names=np.array([f"asset_{i}" for i in order]),
+        )
+        panel.add_3d_field(
+            _EXPOSURES,
+            np.stack([returns, -returns], axis=-1),
+            third_axis_name="factors",
+            third_axis_labels=["positive", "negative"],
+        )
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            panel,
+            n_forward_periods=1,
+            factor_correlation_method=CorrelationMethod.SPEARMAN,
+        )
+
+        # Centered midranks [-1, -1, .5, 1.5] imply 200%-gross weights
+        # [-.5, -.5, .25, .75] and a 2% return; constant scores have zero exposure.
+        expected_ic = np.nan if constant else 5.0 / 6.0
+        np.testing.assert_allclose(evaluation.spearman_ic, expected_ic)
+        np.testing.assert_allclose(
+            evaluation.rank_weighted_portfolio_return, 0.0 if constant else 0.02
+        )
+        np.testing.assert_allclose(evaluation.rank_weighted_turnover[1:], 0.0)
+        np.testing.assert_allclose(
+            evaluation.factor_correlation,
+            np.tile([expected_ic, -expected_ic], (8, 1)),
+        )
+        np.testing.assert_array_equal(panel["signal"], signal)
+        np.testing.assert_array_equal(panel[_IDIO_RETURNS], returns)
+
     def test_ic_matches_stats_helpers(self, alpha_deterministic_panel):
         """Spearman and Pearson IC reuse cross-sectional stats helpers."""
         model = _fixed_signal_alpha()
