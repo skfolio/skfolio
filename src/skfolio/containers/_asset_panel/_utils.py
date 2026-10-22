@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 import warnings
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -219,18 +219,19 @@ def _normalize_positional_selector(
 
 def _positions_from_unique_labels(labels: AnyArray, selected: Any) -> slice | IntArray:  # noqa: ANN401  # any label selector
     """Resolve unique-label selectors to positional selectors."""
+    # Uniqueness is guaranteed by the caller; get_loc therefore returns an int.
     index = pd.Index(labels)
     if isinstance(selected, slice):
         return index.slice_indexer(selected.start, selected.stop, selected.step)
     if isinstance(selected, (str, bytes)) or np.isscalar(selected):
-        loc = index.get_loc(selected)
+        loc = cast(int, index.get_loc(selected))
         return slice(int(loc), int(loc) + 1)
 
     positions = []
     missing = []
     for label in list(selected):
         try:
-            loc = index.get_loc(label)
+            loc = cast(int, index.get_loc(label))
         except KeyError:
             missing.append(label)
             continue
@@ -250,7 +251,7 @@ def _positions_from_labels(labels: AnyArray, selected: Any) -> slice | IntArray:
         if isinstance(loc, slice):
             return loc
         if isinstance(loc, np.ndarray):
-            return np.flatnonzero(loc) if loc.dtype == np.bool_ else loc
+            return np.flatnonzero(loc) if loc.dtype == np.bool_ else cast(IntArray, loc)
         return slice(int(loc), int(loc) + 1)
 
     positions = []
