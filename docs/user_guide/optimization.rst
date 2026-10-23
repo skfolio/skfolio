@@ -169,6 +169,62 @@ Maximum Sharpe Ratio portfolio:
     portfolio = model.predict(X_test)
     print(portfolio.sharpe_ratio)
 
+Parametric Portfolio Policy
+***************************
+
+The :class:`ParametricPortfolioPolicy` estimator maps asset characteristics directly
+to portfolio weights in one step, following Brandt, Santa-Clara and Valkanov (2009).
+Instead of estimating expected returns and a covariance matrix and then optimizing,
+the weight of each asset is its benchmark weight plus a linear tilt in its
+(cross-sectionally demeaned) characteristics:
+
+.. math::
+
+    w_{t,i} = b_{t,i} + \frac{1}{N_t} \theta^\top \tilde{z}_{t,i}
+
+The coefficients :math:`\theta` are chosen to maximize the average CRRA utility of
+the realized portfolio return path, using the characteristics known at :math:`t` and
+the returns of :math:`t + 1`. The policy can be constrained to be long-only
+(`long_only=True`) and penalized for turnover (`transaction_costs`), and the fitted
+coefficients can be applied to new characteristics without refitting through
+`predict_weights`. The characteristics are built with the same factor
+exposure estimators as the :class:`~skfolio.prior.CharacteristicsFactorModel` (see
+:ref:`Factor Exposures <factor_model_factor_exposures>`) from an
+:class:`~skfolio.containers.AssetPanel` passed to `fit` as `characteristics`.
+
+**Example:**
+
+.. code-block:: python
+
+    from skfolio.datasets import make_synthetic_characteristics
+    from skfolio.descriptor import BookToPrice, EWMomentum, LogMarketCap
+    from skfolio.factor_exposure import FixedWeightedFactor
+    from skfolio.model_selection import WalkForward, cross_val_predict
+    from skfolio.optimization import ParametricPortfolioPolicy
+
+    panel = make_synthetic_characteristics(n_assets=100, n_observations=1000)
+    X = panel.to_dataframe(fields="returns")
+
+    model = ParametricPortfolioPolicy(
+        characteristics_exposures=[
+            ("size", FixedWeightedFactor(descriptors=[("mcap", LogMarketCap())])),
+            ("value", FixedWeightedFactor(descriptors=[("btp", BookToPrice())])),
+            ("momentum", FixedWeightedFactor(descriptors=[("mom", EWMomentum())])),
+        ],
+        risk_aversion=5.0,
+    )
+    model.fit(X, characteristics=panel)
+    print(model.coef_)
+
+    # Walk-forward out-of-sample evaluation
+    pred = cross_val_predict(
+        model,
+        X,
+        cv=WalkForward(train_size=252, test_size=21),
+        params={"characteristics": panel},
+    )
+    print(pred.annualized_sharpe_ratio)
+
 Prior Estimator
 ===============
 
@@ -1196,3 +1252,326 @@ call as a whole.
 
 For a complete tutorial illustrating failure handling and fallbacks, see
 :ref:`sphx_glr_auto_examples_mean_risk_plot_17_failure_and_fallbacks.py`.
+
+Supervised characteristic policies (experimental)
+-------------------------------------------------
+
+:class:`SupervisedPortfolioPolicy` clones an optimizer over
+non-overlapping training subperiods, then uses a configurable regressor to learn the
+relationship between characteristics and those target allocations.
+
+For a decision at observation ``t`` and ``window_size=20``, the input is the
+characteristics available at ``t`` and the label is the portfolio fitted on
+returns ``t+1`` through ``t+20``. Incomplete trailing windows are discarded.
+``training_windows_`` and ``target_weights_`` make this timing inspectable.
+Only training returns may be passed to ``fit``. The fitted
+``weights_history_`` uses coefficients learned over the entire training sample
+and must not be interpreted as an out-of-sample backtest.
+
+The following example uses bundled stock prices and a trailing momentum
+characteristic. It uses an equal-weight benchmark and reserves later observations
+for prediction and the two evaluation examples below.
+
+.. code-block:: python
+
+    import pandas as pd
+    from sklearn.ensemble import RandomForestRegressor
+    from skfolio.containers import AssetPanel
+    from skfolio.datasets import load_sp500_dataset
+    from skfolio.descriptor import Passthrough
+    from skfolio.factor_exposure import FixedWeightedFactor
+    from skfolio.optimization import InverseVolatility, SupervisedPortfolioPolicy
+
+    prices = load_sp500_dataset().loc["2019":"2020"].iloc[:240, :5]
+    returns = prices.pct_change(fill_method=None).dropna().iloc[20:]
+    momentum = prices.pct_change(20, fill_method=None).loc[returns.index]
+
+    def characteristic_panel(index):
+        return AssetPanel(
+            fields={"momentum": momentum.loc[index].to_numpy()},
+            asset_names=returns.columns.to_numpy(),
+            observations=index,
+        )
+
+    X_train = returns.iloc[:160]
+    characteristics_train = characteristic_panel(X_train.index)
+    # Characteristics at t are used to trade before observing the return at t+1.
+    decision_dates = returns.index[160:-1]
+    characteristics_test = characteristic_panel(decision_dates)
+    characteristics_at_decisions = characteristics_test
+    X_forward_returns = returns.iloc[161:]
+    exposures = [
+        ("momentum", FixedWeightedFactor(
+            descriptors=[("momentum", Passthrough(field="momentum"))],
+            outlier_transformer="passthrough",
+            scoring_transformer="passthrough",
+        )),
+    ]
+
+    model = SupervisedPortfolioPolicy(
+        characteristics_exposures=exposures,
+        optimizer=InverseVolatility(),
+        window_size=20,
+        regressor=RandomForestRegressor(n_estimators=100, random_state=0),
+        benchmark_mcap_power=0,  # equal-weight benchmark; no market caps required
+        long_only=True,
+        max_weights=0.4,
+    )
+    model.fit(X_train, characteristics=characteristics_train)
+    targets = model.predict_weights(characteristics_test)
+
+Here ``exposures`` is a list of named causal factor-exposure estimators, as for
+``ParametricPortfolioPolicy``. The test panel must follow the training panel.
+Prediction is repeatable by default. Use ``update_state=True`` to commit
+exposure state after successful streaming predictions, then pass strictly later
+non-overlapping panels with the same coverage asset names and ordering.
+``predict(X_test)`` instead evaluates the last allocation
+using the standard optimizer interface; it does not rebalance from ``targets``.
+
+By default the estimator uses a fixed active universe. Opt-in eligibility changes
+are supported within the registered columns. Label windows require complete
+returns for decision-eligible assets. The model skips
+training decisions with unavailable characteristics and requires all final
+characteristics to be available. Constraints on the label optimizer are not
+inherited by the regression policy. A separate Euclidean projection enforces
+full investment, ``long_only``, ``min_weights``, ``max_weights`` and static
+``linear_constraints`` on every predicted allocation. Group equations use the
+existing skfolio syntax and a ``groups`` array in investment asset order.
+Infeasible constraints raise an error before any label optimizers are fitted.
+
+Regressors (including pipelines) must support cloning, fitting on a 2D matrix
+and predicting a single finite value for each asset/date. The shared model fits
+benchmark-relative deviations from demeaned characteristics divided by asset
+count. Predictions are centered across assets before projection. Model-specific
+constraints, such as positive regression coefficients, are configured on the
+regressor and do not replace portfolio constraints. If no regressor is supplied,
+Ridge without an intercept is used and ``alpha`` sets its penalty.
+
+Joint whole-portfolio regression and a full reproduction of Interpretable
+Supervised Portfolios remain future work.
+
+Choosing a prediction or evaluation method
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+All four methods below use an already fitted regressor. None retrains it on the
+future evaluation returns.
+
+.. list-table:: Supervised policy prediction and evaluation
+   :header-rows: 1
+   :widths: 18 28 24 30
+
+   * - Method
+     - Inputs and purpose
+     - Result
+     - Accounting and constraints
+   * - ``predict(X)``
+     - Evaluate the last fitted allocation on a return sample. Does not use new
+       characteristics or schedule policy rebalancing.
+     - ``Portfolio`` using ``weights_`` and ``portfolio_params``.
+     - Standard Portfolio accounting. Disabled when ``max_variance`` or
+       ``max_turnover`` is enabled; use a sequential evaluator instead.
+   * - ``predict_weights(characteristics)``
+     - Generate targets from later characteristics, without simulating trades.
+     - DataFrame of target weights, one row per decision date.
+     - Projects onto policy constraints. Supply causal covariance and actual
+       pre-trade holdings explicitly when their respective limits are enabled.
+       No realized returns, cash ledger or transaction-cost accounting.
+   * - ``evaluate_sequential(X, characteristics, ...)``
+     - Evaluate scheduled rebalancing on forward returns, starting from explicit
+       fully invested holdings.
+     - ``MultiPeriodPortfolio`` with targets, drifted holdings and turnover.
+     - Uses Portfolio's additive transaction-cost convention, without an explicit
+       cash ledger. Risk estimates can be supplied or estimated causally.
+   * - ``evaluate_execution(X, characteristics, ...)``
+     - Evaluate funded trades, cash and eligibility changes, starting from
+       explicit risky holdings and cash.
+     - ``PortfolioExecution`` with targets, trades and a cash/wealth/cost ledger.
+     - Deducts fees from available funds and reconciles post-fee positions.
+       Risk estimates can be supplied or estimated causally. Margin, borrowing
+       fees and trade execution realism are outside scope.
+
+Choose ``predict_weights`` to inspect targets or supply them to your own execution
+system. Use an evaluation method to measure the returns of the changing policy;
+passing those returns to ``predict`` would evaluate only the last fitted allocation.
+The two evaluators use different cost-accounting conventions, so their net returns
+need not agree when fees are nonzero.
+
+Prediction leaves fitted exposure state unchanged unless
+``predict_weights(..., update_state=True)`` is requested. Both evaluation helpers
+use a copy of fitted state. Decision characteristics must precede their associated
+forward returns; see the timing and initial-holdings requirements below.
+
+Risk, turnover and sequential evaluation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``max_variance`` and ``max_turnover`` add dynamic projection constraints.
+Pass ``covariance`` and ``holdings`` to ``predict_weights`` explicitly. Covariance
+may be a single matrix shared across decisions, or one matrix per decision.
+Named matrices are aligned to fitted assets. Holdings must contain one fully
+invested pre-trade vector per decision; they are not broadcast across dates.
+Turnover means ``sum(abs(target - holdings))``, without a one-half factor.
+Variance units follow the supplied covariance horizon; there is no implicit
+annualization. Estimates must use only information available at the decision.
+
+Training ``weights_`` and ``weights_history_`` remain static diagnostics. Standard
+``predict`` is disabled when a dynamic limit is enabled, so those allocations
+cannot silently bypass risk or turnover constraints during evaluation.
+
+``evaluate_sequential`` evaluates scheduled rebalances using the
+existing ``Portfolio(weight_drift=True)`` infrastructure. Supply initial holdings
+and characteristic decision dates strictly preceding their corresponding return
+end dates. Each subsequent decision date must equal the preceding return end
+date. Every decision must follow the training sample. ``rebalance_every=21``
+trades on the first observation and every 21 observations thereafter; this is a
+trading-month approximation, not a calendar-month schedule. Daily characteristic
+updates and asset drift continue between trades, with zero transaction costs on
+non-trading dates. Risk, weight bounds and turnover limits apply at rebalance
+time; drift may move holdings outside them between rebalances. The first trade counts
+against the supplied initial holdings; subsequent trades use actual drifted
+ending holdings. The result is a ``MultiPeriodPortfolio`` whose constituent
+portfolios expose targets, previous holdings, ending holdings and turnover.
+
+.. code-block:: python
+
+    model.set_params(max_variance=0.001, max_turnover=0.1)
+    model.fit(X_train, characteristics=characteristics_train)
+    initial_weights = model.weights_.copy()
+    evaluation = model.evaluate_sequential(
+        X_forward_returns,
+        characteristics_at_decisions,
+        initial_holdings=initial_weights,
+        covariance_window=60,  # rolling past-return covariance estimation
+        rebalance_every=21,
+        transaction_costs=0.001,  # 10 basis points per unit of absolute traded weight
+    )
+
+Evaluation uses a separate copy of fitted model state and fresh solver objects.
+It leaves the estimator unchanged on success or failure. Infeasible combinations
+raise rather than relaxing a limit. The helper supports fully invested portfolios
+and finite asset returns strictly above -100 percent. Cash, management fees,
+unpriced exits and cash borrowing remain unsupported. Use evaluate_execution
+for a funded cash ledger and changing eligibility.
+
+Transaction costs can be a scalar, an asset-aligned vector or a dictionary keyed
+by fitted asset names (omitted names default to zero). An explicit argument
+overrides ``portfolio_params["transaction_costs"]``; otherwise that setting is
+used. Rates must be finite and nonnegative. Costs use exactly the same pre-trade
+holdings as the turnover constraint, including the initial trade. Each period
+charges ``sum(cost_rate * abs(target - drifted_holdings))`` once.
+
+This reuses Portfolio accounting: costs reduce period returns, while ending
+weights follow asset-return drift. It does not introduce a cash ledger or solve
+for exact self-financing trades after fees. Costs affect evaluation only; they
+are not a penalty in supervised regressor fitting. Net returns are compounded
+by the resulting MultiPeriodPortfolio. Nonpositive net wealth raises an error.
+
+
+Automatic risk estimation uses a fresh clone of ``prior_estimator`` on trailing
+observed returns at each rebalance, with ``covariance_window`` limiting history.
+The default is ``EmpiricalPrior(covariance_estimator=LedoitWolf())``. The history
+contains training returns and already-realized evaluation returns, never the
+next holding-period return. Only the supplied return history is used; omitted
+observations are not inferred from characteristic fields. Explicit covariance
+and a custom prior cannot both be supplied. Direct ``predict_weights`` still
+requires covariance when risk-constrained because it receives no return stream.
+
+The :ref:`historical walk-forward tutorial
+<sphx_glr_auto_examples_parametric_portfolio_policy_plot_historical_walk_forward.py>`
+uses bundled equity prices, three yearly model refits, a constrained equal-weight
+baseline and an execution CSV. Its fixed historical universe is not a
+point-in-time constituent universe, and the example is not evidence of investment
+performance. Run its ``historical_walk_forward.py`` command-line wrapper with
+``--output-dir`` to save the summary and execution reports; see the parametric
+portfolio policy examples for commands.
+The :ref:`cash-funded execution tutorial
+<sphx_glr_auto_examples_parametric_portfolio_policy_plot_cash_execution.py>`
+shows rendered wealth, cash and trading-cost diagnostics, including a synthetic
+all-cash interval.
+
+Cash-funded execution and eligibility changes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``evaluate_execution`` is the explicit cash-ledger alternative to
+``evaluate_sequential``. It returns ``PortfolioExecution`` rather than a
+``MultiPeriodPortfolio``. It supports long/short positions and reconciles actual
+trades, cash, costs and ending wealth. Initial risky holdings plus initial cash
+must sum to one; all-cash initial conditions are supported.
+
+.. code-block:: python
+
+    # Allow the initial purchase from cash and the later full exit/reentry.
+    model.set_params(long_only=True, allow_universe_changes=True, max_turnover=1.2)
+    eligible_at_decisions = pd.DataFrame(
+        True, index=decision_dates, columns=X_train.columns
+    )
+    eligible_at_decisions.iloc[20:25] = False  # synthetic all-cash interval
+    model.fit(X_train, characteristics=characteristics_train)
+    execution = model.evaluate_execution(
+        X_forward_returns,
+        characteristics_at_decisions,
+        initial_holdings={asset: 0.0 for asset in X_train.columns},
+        initial_cash=1.0,
+        cash_weight=0.05,
+        cash_returns=0.00005,  # per observation, not annualized
+        transaction_costs=0.001,
+        rebalance_every=21,
+        eligibility=eligible_at_decisions,
+    )
+    print(execution.ledger)
+
+Target risky weights sum to one minus ``cash_weight`` after fees. Fees are funded
+from actual signed trades, including purchases from initial cash and forced exit
+sales. Risk/weight constraints refer to post-fee portfolio weights; turnover is
+the sum of absolute risky trades divided by pre-trade wealth. Cash transfers are
+not counted a second time. Funding iterates to reconciliation and raises if it
+cannot converge; it never silently borrows cash or relaxes a constraint.
+
+With ``allow_universe_changes=True``, ``active_mask`` controls investability within
+the registered columns. The optional boolean ``eligibility`` DataFrame applies
+additional exclusions and can exclude all assets, unlike AssetPanel's market
+coverage mask. Membership changes force a rebalance even between scheduled dates.
+Costs and turnover limits still apply. When all assets are excluded, the portfolio
+holds cash. Registered assets may leave and re-enter. Admit new names explicitly using
+``expanded = fitted.expand_universe(history, characteristics_history)``.
+The returned model preserves the fitted regressor and rebuilds exposure state by
+replaying expanded history through the current prediction date. Supply unchanged
+past returns for existing assets, enough descriptor warmup for new ones, and
+expanded positional bounds or groups where applicable. Missing pre-entry returns
+remain missing. Use stable feature definitions: replaying arbitrary learned
+transformations is not guaranteed to preserve their meaning.
+
+With ``long_only=False``, the ledger accepts signed holdings and preserves short
+positions. There are no borrowing fees. Existing transaction costs are optional;
+negative cash, collateral, margin and trading availability are outside scope.
+
+An eligibility exit assumes an executable sale at the known decision valuation.
+It is not a substitute for modeling trading halts or unpriced delistings. Missing
+returns are permitted only for assets with no position. Active assets need known
+characteristics; a held asset with an unknown return raises. Risk priors use only
+eligible assets and require at least two complete past observations; assets with
+insufficient history need explicit covariance or a later eligibility date.
+
+Metadata-dependent priors
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Both evaluation methods accept ``prior_fit_params`` containing dated Series,
+DataFrames or AssetPanels. Values are sliced to precisely the historical return
+rows supplied to each prior fit. Missing or duplicate dates raise; undated arrays
+are rejected. Configure nested sklearn metadata requests on the prior as usual.
+For example, a time-series factor prior receives
+``prior_fit_params={"factors": factor_returns}``. Future factor rows may exist in
+the supplied table but are never passed to an earlier fit.
+
+``examples/parametric_portfolio_policy/cash_execution_example.py`` combines historical prices,
+factor metadata, transaction costs, exits, re-entry and five all-cash periods.
+Its eligibility exclusions are synthetic validation scenarios, not claims about
+actual historical tradability.
+
+
+Label-generating optimizers can receive their own dated inputs through
+``fit(..., optimizer_fit_params={"factors": factor_returns})``. These are sliced
+to each forward label window, entirely inside the supplied training sample.
+Configure requests on nested estimators with sklearn metadata routing enabled;
+for example ``TimeSeriesFactorModel().set_fit_request(factors=True)`` inside
+``InverseVolatility``. Label metadata use the label window; evaluation prior
+metadata use only past observations. These two timings intentionally differ.
