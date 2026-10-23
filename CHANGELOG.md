@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.10.3 (2026-10-23)
+
+### Bug Fixes
+
+- **distribution**: Exclude user-fixed parameters from the univariate n_params
+  ([#450](https://github.com/skfolio/skfolio/pull/450),
+  [`1213b8d`](https://github.com/skfolio/skfolio/commit/1213b8db5474e77e21b5bfb77a2f81d7cad55e08))
+
+
 ## v1.10.2 (2026-10-23)
 
 ### Bug Fixes
