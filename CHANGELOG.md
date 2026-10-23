@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.10.2 (2026-10-23)
+
+### Bug Fixes
+
+- **model_selection**: Preserve final rebalancing date with negative offsets
+  ([#452](https://github.com/skfolio/skfolio/pull/452),
+  [`d3fa20d`](https://github.com/skfolio/skfolio/commit/d3fa20d8195c4cb4a81f1971a90bf351b9e37dd9))
+
+
 ## v1.10.1 (2026-10-23)
 
 ### Bug Fixes
