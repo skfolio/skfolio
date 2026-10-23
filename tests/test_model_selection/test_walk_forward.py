@@ -1379,3 +1379,31 @@ def test_walk_forward_missing_observations_do_not_extend_calendar_windows():
     np.testing.assert_array_equal(splits[0][1], [3])
     np.testing.assert_array_equal(splits[1][0], [3])
     np.testing.assert_array_equal(splits[1][1], [4, 5, 6])
+
+
+@pytest.mark.parametrize("reduce_test", [False, True])
+def test_walk_forward_negative_offset_keeps_last_rebalancing_date(reduce_test):
+    """A negative `freq_offset` shifts anchors backwards, so an anchor falling
+    after the data can still produce a rebalancing date inside the data."""
+    index = pd.date_range("2024-01-01", "2024-01-28", freq="D")
+    X = pd.DataFrame(np.zeros((len(index), 1)), index=index)
+    cv = WalkForward(
+        test_size=1,
+        train_size=1,
+        freq="W-MON",
+        freq_offset=dt.timedelta(days=-3),
+        reduce_test=reduce_test,
+    )
+    test_windows = [
+        (index[test[0]].date(), index[test[-1]].date()) for _, test in cv.split(X)
+    ]
+    # Rebalancing dates are the Fridays 5, 12, 19 and 26 January.
+    expected = [
+        (dt.date(2024, 1, 5), dt.date(2024, 1, 11)),
+        (dt.date(2024, 1, 12), dt.date(2024, 1, 18)),
+        (dt.date(2024, 1, 19), dt.date(2024, 1, 25)),
+    ]
+    if reduce_test:
+        expected.append((dt.date(2024, 1, 26), dt.date(2024, 1, 28)))
+    assert test_windows == expected
+    assert cv.get_n_splits(X) == len(expected)

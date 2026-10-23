@@ -678,10 +678,14 @@ def _calendar_window_bounds(
     """
     start = ts_index[0]
     end = ts_index[-1]
+    anchor_end = end
     if freq_offset is not None:
+        # A negative offset maps anchors after the data onto dates inside it, so
+        # the anchor range is extended on both sides before shifting.
         start = min(start, start - freq_offset)
+        anchor_end = max(end, end - freq_offset)
 
-    date_range = pd.date_range(start=start, end=end, freq=freq)
+    date_range = pd.date_range(start=start, end=anchor_end, freq=freq)
     if freq_offset is not None:
         date_range += freq_offset
         # A shifted date beyond the data cannot close a full test window.
