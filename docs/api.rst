@@ -86,6 +86,7 @@ Functions
     measures.gini_mean_difference
     measures.owa_gmd_weights
     measures.effective_number_assets
+    measures.effective_number_trials
     measures.correlation
     measures.expected_max_sharpe_ratio
     measures.probabilistic_sharpe_ratio

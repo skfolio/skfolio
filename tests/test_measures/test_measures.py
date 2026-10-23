@@ -1702,3 +1702,92 @@ def test_deflated_sharpe_ratio_constant_series():
     # A real but very quiet series still gets a number
     quiet = np.random.default_rng(1).normal(0, 1e-8, 250)
     assert 0 <= skm.deflated_sharpe_ratio(quiet, sharpe_ratios) <= 1
+
+
+def test_effective_number_trials_independent_and_identical():
+    rng = np.random.default_rng(0)
+    # Independent trials carry all their nominal degrees of freedom. The
+    # estimate inherits sampling noise from the sample correlation (its spread
+    # is about sqrt(1 / n_observations) per pair), hence the large sample.
+    independent = rng.standard_normal((500_000, 20))
+    np.testing.assert_almost_equal(
+        skm.effective_number_trials(independent), 20.0, decimal=1
+    )
+
+    # Trials that are the same series repeated are worth a single trial
+    base = rng.standard_normal((5000, 1))
+    identical = base + 1e-8 * rng.standard_normal((5000, 20))
+    np.testing.assert_almost_equal(
+        skm.effective_number_trials(identical), 1.0, decimal=2
+    )
+
+
+@pytest.mark.parametrize("rho", [0.25, 0.5, 0.9])
+@pytest.mark.parametrize("n_trials", [5, 10, 20])
+def test_effective_number_trials_matches_equicorrelated_closed_form(rho, n_trials):
+    """For equicorrelated trials the answer is N / (1 + (N - 1) rho)."""
+    rng = np.random.default_rng(3)
+    n_observations = 20000
+    chol = np.linalg.cholesky(
+        np.full((n_trials, n_trials), rho) + (1.0 - rho) * np.eye(n_trials)
+    )
+    trial_returns = (chol @ rng.standard_normal((n_trials, n_observations))).T
+
+    expected = n_trials / (1.0 + (n_trials - 1) * rho)
+    np.testing.assert_almost_equal(
+        skm.effective_number_trials(trial_returns), expected, decimal=1
+    )
+
+
+def test_effective_number_trials_counts_blocks_not_columns():
+    """Four independent blocks of five identical trials are worth four trials."""
+    rng = np.random.default_rng(4)
+    n_observations = 20000
+    blocks = []
+    for _ in range(4):
+        common = rng.standard_normal((n_observations, 1))
+        blocks.append(common + 1e-8 * rng.standard_normal((n_observations, 5)))
+    trial_returns = np.hstack(blocks)
+
+    value = skm.effective_number_trials(trial_returns)
+    assert 3.5 < value < 4.5
+
+
+def test_effective_number_trials_stays_within_bounds():
+    rng = np.random.default_rng(5)
+    trial_returns = rng.standard_normal((1000, 7))
+    value = skm.effective_number_trials(trial_returns)
+    assert 1.0 <= value <= 7.0
+
+    # Negative average correlation cannot create more than N independent trials
+    anti = rng.standard_normal((1000, 1))
+    alternated = np.hstack([anti, -anti])
+    value = skm.effective_number_trials(
+        alternated + 1e-8 * rng.standard_normal((1000, 2))
+    )
+    assert 1.0 <= value <= 2.0
+
+
+def test_effective_number_trials_ignores_a_trial_without_dispersion():
+    rng = np.random.default_rng(6)
+    trial_returns = rng.standard_normal((2000, 5))
+    with_constant = trial_returns.copy()
+    with_constant[:, 2] = 1.0
+
+    # The constant column pairs at NaN, which is dropped from the average
+    value = skm.effective_number_trials(with_constant)
+    assert np.isfinite(value)
+    assert 1.0 <= value <= 5.0
+
+
+@pytest.mark.parametrize(
+    "trial_returns, message",
+    [
+        (np.zeros(100), "must be a 2D array"),
+        (np.zeros((1, 5)), "at least 2 observations"),
+        (np.zeros((100, 1)), "at least 2 trials"),
+    ],
+)
+def test_effective_number_trials_rejects_bad_shapes(trial_returns, message):
+    with pytest.raises(ValueError, match=message):
+        skm.effective_number_trials(trial_returns)
