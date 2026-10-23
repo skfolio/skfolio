@@ -712,10 +712,27 @@ def entropic_risk_measure(
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
     """
-    returns = np.asarray(returns)
-    return theta * np.log(
-        mean(np.exp(-returns / theta), sample_weight=sample_weight) / (1 - beta)
+    returns = np.asarray(returns, dtype=float)
+    if sample_weight is None:
+        sample_weight = np.ones(returns.shape[0])
+    else:
+        sample_weight = _validate_sample_weight(
+            sample_weight, n_observations=returns.shape[0]
+        )
+    returns, sample_weight = _prepare_weighted_returns(
+        returns, sample_weight=sample_weight
     )
+    if returns.shape[0] == 0:
+        return np.full(returns.shape[1:], np.nan)[()]
+    if returns.ndim == 2 and sample_weight.ndim == 1:
+        sample_weight = sample_weight[:, None]
+    log_sample_weight = np.log(
+        sample_weight,
+        out=np.full_like(sample_weight, -np.inf),
+        where=sample_weight != 0,
+    )
+    log_mean = scs.logsumexp(-returns / theta + log_sample_weight, axis=0)
+    return theta * (log_mean - np.log1p(-beta))
 
 
 def evar(

@@ -52,6 +52,29 @@ def test_clayton_copula_init():
     assert model.kendall_tau is None
 
 
+def test_clayton_cdf_near_independence(fitted_model):
+    fitted_model.theta_ = 1e-4
+    X = [[0.3, 0.4], [0.5, 0.5], [1e-12, 1e-12], [0.99999, 0.99999]]
+    # Direct Clayton formula evaluated with 70-digit decimal arithmetic.
+    expected = [
+        0.1200132375962812,
+        0.2500120107813573,
+        1.0791104094654839e-24,
+        0.9999800001000101,
+    ]
+    np.testing.assert_allclose(fitted_model.cdf(X), expected, rtol=1e-13, atol=0)
+
+
+def test_clayton_cdf_large_theta(fitted_model):
+    fitted_model.theta_ = 50.0
+    q = np.array([1e-12, 1e-9, 1e-4])
+    # On the diagonal C(q, q) = q * (2 - q**theta)**(-1/theta).
+    expected = q * (2 - q**50) ** (-1 / 50)
+    np.testing.assert_allclose(
+        fitted_model.cdf(np.column_stack((q, q))), expected, rtol=1e-14, atol=0
+    )
+
+
 def test_clayton_copula_fit_with_kendall_tau(random_data):
     """Test fit() using Kendall's tau inversion (default)."""
     model = ClaytonCopula(itau=True).fit(random_data)

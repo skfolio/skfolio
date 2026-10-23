@@ -84,7 +84,10 @@ class Portfolio(BasePortfolio):
         Portfolio weights.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset weight) and `X` must be a DataFrame with assets names
-        in columns.
+        in columns. Weights are aligned to the column order of `X`: keys absent
+        from `X` are ignored, and assets omitted from the dictionary have zero
+        weight. The remaining weights are not renormalized. This allows reusing
+        a full-universe dictionary, including `weights_dict`, on a subset of assets.
 
     transaction_costs : float | dict[str, float] | array-like of shape (n_assets, ), optional
         Linear transaction costs of the assets. The Portfolio total transaction cost

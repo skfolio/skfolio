@@ -259,6 +259,8 @@ def safe_indexing(
     if isinstance(indices, slice):
         if axis == 0:
             return X[indices]
+        if hasattr(X, "iloc"):
+            return X.iloc[:, indices]
         return X[:, indices]
     if hasattr(X, "iloc"):
         return X.take(indices, axis=axis)

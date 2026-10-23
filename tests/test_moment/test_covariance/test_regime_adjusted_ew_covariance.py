@@ -626,7 +626,11 @@ class TestRegimeAdjustedEWCovariance:
         with pytest.raises(ValueError, match="hac_lags must be a positive integer"):
             model.fit(X_small)
 
-    def test_stvu_uses_pre_update_bias_correction(self):
+    @pytest.mark.parametrize(
+        "regime_target",
+        [RegimeAdjustmentTarget.PORTFOLIO, RegimeAdjustmentTarget.DIAGONAL],
+    )
+    def test_stvu_uses_pre_update_bias_correction(self, regime_target):
         """STVU must use the pre-update covariance state for one-step-ahead scaling."""
         X = np.array([[1.0], [2.0]])
         model = RegimeAdjustedEWCovariance(
@@ -634,13 +638,50 @@ class TestRegimeAdjustedEWCovariance:
             min_observations=1,
             regime_min_observations=1,
             regime_multiplier_clip=None,
-            regime_target=RegimeAdjustmentTarget.PORTFOLIO,
+            regime_target=regime_target,
             nearest=False,
         )
         model.fit(X)
 
         expected = 2.0 / np.sqrt(2.0 / np.pi)
         assert model.regime_multiplier_ == pytest.approx(expected, rel=1e-12)
+
+    @pytest.mark.parametrize("regime_method", list(RegimeAdjustmentMethod))
+    def test_single_asset_diagonal_equals_portfolio(self, regime_method):
+        """With one asset the DIAGONAL and PORTFOLIO statistics are both r^2 / s^2,
+        so every method must give the same multiplier."""
+        X = np.random.default_rng(0).standard_normal((300, 1)) * 0.01
+        multipliers = [
+            RegimeAdjustedEWCovariance(
+                half_life=20,
+                regime_target=target,
+                regime_method=regime_method,
+                regime_multiplier_clip=None,
+            )
+            .fit(X)
+            .regime_multiplier_
+            for target in (
+                RegimeAdjustmentTarget.DIAGONAL,
+                RegimeAdjustmentTarget.PORTFOLIO,
+            )
+        ]
+        assert multipliers[0] == pytest.approx(multipliers[1], rel=1e-12)
+
+    def test_diagonal_first_moment_is_calibrated_under_stationarity(self):
+        """Under iid returns with constant volatility the multiplier should be
+        close to one. Normalizing d by sqrt(n) instead of E[chi_n] biased it low
+        (about 0.95 for five assets)."""
+        X = np.random.default_rng(1).standard_normal((4000, 5)) * 0.01
+        model = RegimeAdjustedEWCovariance(
+            half_life=200,
+            regime_half_life=500,
+            regime_target=RegimeAdjustmentTarget.DIAGONAL,
+            regime_method=RegimeAdjustmentMethod.FIRST_MOMENT,
+            regime_multiplier_clip=None,
+            assume_centered=True,
+        )
+        model.fit(X)
+        assert model.regime_multiplier_ == pytest.approx(1.0, abs=0.02)
 
     @pytest.mark.parametrize(
         "regime_target",

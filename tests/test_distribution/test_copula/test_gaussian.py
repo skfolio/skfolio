@@ -72,6 +72,43 @@ def test_gaussian_cdf_shape(random_data):
     assert np.all(cdf >= 0) and np.all(cdf <= 1)
 
 
+@pytest.mark.parametrize("rho", [-0.999, -0.7, 0.0, 0.5, 0.999])
+@pytest.mark.parametrize("method", ["cdf", "survival_probability"])
+def test_gaussian_probability_batch_consistency(rho, method):
+    model = GaussianCopula()
+    model.rho_ = rho
+    q = np.array([1e-12, 0.01, 0.1, 0.5, 0.9, 1 - 1e-12])
+    X = np.array(np.meshgrid(q, q)).reshape(2, -1).T
+    probability = getattr(model, method)
+    values = probability(X)
+    np.testing.assert_array_equal(probability(X), values)
+    np.testing.assert_array_equal(probability(X[::-1]), values[::-1])
+    np.testing.assert_array_equal([probability([row])[0] for row in X], values)
+
+
+@pytest.mark.parametrize("rho", [-0.999, -0.7, 0.0, 0.5, 0.999])
+def test_gaussian_survival_probability_reflection(rho):
+    model = GaussianCopula()
+    model.rho_ = rho
+    X = np.array([[2.0**-40, 0.125], [2.0**-40, 2.0**-40], [0.75, 0.5]])
+    np.testing.assert_array_equal(model.survival_probability(1 - X), model.cdf(X))
+
+
+@pytest.mark.parametrize("rho", [-0.999, 0.0, 0.999])
+def test_gaussian_probability_bounds_near_endpoints(rho):
+    model = GaussianCopula()
+    model.rho_ = rho
+    q = np.array([3e-17, 1e-16, 1e-15, 1e-12, 1 - 1e-12, 1 - 1e-16])
+    concentration = model.tail_concentration(q)
+    assert np.all(np.isfinite(concentration))
+    assert np.all((concentration >= 0) & (concentration <= 1))
+
+    X = np.array(np.meshgrid(q, q)).reshape(2, -1).T
+    for method, margins in (("cdf", X), ("survival_probability", 1 - X)):
+        values = getattr(model, method)(X)
+        assert np.all((values >= 0) & (values <= margins.min(axis=1)))
+
+
 @pytest.mark.parametrize(
     "first_margin",
     [

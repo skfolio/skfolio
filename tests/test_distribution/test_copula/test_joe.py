@@ -219,6 +219,60 @@ def test_cdf_exact(X, fitted_model, rotation, expected):
     np.testing.assert_almost_equal(fitted_model.cdf(X), expected)
 
 
+@pytest.mark.parametrize(
+    "theta,expected",
+    [
+        (
+            1.005,
+            [
+                1.0049999999999948e-24,
+                1.00499999994975e-16,
+                3.0124724981632383e-13,
+                3.0124724981632383e-13,
+                0.12039595313685532,
+                0.8104922236021302,
+            ],
+        ),
+        (
+            3.0,
+            [
+                2.9999999999939998e-24,
+                2.9999999400000017e-16,
+                6.569999999997747e-13,
+                6.569999999997747e-13,
+                0.21436472104926152,
+                0.8740288971954308,
+            ],
+        ),
+        (
+            20.0,
+            [
+                1.999999999962e-23,
+                1.999999620000079e-15,
+                9.992020773370163e-13,
+                9.992020773370163e-13,
+                0.2984313921646856,
+                0.8964735076158623,
+            ],
+        ),
+    ],
+)
+def test_joe_cdf_precision(fitted_model, theta, expected):
+    # Reference values from the Joe formula evaluated with 100-digit arithmetic.
+    X = np.array(
+        [
+            [1e-12, 1e-12],
+            [1e-8, 1e-8],
+            [1e-12, 0.3],
+            [0.3, 1e-12],
+            [0.3, 0.4],
+            [0.9, 0.9],
+        ]
+    )
+    fitted_model.theta_ = theta
+    np.testing.assert_allclose(fitted_model.cdf(X), expected, rtol=2e-14, atol=0)
+
+
 def test_joe_aic_bic_exact(X, fitted_model):
     fitted_model.rotation_ = CopulaRotation.R180
     assert np.isclose(fitted_model.aic(X), -4.146027394639978)

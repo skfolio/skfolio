@@ -349,7 +349,7 @@ class VineCopula(BaseMultivariateDist):
                 dim=1,
                 assets_names=getattr(self, "feature_names_in_", None),
                 name="log_transform",
-            )
+            ).astype(bool, copy=False)
 
         if np.any(self._log_transform):
             X = np.where(self._log_transform, np.log1p(X), X)
@@ -489,8 +489,12 @@ class VineCopula(BaseMultivariateDist):
         X = skv.validate_data(self, X, dtype=np.float64, reset=False)
         self.clear_cache()
 
+        log_det_jacobian = None
         if np.any(self._log_transform):
             X = np.where(self._log_transform, np.log1p(X), X)
+            # Change of variables y = log1p(x): the density of x carries
+            # the jacobian term -sum(log1p(x)).
+            log_det_jacobian = -np.sum(X[:, self._log_transform], axis=1)
 
         if not self.fit_marginals:
             score_samples = np.zeros(len(X))
@@ -519,6 +523,9 @@ class VineCopula(BaseMultivariateDist):
             for edge in tree.edges:
                 score_samples += edge.copula.score_samples(X=edge.get_X())
         self.clear_cache()
+
+        if log_det_jacobian is not None:
+            score_samples += log_det_jacobian
 
         return score_samples
 

@@ -585,6 +585,9 @@ class RegimeAdjustedEWVariance(BaseVariance):
             self._is_active[:] = True
 
         if not np.any(valid):
+            if self._return_buffer is not None:
+                # Advance observation-based HAC lags while EWMA and STVU stay frozen.
+                self._return_buffer.append(np.full_like(returns, np.nan))
             return
 
         # Compute demeaned returns (or raw if assume_centered).
