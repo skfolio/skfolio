@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v1.10.1 (2026-10-23)
+
+### Bug Fixes
+
+- **measures**: Stabilize entropic risk calculation
+  ([#440](https://github.com/skfolio/skfolio/pull/440),
+  [`d85cdde`](https://github.com/skfolio/skfolio/commit/d85cdde6b5c53753e7397e63b322075ae79dd420))
+
+- **moments**: Preserve HAC lags across missing observations
+  ([#457](https://github.com/skfolio/skfolio/pull/457),
+  [`a113480`](https://github.com/skfolio/skfolio/commit/a113480e0376b4ee030234bf5faebf675f4d3b37))
+
+### Documentation
+
+- **model-selection**: Correct WalkForward calendar recipes
+  ([#460](https://github.com/skfolio/skfolio/pull/460),
+  [`47d2ac5`](https://github.com/skfolio/skfolio/commit/47d2ac57b6a586fe7b24abc909bfd9b92d0f711a))
+
+
 ## v1.10.0 (2026-10-22)
 
 ### Features
