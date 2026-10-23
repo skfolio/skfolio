@@ -11,9 +11,120 @@ from skfolio.moments import ImpliedCovariance, LedoitWolf
 from skfolio.moments.covariance._implied_covariance import (
     _compute_implied_vol,
     _compute_realised_vol,
+    check_implied_vol,
 )
 from skfolio.optimization import MeanRisk
 from skfolio.prior import EmpiricalPrior
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("frame", [False, True])
+@pytest.mark.parametrize("position", [(0, 1), (-1, 0)])
+def test_check_implied_vol_rejects_negative(dtype, frame, position):
+    """Validate actual volatility entries throughout the supplied history."""
+    values = np.full((4, 2), 0.2, dtype=dtype)
+    values[position] = -0.2
+    implied_vol = pd.DataFrame(values) if frame else values
+    original = implied_vol.copy()
+
+    with pytest.raises(ValueError, match=r"Negative values.*implied_vol"):
+        check_implied_vol(implied_vol, X=np.zeros((4, 2)))
+
+    if frame:
+        pd.testing.assert_frame_equal(implied_vol, original)
+    else:
+        np.testing.assert_array_equal(implied_vol, original)
+
+
+@pytest.mark.parametrize("premium", [None, 1.5, [1.0, 1.5]])
+@pytest.mark.parametrize("frame", [False, True])
+@pytest.mark.parametrize("position", [(0, 1), (-1, 0)])
+@pytest.mark.filterwarnings("error::RuntimeWarning")
+def test_implied_covariance_rejects_negative(premium, frame, position):
+    """Reject before either volatility calculation, preserving caller metadata."""
+    X = np.random.default_rng(52).normal(0, 0.01, (90, 2))
+    values = np.tile([0.2, 0.3], (90, 1))
+    values[position] = -0.2
+    if frame:
+        X = pd.DataFrame(X, columns=["a", "b"])
+        implied_vol = (
+            pd.DataFrame(values, columns=X.columns)
+            .reindex(columns=["b", "a"])
+            .astype("Float64")
+        )
+    else:
+        implied_vol = values
+        implied_vol.flags.writeable = False
+    original = implied_vol.copy()
+
+    with pytest.raises(ValueError, match=r"Negative values.*implied_vol"):
+        ImpliedCovariance(volatility_risk_premium_adj=premium).fit(
+            X, implied_vol=implied_vol
+        )
+
+    if frame:
+        pd.testing.assert_frame_equal(implied_vol, original)
+    else:
+        np.testing.assert_array_equal(implied_vol, original)
+        assert not implied_vol.flags.writeable
+
+
+@pytest.mark.parametrize("nested", [False, True])
+def test_implied_covariance_rejects_routed_negative(nested):
+    """The first metadata consumer rejects negatives before optimizer fitting."""
+    X = np.random.default_rng(52).normal(0, 0.01, (90, 2))
+    implied_vol = np.tile([0.2, 0.3], (90, 1))
+    implied_vol[-1, 0] = -0.2
+    original = implied_vol.copy()
+
+    with config_context(enable_metadata_routing=True):
+        covariance = ImpliedCovariance(volatility_risk_premium_adj=1).set_fit_request(
+            implied_vol=True
+        )
+        if nested:
+            covariance = ImpliedCovariance(
+                prior_covariance_estimator=covariance, volatility_risk_premium_adj=1
+            ).set_fit_request(implied_vol=True)
+        model = MeanRisk(
+            prior_estimator=EmpiricalPrior(covariance_estimator=covariance)
+        )
+        with pytest.raises(ValueError, match=r"Negative values.*implied_vol"):
+            model.fit(X, implied_vol=implied_vol)
+
+    np.testing.assert_array_equal(implied_vol, original)
+
+
+@pytest.mark.parametrize("premium", [None, 1.5])
+def test_implied_covariance_validates_selected_assets(premium):
+    """Keep zero history and exclude irrelevant columns before sign validation."""
+    X = pd.DataFrame(
+        np.random.default_rng(52).normal(0, 0.01, (90, 2)), columns=["a", "b"]
+    )
+    values = pd.DataFrame(np.tile([0.2, 0.3], (90, 1)), columns=X.columns)
+    # Row zero is outside the regression's sampled windows; zero remains admitted.
+    values.iloc[0, 0] = 0.0
+    supplied = values.assign(excluded=-0.5).reindex(columns=["excluded", "b", "a"])
+    original = supplied.copy()
+    expected = ImpliedCovariance(volatility_risk_premium_adj=premium).fit(
+        X, implied_vol=values
+    )
+    model = ImpliedCovariance(volatility_risk_premium_adj=premium).fit(
+        X, implied_vol=supplied
+    )
+
+    np.testing.assert_allclose(model.covariance_, expected.covariance_)
+    np.testing.assert_array_equal(model.feature_names_in_, X.columns)
+    pd.testing.assert_frame_equal(supplied, original)
+
+
+@pytest.mark.parametrize("copy", [False, True])
+def test_check_implied_vol_preserves_zero_and_copy(copy):
+    """Nonnegative finite values retain dtype, zeros and native copy semantics."""
+    values = np.array([[0.0, 0.2], [0.3, -0.0]], dtype=np.float32)
+    result = check_implied_vol(values, X=np.zeros((2, 2)), copy=copy)
+    np.testing.assert_array_equal(result, values)
+    assert result.dtype == np.float32
+    assert np.shares_memory(result, values) == (not copy)
 
 
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])

@@ -240,7 +240,7 @@ class ClaytonCopula(BaseBivariateCopula):
             CDF values for each observation in X.
         """
         skv.check_is_fitted(self)
-        X = self._validate_X(X, reset=False)
+        X = self._validate_X(X, reset=False, clip=False)
         cdf = _apply_rotation_cdf(
             func=_base_cdf, X=X, rotation=self.rotation_, theta=self.theta_
         )
@@ -454,8 +454,14 @@ def _base_cdf(X: FloatArray, theta: float) -> FloatArray:
     .. math::
         C(u,v) = \Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-1/\theta}.
     """
-    cdf = np.power(np.sum(np.power(X, -theta), axis=1) - 1, -1.0 / theta)
-    return cdf
+    smaller = np.min(X, axis=1)
+    larger = np.max(X, axis=1)
+    log_smaller = np.log(smaller)
+    log_larger = np.log(larger)
+    # Factor out the smaller margin to avoid overflowing negative powers.
+    # expm1 and log1p also preserve accuracy near independence (theta -> 0).
+    term = np.exp(theta * (log_smaller - log_larger)) * (-np.expm1(theta * log_larger))
+    return smaller * np.exp(-np.log1p(term) / theta)
 
 
 def _base_partial_derivative(

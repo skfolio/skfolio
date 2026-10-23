@@ -94,6 +94,114 @@ def test_student_t_shape(random_data):
     assert np.all(cdf >= 0) and np.all(cdf <= 1)
 
 
+@pytest.mark.parametrize("method", ["cdf", "survival_probability"])
+def test_student_t_probability_is_deterministic(X, fitted_model, method):
+    """Probabilities must not depend on a random stream nor on `random_state`."""
+    first = getattr(fitted_model, method)(X)
+    second = getattr(fitted_model, method)(X)
+    np.testing.assert_array_equal(first, second)
+    other = StudentTCopula(random_state=123)
+    other.rho_, other.dof_ = fitted_model.rho_, fitted_model.dof_
+    np.testing.assert_array_equal(getattr(other, method)(X), first)
+
+
+@pytest.mark.parametrize(
+    "rho,dof,u,v,expected",
+    [
+        (0.5, 4.0, 0.3, 0.4, 0.19288336525328845),
+        (0.5, 4.0, 1e-4, 1e-4, 2.5637850876155526e-5),
+        (-0.7, 2.5, 0.3, 0.4, 0.03326057489747261),
+        (-0.7, 2.5, 1e-4, 1e-4, 1.514433459526281e-6),
+        (0.0, 10.0, 0.3, 0.4, 0.12090573894619778),
+        (0.0, 10.0, 1e-4, 1e-4, 1.278858624964157e-6),
+        (0.999, 2.0, 0.499999, 0.499999, 0.49288078129690865),
+        (-0.999, 2.0, 0.499999, 0.499999, 0.007117218760046594),
+        (0.999, 50.0, 0.499999, 0.499999, 0.49288078129690276),
+        (-0.999, 50.0, 0.499999, 0.499999, 0.007117218748279320),
+        (0.5, 4.0, 1e-12, 1e-12, 2.531703134104615e-13),
+        (-0.7, 2.5, 1e-12, 1e-12, 1.5117855197265758e-14),
+        (0.999, 2.0, 1e-12, 1e-12, 9.715318709831252e-13),
+        (-0.999, 2.0, 1e-12, 1e-12, 4.745795576051318e-18),
+    ],
+)
+def test_student_t_cdf_reference_values(rho, dof, u, v, expected):
+    # Independent references from the conditional Student-t integral, evaluated
+    # with mpmath at 40 and 65 decimal digits (agreement to 30 relative digits).
+    # The quantiles were also computed in high precision via the incomplete beta
+    # function. No angular integration or SciPy CDF values enter the references.
+    model = StudentTCopula()
+    model.rho_, model.dof_ = rho, dof
+    np.testing.assert_allclose(model.cdf([[u, v]]), [expected], rtol=1e-8, atol=0)
+
+
+@pytest.mark.parametrize("rho", [-0.999, -0.7, 0.0, 0.5, 0.999])
+@pytest.mark.parametrize("dof", [2.0, 2.5, 10.0, 50.0])
+def test_student_t_cdf_midpoint(rho, dof):
+    model = StudentTCopula()
+    model.rho_, model.dof_ = rho, dof
+    expected = 0.25 + np.arcsin(rho) / (2 * np.pi)
+    np.testing.assert_allclose(model.cdf([[0.5, 0.5]]), [expected], rtol=0, atol=1e-12)
+
+
+@pytest.mark.parametrize("rho", [-0.999, -0.7, 0.0, 0.5, 0.999])
+@pytest.mark.parametrize("dof", [2.0, 2.5, 50.0])
+@pytest.mark.parametrize("method", ["cdf", "survival_probability"])
+def test_student_t_probability_batch_consistency(rho, dof, method):
+    model = StudentTCopula()
+    model.rho_, model.dof_ = rho, dof
+    q = np.array([1e-12, 1e-9, 0.1, 0.499999, 0.5, 0.500001, 0.9, 1 - 1e-9])
+    X = np.array(np.meshgrid(q, q)).reshape(2, -1).T
+    probability = getattr(model, method)
+    values = probability(X)
+
+    # Unequal thresholds close to the boundary must not lose probability mass
+    # when integrated alone rather than as part of a batch.
+    single = np.array([probability(row[None, :])[0] for row in X])
+    np.testing.assert_array_equal(single, values)
+    np.testing.assert_array_equal(probability(X[:, ::-1]), values)
+    np.testing.assert_array_equal(probability(X[::-1]), values[::-1])
+
+
+@pytest.mark.parametrize("rho", [-0.999, -0.7, 0.0, 0.5, 0.999])
+@pytest.mark.parametrize("dof", [2.0, 2.5, 50.0])
+def test_student_t_cdf_identities(rho, dof):
+    model = StudentTCopula()
+    model.rho_, model.dof_ = rho, dof
+    q = np.array([1e-12, 1e-9, 0.1, 0.499999, 0.5, 0.500001, 0.9, 1 - 1e-9])
+    X = np.array(np.meshgrid(q, q)).reshape(2, -1).T
+    cdf = model.cdf(X)
+    lower = np.maximum(np.min(X, axis=1) - (1 - np.max(X, axis=1)), 0)
+    assert np.all(cdf >= lower)
+    assert np.all(cdf <= np.min(X, axis=1))
+    np.testing.assert_allclose(
+        cdf, X.sum(axis=1) - 1 + model.cdf(1 - X), rtol=0, atol=1e-10
+    )
+    assert np.all(np.diff(cdf.reshape(len(q), len(q)), axis=0) >= -1e-10)
+    assert np.all(np.diff(cdf.reshape(len(q), len(q)), axis=1) >= -1e-10)
+
+
+@pytest.mark.parametrize("rho", [-0.999, -0.7, 0.0, 0.5, 0.999])
+@pytest.mark.parametrize("dof", [2.0, 2.5, 50.0])
+def test_student_t_survival_probability_reflection(rho, dof):
+    model = StudentTCopula()
+    model.rho_, model.dof_ = rho, dof
+    X = np.array([[2.0**-40, 0.125], [2.0**-40, 2.0**-40], [0.75, 0.5]])
+    np.testing.assert_array_equal(model.survival_probability(1 - X), model.cdf(X))
+
+
+def test_student_t_cdf_integration_failure(fitted_model, monkeypatch):
+    from skfolio.distribution.copula import _student_t
+
+    def failing_quad(*args, **kwargs):
+        return 0.1, 1.0, {}, "tolerance not reached"
+
+    monkeypatch.setattr(_student_t.si, "quad", failing_quad)
+    with pytest.raises(
+        RuntimeError, match="CDF integration failed: tolerance not reached"
+    ):
+        fitted_model.cdf([[0.3, 0.4]])
+
+
 @pytest.mark.parametrize(
     "first_margin",
     [
@@ -321,6 +429,35 @@ def test_tail_concentration(fitted_model):
     tc = fitted_model.tail_concentration(quantiles)
     assert tc.shape == quantiles.shape, "tail_concentration output shape mismatch"
     assert np.all(tc >= 0), "tail_concentration contains negative values"
+
+
+@pytest.mark.parametrize("rho", [-0.999, -0.7, 0.0, 0.5, 0.999])
+@pytest.mark.parametrize("dof", [2.0, 2.5, 50.0])
+def test_tail_concentration_symmetry_and_endpoints(rho, dof):
+    model = StudentTCopula()
+    model.rho_, model.dof_ = rho, dof
+    # Binary fractions have exactly representable complements, including a
+    # probability far below the clipping threshold used for copula densities.
+    q = np.array([0.0, 2.0**-40, 2.0**-20, 0.125, 0.5])
+    lower = model.tail_concentration(q)
+    upper = model.tail_concentration(1 - q)
+    np.testing.assert_array_equal(lower, upper)
+    assert lower[0] == model.lower_tail_dependence
+    assert upper[0] == model.upper_tail_dependence
+    assert np.all((lower >= 0) & (lower <= 1))
+
+
+@pytest.mark.parametrize("rho", [-0.999, -0.7, 0.0, 0.5, 0.999])
+def test_tail_concentration_approaches_limit(rho):
+    model = StudentTCopula()
+    model.rho_, model.dof_ = rho, 2.0
+    q = 2.0**-40
+    np.testing.assert_allclose(
+        model.tail_concentration([q, 1 - q]),
+        model.lower_tail_dependence,
+        rtol=0,
+        atol=1e-8,
+    )
 
 
 def test_plot_tail_concentration(fitted_model):

@@ -316,7 +316,7 @@ def test_portfolio_methods(X, weights):
     np.testing.assert_almost_equal(portfolio.nonzero_assets_index, idx)
     names_1 = np.array(X.columns[idx])
     assert np.array_equal(portfolio.nonzero_assets, names_1)
-    names_2 = portfolio.composition.index.to_numpy()
+    names_2 = portfolio.composition.index.to_numpy(copy=True)
     names_2.sort()
     names_1.sort()
     assert np.array_equal(names_1, names_2)
@@ -1121,6 +1121,75 @@ def test_weight_dict(X, weights):
     np.testing.assert_almost_equal(
         [portfolio.previous_weights_dict[x] for x in X.columns], np.arange(20)
     )
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+@pytest.mark.parametrize(
+    "weights, expected_weights, constant_returns, drifted_returns",
+    [
+        (
+            {"A": 0.6, "B": 0.4, "C": 0.0},
+            [0.4, 0.6],
+            [0.18, 0.28],
+            [0.18, 1.52 / 1.18 - 1],
+        ),
+        (
+            {"A": 0.5, "B": 0.3, "C": 0.2},
+            [0.3, 0.5],
+            [0.14, 0.22],
+            [0.14, 1.406 / 1.14 - 1],
+        ),
+    ],
+    ids=["excluded-zero", "excluded-nonzero"],
+)
+def test_weight_dict_reuses_full_universe(
+    weights, expected_weights, constant_returns, drifted_returns, weight_drift
+):
+    """Reuse full-universe weights on reordered subsets without renormalizing."""
+    X = pd.DataFrame({"A": [0.1, 0.2], "B": [0.3, 0.4], "C": [0.5, 0.6]})
+    original_X = X.copy(deep=True)
+    original_weights = weights.copy()
+    full = Portfolio(X=X, weights=weights)
+    reused = full.weights_dict
+    subset = X[["B", "A"]]
+    portfolio = Portfolio(X=subset, weights=reused, weight_drift=weight_drift)
+
+    np.testing.assert_array_equal(portfolio.assets, ["B", "A"])
+    np.testing.assert_array_equal(portfolio.weights, expected_weights)
+    # Literal labeled dot products apply without drift. With drift, wealth starts
+    # at one and retains cash: the nonzero exclusion leaves 0.2 uninvested.
+    expected_returns = drifted_returns if weight_drift else constant_returns
+    np.testing.assert_allclose(portfolio.returns, expected_returns, rtol=1e-14)
+    assert portfolio.X is subset
+    pd.testing.assert_frame_equal(X, original_X)
+    assert weights == original_weights
+    assert reused == original_weights
+    assert full.weights_dict == original_weights
+
+
+@pytest.mark.parametrize(
+    "weights, expected_weights, expected_returns",
+    [
+        ({"B": 0.5, "A": 0.5}, [0.5, 0.5], [0.2, 0.3]),
+        ({"A": 0.5, "C": 0.5}, [0.5, 0.0], [0.05, 0.1]),
+        ({}, [0.0, 0.0], [0.0, 0.0]),
+        ({"C": 1.0}, [0.0, 0.0], [0.0, 0.0]),
+        ({"B": -0.5, "A": 1.5, "C": 0.2}, [1.5, -0.5], [0.0, 0.1]),
+    ],
+)
+def test_weight_dict_aligns_to_current_assets(
+    weights, expected_weights, expected_returns
+):
+    """Align labels, ignore extras, and zero-fill omissions without scaling weights."""
+    X = pd.DataFrame({"A": [0.1, 0.2], "B": [0.3, 0.4]})
+    original_weights = weights.copy()
+    portfolio = Portfolio(X=X, weights=weights)
+    np.testing.assert_array_equal(portfolio.assets, ["A", "B"])
+    np.testing.assert_array_equal(portfolio.weights, expected_weights)
+    # These returns are explicit labeled dot products, independent of conversion.
+    np.testing.assert_allclose(portfolio.returns, expected_returns, atol=1e-16)
+    assert portfolio.X is X
+    assert weights == original_weights
 
 
 def test_portfolio_nan_handling(X, weights):

@@ -1289,12 +1289,27 @@ def _truncate_at_word_boundary(text: str, max_length: int) -> str:
     return f"{truncated}…"
 
 
-def get_api_meta_description(pagename, doctree) -> str:
-    """Build an API description from the documented object's summary."""
+def _node_text(node, math_delimiter: str = "") -> str:
+    """Return the text of a doctree node on one line.
+
+    Inline math is wrapped in `math_delimiter`, e.g. "$" to match the Markdown pages.
+    """
+    from docutils import nodes
+
+    if math_delimiter:
+        node = node.deepcopy()
+        for math in list(node.findall(nodes.math)):
+            math.replace_self(
+                nodes.Text(f"{math_delimiter}{math.astext()}{math_delimiter}")
+            )
+    return " ".join(node.astext().split())
+
+
+def get_api_summary(pagename, doctree, math_delimiter: str = "") -> str:
+    """Return the documented object's summary as one line of plain text."""
     from docutils import nodes
     from sphinx import addnodes
 
-    qualified_name = pagename.removeprefix("generated/")
     content = next(doctree.findall(addnodes.desc_content), None)
     summary_node = (
         next(
@@ -1313,18 +1328,70 @@ def get_api_meta_description(pagename, doctree) -> str:
             f"API description: no summary paragraph found for '{pagename}'"
         )
 
-    summary = " ".join(summary_node.astext().split())
+    summary = _node_text(summary_node, math_delimiter)
     if not summary:
         raise SphinxError(f"API description: empty summary found for '{pagename}'")
     if summary[-1] not in ".!?":
         summary += "."
+    return summary
 
+
+def get_api_meta_description(pagename, doctree) -> str:
+    """Build an API description from the documented object's summary."""
+    qualified_name = pagename.removeprefix("generated/")
     suffix = f"API reference for {qualified_name}."
     summary = _truncate_at_word_boundary(
-        summary,
+        get_api_summary(pagename, doctree),
         _API_DESCRIPTION_MAX_LENGTH - len(suffix) - 1,
     )
     return f"{summary} {suffix}"
+
+
+def get_first_paragraph(doctree) -> str | None:
+    """Return the first paragraph under the page title as one line, math as `$...$`."""
+    from docutils import nodes
+
+    section = next(doctree.findall(nodes.section), None)
+    if section is None:
+        return None
+    paragraph = next(
+        (child for child in section.children if isinstance(child, nodes.paragraph)),
+        None,
+    )
+    if paragraph is None:
+        return None
+    return _node_text(paragraph, math_delimiter="$") or None
+
+
+def get_llms_txt_description(pagename, doctree) -> str | None:
+    """Return the `llms.txt` description of a page, or None to keep sphinx-llm's."""
+    if pagename.startswith("generated/skfolio."):
+        return get_api_summary(pagename, doctree, math_delimiter="$")
+    if pagename in USER_GUIDE_DESCRIPTIONS:
+        return USER_GUIDE_DESCRIPTIONS[pagename]
+    if (
+        pagename.startswith("auto_examples/")
+        and pagename != "auto_examples/index"
+        and pagename not in REDIRECTS
+    ):
+        # The opening paragraph names the estimators that the example uses.
+        return get_first_paragraph(doctree)
+    return None
+
+
+def inject_llms_txt_description(app, doctree):
+    """Add the page description to the doctree as `description` metadata.
+
+    sphinx-llm describes each `llms.txt` entry with this metadata. Without it, it takes
+    the first line of the page's Markdown, which stops mid-sentence where the source
+    wraps and shows inline code as escaped backticks. The `html-page-context` hooks
+    replace this metadata in the HTML pages, and the Markdown builder skips it.
+    """
+    from docutils import nodes
+
+    description = get_llms_txt_description(app.env.docname, doctree)
+    if description:
+        doctree.insert(0, nodes.meta(content=description, name="description"))
 
 
 def get_representative_image(app, pagename: str) -> tuple[str, str] | None:
@@ -2144,6 +2211,7 @@ _LLMS_TRUNCATED_SECONDARY_LINK_RE = re.compile(
     r"\[(?P<label>[^\]\r\n]+)\]\(" r"https://skfolio\.org(?:/[^)\r\n]*)?\.\.\.(?=\r?$)",
     flags=re.MULTILINE,
 )
+_LLMS_TXT_ENTRY_URL_RE = re.compile(r"^- \[[^\]]*\]\((?P<url>[^)\s]+)\.html\.md\)")
 
 
 def _sanitize_llm_markdown_text(text: str) -> tuple[str, int, int]:
@@ -2179,14 +2247,82 @@ def _repair_truncated_llms_txt_links(text: str) -> tuple[str, int]:
     )
 
 
+def _llms_txt_section_titles(app) -> dict[str, str]:
+    """Map each page in the toctree to its `llms.txt` section title.
+
+    The title is the page's path through the toctree, e.g. "Examples / Mean-Risk".
+    API pages also get their module section of `api.rst`.
+    """
+    from docutils import nodes
+    from sphinx import addnodes
+
+    env = app.env
+    root_doc = app.config.root_doc
+    parents = {
+        child: parent
+        for parent, children in env.toctree_includes.items()
+        for child in children
+    }
+
+    api_sections = {}
+    api_title_section = next(env.get_doctree("api").findall(nodes.section))
+    for section in api_title_section.children:
+        if isinstance(section, nodes.section):
+            for toctree in section.findall(addnodes.toctree):
+                for _, docname in toctree["entries"]:
+                    api_sections.setdefault(docname, section[0].astext())
+
+    titles = {}
+    for docname in env.found_docs:
+        path = []
+        current = docname if docname in env.toctree_includes else parents.get(docname)
+        while current is not None and current != root_doc:
+            path.insert(0, env.titles[current].astext())
+            current = parents.get(current)
+        if current != root_doc:
+            continue
+        if docname in api_sections:
+            path.append(api_sections[docname])
+        titles[docname] = " / ".join(path) or "Overview"
+    return titles
+
+
+def _group_llms_txt_sections(app, text: str) -> tuple[str, int]:
+    """Split the flat `## Pages` list of `llms.txt` into toctree sections.
+
+    sphinx-llm lists every page under one heading, in toctree order. Grouping them
+    keeps the hierarchy of the documentation, e.g. that an example belongs to the
+    Mean-Risk gallery. Pages outside the toctree go to a final "Other" section.
+    """
+    head, separator, rest = text.partition("\n## Pages\n")
+    if not separator:
+        return text, 0
+    pages, optional_separator, optional = rest.partition("\n## Optional\n")
+    section_titles = _llms_txt_section_titles(app)
+    sections = {}
+    for line in pages.splitlines():
+        if not line.strip():
+            continue
+        match = _LLMS_TXT_ENTRY_URL_RE.match(line)
+        docname = urlparse(match.group("url")).path.lstrip("/") if match else None
+        sections.setdefault(section_titles.get(docname, "Other"), []).append(line)
+    if "Other" in sections:
+        sections["Other"] = sections.pop("Other")
+    body = "\n\n".join(
+        f"## {title}\n\n" + "\n".join(lines) for title, lines in sections.items()
+    )
+    return f"{head}\n{body}\n{optional_separator}{optional}", len(sections)
+
+
 def postprocess_llm_markdown_artifacts(app, exception):
     """Post-process sphinx-llm markdown files after the HTML build.
 
     Runs after sphinx-llm's own `build-finished` hook (priority > 500) so the per-page
     `*.html.md`, `llms-full.txt` and `llms.txt` files already exist on disk. Strips
     inline Plotly HTML, removes leftover numpydoc/sphinx-gallery metadata comments,
-    normalises whitespace, repairs truncated description links and ensures sitemap
-    links use URL separators on every platform.
+    normalises whitespace, repairs truncated description links, ensures sitemap
+    links use URL separators on every platform and groups the `llms.txt` pages into
+    toctree sections.
     """
     if exception is not None:
         return
@@ -2214,6 +2350,7 @@ def postprocess_llm_markdown_artifacts(app, exception):
     total_normalized_urls = 0
     total_repaired_links = 0
     total_files = 0
+    llms_txt_sections = 0
     for path in targets:
         original = path.read_text(encoding="utf-8")
         text, n_plotly, n_comments = _sanitize_llm_markdown_text(original)
@@ -2222,6 +2359,7 @@ def postprocess_llm_markdown_artifacts(app, exception):
         if path == llms_index:
             text, n_normalized_urls = _normalize_llms_txt_urls(text)
             text, n_repaired_links = _repair_truncated_llms_txt_links(text)
+            text, llms_txt_sections = _group_llms_txt_sections(app, text)
         if (
             n_plotly
             or n_comments
@@ -2240,7 +2378,8 @@ def postprocess_llm_markdown_artifacts(app, exception):
         f"{total_plotly} Plotly block(s), {total_comments} HTML comment(s), "
         f"{total_normalized_urls} URL(s) normalized, "
         f"{total_repaired_links} truncated link(s) repaired, "
-        f"{stale_files} stale file(s) removed"
+        f"{stale_files} stale file(s) removed, "
+        f"{llms_txt_sections} llms.txt section(s)"
     )
 
 
@@ -2265,6 +2404,9 @@ def setup(app):
 
     # Configure sphinx-markdown-builder for documentation-specific nodes and assets.
     app.connect("builder-inited", patch_markdown_builder)
+
+    # Describe API, user-guide and gallery pages in llms.txt.
+    app.connect("doctree-read", inject_llms_txt_description)
 
     # html page context
     # Set the homepage URL before other page-context consumers.

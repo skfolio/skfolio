@@ -528,5 +528,5 @@ def check_implied_vol(
                 f"expected {(n_observations, n_assets)}"
             )
 
-    skv.check_non_negative((n_observations, n_assets), "`implied_vol`")
+    skv.check_non_negative(implied_vol, "`implied_vol`")
     return implied_vol
