@@ -731,10 +731,7 @@ def entropic_risk_measure(
         out=np.full_like(sample_weight, -np.inf),
         where=sample_weight != 0,
     )
-    weighted_losses = -returns / theta + log_sample_weight
-    # logaddexp signals invalid for NaN columns with no usable weight.
-    with np.errstate(invalid="ignore"):
-        log_mean = np.logaddexp.reduce(weighted_losses, axis=0)  # ty: ignore[no-matching-overload]
+    log_mean = scs.logsumexp(-returns / theta + log_sample_weight, axis=0)
     return theta * (log_mean - np.log1p(-beta))
 
 
