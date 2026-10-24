@@ -1780,6 +1780,12 @@ def test_effective_number_trials_ignores_a_trial_without_dispersion():
     assert 1.0 <= value <= 5.0
 
 
+def test_effective_number_trials_returns_nan_when_no_pair_has_dispersion():
+    # Every trial is constant, so every off-diagonal correlation is 0/0 and no
+    # pair survives to be averaged, leaving the estimate undefined.
+    assert np.isnan(skm.effective_number_trials(np.full((100, 4), 3.0)))
+
+
 @pytest.mark.parametrize(
     "trial_returns, message",
     [
