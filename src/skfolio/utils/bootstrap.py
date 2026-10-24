@@ -100,7 +100,7 @@ def stationary_bootstrap(
            The sample returns of shape (reps, nb observations, nb assets)
 
     """
-    np.random.seed(seed=seed)
+    rng = np.random.RandomState(seed=seed)
     n_observations, n_assets = returns.shape
     x = np.vstack((returns, returns))
     # Loop over reps bootstraps
@@ -109,10 +109,8 @@ def stationary_bootstrap(
             [optimal_block_size(returns[:, i]) for i in range(n_assets)]
         )
 
-    indices = np.random.randint(
-        n_observations, size=(n_bootstrap_samples, n_observations)
-    )
-    cond = np.random.rand(n_bootstrap_samples, n_observations) >= 1.0 / block_size
+    indices = rng.randint(n_observations, size=(n_bootstrap_samples, n_observations))
+    cond = rng.rand(n_bootstrap_samples, n_observations) >= 1.0 / block_size
     # TODO: don't use loop
     for i in range(n_bootstrap_samples):
         for j in range(1, n_observations):
