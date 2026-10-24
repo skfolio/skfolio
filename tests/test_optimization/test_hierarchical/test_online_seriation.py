@@ -821,6 +821,35 @@ def test_scenario_probabilities_replace_routed_weights(
         np.testing.assert_array_equal(input_weights, np.arange(1, 21, dtype=float))
 
 
+@pytest.mark.parametrize("weight_request", ["default", True, False])
+@pytest.mark.parametrize("method", ["fit", "partial_fit"])
+def test_empirical_covariance_scenario_weights_require_opt_in(
+    optimizer, returns, weight_request, method
+):
+    with config_context(enable_metadata_routing=True), warnings.catch_warnings():
+        warnings.simplefilter("error")
+        covariance = EmpiricalCovariance(nearest=False)
+        if weight_request != "default":
+            covariance.set_fit_request(sample_weight=weight_request)
+        model = optimizer(
+            prior_estimator=RebuiltPrior(**prior().get_params(deep=False)),
+            distance_estimator=CovarianceDistance(covariance),
+            distance_from_prior=True,
+        )
+        getattr(model, method)(returns[:20])
+
+    distribution = model.prior_estimator_.return_distribution_
+    assert distribution.sample_weight is not None
+    weights = distribution.sample_weight if weight_request is True else None
+    fitted = model.distance_estimator_.covariance_estimator_
+    np.testing.assert_allclose(
+        fitted.covariance_, np.cov(distribution.returns, rowvar=False, aweights=weights)
+    )
+    np.testing.assert_allclose(
+        fitted.location_, np.average(distribution.returns, axis=0, weights=weights)
+    )
+
+
 @pytest.mark.parametrize("method", ["fit", "partial_fit"])
 def test_scenario_weight_routing_preserves_prior_input(optimizer, returns, method):
     with config_context(enable_metadata_routing=True):
