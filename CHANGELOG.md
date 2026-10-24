@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.11.0 (2026-10-24)
+
+### Features
+
+- **moments**: Add sample_weight support to EmpiricalCovariance
+  ([#417](https://github.com/skfolio/skfolio/pull/417),
+  [`ef0cbfd`](https://github.com/skfolio/skfolio/commit/ef0cbfd31e32f9fa6a7f53972ebcd3656679eb5b))
+
+
 ## v1.10.3 (2026-10-23)
 
 ### Bug Fixes
