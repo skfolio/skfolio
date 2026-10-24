@@ -336,6 +336,7 @@ def test_deduplicate_names():
     names = ["blah", "blah2", "blah3", "blah", "blah"]
     names = deduplicate_names(names)
     assert names == ["blah", "blah2", "blah3", "blah_1", "blah_2"]
+    assert deduplicate_names(["a", "a", "a_1"]) == ["a", "a_2", "a_1"]
 
 
 # Test with valid integer inputs.

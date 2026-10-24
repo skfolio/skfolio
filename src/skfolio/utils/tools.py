@@ -1119,11 +1119,15 @@ def deduplicate_names(names: Iterable[str]) -> list[str]:
         Deduplicate names.
     """
     names = list(names)
+    taken = set(names)
     counts = {}
     for i, col in enumerate(names):
         cur_count = counts.get(col, 0)
         if cur_count > 0:
+            while f"{col}_{cur_count}" in taken:
+                cur_count += 1
             names[i] = f"{col}_{cur_count}"
+            taken.add(names[i])
         counts[col] = cur_count + 1
     return names
 
