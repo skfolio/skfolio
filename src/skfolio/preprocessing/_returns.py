@@ -100,9 +100,13 @@ def prices_to_returns(
             raise TypeError("`y` must be a DataFrame")
         df = X.join(y, how=join)
 
-    _, n_assets = X.shape
+    # Drop column if all its values are missing, before dropping rows. Otherwise, a
+    # single all-missing column would drop every row.
+    df.dropna(axis=1, how="all", inplace=True)
+    # X occupies the first n_assets columns of df
+    n_assets = sum(x in df.columns for x in X.columns)
 
-    # Remove observations whose missing asset prices exceed the threshold;
+    # Remove observations whose missing asset prices exceed the threshold.
     # X occupies the first n_assets columns, so missing values in y are excluded.
     if nan_threshold is not None:
         nan_threshold = float(nan_threshold)
@@ -112,14 +116,14 @@ def prices_to_returns(
         to_drop = count_nan[count_nan > n_assets * nan_threshold].index
         if len(to_drop) > 0:
             df.drop(to_drop, axis=0, inplace=True)
+        # Drop newly all-NaN columns to avoid removing every remaining row
+        df.dropna(axis=1, how="all", inplace=True)
 
     # Forward fill missing values
     if fill_nan:
         df.ffill(inplace=True)
     # Drop rows according to drop_inceptions_nan
     df.dropna(how="any" if drop_inceptions_nan else "all", inplace=True)
-    # Drop column if all its values are missing
-    df.dropna(axis=1, how="all", inplace=True)
 
     # returns
     all_returns = df.pct_change(fill_method=None).iloc[1:]

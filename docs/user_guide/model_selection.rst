@@ -86,6 +86,14 @@ For example, to evaluate a drifted, compounded path with transaction costs:
 
 .. code-block:: python
 
+    from skfolio.datasets import load_sp500_dataset
+    from skfolio.model_selection import WalkForward, cross_val_predict
+    from skfolio.optimization import MeanRisk
+    from skfolio.preprocessing import prices_to_returns
+
+    prices = load_sp500_dataset()
+    X = prices_to_returns(prices)
+
     pred = cross_val_predict(
         MeanRisk(transaction_costs=0.001 / 5),
         X,
@@ -114,6 +122,7 @@ such as `KFold`, drift is evaluated inside each test fold and is not propagated.
     from skfolio.datasets import load_sp500_dataset
     from skfolio.model_selection import (
         CombinatorialPurgedCV,
+        MultipleRandomizedCV,
         WalkForward,
         cross_val_predict,
     )
@@ -151,9 +160,10 @@ such as `KFold`, drift is evaluated inside each test fold and is not propagated.
         MeanRisk(),
         X,
         cv=MultipleRandomizedCV(
-            walk_forward=WalkForward(test_size=1, train_size=2),
+            walk_forward=WalkForward(test_size=60, train_size=252),
             n_subsamples=2,
             asset_subset_size=3,
+            random_state=0,
         )
     )
     print(pred.summary())
@@ -222,14 +232,16 @@ For that, you can use the function :func:`optimal_folds_number` as shown in the 
 
 .. code-block:: python
 
+    from skfolio.model_selection import optimal_folds_number
+
     n_folds, n_test_folds = optimal_folds_number(
-        n_observations=X_test.shape[0],
+        n_observations=X.shape[0],
         target_n_test_paths=100,
         target_train_size=252,
     )
 
     cv = CombinatorialPurgedCV(n_folds=n_folds, n_test_folds=n_test_folds)
-    cv.summary(X_test)
+    cv.summary(X)
 
 
 
@@ -262,6 +274,7 @@ When used with :func:`cross_val_predict`, the object returned is a
         n_subsamples=100,
         asset_subset_size=3,
         window_size=2*252,
+        random_state=0,
     )
 
     pred = cross_val_predict(MeanRisk(), X, cv=cv)

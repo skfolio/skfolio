@@ -287,11 +287,7 @@ def test_mean_risk_minimize_risk_2(
     risk_measure2,
 ):
     precision = precisions[risk_measure2]
-    X_test = (
-        X_small.iloc[-100:]
-        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
-        else X_small
-    )
+    X_test = X_small
 
     # Minimize risk
     model = MeanRisk(
@@ -388,11 +384,7 @@ def test_mean_risk_under_risk_and_return_constraint_2(
 ):
     precision = precisions2[risk_measure2]
     max_risk_arg = f"max_{risk_measure2.value}"
-    X_test = (
-        X_small.iloc[-100:]
-        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
-        else X_small
-    )
+    X_test = X_small
 
     # Minimize risk
     min_risk_model = MeanRisk(
@@ -494,11 +486,7 @@ def test_mean_risk_utility2(
     risk_measure2,
 ):
     precision = precisions2[risk_measure2]
-    X_test = (
-        X_small.iloc[-100:]
-        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
-        else X_small
-    )
+    X_test = X_small
 
     # Maximize utility
     risk_aversion = 3
@@ -558,11 +546,7 @@ def test_mean_risk_ratio2(
     risk_measure2,
 ):
     precision = precisions2[risk_measure2]
-    X_test = (
-        X_small.iloc[-100:]
-        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
-        else X_small
-    )
+    X_test = X_small
 
     # Maximize ratio
     model = MeanRisk(
@@ -3137,3 +3121,35 @@ def test_max_turnover_exempts_forced_liquidations(fixed_return_distribution_prio
     assert model.problem_values_["expected_return"] == pytest.approx(
         model.weights_ @ mu - portfolio.total_cost, abs=1e-7
     )
+
+
+def test_zero_radius_covariance_uncertainty_matches_nominal_maximize_ratio(X):
+    X = X.iloc[-400:, :6]
+    nominal = MeanRisk(objective_function=ObjectiveFunction.MAXIMIZE_RATIO).fit(X)
+    robust = MeanRisk(
+        objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
+        covariance_uncertainty_set_estimator=EmpiricalCovarianceUncertaintySet(
+            confidence_level=0
+        ),
+    ).fit(X)
+    np.testing.assert_allclose(robust.weights_, nominal.weights_, atol=2e-3)
+
+
+def test_covariance_uncertainty_variance_limit_maximize_ratio(X):
+    X = X.iloc[-400:, :6]
+    cov = X.cov().to_numpy()
+    nominal = MeanRisk(objective_function=ObjectiveFunction.MAXIMIZE_RATIO).fit(X)
+    limit = 0.7 * nominal.weights_ @ cov @ nominal.weights_
+    reference = MeanRisk(
+        objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
+        max_standard_deviation=np.sqrt(limit),
+    ).fit(X)
+    robust = MeanRisk(
+        objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
+        max_variance=limit,
+        covariance_uncertainty_set_estimator=EmpiricalCovarianceUncertaintySet(
+            confidence_level=0
+        ),
+    ).fit(X)
+    assert robust.weights_ @ cov @ robust.weights_ <= limit * (1 + 1e-3)
+    np.testing.assert_allclose(robust.weights_, reference.weights_, atol=2e-3)

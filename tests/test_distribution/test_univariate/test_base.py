@@ -4,7 +4,13 @@ import numpy as np
 import pytest
 from scipy.stats import norm
 
-from skfolio.distribution import BaseUnivariateDist
+from skfolio.distribution import (
+    BaseUnivariateDist,
+    Gaussian,
+    JohnsonSU,
+    NormalInverseGaussian,
+    StudentT,
+)
 
 
 class DummyUnivariate(BaseUnivariateDist):
@@ -43,6 +49,29 @@ def dummy_model():
 
 def test_n_params(dummy_model):
     assert dummy_model.n_params == 2
+
+
+@pytest.mark.parametrize(
+    "estimator,kwargs,expected",
+    [
+        (Gaussian, {}, 2),
+        (Gaussian, {"loc": 0.0}, 1),
+        (Gaussian, {"scale": 0.01}, 1),
+        (StudentT, {}, 3),
+        (StudentT, {"loc": 0.0}, 2),
+        (StudentT, {"loc": 0.0, "scale": 0.01}, 1),
+        (JohnsonSU, {"scale": 0.01}, 3),
+        (NormalInverseGaussian, {"loc": 0.0}, 3),
+    ],
+)
+def test_n_params_excludes_fixed_parameters(estimator, kwargs, expected):
+    X = norm.rvs(size=(500, 1), scale=0.01, random_state=0)
+    model = estimator(**kwargs).fit(X)
+    assert model.n_params == expected
+    # The information criteria penalize the estimated parameters only.
+    log_likelihood = model.score(X)
+    assert model.aic(X) == pytest.approx(2 * expected - 2 * log_likelihood)
+    assert model.bic(X) == pytest.approx(expected * np.log(len(X)) - 2 * log_likelihood)
 
 
 def test_score_samples(dummy_model):

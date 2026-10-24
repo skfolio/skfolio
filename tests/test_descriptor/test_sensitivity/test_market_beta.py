@@ -9,6 +9,16 @@ from skfolio.descriptor import EWMarketBeta
 from skfolio.utils.stats import _market_returns
 
 
+def _partial_fit_in_chunks(estimator, X, chunk_size):
+    """Feed `X` to `partial_fit_transform` in chunks and stack the outputs."""
+    return np.vstack(
+        [
+            estimator.partial_fit_transform(X[i : i + chunk_size])
+            for i in range(0, X.n_observations, chunk_size)
+        ]
+    )
+
+
 @pytest.fixture
 def deterministic_data():
     """Deterministic test data with known market factor structure."""
@@ -122,10 +132,13 @@ class TestMarketSensitivityBasic:
         )
 
     def test_default_min_periods(self, clean_panel_data):
-        half_life = 10.2
-        ms = EWMarketBeta(half_life=half_life)
-        ms.fit_transform(clean_panel_data)
+        """`min_periods=None` defaults to ceil(half_life)."""
+        ms = EWMarketBeta(half_life=10.2)
+        result = ms.fit_transform(clean_panel_data)
+
         assert ms._min_periods == 11
+        assert np.isnan(result[:10]).all()
+        assert np.isfinite(result[10:]).all()
 
     def test_market_beta_fitted_attribute(self, clean_panel_data):
         ms = EWMarketBeta(half_life=10, min_periods=5)
@@ -189,39 +202,46 @@ class TestPartialFit:
         np.testing.assert_array_almost_equal(result_fit, result_pf)
 
     def test_partial_fit_chunked(self, clean_panel_data):
+        expected = EWMarketBeta(
+            half_life=10, aggregation_period=1, min_periods=5
+        ).fit_transform(clean_panel_data)
+
         ms = EWMarketBeta(half_life=10, aggregation_period=1, min_periods=5)
+        result = _partial_fit_in_chunks(ms, clean_panel_data, chunk_size=20)
 
-        n_obs = clean_panel_data.n_observations
-        chunk_size = 20
-        for i in range(0, n_obs, chunk_size):
-            end = min(i + chunk_size, n_obs)
-            chunk = clean_panel_data[i:end]
-            ms.partial_fit_transform(chunk)
-
-        assert not np.all(np.isnan(ms._betas))
+        np.testing.assert_array_equal(result, expected)
 
     def test_partial_fit_buffer_persistence(self, clean_panel_data):
+        """An incomplete aggregation window carries over to the next call."""
+        expected = EWMarketBeta(
+            half_life=5, aggregation_period=5, min_periods=2
+        ).fit_transform(clean_panel_data)
+
         ms = EWMarketBeta(half_life=5, aggregation_period=5, min_periods=2)
-
-        chunk1 = clean_panel_data[:3]
-        ms.partial_fit_transform(chunk1)
+        first = ms.partial_fit_transform(clean_panel_data[:3])
         assert ms._buffer_idx == 3
+        assert ms._t == 0
 
-        chunk2 = clean_panel_data[3:7]
-        ms.partial_fit_transform(chunk2)
+        second = ms.partial_fit_transform(clean_panel_data[3:7])
         assert ms._buffer_idx == 2
+        assert ms._t == 1
+
+        rest = ms.partial_fit_transform(clean_panel_data[7:])
+        result = np.vstack([first, second, rest])
+        assert ms._t == clean_panel_data.n_observations // 5
+        assert ms._buffer_idx == clean_panel_data.n_observations % 5
+
+        np.testing.assert_array_equal(result, expected)
 
     def test_partial_fit_with_aggregation(self, clean_panel_data):
+        expected = EWMarketBeta(
+            half_life=5, aggregation_period=5, min_periods=3
+        ).fit_transform(clean_panel_data)
+
         ms = EWMarketBeta(half_life=5, aggregation_period=5, min_periods=3)
+        result = _partial_fit_in_chunks(ms, clean_panel_data, chunk_size=12)
 
-        n_obs = clean_panel_data.n_observations
-        chunk_size = 12
-        for i in range(0, n_obs, chunk_size):
-            end = min(i + chunk_size, n_obs)
-            chunk = clean_panel_data[i:end]
-            ms.partial_fit_transform(chunk)
-
-        assert not np.all(np.isnan(ms._betas))
+        np.testing.assert_array_equal(result, expected)
 
 
 class TestNaNHandling:
@@ -397,11 +417,21 @@ class TestEdgeCases:
     """Tests for edge cases."""
 
     def test_single_observation_partial_fit(self, clean_panel_data):
+        X = clean_panel_data[:10]
+        expected = EWMarketBeta(
+            half_life=5, aggregation_period=5, min_periods=2
+        ).fit_transform(X)
+
         ms = EWMarketBeta(half_life=5, aggregation_period=5, min_periods=2)
-        for i in range(10):
-            chunk = clean_panel_data[i : i + 1]
-            ms.partial_fit_transform(chunk)
-        assert ms._t == 2  # 10 obs / 5 aggregation = 2 complete periods
+        result = _partial_fit_in_chunks(ms, X, chunk_size=1)
+
+        np.testing.assert_array_equal(result, expected)
+        # 10 obs / 5 aggregation = 2 complete periods, reaching min_periods at the
+        # last observation.
+        assert ms._t == 2
+        assert ms._buffer_idx == 0
+        assert np.isnan(result[:9]).all()
+        assert not np.isnan(result[9]).any()
 
     def test_reset_on_fit_transform(self, clean_panel_data):
         ms = EWMarketBeta(half_life=10, aggregation_period=5, min_periods=3)
@@ -413,7 +443,9 @@ class TestEdgeCases:
         n_obs = clean_panel_data.n_observations
         ms = EWMarketBeta(half_life=5, aggregation_period=n_obs, min_periods=1)
         result = ms.fit_transform(clean_panel_data)
+        # A single aggregated period, completed at the last observation.
         assert ms._t == 1
+        assert np.isnan(result[:-1]).all()
         assert not np.all(np.isnan(result[-1, :]))
 
     def test_eps_numerical_stability(self, clean_panel_data):
@@ -431,8 +463,14 @@ class TestEdgeCases:
 class TestRegression:
     """Regression tests to catch computation changes."""
 
-    def test_exact_betas_no_aggregation(self, deterministic_data):
-        ms = EWMarketBeta(half_life=5, aggregation_period=1, min_periods=5)
+    def test_exact_betas_and_ewma_state_no_aggregation(self, deterministic_data):
+        """Check output history and moments using a single fitted estimator."""
+        half_life = 5
+        min_periods = 5
+        eps = 1e-12
+        ms = EWMarketBeta(
+            half_life=half_life, aggregation_period=1, min_periods=min_periods, eps=eps
+        )
         result = ms.fit_transform(deterministic_data)
 
         expected_final = np.array([0.83738619, 1.14133883, 1.02127497])
@@ -449,31 +487,59 @@ class TestRegression:
             decimal=6,
         )
 
-    def test_exact_ewma_state_no_aggregation(self, deterministic_data):
-        ms = EWMarketBeta(half_life=5, aggregation_period=1, min_periods=5)
-        ms.fit_transform(deterministic_data)
-
+        # Pin the moments as well: errors in covariance and variance can cancel
+        # in their ratio, leaving beta almost unchanged.
         assert ms._t == 20
+        np.testing.assert_array_equal(ms._n_valid_assets, np.full(3, 20))
         np.testing.assert_almost_equal(ms._mu_market, 0.002390779182924834, decimal=10)
         np.testing.assert_almost_equal(
             ms._var_market, 0.00016516762777270087, decimal=10
         )
         np.testing.assert_array_almost_equal(
-            ms._mu_assets,
-            np.array([0.00215129, 0.00257907, 0.00244197]),
-            decimal=6,
+            ms._mu_assets, np.array([0.00215129, 0.00257907, 0.00244197]), decimal=6
         )
         np.testing.assert_array_almost_equal(
-            ms._cov_assets,
-            np.array([0.00013831, 0.00018851, 0.00016868]),
-            decimal=6,
+            ms._cov_assets, np.array([0.00013831, 0.00018851, 0.00016868]), decimal=6
         )
+
+        returns = deterministic_data["returns"]
+        # This fixture has equal market caps; compute the market independently
+        # of the production helper used by the estimator.
+        market_returns = np.mean(returns, axis=1)
+        decay = np.exp(-np.log(2) / half_life)
+
+        mu_market = 0.0
+        var_market = 0.0
+        mu_assets = np.zeros(deterministic_data.n_assets)
+        cov_assets = np.zeros(deterministic_data.n_assets)
+        expected = np.full_like(returns, np.nan)
+
+        for t in range(deterministic_data.n_observations):
+            # Deviations from the previous step's means.
+            market_deviation = market_returns[t] - mu_market
+            asset_deviations = returns[t] - mu_assets
+
+            mu_market = decay * mu_market + (1 - decay) * market_returns[t]
+            mu_assets = decay * mu_assets + (1 - decay) * returns[t]
+            var_market = decay * var_market + (1 - decay) * market_deviation**2
+            cov_assets = decay * cov_assets + (1 - decay) * (
+                asset_deviations * market_deviation
+            )
+
+            if t + 1 >= min_periods:
+                expected[t] = cov_assets / (var_market + eps)
+
+        np.testing.assert_allclose(result, expected, rtol=1e-12)
 
     def test_exact_betas_with_aggregation(self, deterministic_data):
         ms = EWMarketBeta(half_life=3, aggregation_period=5, min_periods=2)
         result = ms.fit_transform(deterministic_data)
 
+        # 20 observations form 4 windows of 5; min_periods=2 is reached at the
+        # end of the second window.
         assert ms._t == 4
+        assert ms._buffer_idx == 0
+        assert np.isnan(result[:9]).all()
 
         expected_final = np.array([1.26360874, 1.54865494, 0.18773542])
         expected_idx9 = np.array([1.84586389, 0.69576948, 0.45836552])
@@ -507,36 +573,47 @@ class TestRegression:
                 err_msg=f"Beta at index {i} should equal beta at index 9",
             )
 
-    def test_partial_fit_exact_match(self, deterministic_data):
-        ms_fit = EWMarketBeta(half_life=5, aggregation_period=1, min_periods=5)
-        ms_fit.fit_transform(deterministic_data)
+    @pytest.mark.parametrize(
+        "half_life, aggregation_period, min_periods, chunk_size",
+        [(5, 1, 5, 7), (3, 5, 2, 3)],
+    )
+    def test_partial_fit_exact_match(
+        self, deterministic_data, half_life, aggregation_period, min_periods, chunk_size
+    ):
+        ms_fit = EWMarketBeta(
+            half_life=half_life,
+            aggregation_period=aggregation_period,
+            min_periods=min_periods,
+        )
+        result_fit = ms_fit.fit_transform(deterministic_data)
 
-        ms_pf = EWMarketBeta(half_life=5, aggregation_period=1, min_periods=5)
-        n_obs = deterministic_data.n_observations
-        for i in range(0, n_obs, 7):
-            end = min(i + 7, n_obs)
-            chunk = deterministic_data[i:end]
-            ms_pf.partial_fit_transform(chunk)
+        # Aggregated chunks deliberately do not align with window boundaries.
+        ms_pf = EWMarketBeta(
+            half_life=half_life,
+            aggregation_period=aggregation_period,
+            min_periods=min_periods,
+        )
+        result_pf = _partial_fit_in_chunks(ms_pf, deterministic_data, chunk_size)
 
-        assert ms_fit._t == ms_pf._t
-        np.testing.assert_array_equal(ms_fit._mu_assets, ms_pf._mu_assets)
-        np.testing.assert_array_equal(ms_fit._cov_assets, ms_pf._cov_assets)
-        np.testing.assert_equal(ms_fit._mu_market, ms_pf._mu_market)
-        np.testing.assert_equal(ms_fit._var_market, ms_pf._var_market)
-
-    def test_partial_fit_aggregation_exact_match(self, deterministic_data):
-        ms_fit = EWMarketBeta(half_life=3, aggregation_period=5, min_periods=2)
-        ms_fit.fit_transform(deterministic_data)
-
-        ms_pf = EWMarketBeta(half_life=3, aggregation_period=5, min_periods=2)
-        n_obs = deterministic_data.n_observations
-        for i in range(0, n_obs, 3):
-            end = min(i + 3, n_obs)
-            chunk = deterministic_data[i:end]
-            ms_pf.partial_fit_transform(chunk)
-
-        assert ms_fit._t == ms_pf._t
-        np.testing.assert_array_equal(ms_fit._betas, ms_pf._betas)
+        np.testing.assert_array_equal(result_pf, result_fit)
+        np.testing.assert_array_equal(ms_pf.market_beta_, ms_fit.market_beta_)
+        assert (
+            ms_pf._t
+            == ms_fit._t
+            == deterministic_data.n_observations // aggregation_period
+        )
+        for attr in (
+            "_mu_market",
+            "_var_market",
+            "_mu_assets",
+            "_cov_assets",
+            "_n_valid_assets",
+        ):
+            np.testing.assert_array_equal(
+                getattr(ms_pf, attr), getattr(ms_fit, attr), err_msg=attr
+            )
+        if aggregation_period > 1:
+            assert ms_pf._buffer_idx == ms_fit._buffer_idx == 0
 
 
 # ---------------------------------------------------------------------------
@@ -590,16 +667,25 @@ class TestShrinkage:
     """Tests for Bayesian shrinkage feature."""
 
     def test_shrinkage_disabled_by_default(self, data_with_groups):
-        ms = EWMarketBeta(half_life=5, min_periods=5)
-        ms.fit_transform(data_with_groups)
-        assert ms._shrinkage_enabled is False
+        """Without `shrinkage_group`, group labels in the panel are ignored."""
+        without_groups = data_with_groups.copy()
+        del without_groups["industry"]
 
-    def test_shrinkage_enabled_with_group(self, data_with_groups):
+        ms = EWMarketBeta(half_life=5, min_periods=5)
+        with_groups = ms.fit_transform(data_with_groups)
+        assert ms._shrinkage_enabled is False
+        np.testing.assert_array_equal(with_groups, ms.fit_transform(without_groups))
+
+    def test_shrinkage_requires_group_field(self, data_with_groups):
+        """With `shrinkage_group`, the panel must provide that field."""
+        without_groups = data_with_groups.copy()
+        del without_groups["industry"]
+
         ms = EWMarketBeta(half_life=5, min_periods=5, shrinkage_group="industry")
-        ms.fit_transform(data_with_groups)
-        assert ms._shrinkage_enabled is True
-        assert hasattr(ms, "_var_residual")
-        assert ms._var_residual is not None
+        with pytest.raises(
+            ValueError, match=r"Required fields are missing: \['industry'\]"
+        ):
+            ms.fit_transform(without_groups)
 
     def test_shrinkage_group_must_be_categorical(self, data_with_groups):
         X = data_with_groups.copy()
@@ -622,6 +708,9 @@ class TestShrinkage:
         result_shrunk = ms_shrunk.fit_transform(data_with_groups)
         shrunk_betas = result_shrunk[-1, :]
 
+        assert ms_shrunk._shrinkage_enabled is True
+        assert np.isfinite(ms_shrunk._var_residual).all()
+        assert (ms_shrunk._var_residual > 0).all()
         assert not np.allclose(raw_betas, shrunk_betas)
         assert not np.any(np.isnan(raw_betas))
         assert not np.any(np.isnan(shrunk_betas))
@@ -691,23 +780,24 @@ class TestShrinkage:
         )
         result = ms.fit_transform(data_with_groups)
         assert not np.all(np.isnan(result[-1, :]))
-        assert hasattr(ms, "_var_residual")
+        assert np.isfinite(ms._var_residual).all()
+        assert (ms._var_residual > 0).all()
+
+        raw = EWMarketBeta(
+            half_life=3, aggregation_period=5, min_periods=2
+        ).fit_transform(data_with_groups)
+        assert not np.allclose(result[-1, :], raw[-1, :])
 
     def test_shrinkage_partial_fit(self, data_with_groups):
         ms_fit = EWMarketBeta(half_life=5, min_periods=5, shrinkage_group="industry")
-        ms_fit.fit_transform(data_with_groups)
+        result_fit = ms_fit.fit_transform(data_with_groups)
 
         ms_pf = EWMarketBeta(half_life=5, min_periods=5, shrinkage_group="industry")
-        n_obs = data_with_groups.n_observations
-        chunk_size = 7
-        for i in range(0, n_obs, chunk_size):
-            end = min(i + chunk_size, n_obs)
-            chunk = data_with_groups[i:end]
-            ms_pf.partial_fit_transform(chunk)
+        result_pf = _partial_fit_in_chunks(ms_pf, data_with_groups, chunk_size=7)
 
-        np.testing.assert_array_almost_equal(
-            ms_fit._var_residual, ms_pf._var_residual, decimal=10
-        )
+        np.testing.assert_array_equal(result_pf, result_fit)
+        np.testing.assert_array_equal(ms_pf.market_beta_, ms_fit.market_beta_)
+        np.testing.assert_array_equal(ms_pf._var_residual, ms_fit._var_residual)
 
     def test_invalid_min_group_size(self, data_with_groups):
         ms = EWMarketBeta(

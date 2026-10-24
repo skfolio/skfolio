@@ -255,7 +255,7 @@ class JoeCopula(BaseBivariateCopula):
             CDF values for each observation in X.
         """
         skv.check_is_fitted(self)
-        X = self._validate_X(X, reset=False)
+        X = self._validate_X(X, reset=False, clip=False)
         cdf = _apply_rotation_cdf(
             func=_base_cdf, X=X, rotation=self.rotation_, theta=self.theta_
         )
@@ -510,6 +510,11 @@ def _base_cdf(X: FloatArray, theta: float) -> FloatArray:
     """Bivariate Joe CDF (unrotated)."""
     z = np.power(1 - X, theta)
     cdf = 1.0 - np.power(np.sum(z, axis=1) - np.prod(z, axis=1), 1.0 / theta)
+    # Write C = 1 - (1 - w)**(1/theta) without cancellation in the lower tail.
+    # Keep the original formula above when w is near one.
+    w = np.prod(-np.expm1(theta * np.log1p(-X)), axis=1)
+    lower_tail = w < 0.5
+    cdf[lower_tail] = -np.expm1(np.log1p(-w[lower_tail]) / theta)
     return cdf
 
 

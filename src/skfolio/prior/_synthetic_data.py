@@ -11,6 +11,7 @@ from typing import Any
 
 import numpy as np
 import sklearn.base as skb
+import sklearn.utils as sku
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
@@ -216,9 +217,18 @@ class SyntheticData(BasePrior):
         # When performing conditional sampling, the conditioning samples are often
         # constant. To avoid null variance, we add a small white noise.
         constant_returns = np.var(synthetic_data, axis=0) < 1e-14
-        if np.any(constant_returns):
-            noise = 1e-6 * np.random.randn(len(synthetic_data), 1)
-            synthetic_data[:, constant_returns] += noise
+        n_constant = int(np.sum(constant_returns))
+        if n_constant:
+            rng = sku.check_random_state(
+                getattr(self.distribution_estimator_, "random_state", None)
+            )
+            # Draw a new seed for the noise. Reusing the estimator's seed could
+            # repeat the Gaussian draws used to generate an asset's returns,
+            # making the noise perfectly correlated with that asset.
+            noise_rng = sku.check_random_state(rng.randint(np.iinfo(np.int32).max))
+            synthetic_data[:, constant_returns] += 1e-6 * noise_rng.randn(
+                len(synthetic_data), n_constant
+            )
 
         # Fit empirical posterior estimator
         posterior_estimator = EmpiricalPrior()

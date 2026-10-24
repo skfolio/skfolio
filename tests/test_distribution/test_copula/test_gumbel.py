@@ -22,8 +22,7 @@ def X():
     return X
 
 
-@pytest.fixture
-def fitted_model():
+def _make_fitted_model():
     # Using same convention as other libraries for Benchmark
     fitted_model = GumbelCopula(random_state=42)
     fitted_model.theta_ = 3.40806952683
@@ -31,11 +30,36 @@ def fitted_model():
     return fitted_model
 
 
+@pytest.fixture
+def fitted_model():
+    return _make_fitted_model()
+
+
+@pytest.fixture(scope="module", params=list(CopulaRotation))
+def refitting_sample(request):
+    """Reuse each rotation's sample without sharing a mutable fitted model."""
+    model = _make_fitted_model()
+    model.rotation_ = request.param
+    samples = model.sample(n_samples=int(1e5))
+    samples.setflags(write=False)
+    return samples, model.theta_
+
+
 def test_gumbel_copula_init():
     """Test initialization of GumbelCopula with default parameters."""
     model = GumbelCopula()
     assert model.itau is True
     assert model.kendall_tau is None
+
+
+def test_gumbel_cdf_large_theta(fitted_model):
+    fitted_model.theta_ = 80.0
+    q = np.array([1e-12, 0.01, 0.5, 1 - 1e-5, 1 - 1e-12])
+    # On the diagonal C(q, q) = q**(2**(1/theta)).
+    expected = q ** (2 ** (1 / 80))
+    np.testing.assert_allclose(
+        fitted_model.cdf(np.column_stack((q, q))), expected, rtol=1e-14, atol=0
+    )
 
 
 def test_gumbel_copula_fit_with_kendall_tau(random_data):
@@ -171,8 +195,8 @@ def test_cdf_exact(X, fitted_model, rotation, expected):
 
 def test_gumbel_aic_bic_exact(X, fitted_model):
     fitted_model.rotation_ = CopulaRotation.R0
-    np.isclose(fitted_model.aic(X), -5.3130643319)
-    np.isclose(fitted_model.bic(X), -5.7036264194)
+    assert np.isclose(fitted_model.aic(X), -5.3130643319)
+    assert np.isclose(fitted_model.bic(X), -5.7036264194)
 
 
 @pytest.mark.parametrize(
@@ -268,12 +292,10 @@ def test_gumbel_partial_derivative_inverse_partial_derivative(
 
 
 @pytest.mark.parametrize("itau", [True, False])
-@pytest.mark.parametrize("rotation", list(CopulaRotation))
-def test_clayton_sample_refitting(X, fitted_model, itau, rotation):
-    fitted_model.rotation_ = rotation
-    samples = fitted_model.sample(n_samples=int(1e5))
+def test_gumbel_sample_refitting(refitting_sample, itau):
+    samples, theta = refitting_sample
     m = GumbelCopula(itau=itau).fit(samples)
-    assert np.isclose(fitted_model.theta_, m.theta_, 1e-2)
+    assert np.isclose(theta, m.theta_, 1e-2)
 
 
 def test_itau_bounds():

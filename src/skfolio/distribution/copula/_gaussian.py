@@ -207,13 +207,37 @@ class GaussianCopula(BaseBivariateCopula):
             CDF values for each observation in X.
         """
         skv.check_is_fitted(self)
-        X = self._validate_X(X, reset=False)
-        cdf = st.multivariate_normal.cdf(
-            x=sp.ndtri(X),
-            mean=np.array([0, 0]),
-            cov=np.array([[1, self.rho_], [self.rho_, 1]]),
-        )
-        return cdf
+        X = self._validate_X(X, reset=False, clip=False)
+        return _gaussian_copula_cdf(X, rho=self.rho_)
+
+    def survival_probability(self, X: ArrayLike) -> FloatArray:
+        r"""Return the probability that both variables exceed their respective
+        thresholds.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, 2)
+            Uniform marginal probability levels `(u, v)` in `[0, 1]`. Each row
+            specifies the thresholds for the two variables.
+
+        Returns
+        -------
+        probabilities : ndarray of shape (n_observations,)
+            Joint probabilities :math:`P(U > u, V > v)` for each row in X.
+
+        See Also
+        --------
+        cdf : Probability that both variables are below their respective thresholds.
+        tail_concentration : Conditional probabilities at a common quantile.
+
+        Notes
+        -----
+        Radial symmetry gives :math:`S(u, v) = C(1-u, 1-v)`. Reflection avoids
+        additional cancellation from subtracting CDF values near one.
+        """
+        skv.check_is_fitted(self)
+        X = self._validate_X(X, reset=False, clip=False)
+        return _gaussian_copula_cdf(1.0 - X, rho=self.rho_)
 
     def partial_derivative(
         self, X: ArrayLike, first_margin: bool = False
@@ -347,6 +371,23 @@ class GaussianCopula(BaseBivariateCopula):
     def fitted_repr(self) -> str:
         """String representation of the fitted copula."""
         return f"{self.__class__.__name__}(rho={self.rho_:0.3f})"
+
+
+def _gaussian_copula_cdf(X: FloatArray, rho: float) -> FloatArray:
+    """Evaluate the Gaussian copula CDF, handling boundaries exactly."""
+    smaller = np.min(X, axis=1)
+    larger = np.max(X, axis=1)
+    cdf = smaller.copy()
+    interior = (smaller > 0) & (larger < 1)
+    if np.any(interior):
+        cdf[interior] = st.multivariate_normal.cdf(
+            x=sp.ndtri(X[interior]),
+            mean=np.array([0, 0]),
+            cov=np.array([[1, rho], [rho, 1]]),
+        )
+    # The numerical CDF can round outside the Frechet bounds in small tails.
+    lower = np.maximum(smaller - (1.0 - larger), 0.0)
+    return np.clip(cdf, lower, smaller)
 
 
 def _neg_log_likelihood(rho: float, X: FloatArray) -> float:

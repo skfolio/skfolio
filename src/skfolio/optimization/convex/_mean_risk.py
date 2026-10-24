@@ -22,7 +22,11 @@ import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
-from skfolio.optimization.convex._base import ConvexOptimization, ObjectiveFunction
+from skfolio.optimization.convex._base import (
+    ConvexOptimization,
+    ObjectiveFunction,
+    _gmd_reported_risk,
+)
 from skfolio.prior import BasePrior, EmpiricalPrior, ReturnDistribution
 from skfolio.typing import ArrayLike, FloatArray
 from skfolio.uncertainty_set import BaseCovarianceUncertaintySet, BaseMuUncertaintySet
@@ -1203,15 +1207,17 @@ class MeanRisk(ConvexOptimization):
             parameters_values.append((parameter, self.min_return))
 
         # risk and risk constraints
-        risk, risk_constraints, risk_parameters_values = self._build_risk(
-            X=X,
-            y=y,
-            method=method,
-            routed_params=routed_params,
-            return_distribution=return_distribution,
-            n_assets=n_assets,
-            w=w,
-            factor=factor,
+        risk, risk_constraints, risk_parameters_values, reported_risk = (
+            self._build_risk(
+                X=X,
+                y=y,
+                method=method,
+                routed_params=routed_params,
+                return_distribution=return_distribution,
+                n_assets=n_assets,
+                w=w,
+                factor=factor,
+            )
         )
         constraints += risk_constraints
         parameters_values += risk_parameters_values
@@ -1235,10 +1241,10 @@ class MeanRisk(ConvexOptimization):
 
         # results
         expressions = {
-            "expected_return": expected_return,
-            "risk": risk,
-            "mu_uncertainty_set": mu_uncertainty_set,
-            "regularization": regularization,
+            "expected_return": expected_return / factor,
+            "risk": reported_risk,
+            "mu_uncertainty_set": mu_uncertainty_set / factor,
+            "regularization": regularization / factor,
             "factor": factor,
         }
         # Online recovery starts after learning. Batch errors reach the outer
@@ -1357,16 +1363,59 @@ class MeanRisk(ConvexOptimization):
         n_assets: int,
         w: cp.Variable,
         factor: skt.Factor,
-    ) -> tuple[cp.Expression | None, list[cpc.Constraint], skt.ParametersValues]:
+    ) -> tuple[
+        cp.Expression | None,
+        list[cpc.Constraint],
+        skt.ParametersValues,
+        cp.Expression | None,
+    ]:
         """Build the selected risk expression and configured risk limits.
 
-        Return the selected expression, supporting constraints, and
-        `(parameter, values)` pairs for the risk limits.
+        Fit or update the covariance uncertainty estimator using `method`
+        (`fit` or `partial_fit`) when required.
 
-        When needed, fit or update the covariance uncertainty estimator using
-        `method` (`fit` or `partial_fit`).
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_features)
+            Asset returns passed to the covariance uncertainty estimator.
+
+        y : array-like or None
+            Auxiliary data passed to the covariance uncertainty estimator.
+
+        method : {"fit", "partial_fit"}
+            Method used to update the covariance uncertainty estimator.
+
+        routed_params : sklearn.utils.Bunch
+            Routed metadata for the covariance uncertainty estimator.
+
+        return_distribution : ReturnDistribution
+            Fitted return distribution for the investable assets.
+
+        n_assets : int
+            Number of investable assets represented by `w`.
+
+        w : cvxpy Variable of shape (n_assets,)
+            Portfolio weights in optimization units, before division by `factor`.
+
+        factor : cvxpy Variable | cvxpy Constant
+            Scalar homogenization factor used to normalize weights and reported risk.
+            Equal to one for objectives other than ratio maximization.
+
+        Returns
+        -------
+        risk : cvxpy Expression or None
+            Selected risk expression in optimization units. None if no supported
+            risk measure is selected.
+        constraints : list[cvxpy Constraint]
+            Constraints for the selected risk and all configured risk limits.
+        parameters_values : list[tuple[cvxpy Parameter, float | ndarray]]
+            Parameters paired with the scalar or array values of each risk limit.
+        reported_risk : cvxpy Expression or None
+            Selected risk in reporting units, normalized by `factor` and adjusted
+            for target weights when configured. None if `risk` is None.
         """
         risk = None
+        reported_risk = None
         constraints = []
         parameters_values = []
         for r_m in _NON_ANNUALIZED_RISK_MEASURES:
@@ -1418,9 +1467,18 @@ class MeanRisk(ConvexOptimization):
                     else:
                         args[arg_name] = getattr(self, arg_name)
 
-                risk_i, constraints_i = risk_func(**args)
-                constraints += constraints_i
+                # Lifted worst-case variance is 1-homogeneous in (w, factor), matching
+                # risk <= limit * factor. The ratio objective needs 2-homogeneity in w,
+                # so use factor=1 for the objective only.
+                objective_args: dict[str, Any] = args
+                if risk_func == self._worst_case_variance_risk and isinstance(
+                    factor, cp.Variable
+                ):
+                    objective_args = {**args, "factor": cp.Constant(1)}
+
                 if risk_limit is not None:
+                    risk_i, constraints_i = risk_func(**args)
+                    constraints += constraints_i
                     parameter = cp.Parameter(nonneg=True)
                     constraints += [
                         risk_i * self._scale_constraints
@@ -1428,9 +1486,21 @@ class MeanRisk(ConvexOptimization):
                     ]
                     parameters_values.append((parameter, risk_limit))
                 if self.risk_measure == r_m:
-                    risk = risk_i
+                    if risk_limit is not None and objective_args is args:
+                        risk = risk_i
+                    else:
+                        risk, constraints_i = risk_func(**objective_args)
+                        constraints += constraints_i
+                    if r_m == RiskMeasure.GINI_MEAN_DIFFERENCE:
+                        reported_risk = _gmd_reported_risk(
+                            return_distribution.returns, args["w"] / factor
+                        )
+                    elif r_m in [RiskMeasure.VARIANCE, RiskMeasure.SEMI_VARIANCE]:
+                        reported_risk = risk / factor / factor
+                    else:
+                        reported_risk = risk / factor
 
-        return risk, constraints, parameters_values
+        return risk, constraints, parameters_values, reported_risk
 
     def _build_objective(
         self,

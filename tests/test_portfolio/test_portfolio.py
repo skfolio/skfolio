@@ -80,7 +80,7 @@ def portfolio(X: pd.DataFrame, weights: FloatArray) -> Portfolio:
     scope="module",
     params=list(PerfMeasure)
     + list(RiskMeasure)
-    + list(RiskMeasure)
+    + list(RatioMeasure)
     + list(ExtraRiskMeasure),
 )
 def measure(request):
@@ -316,7 +316,7 @@ def test_portfolio_methods(X, weights):
     np.testing.assert_almost_equal(portfolio.nonzero_assets_index, idx)
     names_1 = np.array(X.columns[idx])
     assert np.array_equal(portfolio.nonzero_assets, names_1)
-    names_2 = portfolio.composition.index.to_numpy()
+    names_2 = portfolio.composition.index.to_numpy(copy=True)
     names_2.sort()
     names_1.sort()
     assert np.array_equal(names_1, names_2)
@@ -542,7 +542,11 @@ def test_portfolio_clear_cache(portfolio, measure):
         if measure != ExtraRiskMeasure.VALUE_AT_RISK:
             assert m != new_m
         if isinstance(measure, RatioMeasure):
-            assert getattr(portfolio, measure.value) == portfolio.mean / new_m
+            excess_mean = portfolio.mean - portfolio.risk_free_rate
+            if measure.is_annualized:
+                excess_mean *= portfolio.annualization_factor
+            risk = getattr(portfolio, measure.linked_risk_measure.value)
+            np.testing.assert_allclose(new_m, excess_mean / risk)
 
 
 def test_portfolio_read_only(portfolio):
@@ -910,6 +914,89 @@ def test_portfolio_contribution(portfolio):
     assert portfolio.plot_contribution(measure=RiskMeasure.STANDARD_DEVIATION)
 
 
+@pytest.mark.parametrize(
+    "measure",
+    [
+        RiskMeasure.MAX_DRAWDOWN,
+        RiskMeasure.AVERAGE_DRAWDOWN,
+        RiskMeasure.CDAR,
+        RiskMeasure.EDAR,
+        RiskMeasure.ULCER_INDEX,
+    ],
+)
+def test_portfolio_drawdown_contribution_sums_to_measure(portfolio, measure):
+    # Uncompounded drawdown measures are positively homogeneous in the weights, so
+    # the contributions sum to the measure (Euler).
+    contribution = portfolio.contribution(measure=measure)
+    np.testing.assert_allclose(
+        np.sum(contribution), getattr(portfolio, measure.value), rtol=1e-4
+    )
+
+
+@pytest.mark.parametrize("dtype", [np.float16, np.float32, np.float64])
+@pytest.mark.parametrize("compounded", [False, True])
+@pytest.mark.parametrize(
+    "measure, expected, compounded_expected",
+    [
+        (RiskMeasure.MAX_DRAWDOWN, [0.015, 0.035], [0.01465, 0.03415]),
+        (RiskMeasure.AVERAGE_DRAWDOWN, [0.0125, 0.0275], [0.012325, 0.027075]),
+        (RiskMeasure.CDAR, [0.04 / 3, 0.03], [0.0131, 0.0883 / 3]),
+        (RiskMeasure.EDAR, [0.01375, 0.03125], [0.0134875, 0.0306125]),
+    ],
+)
+def test_portfolio_drawdown_contribution_weights_dtype(
+    dtype, compounded, measure, expected, compounded_expected
+):
+    # Both observations lose money, so the final observation is the worst drawdown.
+    X = np.array([[-0.02, -0.04], [-0.01, -0.03]])
+    weights = np.array([0.5, 0.5], dtype=dtype)
+    # CDaR's tail weights are [1/3, 2/3]. Choose EDaR's confidence from the relative
+    # entropy to uniform probabilities, giving tilted probabilities [1/4, 3/4].
+    edar_beta = 1 - np.exp(-(0.25 * np.log(0.5) + 0.75 * np.log(1.5)))
+    portfolio = Portfolio(
+        X, weights=weights, compounded=compounded, cdar_beta=0.25, edar_beta=edar_beta
+    )
+
+    np.testing.assert_allclose(
+        portfolio.contribution(measure),
+        compounded_expected if compounded else expected,
+        rtol=1e-8,
+    )
+    np.testing.assert_array_equal(weights, [0.5, 0.5])
+    np.testing.assert_array_equal(portfolio.weights, weights)
+    assert portfolio.weights.dtype == dtype
+
+
+@pytest.mark.parametrize("compounded", [False, True])
+def test_portfolio_max_drawdown_contribution_sp500(X, compounded):
+    X = X.loc["2020"].to_numpy()
+    weights = np.full(X.shape[1], 1 / X.shape[1])
+    portfolio = Portfolio(X, weights=weights, compounded=compounded)
+    returns = X @ weights
+    path = (
+        np.r_[1.0, np.cumprod(1 + returns)]
+        if compounded
+        else np.r_[0.0, np.cumsum(returns)]
+    )
+    trough = np.argmin(portfolio.drawdowns) + 1
+    peak = np.argmax(path[:trough])
+
+    # Differentiate the return over the active peak-to-trough interval directly.
+    if compounded:
+        gross_returns = 1 + returns[peak:trough]
+        gradient = -np.prod(gross_returns) * np.sum(
+            X[peak:trough] / gross_returns[:, None], axis=0
+        )
+    else:
+        gradient = -np.sum(X[peak:trough], axis=0)
+
+    np.testing.assert_allclose(
+        portfolio.contribution(RiskMeasure.MAX_DRAWDOWN),
+        weights * gradient,
+        rtol=1e-7,
+    )
+
+
 def test_weights_per_observation(portfolio):
     df = portfolio.weights_per_observation
     np.testing.assert_array_equal(df.index.values, portfolio.observations)
@@ -1034,6 +1121,75 @@ def test_weight_dict(X, weights):
     np.testing.assert_almost_equal(
         [portfolio.previous_weights_dict[x] for x in X.columns], np.arange(20)
     )
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+@pytest.mark.parametrize(
+    "weights, expected_weights, constant_returns, drifted_returns",
+    [
+        (
+            {"A": 0.6, "B": 0.4, "C": 0.0},
+            [0.4, 0.6],
+            [0.18, 0.28],
+            [0.18, 1.52 / 1.18 - 1],
+        ),
+        (
+            {"A": 0.5, "B": 0.3, "C": 0.2},
+            [0.3, 0.5],
+            [0.14, 0.22],
+            [0.14, 1.406 / 1.14 - 1],
+        ),
+    ],
+    ids=["excluded-zero", "excluded-nonzero"],
+)
+def test_weight_dict_reuses_full_universe(
+    weights, expected_weights, constant_returns, drifted_returns, weight_drift
+):
+    """Reuse full-universe weights on reordered subsets without renormalizing."""
+    X = pd.DataFrame({"A": [0.1, 0.2], "B": [0.3, 0.4], "C": [0.5, 0.6]})
+    original_X = X.copy(deep=True)
+    original_weights = weights.copy()
+    full = Portfolio(X=X, weights=weights)
+    reused = full.weights_dict
+    subset = X[["B", "A"]]
+    portfolio = Portfolio(X=subset, weights=reused, weight_drift=weight_drift)
+
+    np.testing.assert_array_equal(portfolio.assets, ["B", "A"])
+    np.testing.assert_array_equal(portfolio.weights, expected_weights)
+    # Literal labeled dot products apply without drift. With drift, wealth starts
+    # at one and retains cash: the nonzero exclusion leaves 0.2 uninvested.
+    expected_returns = drifted_returns if weight_drift else constant_returns
+    np.testing.assert_allclose(portfolio.returns, expected_returns, rtol=1e-14)
+    assert portfolio.X is subset
+    pd.testing.assert_frame_equal(X, original_X)
+    assert weights == original_weights
+    assert reused == original_weights
+    assert full.weights_dict == original_weights
+
+
+@pytest.mark.parametrize(
+    "weights, expected_weights, expected_returns",
+    [
+        ({"B": 0.5, "A": 0.5}, [0.5, 0.5], [0.2, 0.3]),
+        ({"A": 0.5, "C": 0.5}, [0.5, 0.0], [0.05, 0.1]),
+        ({}, [0.0, 0.0], [0.0, 0.0]),
+        ({"C": 1.0}, [0.0, 0.0], [0.0, 0.0]),
+        ({"B": -0.5, "A": 1.5, "C": 0.2}, [1.5, -0.5], [0.0, 0.1]),
+    ],
+)
+def test_weight_dict_aligns_to_current_assets(
+    weights, expected_weights, expected_returns
+):
+    """Align labels, ignore extras, and zero-fill omissions without scaling weights."""
+    X = pd.DataFrame({"A": [0.1, 0.2], "B": [0.3, 0.4]})
+    original_weights = weights.copy()
+    portfolio = Portfolio(X=X, weights=weights)
+    np.testing.assert_array_equal(portfolio.assets, ["A", "B"])
+    np.testing.assert_array_equal(portfolio.weights, expected_weights)
+    # These returns are explicit labeled dot products, independent of conversion.
+    np.testing.assert_allclose(portfolio.returns, expected_returns, atol=1e-16)
+    assert portfolio.X is X
+    assert weights == original_weights
 
 
 def test_portfolio_nan_handling(X, weights):

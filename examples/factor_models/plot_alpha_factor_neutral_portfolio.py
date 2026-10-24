@@ -349,15 +349,24 @@ evaluation.ic_summary()
 
 # %%
 # The Spearman IC measures how well the forecast orders assets by their
-# future idiosyncratic return and the Pearson IC measures the linear relationship
-# between forecast magnitudes and future idiosyncratic returns [4]_. The ICIR, t-statistic and hit
-# rate summarize consistency through time. The mean Spearman IC of 0.045 shows a
-# positive rank association between the forecast and subsequent idiosyncratic
-# returns. Its 84.3% hit rate means that this association is positive in 84.3%
-# of the evaluation windows. The mean Pearson IC of 0.034 and its 78.0% hit rate
-# show a weaker but persistent linear relationship. ICIRs of 0.97 and 0.71, with
-# t-statistics above 5, show that the signal is consistent through time rather
-# than driven by a few windows.
+# future idiosyncratic return. The Pearson IC measures the linear relationship
+# between forecast magnitudes and future idiosyncratic returns [4]_.
+# The mean Spearman IC of 0.045 shows a positive rank association between the
+# forecast and subsequent idiosyncratic returns. Its 84.3% hit rate means that
+# this association is positive in 84.3% of the evaluation windows.
+# The mean Pearson IC of 0.034 and its 78.0% hit rate
+# show a weaker linear relationship. The ICIR divides the mean IC by its
+# standard deviation, giving 0.97 for Spearman and 0.71 for Pearson.
+#
+# The `t_stat` uses a HAC standard error that accounts for dependence between
+# dates and changes in volatility. Even with non-overlapping return windows,
+# ICs can remain correlated when signals persist. We assess significance using
+# the bootstrap `p_value` and the approximate 95% confidence interval given by
+# `mean_ci_lower` and `mean_ci_upper`.
+#
+# Both p-values are below 0.05. The Spearman interval is approximately
+# [0.035, 0.055] and the Pearson interval is [0.022, 0.046]. Both exclude zero,
+# supporting a positive mean IC in this training sample.
 
 # %%
 # Next, we evaluate the signal at the portfolio level with `portfolio_summary`.

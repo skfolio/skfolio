@@ -22,13 +22,27 @@ def X():
     return X
 
 
-@pytest.fixture
-def fitted_model():
+def _make_fitted_model():
     # Using same convention as other libraries for Benchmark
     fitted_model = JoeCopula(random_state=42)
     fitted_model.theta_ = 3.4781710077039865
     fitted_model.rotation_ = CopulaRotation.R0
     return fitted_model
+
+
+@pytest.fixture
+def fitted_model():
+    return _make_fitted_model()
+
+
+@pytest.fixture(scope="module", params=list(CopulaRotation))
+def refitting_sample(request):
+    """Reuse each rotation's sample without sharing a mutable fitted model."""
+    model = _make_fitted_model()
+    model.rotation_ = request.param
+    samples = model.sample(n_samples=int(1e5))
+    samples.setflags(write=False)
+    return samples, model.theta_
 
 
 def test_joe_copula_init():
@@ -205,10 +219,64 @@ def test_cdf_exact(X, fitted_model, rotation, expected):
     np.testing.assert_almost_equal(fitted_model.cdf(X), expected)
 
 
+@pytest.mark.parametrize(
+    "theta,expected",
+    [
+        (
+            1.005,
+            [
+                1.0049999999999948e-24,
+                1.00499999994975e-16,
+                3.0124724981632383e-13,
+                3.0124724981632383e-13,
+                0.12039595313685532,
+                0.8104922236021302,
+            ],
+        ),
+        (
+            3.0,
+            [
+                2.9999999999939998e-24,
+                2.9999999400000017e-16,
+                6.569999999997747e-13,
+                6.569999999997747e-13,
+                0.21436472104926152,
+                0.8740288971954308,
+            ],
+        ),
+        (
+            20.0,
+            [
+                1.999999999962e-23,
+                1.999999620000079e-15,
+                9.992020773370163e-13,
+                9.992020773370163e-13,
+                0.2984313921646856,
+                0.8964735076158623,
+            ],
+        ),
+    ],
+)
+def test_joe_cdf_precision(fitted_model, theta, expected):
+    # Reference values from the Joe formula evaluated with 100-digit arithmetic.
+    X = np.array(
+        [
+            [1e-12, 1e-12],
+            [1e-8, 1e-8],
+            [1e-12, 0.3],
+            [0.3, 1e-12],
+            [0.3, 0.4],
+            [0.9, 0.9],
+        ]
+    )
+    fitted_model.theta_ = theta
+    np.testing.assert_allclose(fitted_model.cdf(X), expected, rtol=2e-14, atol=0)
+
+
 def test_joe_aic_bic_exact(X, fitted_model):
     fitted_model.rotation_ = CopulaRotation.R180
-    np.isclose(fitted_model.aic(X), -4.146027394639978)
-    np.isclose(fitted_model.bic(X), -4.536589482205877)
+    assert np.isclose(fitted_model.aic(X), -4.146027394639978)
+    assert np.isclose(fitted_model.bic(X), -4.536589482205877)
 
 
 @pytest.mark.parametrize(
@@ -304,12 +372,10 @@ def test_joe_partial_derivative_inverse_partial_derivative(
 
 
 @pytest.mark.parametrize("itau", [True, False])
-@pytest.mark.parametrize("rotation", list(CopulaRotation))
-def test_clayton_sample_refitting(X, fitted_model, itau, rotation):
-    fitted_model.rotation_ = rotation
-    samples = fitted_model.sample(n_samples=int(1e5))
+def test_joe_sample_refitting(refitting_sample, itau):
+    samples, theta = refitting_sample
     m = JoeCopula(itau=itau).fit(samples)
-    assert np.isclose(fitted_model.theta_, m.theta_, 1e-2)
+    assert np.isclose(theta, m.theta_, 1e-2)
 
 
 def test_itau_bounds():

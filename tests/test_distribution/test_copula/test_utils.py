@@ -29,8 +29,8 @@ def dummy_neg_log_likelihood(theta, X):
 
 
 def dummy_cdf(X, **kwargs):
-    # Return sum of columns divided by 2.
-    return np.sum(X, axis=1) / 2
+    # Use the independent copula to respect the copula probability bounds.
+    return np.prod(X, axis=1)
 
 
 def dummy_partial_derivative(X, first_margin, **kwargs):
@@ -162,16 +162,12 @@ def test_apply_margin_swap():
     np.testing.assert_allclose(not_swapped, X)
 
 
-def test_apply_rotation_cdf():
+@pytest.mark.parametrize("rotation", list(CopulaRotation))
+def test_apply_rotation_cdf(rotation):
     X = np.array([[0.2, 0.3], [0.4, 0.5]])
-    # Test for rotation R0; the dummy cdf returns mean of columns.
-    cdf_r0 = _apply_rotation_cdf(dummy_cdf, X, CopulaRotation.R0)
-    expected = dummy_cdf(X)
-    np.testing.assert_allclose(cdf_r0, expected)
-    # For other rotations, we don't have a closed-form expected value,
-    # so we just check that output has correct shape.
-    cdf_r90 = _apply_rotation_cdf(dummy_cdf, X, CopulaRotation.R90)
-    assert cdf_r90.shape == (X.shape[0],)
+    # Independence is invariant under all four rotations.
+    cdf = _apply_rotation_cdf(dummy_cdf, X, rotation)
+    np.testing.assert_allclose(cdf, [0.06, 0.2])
 
 
 def test_apply_rotation_partial_derivatives():
