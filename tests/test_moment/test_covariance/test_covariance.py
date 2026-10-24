@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from types import SimpleNamespace
 
 import numpy as np
@@ -12,6 +13,8 @@ from sklearn.covariance import EmpiricalCovariance as SklearnEmpiricalCovariance
 from sklearn.covariance import LedoitWolf as SklearnLedoitWolf
 from sklearn.covariance import ShrunkCovariance as SklearnShrunkCovariance
 from sklearn.model_selection import cross_val_score
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 from skfolio.distance import CovarianceDistance
 from skfolio.exceptions import NonPositiveVarianceError
@@ -36,6 +39,7 @@ from skfolio.moments.covariance._geodesic_shrinkage_covariance import (
     _geodesic_interpolation,
 )
 from skfolio.optimization import HierarchicalRiskParity
+from skfolio.prior import EmpiricalPrior
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import (
     _squared_mahalanobis_dist_from_cholesky,
@@ -3144,11 +3148,19 @@ class TestEmpiricalCovarianceSampleWeight:
         np.testing.assert_allclose(weighted.location_, unweighted.location_)
 
     @pytest.mark.parametrize("ddof", [0, 1])
-    def test_matches_numpy_reliability_weights(self, data, ddof):
+    @pytest.mark.parametrize("enable_metadata_routing", [False, True])
+    def test_matches_numpy_reliability_weights(
+        self, data, ddof, enable_metadata_routing
+    ):
         X, sample_weight = data
-        model = EmpiricalCovariance(nearest=False, ddof=ddof).fit(
-            X, sample_weight=sample_weight
-        )
+        with (
+            config_context(enable_metadata_routing=enable_metadata_routing),
+            warnings.catch_warnings(),
+        ):
+            warnings.simplefilter("error")
+            model = EmpiricalCovariance(nearest=False, ddof=ddof).fit(
+                X, sample_weight=sample_weight
+            )
         np.testing.assert_allclose(
             model.covariance_,
             np.cov(X, rowvar=False, aweights=sample_weight, ddof=ddof),
@@ -3206,6 +3218,23 @@ class TestEmpiricalCovarianceSampleWeight:
             np.cov(X[-20:], rowvar=False, aweights=sample_weight[-20:]),
         )
 
+    def test_zero_weight_window_raises(self, data):
+        X, sample_weight = data
+        sample_weight = sample_weight.copy()
+        sample_weight[-20:] = 0.0
+        with pytest.raises(ValueError, match="at least one positive weight"):
+            EmpiricalCovariance(window_size=20).fit(X, sample_weight=sample_weight)
+
+    @pytest.mark.parametrize(
+        "invalid_weight, match", [(np.nan, "finite"), (-1, "nonnegative")]
+    )
+    def test_window_size_validates_excluded_weights(self, data, invalid_weight, match):
+        X, sample_weight = data
+        sample_weight = sample_weight.copy()
+        sample_weight[0] = invalid_weight
+        with pytest.raises(ValueError, match=match):
+            EmpiricalCovariance(window_size=20).fit(X, sample_weight=sample_weight)
+
     def test_single_asset(self, data):
         X, sample_weight = data
         model = EmpiricalCovariance(nearest=False).fit(
@@ -3247,16 +3276,16 @@ class TestEmpiricalCovarianceSampleWeight:
             np.cov(X[:24], rowvar=False, ddof=23),
         )
 
-    def test_metadata_routing_through_distance_and_hrp(self, data):
+    @pytest.mark.parametrize("weighted", [False, True])
+    def test_metadata_routing_through_distance_and_hrp(self, data, weighted):
         X, sample_weight = data
-        expected = np.cov(X, rowvar=False, aweights=sample_weight)
+        fit_params = {"sample_weight": sample_weight} if weighted else {}
+        expected = np.cov(X, rowvar=False, aweights=sample_weight if weighted else None)
         with config_context(enable_metadata_routing=True):
             covariance = EmpiricalCovariance(nearest=False).set_fit_request(
                 sample_weight=True
             )
-            distance = CovarianceDistance(covariance).fit(
-                X, sample_weight=sample_weight
-            )
+            distance = CovarianceDistance(covariance).fit(X, **fit_params)
             np.testing.assert_allclose(
                 distance.covariance_estimator_.covariance_, expected
             )
@@ -3264,7 +3293,53 @@ class TestEmpiricalCovarianceSampleWeight:
             model = HierarchicalRiskParity(
                 distance_estimator=CovarianceDistance(covariance),
                 distance_from_prior=False,
-            ).fit(X, sample_weight=sample_weight)
+            ).fit(X, **fit_params)
             np.testing.assert_allclose(
                 model.distance_estimator_.covariance_estimator_.covariance_, expected
             )
+
+    @pytest.mark.parametrize("weight_request", ["default", True, False])
+    def test_metadata_routing_in_pipeline(self, data, weight_request):
+        X, sample_weight = data
+        with config_context(enable_metadata_routing=True), warnings.catch_warnings():
+            warnings.simplefilter("error")
+            scaler = StandardScaler().set_fit_request(sample_weight=True)
+            covariance = EmpiricalCovariance(nearest=False)
+            if weight_request != "default":
+                covariance.set_fit_request(sample_weight=weight_request)
+            model = make_pipeline(scaler, covariance)
+            if weight_request == "default":
+                with pytest.warns(UserWarning, match="recently been added"):
+                    model.fit(X, sample_weight=sample_weight)
+            else:
+                model.fit(X, sample_weight=sample_weight)
+
+        transformed = model[0].transform(X)
+        covariance_weights = sample_weight if weight_request is True else None
+        np.testing.assert_allclose(
+            model[0].mean_, np.average(X, axis=0, weights=sample_weight)
+        )
+        np.testing.assert_allclose(
+            model[-1].location_,
+            np.average(transformed, axis=0, weights=covariance_weights),
+            atol=1e-15,
+        )
+        np.testing.assert_allclose(
+            model[-1].covariance_,
+            np.cov(transformed, rowvar=False, aweights=covariance_weights),
+        )
+
+    def test_default_metadata_routing_through_prior_warns(self, data):
+        X, sample_weight = data
+        with config_context(enable_metadata_routing=True):
+            model = EmpiricalPrior(
+                covariance_estimator=EmpiricalCovariance(nearest=False)
+            )
+            with pytest.warns(UserWarning, match="recently been added"):
+                model.fit(X, sample_weight=sample_weight)
+
+        np.testing.assert_allclose(
+            model.return_distribution_.covariance, np.cov(X, rowvar=False)
+        )
+        np.testing.assert_allclose(model.return_distribution_.mu, X.mean(axis=0))
+        assert model.return_distribution_.sample_weight is None

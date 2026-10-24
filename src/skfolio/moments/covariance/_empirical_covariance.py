@@ -10,12 +10,14 @@
 from __future__ import annotations
 
 import numbers
+from typing import ClassVar
 
 import numpy as np
+import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance._base import BaseCovariance
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import ArrayLike
 from skfolio.utils.tools import (
     _normalize_sample_weight,
     _validate_sample_weight,
@@ -39,7 +41,8 @@ class EmpiricalCovariance(BaseCovariance):
         With `sample_weight`, the weighted second moment is divided by
         :math:`1 - \text{ddof} \sum_i w_i^2`, where :math:`w_i` are the weights
         rescaled to sum to one. This matches the unweighted result for uniform
-        weights. See the Notes section.
+        weights. Use `ddof=0` when the weights are probabilities defining the
+        return distribution.
 
     assume_centered : bool, default=False
         If False (default), the data are mean-centered before computing the covariance.
@@ -85,23 +88,11 @@ class EmpiricalCovariance(BaseCovariance):
     feature_names_in_ : ndarray of shape (`n_features_in_`,)
         Names of assets seen during `fit`. Defined only when `X`
         has assets names that are all strings.
-
-    Notes
-    -----
-    With `sample_weight`, the weights are rescaled to sum to one, so only their
-    relative sizes matter. The location is the weighted mean (or zero when
-    `assume_centered=True`) and the covariance is
-
-    .. math::
-        \Sigma = \frac{\sum_i w_i (x_i - \mu)(x_i - \mu)^T}{1 - \text{ddof} \sum_i w_i^2}.
-
-    With `ddof=0` this is the covariance of the distribution that puts
-    probability :math:`w_i` on observation :math:`x_i`. With `ddof=1` it applies
-    the correction for reliability weights, which makes the estimate unbiased when
-    the weights describe the relative reliability of i.i.d. observations. When the
-    weights are arbitrary scenario probabilities, this correction does not by
-    itself make the estimate unbiased, and `ddof=0` is usually the natural choice.
     """
+
+    # Preserve unweighted results in existing metadata-routing pipelines.
+    # TODO: Remove WARN after an announced transition to explicit weight requests.
+    __metadata_request__fit: ClassVar[dict[str, str]] = {"sample_weight": skm.WARN}
 
     def __init__(
         self,
@@ -142,6 +133,10 @@ class EmpiricalCovariance(BaseCovariance):
             rescaled to sum to one. When `window_size` is set, the weights of the
             last `window_size` observations are used. If None (default), all
             observations have equal weight.
+            With metadata routing enabled, weights routed through a parent are
+            ignored with a warning by default. Call
+            `set_fit_request(sample_weight=True)` to use them, or `False` to
+            ignore them silently.
 
         Returns
         -------
@@ -149,13 +144,7 @@ class EmpiricalCovariance(BaseCovariance):
             Fitted estimator.
         """
         X = skv.validate_data(self, X)
-        if sample_weight is not None:
-            sample_weight = _validate_sample_weight(
-                sample_weight, n_observations=X.shape[0]
-            )
-            sample_weight = apply_window_size(
-                sample_weight, window_size=self.window_size
-            )
+        n_observations_full = X.shape[0]
         X = apply_window_size(X, window_size=self.window_size)
 
         n_observations, _ = X.shape
@@ -169,43 +158,42 @@ class EmpiricalCovariance(BaseCovariance):
             )
 
         if sample_weight is not None:
-            self._set_covariance(self._weighted_covariance(X, sample_weight))
-            return self
-
-        if self.assume_centered:
+            sample_weight = _validate_sample_weight(
+                sample_weight, n_observations=n_observations_full
+            )
+            sample_weight = apply_window_size(
+                sample_weight, window_size=self.window_size
+            )
+            if not sample_weight.any():
+                raise ValueError(
+                    "sample_weight must contain at least one positive weight."
+                )
+            weights = _normalize_sample_weight(sample_weight)
+            sum_squared_weights = float(weights @ weights)
+            correction = 1.0 - int(self.ddof) * sum_squared_weights
+            # Rounding can leave a correction of a few eps where it is exactly zero.
+            if correction <= n_observations * np.finfo(float).eps:
+                raise ValueError(
+                    "sample_weight gives too few effective observations for "
+                    f"ddof={self.ddof}: the effective number of observations "
+                    f"1 / sum(w**2) = {1.0 / sum_squared_weights:.6g} must be "
+                    "strictly greater than ddof."
+                )
+            if self.assume_centered:
+                self.location_ = np.zeros(X.shape[1])
+                deviations = X
+            else:
+                self.location_ = weights @ X
+                deviations = X - self.location_
+            # Square-root weighting lets NumPy use a symmetric matrix product.
+            scaled = deviations * np.sqrt(weights)[:, np.newaxis]
+            covariance = scaled.T @ scaled / correction
+        elif self.assume_centered:
             self.location_ = np.zeros(X.shape[1])
             covariance = (X.T @ X) / (n_observations - self.ddof)
         else:
             self.location_ = X.mean(axis=0)
-            covariance = np.cov(X, rowvar=False, ddof=self.ddof)
-            # np.cov returns a scalar when X has a single column (one asset).
-            if covariance.ndim == 0:
-                covariance = covariance.reshape(1, 1)
+            covariance = np.atleast_2d(np.cov(X, rowvar=False, ddof=self.ddof))
 
         self._set_covariance(covariance)
         return self
-
-    def _weighted_covariance(
-        self, X: FloatArray, sample_weight: FloatArray
-    ) -> FloatArray:
-        """Compute the weighted covariance and set `location_`."""
-        if not sample_weight.any():
-            raise ValueError("sample_weight must contain at least one positive weight.")
-        weights = _normalize_sample_weight(sample_weight)
-        sum_squared_weights = float(weights @ weights)
-        correction = 1.0 - self.ddof * sum_squared_weights
-        # Rounding can leave a correction of a few eps where it is exactly zero.
-        if correction <= len(weights) * np.finfo(float).eps:
-            raise ValueError(
-                "sample_weight gives too few effective observations for "
-                f"ddof={self.ddof}: the effective number of observations "
-                f"1 / sum(w**2) = {1.0 / sum_squared_weights:.6g} must be "
-                "strictly greater than ddof."
-            )
-        if self.assume_centered:
-            self.location_ = np.zeros(X.shape[1])
-            deviations = X
-        else:
-            self.location_ = weights @ X
-            deviations = X - self.location_
-        return (deviations.T * weights) @ deviations / correction
