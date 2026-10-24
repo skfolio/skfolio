@@ -342,6 +342,22 @@ def test_population_rolling_measure(small_population):
     )
 
 
+def test_rolling_measure_min_periods_forwarding():
+    children = [
+        Portfolio([[0.01]], weights=[1.0]),
+        FailedPortfolio([[0.0]]),
+        Portfolio([[0.03]], weights=[1.0]),
+    ]
+    portfolio = MultiPeriodPortfolio(children, check_observations_order=False, name="p")
+    population = Population([portfolio])
+    kwargs = {"measure": PerfMeasure.MEAN, "window": 3, "min_periods": 2}
+    expected = [np.nan, np.nan, 0.02]
+    np.testing.assert_allclose(population.rolling_measure(**kwargs)["p"], expected)
+    for owner in [portfolio, population]:
+        figure = owner.plot_rolling_measure(**kwargs)
+        np.testing.assert_allclose(figure.data[0].y, expected)
+
+
 def test_population_filter_chaining(population):
     res = population.filter(names=["1", "2"]).composition()
     assert res.shape[1] == 2

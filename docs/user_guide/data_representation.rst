@@ -8,6 +8,8 @@ The choice of data structure, data container and missing-data handling matters
 for portfolio workflows, cross-sectional factor models and alpha pipelines. This page discusses the main
 choices, their trade-offs and the convention used by `skfolio`.
 
+.. _wide_and_long_format:
+
 Wide and Long Format
 ====================
 
@@ -181,6 +183,8 @@ cannot currently be applied in `skfolio` online learning workflows, because
 scikit-learn pipelines do not provide the required online update interface for
 pre-selection and imputation.
 
+.. _native_nan_aware:
+
 Native NaN-Aware Convention
 ===========================
 
@@ -194,6 +198,63 @@ For this approach, `skfolio` separates three concepts:
   expirations)
 * investability at optimization time (e.g. an asset that has entered the universe but
   has not yet accumulated enough data for stable moment estimation)
+
+.. _fixed_asset_schema:
+
+Fixed Asset Schema in Online Learning
+-------------------------------------
+
+Consider three assets, A, B and C, where C lists after the first two observations:
+
+.. code-block:: python
+
+    import numpy as np
+    import pandas as pd
+
+    history = pd.DataFrame(
+        {
+            "A": [0.01, -0.02,  0.01,  0.02],
+            "B": [0.02,  0.01, -0.01,  0.01],
+            "C": [np.nan, np.nan, 0.03, -0.01],
+        }
+    )
+
+C's column is present throughout the dataset. Its pre-listing returns are NaN.
+For estimators accepting `active_mask`, C is marked inactive during that period
+and active afterward. A holiday also produces a missing return, but the asset
+remains active.
+
+In research, this fixed schema provides the alignment and computational benefits
+described in :ref:`wide_and_long_format`. With compatible estimators, C can
+accumulate observations and become investable through `partial_fit` without
+restarting the model.
+
+In production, C may not have been planned as part of the universe when the model
+was first fitted on A and B. When the decision is made to include C, the fixed
+schema requires a new learning run with C included. Call `fit` on the expanded
+historical dataset, or replay historical batches through a fresh estimator.
+Subsequent `partial_fit` calls retain columns A, B and C in the same order.
+
+This rebuilding step allows C's available history to contribute before
+allocation. An asset joining a strategy may have traded for months or years. Its
+past returns can initialize expected returns, volatility, and dependence with
+the existing assets. Estimating those dependencies requires aligned historical
+observations for all relevant assets.
+
+An alternative design would be to accept dictionaries of returns, similar to
+single-date slices of long-format data, and support new asset identifiers during
+updates. Preserving existing state could reduce latency when historical replay
+is expensive. However, incorporating a new asset's earlier observations would
+still require a separate historical initialization mechanism. Otherwise,
+learning would begin with its first supplied observation.
+
+Skfolio accepts the cost of rebuilding when new columns are introduced. A fixed
+schema keeps returns, moments, weights, constraints, costs, and metadata aligned,
+avoids dynamically remapping state across components, and follows scikit-learn's
+feature-consistency convention.
+
+For a worked example with late listings, delistings, holidays and asset warm-up,
+see :ref:`sphx_glr_auto_examples_online_learning_plot_online_schur_changing_universe.py`.
 
 Universe Membership
 -------------------
@@ -215,6 +276,11 @@ observation (e.g. holiday). NaN-aware estimators handle this according to their 
 If `active_mask=False`, the asset is inactive for that observation (e.g.
 pre-listing or post-delisting periods). Estimators use this information to mark the
 asset as unavailable.
+
+EW moment estimators request `active_mask` by default in both `fit` and
+`partial_fit`. Enable metadata routing to pass the mask through a prior or
+optimizer. See :ref:`default_metadata_requests`. Without a mask, trailing NaNs
+are treated as missing observations and do not signal a delisting.
 
 When data is stored in an :class:`~skfolio.containers.AssetPanel`, each field applies
 its `inactive_policy` outside `active_mask`. The default policy stores NaN for

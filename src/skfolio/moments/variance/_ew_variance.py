@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import numpy as np
 import sklearn.utils.validation as skv
 
@@ -90,6 +92,9 @@ class EWVariance(BaseVariance):
     The `min_observations` parameter controls a warm-up period: an asset's
     variance estimate remains NaN in the output until it has accumulated enough
     valid observations for a reliable estimate.
+
+    With metadata routing enabled, `active_mask` is requested by default for
+    `fit` and `partial_fit`. See :ref:`default_metadata_requests`.
 
     Parameters
     ----------
@@ -198,6 +203,10 @@ class EWVariance(BaseVariance):
     >>> model3.fit(X_nan, active_mask=active_mask)
     EWVariance()
     """
+
+    # Route universe membership to this estimator by default.
+    __metadata_request__fit: ClassVar[dict[str, bool]] = {"active_mask": True}
+    __metadata_request__partial_fit: ClassVar[dict[str, bool]] = {"active_mask": True}
 
     def __init__(
         self,

@@ -10,6 +10,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 import sklearn.utils as sku
 import sklearn.utils.validation as skv
@@ -19,7 +20,7 @@ from skfolio.distribution.copula._utils import (
     empirical_tail_concentration,
     plot_tail_concentration,
 )
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 
 UNIFORM_MARGINAL_EPSILON = 1e-9
 _RHO_BOUNDS = (-0.999, 0.999)
@@ -39,11 +40,14 @@ class BaseBivariateCopula(BaseDistribution, ABC):
 
     # Used for AIC and BIC
     _n_params: int
+    feature_names_in_: StrArray
 
     def __init__(self, random_state: int | None = None) -> None:
         super().__init__(random_state=random_state)
 
-    def _validate_X(self, X: ArrayLike, reset: bool) -> FloatArray:
+    def _validate_X(
+        self, X: ArrayLike, reset: bool, *, clip: bool = True
+    ) -> FloatArray:
         """Validate the input data.
 
         Parameters
@@ -56,6 +60,12 @@ class BaseBivariateCopula(BaseDistribution, ABC):
             Whether to reset the `n_features_in_` attribute.
             If False, the input will be checked for consistency with data
             provided when reset was last True.
+
+        clip : bool, default=True
+            Whether to clip the margins to `[1e-9, 1 - 1e-9]` to avoid singular
+            logarithms, inverse CDFs and divisions. Set to False for CDF and
+            joint survival calculations, which preserve the original thresholds
+            and handle boundaries exactly. All input checks still apply.
 
         Returns
         -------
@@ -76,8 +86,8 @@ class BaseBivariateCopula(BaseDistribution, ABC):
                 "distributions obtained from marginals CDF transformation"
             )
 
-        # Handle potential numerical issues by ensuring X doesn't contain exact 0 or 1.
-        X = np.clip(X, UNIFORM_MARGINAL_EPSILON, 1 - UNIFORM_MARGINAL_EPSILON)
+        if clip:
+            X = np.clip(X, UNIFORM_MARGINAL_EPSILON, 1 - UNIFORM_MARGINAL_EPSILON)
         return X
 
     @property
@@ -141,6 +151,54 @@ class BaseBivariateCopula(BaseDistribution, ABC):
             CDF values for each observation in X.
         """
         ...
+
+    def survival_probability(self, X: ArrayLike) -> FloatArray:
+        r"""Return the probability that both variables exceed their respective
+        thresholds.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, 2)
+            Uniform marginal probability levels `(u, v)` in `[0, 1]`. Each row
+            specifies the thresholds for the two variables.
+
+        Returns
+        -------
+        probabilities : ndarray of shape (n_observations,)
+            Joint probabilities :math:`P(U > u, V > v)` for each row in X.
+
+        See Also
+        --------
+        cdf : Probability that both variables are below their respective thresholds.
+        tail_concentration : Conditional probabilities at a common quantile.
+
+        Notes
+        -----
+        For uniform margins, the joint survival probability is
+
+        .. math::
+            S(u, v) = 1 - u - v + C(u, v).
+
+        The default implementation uses the CDF identity. Its precision in very
+        small tails is limited by the CDF and subtraction. Subclasses can provide
+        a more accurate calculation, such as reflection for elliptical copulas.
+
+        Examples
+        --------
+        >>> from skfolio.distribution import IndependentCopula
+        >>> copula = IndependentCopula().fit([[0.2, 0.3], [0.7, 0.8]])
+        >>> copula.survival_probability([[0.5, 0.75]])
+        array([0.125])
+        """
+        # cdf checks fitted state and validates X, including DataFrame column names.
+        cdf = self.cdf(X)
+        X = np.asarray(X, dtype=np.float64)
+        u, v = X.T
+        probabilities = (1.0 - u) - (v - cdf)
+        # Subtraction can round outside the Frechet bounds.
+        lower = np.maximum((1.0 - u) - v, 0.0)
+        upper = 1.0 - np.maximum(u, v)
+        return np.clip(probabilities, lower, upper)
 
     @abstractmethod
     def partial_derivative(
@@ -275,18 +333,19 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         The tail concentration function is defined as:
 
         .. math::
-            C(q) = \begin{cases}
+            T(q) = \begin{cases}
                 \frac{P(U \le q, V \le q)}{q} & \text{if } q \le 0.5 \\
-                \frac{1 - 2q + P(U \le q, V \le q)}{1 - q} & \text{if } q > 0.5
+                \frac{P(U > q, V > q)}{1 - q} & \text{if } q > 0.5
             \end{cases}
 
         where :math:`U` and :math:`V` are the pseudo-observations of the first and
-        second variables, respectively. This function returns the concentration values
-        for each :math:`q` provided.
+        second variables, respectively, and :math:`0 < q < 1`. These are
+        conditional probabilities given that the first component is in the
+        corresponding tail.
 
         Parameters
         ----------
-        quantiles : ndarray of shape (n_quantiles,)
+        quantiles : array-like of shape (n_quantiles,)
            A 1D array of quantile levels (values between 0 and 1) at which to compute
            the tail concentration.
 
@@ -294,27 +353,49 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         -------
         concentration : ndarray of shape (n_quantiles,)
            The computed tail concentration values corresponding to each quantile.
+           At zero and one, the theoretical lower and upper tail dependence
+           limits are returned because the conditioning event has probability
+           zero and the conditional probability is undefined. An empty input
+           returns an empty array.
+
+        Raises
+        ------
+        ValueError
+           If `quantiles` is not one-dimensional or contains values outside [0, 1].
+
+        See Also
+        --------
+        survival_probability : Joint upper-tail probabilities.
+        lower_tail_dependence : Limit of the lower tail concentration at zero.
+        upper_tail_dependence : Limit of the upper tail concentration at one.
 
         References
         ----------
         .. [1] "Quantitative Risk Management: Concepts, Techniques, and Tools",
             McNeil, Frey, Embrechts (2005)
-
-        Raises
-        ------
-        ValueError
-           If any value in `quantiles` is not in the interval [0, 1].
         """
-        quantiles = np.asarray(quantiles)
+        skv.check_is_fitted(self)
+        quantiles = np.asarray(quantiles, dtype=float)
+        if quantiles.ndim != 1:
+            raise ValueError("quantiles must be a one-dimensional array.")
         if not np.all((quantiles >= 0) & (quantiles <= 1)):
             raise ValueError("quantiles must be between 0.0 and 1.0.")
-        X = np.stack((quantiles, quantiles)).T
-        cdf = self.cdf(X)
-        concentration = np.where(
-            quantiles <= 0.5,
-            cdf / quantiles,
-            (1.0 - 2 * quantiles + cdf) / (1.0 - quantiles),
-        )
+
+        X = np.column_stack((quantiles, quantiles))
+        if hasattr(self, "feature_names_in_"):
+            X = pd.DataFrame(X, columns=self.feature_names_in_)
+
+        concentration = np.empty_like(quantiles)
+        concentration[quantiles == 0] = self.lower_tail_dependence
+        concentration[quantiles == 1] = self.upper_tail_dependence
+        lower = (quantiles > 0) & (quantiles <= 0.5)
+        upper = (quantiles > 0.5) & (quantiles < 1)
+        if np.any(lower):
+            concentration[lower] = self.cdf(X[lower]) / quantiles[lower]
+        if np.any(upper):
+            concentration[upper] = self.survival_probability(X[upper]) / (
+                1.0 - quantiles[upper]
+            )
         return concentration
 
     def plot_tail_concentration(

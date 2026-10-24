@@ -22,6 +22,7 @@ from skfolio.utils.tools import (
     _validate_non_negative_real,
     _validate_positive_integer,
     _validate_positive_real,
+    _validate_sample_weight,
     _validate_unit_interval,
     apply_window_size,
     args_names,
@@ -39,6 +40,19 @@ from skfolio.utils.tools import (
     safe_split,
     validate_input_list,
 )
+
+
+@pytest.mark.parametrize("offset", [-1.002e-5, -1e-5, 0, 1e-5, 1.002e-5])
+def test_sample_weight_normalization_tolerance(offset):
+    weights = np.array([0.25, 0.75 + offset])
+    if abs(offset) > 1.001e-5:
+        with pytest.raises(ValueError, match="must sum to one"):
+            _validate_sample_weight(weights, n_observations=2, ensure_normalized=True)
+    else:
+        result = _validate_sample_weight(
+            weights, n_observations=2, ensure_normalized=True
+        )
+        np.testing.assert_array_equal(result, weights)
 
 
 class _RecordingEstimator:
@@ -679,6 +693,51 @@ def test_safe_indexing_slice_on_columns():
     )
 
 
+@pytest.mark.parametrize("axis", [0, 1])
+@pytest.mark.parametrize("indices", [slice(1, 3), slice(None, None, -1), slice(3, 1)])
+def test_safe_indexing_dataframe_slice(axis, indices):
+    X = pd.DataFrame(
+        np.arange(20).reshape(5, 4), index=list("edcba"), columns=list("DCBA")
+    )
+
+    result = safe_indexing(X, indices, axis=axis)
+
+    expected = X.iloc[indices] if axis == 0 else X.iloc[:, indices]
+    pd.testing.assert_frame_equal(result, expected)
+
+
+def test_safe_split_dataframe_column_slice():
+    X = pd.DataFrame(np.arange(20).reshape(5, 4), columns=list("DCBA"))
+    y = X * 2
+
+    X_subset, y_subset = safe_split(X, y, indices=slice(1, 3), axis=1)
+
+    pd.testing.assert_frame_equal(X_subset, X.iloc[:, 1:3])
+    pd.testing.assert_frame_equal(y_subset, y.iloc[:, 1:3])
+
+
+@pytest.mark.parametrize("as_series", [False, True])
+def test_safe_indexing_labelled_row_slice(as_series):
+    X = pd.DataFrame({"a": range(5)}, index=list("abcde"))
+    if as_series:
+        X = X["a"]
+
+    result = safe_indexing(X, slice("b", "d"))
+
+    if as_series:
+        pd.testing.assert_series_equal(result, X.loc["b":"d"])
+    else:
+        pd.testing.assert_frame_equal(result, X.loc["b":"d"])
+
+
+def test_safe_indexing_datetime_labelled_row_slice():
+    X = pd.DataFrame({"a": range(5)}, index=pd.date_range("2020-01-01", periods=5))
+
+    result = safe_indexing(X, slice("2020-01-02", "2020-01-04"))
+
+    pd.testing.assert_frame_equal(result, X.loc["2020-01-02":"2020-01-04"])
+
+
 class TestCacheMethod:
     class _Cached:
         def __init__(self, cache):
@@ -755,11 +814,13 @@ class TestLiquidationTurnoverAndCost:
         )
         assert (turnover, cost) == (0.0, 0.0)
 
-    def test_nan_weight_raises(self):
-        with pytest.raises(ValueError, match="contains NaN"):
+    @pytest.mark.parametrize("weight", [np.nan, np.inf, -np.inf])
+    @pytest.mark.parametrize("transaction_costs", [None, 0.0, 0.01])
+    def test_nonfinite_weight_raises(self, weight, transaction_costs):
+        with pytest.raises(ValueError, match="previous_weights must be finite"):
             _get_liquidation_turnover_and_cost(
-                previous_weights={"a": 0.5, "z": np.nan},
-                transaction_costs=0.01,
+                previous_weights={"a": 0.5, "z": weight},
+                transaction_costs=transaction_costs,
                 assets_names=np.array(["a", "b"]),
             )
 

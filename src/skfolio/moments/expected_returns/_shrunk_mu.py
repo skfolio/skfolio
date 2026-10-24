@@ -246,7 +246,7 @@ class ShrunkMu(BaseMu):
                 self.alpha_ = (
                     (u - n_assets / (n_observations - n_assets)) * w - v**2
                 ) / (u * w - v**2)
-                self.beta_ = (1 - self.alpha_) * v / u
+                self.beta_ = (1 - self.alpha_) * v / w
             # The type check above and the exhaustive enum cases cover all inputs.
             case _:  # pragma: no cover
                 raise ValueError(f"method {self.method} is not valid")

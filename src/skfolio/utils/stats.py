@@ -52,6 +52,7 @@ __all__ = [
     "inverse_multiply",
     "inverse_volatility_weights",
     "is_cholesky_dec",
+    "is_positive_semidefinite",
     "minimize_relative_weight_deviation",
     "multiply_by_inverse",
     "n_bins_freedman",
@@ -162,7 +163,7 @@ def safe_divide(
     out = np.full(np.broadcast(numerator, denominator).shape, fill_value, dtype=float)
     valid = np.abs(denominator) > atol
     np.divide(numerator, denominator, out=out, where=valid)
-    np.nan_to_num(out, copy=False, nan=fill_value, posinf=fill_value, neginf=fill_value)
+    np.copyto(out, fill_value, where=~np.isfinite(out))
     return float(out) if out.ndim == 0 else out
 
 
@@ -324,6 +325,29 @@ def is_positive_definite(x: FloatArray) -> bool:
         True if the matrix is positive definite, False otherwise.
     """
     return bool(np.all(np.linalg.eigvals(x) > 0))
+
+
+def is_positive_semidefinite(x: FloatArray, *, atol: float = 0.0) -> bool:
+    """Return True if the matrix is positive semidefinite within a tolerance.
+
+    The caller must provide a finite, symmetric matrix.
+
+    Parameters
+    ----------
+    x : ndarray of shape (n, n)
+        Matrix to check.
+
+    atol : float, default=0.0
+        Nonnegative absolute tolerance. Eigenvalues greater than or equal to
+        `-atol` are accepted.
+
+    Returns
+    -------
+    value : bool
+        True if all eigenvalues are at least `-atol`, False otherwise.
+        Singular matrices are accepted.
+    """
+    return bool(np.all(np.linalg.eigvalsh(x) >= -atol))
 
 
 def assert_is_square(x: FloatArray) -> None:
@@ -638,6 +662,9 @@ def compute_optimal_n_clusters(distance: FloatArray, linkage_matrix: FloatArray)
     .. [1] "Application of two-order difference to gap statistic".
         Yue, Wang & Wei (2009)
     """
+    # Two assets have no second-order gap. Use the two singleton leaves.
+    if distance.shape[0] == 2:
+        return 2
     cut_tree = sch.cut_tree(linkage_matrix)
     n = cut_tree.shape[1]
     max_clusters = min(n, max(8, round(np.sqrt(n))))
@@ -734,12 +761,12 @@ def minimize_relative_weight_deviation(
         if w.value is None:
             raise cp.SolverError("No solution found")
 
-    except (cp.SolverError, scl.ArpackNoConvergence):
+    except (cp.SolverError, scl.ArpackNoConvergence) as error:
         raise cp.SolverError(
             f"Solver '{solver}' failed. Try another"
             " solver, or solve with solver_params=dict(verbose=True) for more"
             " information"
-        ) from None
+        ) from error
 
     return w.value
 
@@ -1413,11 +1440,29 @@ def cs_pearson_correlation(
     return float(corr) if corr.ndim == 0 else corr
 
 
+def _average_rank_1d(a: FloatArray) -> FloatArray:
+    """Assign average ranks to finite values in a one-dimensional array."""
+    valid = np.isfinite(a)
+
+    # Put nonfinite values last; mask their ranks below.
+    _, inverse, counts = np.unique(
+        np.where(valid, a, np.inf),
+        return_inverse=True,
+        return_counts=True,
+    )
+
+    # Each group's last rank minus half its span gives its average rank.
+    group_ranks = np.cumsum(counts) - (counts - 1) * 0.5
+    ranks = group_ranks[inverse]
+    ranks[~valid] = np.nan
+    return ranks
+
+
 def cs_rank(a: FloatArray, axis: int = 0) -> FloatArray:
     """Cross-sectional rank along an axis.
 
-    Ranks are 1-based. `NaN` values remain `NaN` and are excluded from the ranking
-    (i.e. only finite values receive ranks).
+    Ranks are 1-based, with ties assigned the average of their occupied ranks.
+    Nonfinite values receive `NaN` and are excluded from the ranking.
 
     Parameters
     ----------
@@ -1430,15 +1475,17 @@ def cs_rank(a: FloatArray, axis: int = 0) -> FloatArray:
     Returns
     -------
     ranks : ndarray
-        Same shape as *a*, dtype `float64`.
+        Same shape as *a*, dtype `float64`. Scalar inputs return a one-element array.
     """
-    a = np.asarray(a, dtype=float)
-    valid = np.isfinite(a)
-    a_filled = np.where(valid, a, np.inf)
-    order = np.argsort(np.argsort(a_filled, axis=axis), axis=axis)
-    ranks = order.astype(float) + 1.0
-    ranks[~valid] = np.nan
-    return ranks
+    a = np.atleast_1d(np.asarray(a, dtype=float))
+    # Preserve NumPy's scalar promotion and axis validation, including empty arrays.
+    values = np.moveaxis(a, axis, -1)
+    if a.size == 0:
+        return np.empty_like(a)
+
+    # Bound temporary allocations to one cross-section for large factor arrays.
+    ranks = np.apply_along_axis(_average_rank_1d, -1, values)
+    return np.moveaxis(ranks, -1, axis)
 
 
 def cs_spearman_correlation(
@@ -1452,7 +1499,7 @@ def cs_spearman_correlation(
 
     Ranks the jointly finite values of *a* and *b* along `axis` with :func:`cs_rank`,
     then computes their Pearson correlation via :func:`cs_pearson_correlation`
-    (unweighted).
+    (unweighted). Ties receive average ranks; constant ranks return `NaN`.
 
     Parameters
     ----------
@@ -1487,8 +1534,10 @@ def cs_spearman_correlation(
             f"`a` and `b` must be broadcastable, got shapes {a.shape} and {b.shape}."
         ) from None
 
-    a = np.broadcast_to(a, shape)
-    b = np.broadcast_to(b, shape)
+    # Match dimensions without repeating fully finite cross-sections before ranking.
+    # Missing values still require the pair-specific ranks computed below.
+    a = a.reshape((1,) * (len(shape) - a.ndim) + a.shape)
+    b = b.reshape((1,) * (len(shape) - b.ndim) + b.shape)
     valid = np.isfinite(a) & np.isfinite(b)
 
     if np.all(valid):

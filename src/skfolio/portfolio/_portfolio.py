@@ -25,7 +25,7 @@ from skfolio._constants import (
     _TRANSACTION_COSTS,
 )
 from skfolio.attribution import Attribution
-from skfolio.measures import RiskMeasure, effective_number_assets, standard_deviation
+from skfolio.measures import effective_number_assets, standard_deviation
 from skfolio.portfolio._base import _ZERO_THRESHOLD, BasePortfolio
 from skfolio.typing import AnyArray, ArrayLike, FloatArray, IntArray, StrArray
 from skfolio.utils.tools import (
@@ -38,6 +38,9 @@ from skfolio.utils.tools import (
 
 if TYPE_CHECKING:
     from skfolio.prior import FactorModel
+
+
+_DEFAULT_CONTRIBUTION_SPACING = 1e-5
 
 
 class Portfolio(BasePortfolio):
@@ -81,7 +84,10 @@ class Portfolio(BasePortfolio):
         Portfolio weights.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset weight) and `X` must be a DataFrame with assets names
-        in columns.
+        in columns. Weights are aligned to the column order of `X`: keys absent
+        from `X` are ignored, and assets omitted from the dictionary have zero
+        weight. The remaining weights are not renormalized. This allows reusing
+        a full-universe dictionary, including `weights_dict`, on a subset of assets.
 
     transaction_costs : float | dict[str, float] | array-like of shape (n_assets, ), optional
         Linear transaction costs of the assets. The Portfolio total transaction cost
@@ -1060,7 +1066,8 @@ class Portfolio(BasePortfolio):
 
         spacing : float, optional
             Spacing "h" of the finite difference:
-            :math:`contribution(wi)= \frac{measure(wi-h) - measure(wi+h)}{2h}`
+            :math:`contribution(w_i) = w_i \frac{measure(w_i + h) - measure(w_i - h)}{2h}`.
+            If `None`, uses `1e-5`.
 
         to_df : bool, default=False
             If set to True, a DataFrame with asset names in index is returned,
@@ -1078,15 +1085,7 @@ class Portfolio(BasePortfolio):
             contribution = np.full(len(assets), np.nan)
         else:
             if spacing is None:
-                if measure in [
-                    RiskMeasure.MAX_DRAWDOWN,
-                    RiskMeasure.AVERAGE_DRAWDOWN,
-                    RiskMeasure.CDAR,
-                    RiskMeasure.EDAR,
-                ]:
-                    spacing = 1e-1
-                else:
-                    spacing = 1e-5
+                spacing = _DEFAULT_CONTRIBUTION_SPACING
             args = self._get_init_params()
             args.pop("weights")
 
@@ -1680,7 +1679,8 @@ def _get_risk(
 ) -> float:
     """Get the Portfolio risk measure when the weight of asset `i` is increased by `h`."""
     assert "weights" not in args
-    weights = weights.copy()
+    # Small perturbations can round away in float16 or float32.
+    weights = weights.astype(float)
     weights[i] += h
     return getattr(Portfolio(weights=weights, **args), measure.value)
 

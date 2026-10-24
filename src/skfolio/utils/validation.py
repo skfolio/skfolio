@@ -1,4 +1,4 @@
-"""Validation utilities for cross-sectional data."""
+"""Validation utilities."""
 
 # Copyright (c) 2023-2026
 # Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
@@ -9,10 +9,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal, TypeVar, overload
 
 import numpy as np
+import pandas as pd
 import sklearn.utils.validation as skv
 from sklearn.utils._tags import get_tags
 
 from skfolio.typing import ArrayLike, BoolArray, FloatArray
+from skfolio.utils.stats import assert_is_square
 
 if TYPE_CHECKING:
     from skfolio.containers._asset_panel._base import _BaseAssetPanel
@@ -500,3 +502,40 @@ def _first_invalid_observation(
         invalid = invalid & active_mask
     invalid_observations = np.flatnonzero(invalid.any(axis=1))
     return int(invalid_observations[0]) if invalid_observations.size else None
+
+
+def _validate_pairwise_matrix(X: ArrayLike) -> tuple[FloatArray, BoolArray]:
+    """Validate a pairwise matrix and return its asset availability mask.
+
+    NaN diagonal entries mark unavailable assets. Values between available
+    assets must be finite. Infinite values are rejected throughout the matrix.
+
+    Parameters
+    ----------
+    X : array-like of shape (n_assets, n_assets)
+        Real-valued pairwise matrix. DataFrame row and column labels must
+        match in the same order.
+
+    Returns
+    -------
+    X : ndarray of shape (n_assets, n_assets)
+        Validated float64 matrix retaining all asset rows and columns.
+
+    available : ndarray of bool of shape (n_assets,)
+        Mask identifying assets whose diagonal entries are not NaN.
+
+    Raises
+    ------
+    ValueError
+        If the matrix is not square, contains infinite values or missing values
+        between available assets, or has mismatched DataFrame row and column
+        labels.
+    """
+    if isinstance(X, pd.DataFrame) and not X.index.equals(X.columns):
+        raise ValueError("Pairwise matrices require matching row and column names.")
+    X = skv.check_array(X, dtype=np.float64, ensure_all_finite="allow-nan")
+    assert_is_square(X)
+    available = ~np.isnan(np.diag(X))
+    if np.isnan(X[np.ix_(available, available)]).any():
+        raise ValueError("The matrix contains missing values between available assets.")
+    return X, available

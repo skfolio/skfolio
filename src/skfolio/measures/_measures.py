@@ -12,9 +12,17 @@ import warnings
 
 import numpy as np
 import scipy.optimize as sco
+import scipy.special as scs
+import scipy.stats as st
 
 from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.stats import safe_divide
+from skfolio.utils.tools import (
+    _normalize_sample_weight,
+    _validate_non_negative_real,
+    _validate_positive_real,
+    _validate_sample_weight,
+)
 
 
 def mean(
@@ -28,7 +36,8 @@ def mean(
         Array of return values.
 
     sample_weight : ndarray of shape (n_observations,), optional
-        Sample weights for each observation. If None, equal weights are assumed.
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed.
 
     Returns
     -------
@@ -46,23 +55,20 @@ def mean(
     """
     returns = np.asarray(returns, dtype=float)
     if sample_weight is None:
-        # Ignore NaNs and suppress warnings for all-NaN slices
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=RuntimeWarning)
-            return np.nanmean(returns, axis=0)
-    sample_weight = np.asarray(sample_weight, dtype=float)
-    if returns.shape[0] == 0:
+        return _mean(returns)
+    n_observations = returns.shape[0]
+    sample_weight = _validate_sample_weight(
+        sample_weight, n_observations=n_observations
+    )
+    if n_observations == 0:
         return np.full(returns.shape[1:], np.nan)[()]
-    result = sample_weight @ returns
-    # Scan returns for NaNs only if the weighted mean contains NaN.
+    result = _normalize_sample_weight(sample_weight) @ returns
     if not np.isnan(result).any():
-        total = sample_weight.sum()
-        if not _sums_to_one(total, n_observations=sample_weight.shape[0]):
-            with np.errstate(divide="ignore", invalid="ignore"):
-                result = result / total
         return result
-    returns, weights = _prepare_weighted_returns(returns, weights=sample_weight)
-    return _weighted_sum(returns, weights=weights)
+    returns, sample_weight = _prepare_weighted_returns(
+        returns, sample_weight=sample_weight
+    )
+    return _mean(returns, sample_weight=sample_weight)
 
 
 def mean_absolute_deviation(
@@ -82,7 +88,8 @@ def mean_absolute_deviation(
         "upside" returns. The default (`None`) is to use the returns' mean.
 
     sample_weight : ndarray of shape (n_observations,), optional
-        Sample weights for each observation. If None, equal weights are assumed.
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed.
 
     Returns
     -------
@@ -98,13 +105,10 @@ def mean_absolute_deviation(
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
     """
-    returns = np.asarray(returns)
-    if min_acceptable_return is None:
-        min_acceptable_return = mean(returns, sample_weight=sample_weight)
-
-    absolute_deviations = np.abs(returns - min_acceptable_return)
-
-    return mean(absolute_deviations, sample_weight=sample_weight)
+    deviations, sample_weight, _ = _prepare_deviations(
+        returns, sample_weight=sample_weight, target=min_acceptable_return
+    )
+    return _mean(np.abs(deviations), sample_weight=sample_weight)
 
 
 def first_lower_partial_moment(
@@ -127,7 +131,8 @@ def first_lower_partial_moment(
         "upside" returns. The default (`None`) is to use the returns' mean.
 
     sample_weight : ndarray of shape (n_observations,), optional
-        Sample weights for each observation. If None, equal weights are assumed.
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed.
 
     Returns
     -------
@@ -143,13 +148,10 @@ def first_lower_partial_moment(
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
     """
-    returns = np.asarray(returns)
-    if min_acceptable_return is None:
-        min_acceptable_return = mean(returns, sample_weight=sample_weight)
-
-    deviations = np.maximum(0, min_acceptable_return - returns)
-
-    return mean(deviations, sample_weight=sample_weight)
+    deviations, sample_weight, _ = _prepare_deviations(
+        returns, sample_weight=sample_weight, target=min_acceptable_return
+    )
+    return _mean(np.maximum(-deviations, 0), sample_weight=sample_weight)
 
 
 def variance(
@@ -169,7 +171,8 @@ def variance(
          computes the population variance (biased).
 
     sample_weight : ndarray of shape (n_observations,), optional
-         Sample weights for each observation. If None, equal weights are assumed.
+         Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed.
 
     Returns
     -------
@@ -219,7 +222,8 @@ def semi_variance(
         computes the population semi-variance (biased).
 
     sample_weight : ndarray of shape (n_observations,), optional
-        Sample weights for each observation. If None, equal weights are assumed.
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed.
 
     Returns
     -------
@@ -276,7 +280,8 @@ def standard_deviation(
         otherwise, computes the population standard-deviation (biased).
 
     sample_weight : ndarray of shape (n_observations,), optional
-        Sample weights for each observation. If None, equal weights are assumed.
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed.
 
     Returns
     -------
@@ -317,7 +322,8 @@ def semi_deviation(
         computes the population semi-seviation (biased).
 
     sample_weight : ndarray of shape (n_observations,), optional
-        Sample weights for each observation. If None, equal weights are assumed.
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed.
 
     Returns
     -------
@@ -354,7 +360,8 @@ def third_central_moment(
         Array of return values.
 
     sample_weight : ndarray of shape (n_observations,), optional
-        Sample weights for each observation. If None, equal weights are assumed.
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed.
 
     Returns
     -------
@@ -370,11 +377,10 @@ def third_central_moment(
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
     """
-    returns = np.asarray(returns)
-    return mean(
-        (returns - mean(returns, sample_weight=sample_weight)) ** 3,
-        sample_weight=sample_weight,
+    deviations, sample_weight, _ = _prepare_deviations(
+        returns, sample_weight=sample_weight
     )
+    return _mean(deviations**3, sample_weight=sample_weight)
 
 
 def skew(
@@ -392,7 +398,8 @@ def skew(
         Array of return values.
 
     sample_weight : ndarray of shape (n_observations,), optional
-        Sample weights for each observation. If None, equal weights are assumed.
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed.
 
     Returns
     -------
@@ -407,11 +414,12 @@ def skew(
     NaN returns are excluded from each column's calculation. Remaining sample
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
+
+    Nearly constant returns produce NaN when the second central moment is at
+    most `(eps * mean)**2`. Here `eps` is machine precision and `mean` uses the
+    same sample weights.
     """
-    return (
-        third_central_moment(returns, sample_weight)
-        / variance(returns, sample_weight=sample_weight, biased=True) ** 1.5
-    )
+    return _standardized_moment(returns, order=3, sample_weight=sample_weight)
 
 
 def fourth_central_moment(
@@ -425,7 +433,8 @@ def fourth_central_moment(
         Array of return values.
 
     sample_weight : ndarray of shape (n_observations,), optional
-        Sample weights for each observation. If None, equal weights are assumed.
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed.
 
     Returns
     -------
@@ -441,11 +450,10 @@ def fourth_central_moment(
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
     """
-    returns = np.asarray(returns)
-    return mean(
-        (returns - mean(returns, sample_weight=sample_weight)) ** 4,
-        sample_weight=sample_weight,
+    deviations, sample_weight, _ = _prepare_deviations(
+        returns, sample_weight=sample_weight
     )
+    return _mean(deviations**4, sample_weight=sample_weight)
 
 
 def kurtosis(
@@ -462,7 +470,8 @@ def kurtosis(
         Array of return values.
 
     sample_weight : ndarray of shape (n_observations,), optional
-        Sample weights for each observation. If None, equal weights are assumed.
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed.
 
     Returns
     -------
@@ -477,15 +486,18 @@ def kurtosis(
     NaN returns are excluded from each column's calculation. Remaining sample
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
+
+    Nearly constant returns produce NaN when the second central moment is at
+    most `(eps * mean)**2`. Here `eps` is machine precision and `mean` uses the
+    same sample weights.
     """
-    return (
-        fourth_central_moment(returns, sample_weight=sample_weight)
-        / variance(returns, sample_weight=sample_weight, biased=True) ** 2
-    )
+    return _standardized_moment(returns, order=4, sample_weight=sample_weight)
 
 
 def fourth_lower_partial_moment(
-    returns: ArrayLike, min_acceptable_return: float | FloatArray | None = None
+    returns: ArrayLike,
+    min_acceptable_return: float | FloatArray | None = None,
+    sample_weight: FloatArray | None = None,
 ) -> float | FloatArray:
     """Compute the fourth lower partial moment.
 
@@ -504,6 +516,10 @@ def fourth_lower_partial_moment(
         "upside" returns.
         The default (`None`) is to use the returns mean.
 
+    sample_weight : ndarray of shape (n_observations,), optional
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed.
+
     Returns
     -------
     value : float or ndarray of shape (n_assets,)
@@ -514,13 +530,14 @@ def fourth_lower_partial_moment(
     Notes
     -----
     NaN handling:
-    NaN returns are excluded from each column's calculation. The result is
-    NaN if no observations remain.
+    NaN returns are excluded from each column's calculation. Remaining sample
+    weights are rescaled to sum to one. The result is NaN if no observations
+    or no positive weight remain.
     """
-    returns = np.asarray(returns)
-    if min_acceptable_return is None:
-        min_acceptable_return = mean(returns)
-    return mean(np.maximum(0, min_acceptable_return - returns) ** 4)
+    deviations, sample_weight, _ = _prepare_deviations(
+        returns, sample_weight=sample_weight, target=min_acceptable_return
+    )
+    return _mean(np.minimum(deviations, 0) ** 4, sample_weight=sample_weight)
 
 
 def worst_realization(returns: ArrayLike) -> float | FloatArray:
@@ -554,7 +571,7 @@ def worst_realization(returns: ArrayLike) -> float | FloatArray:
 def value_at_risk(
     returns: ArrayLike, beta: float = 0.95, sample_weight: FloatArray | None = None
 ) -> float | FloatArray:
-    r"""Compute the historical value at risk (VaR).
+    r"""Compute the value at risk (VaR).
 
     The VaR is the smallest loss exceeded with probability at most
     :math:`1 - \beta`. It is the lower :math:`\beta`-quantile of the empirical loss
@@ -576,7 +593,8 @@ def value_at_risk(
         excluded.
 
     sample_weight : ndarray of shape (n_observations,), optional
-        Sample weights for each observation. If None, equal weights are assumed.
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed.
 
     Returns
     -------
@@ -591,6 +609,10 @@ def value_at_risk(
     :math:`k = (1 - \beta) n`, the VaR is the :math:`(k+1)`-th largest loss and the
     CVaR is the mean of the :math:`k` largest losses. For example, with 100
     observations and `beta=0.95`, the VaR is the sixth largest loss.
+
+    At a boundary between two loss values, VaR selects the lower loss. Rounding
+    differences in the confidence level and in probabilities are treated as ties
+    at that boundary.
 
     NaN handling:
     NaN returns are excluded from each column's calculation. Remaining sample
@@ -613,7 +635,7 @@ def value_at_risk(
 def cvar(
     returns: ArrayLike, beta: float = 0.95, sample_weight: FloatArray | None = None
 ) -> float | FloatArray:
-    """Compute the historical CVaR (conditional value at risk).
+    """Compute the CVaR (conditional value at risk).
 
     The CVaR (or Tail VaR) represents the mean shortfall at a specified confidence
     level (beta).
@@ -624,12 +646,13 @@ def cvar(
         Array of return values.
 
     beta : float, default=0.95
-        The CVaR confidence level (expected VaR on the worst (1-beta)% observations).
-        Must be greater than or equal to 0 and less than 1. At 0, CVaR is
-        the negative mean of the usable returns.
+        Confidence level between 0 and 1, inclusive. CVaR averages the worst
+        `1 - beta` probability mass. At 0, CVaR is the negative mean
+        of the usable returns. At 1, it is the largest loss with positive weight.
 
     sample_weight : ndarray of shape (n_observations,), optional
-        Sample weights for each observation. If None, equal weights are assumed.
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed.
 
     Returns
     -------
@@ -672,7 +695,8 @@ def entropic_risk_measure(
          Confidence level.
 
     sample_weight : ndarray of shape (n_observations,), optional
-        Sample weights for each observation. If None, equal weights are assumed.
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed.
 
     Returns
     -------
@@ -688,13 +712,32 @@ def entropic_risk_measure(
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
     """
-    returns = np.asarray(returns)
-    return theta * np.log(
-        mean(np.exp(-returns / theta), sample_weight=sample_weight) / (1 - beta)
+    returns = np.asarray(returns, dtype=float)
+    if sample_weight is None:
+        sample_weight = np.ones(returns.shape[0])
+    else:
+        sample_weight = _validate_sample_weight(
+            sample_weight, n_observations=returns.shape[0]
+        )
+    returns, sample_weight = _prepare_weighted_returns(
+        returns, sample_weight=sample_weight
     )
+    if returns.shape[0] == 0:
+        return np.full(returns.shape[1:], np.nan)[()]
+    if returns.ndim == 2 and sample_weight.ndim == 1:
+        sample_weight = sample_weight[:, None]
+    log_sample_weight = np.log(
+        sample_weight,
+        out=np.full_like(sample_weight, -np.inf),
+        where=sample_weight != 0,
+    )
+    log_mean = scs.logsumexp(-returns / theta + log_sample_weight, axis=0)
+    return theta * (log_mean - np.log1p(-beta))
 
 
-def evar(returns: ArrayLike, beta: float = 0.95) -> float:
+def evar(
+    returns: ArrayLike, beta: float = 0.95, sample_weight: FloatArray | None = None
+) -> float:
     r"""Compute the EVaR (entropic value at risk).
 
     The EVaR is a coherent risk measure which is an upper bound for the VaR and the
@@ -709,6 +752,10 @@ def evar(returns: ArrayLike, beta: float = 0.95) -> float:
     beta : float, default=0.95
         The EVaR confidence level. Must be between 0 and 1.
 
+    sample_weight : ndarray of shape (n_observations,), optional
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed.
+
     Returns
     -------
     value : float
@@ -722,12 +769,14 @@ def evar(returns: ArrayLike, beta: float = 0.95) -> float:
         \text{EVaR}_{\beta}(X) = \inf_{\theta > 0} \theta \log \left(
         \frac{\mathbb{E}\left[e^{-X / \theta}\right]}{1 - \beta} \right)
 
-    It lies between the CVaR and the largest loss. It equals the largest loss when
-    :math:`n (1 - \beta) \le k`, where :math:`n` is the number of observations and
-    :math:`k` the number tied at the largest loss, and the mean loss when `beta=0`.
+    It lies between the CVaR and the largest loss with positive weight. It equals
+    that largest loss when its total probability is at least :math:`1-\beta`,
+    and the weighted mean loss when `beta=0`. With equal weights, this condition
+    is :math:`n (1-\beta) \le k`, where :math:`k` observations share the largest loss.
 
     NaN handling:
-    NaN returns are excluded. The result is NaN if no observations remain.
+    NaN returns and their matching weights are excluded. The remaining weights
+    are normalized. The result is NaN if no positive weight remains.
 
     References
     ----------
@@ -735,20 +784,41 @@ def evar(returns: ArrayLike, beta: float = 0.95) -> float:
         Journal of Optimization Theory and Applications, Ahmadi-Javid (2012)
     """
     returns = np.asarray(returns, dtype=float)
-    losses = -returns[~np.isnan(returns)]
+    valid = ~np.isnan(returns)
+    log_probabilities = None
+    if sample_weight is not None:
+        sample_weight = _validate_sample_weight(
+            sample_weight, n_observations=returns.shape[0]
+        )
+        valid &= sample_weight > 0
+        sample_weight = sample_weight[valid]
+        # Equal weights use the unweighted calculation. For unequal weights,
+        # normalize in log space so tiny positive probabilities do not become zero.
+        if sample_weight.size and not np.all(sample_weight == sample_weight[0]):
+            log_probabilities = np.log(sample_weight)
+            log_probabilities -= scs.logsumexp(log_probabilities)
+    losses = -returns[valid]
     if losses.size == 0:
         return np.nan
 
     max_loss = losses.max()
     spread = max_loss - losses.min()
     if beta == 0:
-        value = losses.mean()
+        value = (
+            losses.mean()
+            if sample_weight is None
+            else _normalize_sample_weight(sample_weight) @ losses
+        )
     elif beta == 1 or spread == 0:
         value = max_loss
     else:
         # The EVaR is translation equivariant and positively homogeneous.
-        standardized_losses = (losses - max_loss) / spread
-        value = max_loss + spread * _standardized_evar(standardized_losses, beta)
+        scaled_losses = (losses - max_loss) / spread
+        if log_probabilities is None:
+            scaled_evar = _unweighted_evar(scaled_losses, beta)
+        else:
+            scaled_evar = _weighted_evar(scaled_losses, beta, log_probabilities)
+        value = max_loss + spread * scaled_evar
     # Adding 0.0 maps a negative zero to 0.0.
     return value + 0.0
 
@@ -865,7 +935,9 @@ def get_drawdowns(returns: ArrayLike, compounded: bool = False) -> FloatArray:
     return drawdowns
 
 
-def drawdown_at_risk(drawdowns: FloatArray, beta: float = 0.95) -> float | FloatArray:
+def drawdown_at_risk(
+    drawdowns: FloatArray, beta: float = 0.95, sample_weight: FloatArray | None = None
+) -> float | FloatArray:
     r"""Compute the Drawdown at risk.
 
     The Drawdown at risk (DaR) is the smallest drawdown exceeded with probability at
@@ -875,19 +947,26 @@ def drawdown_at_risk(drawdowns: FloatArray, beta: float = 0.95) -> float | Float
     Parameters
     ----------
     drawdowns : ndarray of shape (n_observations,) or (n_observations, n_assets)
-        Vector of drawdowns.
+        Nonpositive drawdowns computed from the full return path, including
+        dates with zero sample weight.
 
     beta : float, default = 0.95
-        The DaR confidence level.
+        The DaR confidence level, between 0 and 1, inclusive.
+
+    sample_weight : ndarray of shape (n_observations,), optional
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed. NaN drawdowns and their weights are
+        excluded, and the remaining weights are rescaled to sum to one.
+        The result is NaN if no observations or no positive weight remain.
 
     Returns
     -------
     value : float or ndarray of shape (n_assets,)
         Drawdown at risk.
-        If `returns` is a 1D-array, the result is a float.
-        If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+        If `drawdowns` is a 1D-array, the result is a float.
+        If `drawdowns` is a 2D-array, the result is a ndarray of shape (n_assets,).
     """
-    return value_at_risk(returns=drawdowns, beta=beta)
+    return value_at_risk(returns=drawdowns, beta=beta, sample_weight=sample_weight)
 
 
 def max_drawdown(drawdowns: FloatArray) -> float | FloatArray:
@@ -908,47 +987,68 @@ def max_drawdown(drawdowns: FloatArray) -> float | FloatArray:
     return drawdown_at_risk(drawdowns=drawdowns, beta=1)
 
 
-def average_drawdown(drawdowns: FloatArray) -> float | FloatArray:
+def average_drawdown(
+    drawdowns: FloatArray, sample_weight: FloatArray | None = None
+) -> float | FloatArray:
     """Compute the average drawdown.
 
     Parameters
     ----------
     drawdowns : ndarray of shape (n_observations,) or (n_observations, n_assets)
-        Vector of drawdowns.
+        Nonpositive drawdowns computed from the full return path, including
+        dates with zero sample weight.
+
+    sample_weight : ndarray of shape (n_observations,), optional
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed. NaN drawdowns and their weights are
+        excluded, and the remaining weights are rescaled to sum to one.
+        The result is NaN if no observations or no positive weight remain.
 
     Returns
     -------
     value : float or ndarray of shape (n_assets,)
         Average drawdown.
-        If `returns` is a 1D-array, the result is a float.
-        If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+        If `drawdowns` is a 1D-array, the result is a float.
+        If `drawdowns` is a 2D-array, the result is a ndarray of shape (n_assets,).
     """
-    return cdar(drawdowns=drawdowns, beta=0)
+    return -mean(drawdowns, sample_weight=sample_weight)
 
 
-def cdar(drawdowns: FloatArray, beta: float = 0.95) -> float | FloatArray:
-    """Compute the historical CDaR (conditional drawdown at risk).
+def cdar(
+    drawdowns: FloatArray, beta: float = 0.95, sample_weight: FloatArray | None = None
+) -> float | FloatArray:
+    """Compute the CDaR (conditional drawdown at risk).
 
     Parameters
     ----------
     drawdowns : ndarray of shape (n_observations,) or (n_observations, n_assets)
-        Vector of drawdowns.
+        Nonpositive drawdowns computed from the full return path, including
+        dates with zero sample weight.
 
     beta : float, default = 0.95
-        The CDaR confidence level (expected drawdown on the worst
-        (1-beta)% observations).
+        The CDaR confidence level, between 0 and 1, inclusive.
+        The result averages the worst drawdowns over probability `1 - beta`.
+        At 1, it is the largest drawdown magnitude with positive weight.
+
+    sample_weight : ndarray of shape (n_observations,), optional
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed. NaN drawdowns and their weights are
+        excluded, and the remaining weights are rescaled to sum to one.
+        The result is NaN if no observations or no positive weight remain.
 
     Returns
     -------
     value : float or ndarray of shape (n_assets,)
         CDaR.
-        If `returns` is a 1D-array, the result is a float.
-        If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+        If `drawdowns` is a 1D-array, the result is a float.
+        If `drawdowns` is a 2D-array, the result is a ndarray of shape (n_assets,).
     """
-    return cvar(returns=drawdowns, beta=beta)
+    return cvar(returns=drawdowns, beta=beta, sample_weight=sample_weight)
 
 
-def edar(drawdowns: FloatArray, beta: float = 0.95) -> float:
+def edar(
+    drawdowns: FloatArray, beta: float = 0.95, sample_weight: FloatArray | None = None
+) -> float:
     """Compute the EDaR (entropic drawdown at risk).
 
     The EDaR is a coherent risk measure which is an upper bound for the DaR and the
@@ -958,35 +1058,51 @@ def edar(drawdowns: FloatArray, beta: float = 0.95) -> float:
     Parameters
     ----------
     drawdowns : ndarray of shape (n_observations,)
-        Vector of drawdowns.
+        Nonpositive drawdowns computed from the full return path, including
+        dates with zero sample weight.
 
     beta : float, default=0.95
-      The EDaR confidence level.
+        The EDaR confidence level, between 0 and 1, inclusive.
+
+    sample_weight : ndarray of shape (n_observations,), optional
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed. NaN drawdowns and their weights are
+        excluded, and the remaining weights are rescaled to sum to one.
+        The result is NaN if no observations or no positive weight remain.
 
     Returns
     -------
     value : float
         EDaR.
     """
-    return evar(returns=drawdowns, beta=beta)
+    return evar(returns=drawdowns, beta=beta, sample_weight=sample_weight)
 
 
-def ulcer_index(drawdowns: FloatArray) -> float | FloatArray:
+def ulcer_index(
+    drawdowns: FloatArray, sample_weight: FloatArray | None = None
+) -> float | FloatArray:
     """Compute the Ulcer index.
 
     Parameters
     ----------
     drawdowns : ndarray of shape (n_observations,) or (n_observations, n_assets)
-        Vector of drawdowns.
+        Nonpositive drawdowns computed from the full return path, including
+        dates with zero sample weight.
+
+    sample_weight : ndarray of shape (n_observations,), optional
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed. NaN drawdowns and their weights are
+        excluded, and the remaining weights are rescaled to sum to one.
+        The result is NaN if no observations or no positive weight remain.
 
     Returns
     -------
     value : float or ndarray of shape (n_assets,)
         Ulcer Index.
-        If `returns` is a 1D-array, the result is a float.
-        If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+        If `drawdowns` is a 1D-array, the result is a float.
+        If `drawdowns` is a 2D-array, the result is a ndarray of shape (n_assets,).
     """
-    return np.sqrt(mean(np.power(drawdowns, 2)))
+    return np.sqrt(mean(np.square(drawdowns), sample_weight=sample_weight))
 
 
 def owa_gmd_weights(n_observations: int) -> FloatArray:
@@ -1093,20 +1209,451 @@ def correlation(X: ArrayLike, sample_weight: FloatArray | None = None) -> FloatA
        Array of values.
 
     sample_weight : ndarray of shape (n_observations,), optional
-       Sample weights for each observation. If None, equal weights are assumed.
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed.
 
     Returns
     -------
-    corr : ndarray of shape (n_assets,)
+    corr : ndarray of shape (n_assets, n_assets)
        The correlation matrix.
     """
     X = np.asarray(X)
+    n_observations, n_assets = X.shape
+    if sample_weight is not None:
+        sample_weight = _validate_sample_weight(
+            sample_weight, n_observations=n_observations
+        )
+        if not sample_weight.any():
+            return np.full((n_assets, n_assets), np.nan)
+        sample_weight = _normalize_sample_weight(sample_weight)
     cov = np.cov(X, rowvar=False, aweights=sample_weight)
     std = np.sqrt(np.diag(cov))
     return cov / np.outer(std, std)
 
 
-def _weighted_sum(values: FloatArray, weights: FloatArray) -> float | FloatArray:
+def expected_max_sharpe_ratio(
+    n_trials: float,
+    trial_sharpe_ratio_std: float,
+    trial_sharpe_ratio_mean: float = 0.0,
+) -> float:
+    r"""Approximate the expected maximum Sharpe ratio across independent trials.
+
+    When a strategy is selected as the best of several trials, its Sharpe ratio is
+    the maximum of a sample and is therefore inflated by the selection itself.
+
+    The formula below approximates this expected maximum. It assumes that the
+    trial Sharpe ratios are independent and follow the same normal distribution:
+
+    .. math::
+
+        SR_0 = \mu + \sigma \left[(1 - \gamma) \, Z^{-1}\left(1 -
+        \frac{1}{N}\right) + \gamma \, Z^{-1}\left(1 - \frac{1}{N e}\right)\right]
+
+    with :math:`N` the number of trials, :math:`\mu` and :math:`\sigma` the mean
+    and standard deviation of the trial Sharpe ratios, :math:`\gamma` the
+    Euler-Mascheroni constant, :math:`e` Euler's number and :math:`Z^{-1}` the
+    inverse standard normal CDF.
+
+    The Deflated Sharpe Ratio uses this benchmark with :math:`\mu = 0`,
+    representing trials whose true Sharpe ratios are zero.
+
+    Parameters
+    ----------
+    n_trials : float
+        Number of independent trials :math:`N`, which can be fractional when
+        estimated as an effective trial count. Must be finite and at least 1.
+
+    trial_sharpe_ratio_std : float
+        Standard deviation :math:`\sigma` of the trial Sharpe ratios, measuring
+        how much they vary from one trial to another. Must be finite and
+        non-negative.
+
+    trial_sharpe_ratio_mean : float, default=0.0
+        Mean :math:`\mu` of the Sharpe ratios across the trials.
+
+    Returns
+    -------
+    value : float
+        Approximate expected maximum Sharpe ratio, in the same per-period terms
+        as `trial_sharpe_ratio_std` and `trial_sharpe_ratio_mean`.
+
+    Raises
+    ------
+    ValueError
+        If `n_trials` is not a finite real number greater than or equal to 1, or
+        `trial_sharpe_ratio_std` is not a finite, non-negative real number.
+
+    Notes
+    -----
+    With a single trial or without dispersion across trials, there is no selection
+    to correct for and `trial_sharpe_ratio_mean` is returned.
+
+    The calculation treats all `n_trials` trials as independent. Similar parameter
+    settings can produce correlated Sharpe ratios, so counting every setting as an
+    independent trial can overestimate the expected maximum. An estimated effective
+    number of independent trials can be passed as `n_trials`.
+
+    See Also
+    --------
+    probabilistic_sharpe_ratio
+    deflated_sharpe_ratio
+
+    References
+    ----------
+    .. [1] "The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest
+        Overfitting, and Non-Normality".
+        Bailey, D. and Lopez de Prado, M. (2014)
+    """
+    _validate_positive_real(n_trials, "n_trials")
+    if n_trials < 1:
+        raise ValueError(f"n_trials must be at least 1, got {n_trials!r}")
+    _validate_non_negative_real(trial_sharpe_ratio_std, "trial_sharpe_ratio_std")
+    if n_trials == 1 or trial_sharpe_ratio_std == 0:
+        return trial_sharpe_ratio_mean
+    return trial_sharpe_ratio_mean + trial_sharpe_ratio_std * (
+        (1 - np.euler_gamma) * st.norm.ppf(1 - 1 / n_trials)
+        + np.euler_gamma * st.norm.ppf(1 - 1 / (n_trials * np.e))
+    )
+
+
+def probabilistic_sharpe_ratio(
+    returns: ArrayLike,
+    benchmark_sharpe_ratio: float = 0.0,
+    risk_free_rate: float = 0.0,
+) -> float | FloatArray:
+    r"""Compute the Probabilistic Sharpe Ratio (PSR).
+
+    The PSR estimates the probability that the true Sharpe ratio of a return series
+    exceeds a benchmark, given the length of the series and the non-normality of
+    its returns:
+
+    .. math::
+
+        PSR(SR^*) = Z\left[\frac{\left(\hat{SR} - SR^*\right)\sqrt{T - 1}}
+        {\sqrt{1 - \gamma_3 \hat{SR} + \frac{\gamma_4 - 1}{4} \hat{SR}^2}}\right]
+
+    with :math:`\hat{SR}` the observed Sharpe ratio, :math:`SR^*` the benchmark,
+    :math:`T` the number of observations, :math:`\gamma_3` the skew,
+    :math:`\gamma_4` the kurtosis and :math:`Z` the standard normal CDF.
+
+    Parameters
+    ----------
+    returns : ndarray of shape (n_observations,) or (n_observations, n_assets)
+        Array of return values.
+
+    benchmark_sharpe_ratio : float, default=0.0
+        Benchmark Sharpe ratio :math:`SR^*`.
+
+    risk_free_rate : float, default=0.0
+        Risk-free rate used to compute the excess mean of `returns`.
+
+    Returns
+    -------
+    value : float or ndarray of shape (n_assets,)
+        Estimated probability that the true Sharpe ratio exceeds
+        `benchmark_sharpe_ratio`.
+        If `returns` is a 1D-array, the result is a float.
+        If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+
+    Notes
+    -----
+    All quantities are per-period: `returns`, `risk_free_rate` and
+    `benchmark_sharpe_ratio` must share the same frequency, and none of them is
+    annualized.
+
+    NaN handling: NaNs are ignored. A series with fewer than three observations,
+    with no dispersion, or with a non-positive variance adjustment yields NaN.
+
+    See Also
+    --------
+    expected_max_sharpe_ratio
+    deflated_sharpe_ratio
+
+    References
+    ----------
+    .. [1] "The Sharpe Ratio Efficient Frontier".
+        Bailey, D. and Lopez de Prado, M. (2012)
+    """
+    returns = np.asarray(returns, dtype=float)
+    n_observations = np.sum(~np.isnan(returns), axis=0)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        sr = safe_divide(
+            mean(returns) - risk_free_rate,
+            standard_deviation(returns),
+            fill_value=np.nan,
+        )
+        variance_adj = 1 - skew(returns) * sr + (kurtosis(returns) - 1) / 4 * sr**2
+        value = st.norm.cdf(
+            (sr - benchmark_sharpe_ratio)
+            * np.sqrt(n_observations - 1)
+            / np.sqrt(variance_adj)
+        )
+
+    value = np.where(
+        (n_observations < 3) | np.logical_not(variance_adj > 0),
+        np.nan,
+        value,
+    )
+    return value if returns.ndim > 1 else float(value)
+
+
+def deflated_sharpe_ratio(
+    returns: ArrayLike,
+    trial_sharpe_ratios: ArrayLike,
+    risk_free_rate: float = 0.0,
+) -> float | FloatArray:
+    r"""Compute the Deflated Sharpe Ratio (DSR).
+
+    The DSR estimates the probability that the true Sharpe ratio of a strategy
+    selected as the best of several trials is greater than zero, once the number and
+    dispersion of those trials and the non-normality of the selected returns are
+    accounted for. It is the Probabilistic Sharpe Ratio benchmarked against the
+    expected maximum Sharpe ratio of the search:
+
+    .. math::
+
+        DSR = PSR\left(SR_0\right)
+
+    with :math:`SR_0` computed by :func:`expected_max_sharpe_ratio` using
+    `trial_sharpe_ratio_mean=0.0`. The selected strategy meets a 95% confidence
+    requirement when :math:`DSR \geq 0.95`.
+
+    Parameters
+    ----------
+    returns : ndarray of shape (n_observations,) or (n_observations, n_assets)
+        Return series of the selected trial. For a 2D-array, each column is
+        assessed against the same benchmark derived from `trial_sharpe_ratios`.
+
+    trial_sharpe_ratios : ndarray of shape (n_trials,)
+        Sharpe ratios of every trial evaluated by the search, not only the
+        selected one, since their count and dispersion set the benchmark. They
+        must use the same risk-free rate as `returns`.
+
+    risk_free_rate : float, default=0.0
+        Risk-free rate used to compute the excess mean of `returns`.
+
+    Returns
+    -------
+    value : float or ndarray of shape (n_assets,)
+        Estimated probability that the true Sharpe ratio of the selected trial
+        is greater than zero after accounting for selection across trials.
+        If `returns` is a 1D-array, the result is a float.
+        If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+
+    Raises
+    ------
+    ValueError
+        If `trial_sharpe_ratios` is not a 1D-array, is empty after dropping NaNs,
+        or contains infinite values.
+
+    Notes
+    -----
+    All quantities are per-period, not annualized, and `trial_sharpe_ratios` must
+    share the frequency of `returns`.
+
+    The benchmark assumes independent, normally distributed trial Sharpe ratios
+    and uses the number of non-NaN trials as the independent trial count. Positively
+    correlated trials, such as a dense grid of similar parameter combinations,
+    may therefore lead to an overly conservative adjustment.
+
+    See Also
+    --------
+    expected_max_sharpe_ratio
+    probabilistic_sharpe_ratio
+
+    References
+    ----------
+    .. [1] "The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest
+        Overfitting, and Non-Normality".
+        Bailey, D. and Lopez de Prado, M. (2014)
+    """
+    trial_sharpe_ratios = np.asarray(trial_sharpe_ratios, dtype=float)
+    if trial_sharpe_ratios.ndim != 1:
+        raise ValueError("trial_sharpe_ratios must be a 1D array")
+    if np.isinf(trial_sharpe_ratios).any():
+        raise ValueError("trial_sharpe_ratios must not contain infinite values")
+    trial_sharpe_ratios = trial_sharpe_ratios[~np.isnan(trial_sharpe_ratios)]
+    n_trials = len(trial_sharpe_ratios)
+    if n_trials == 0:
+        raise ValueError("trial_sharpe_ratios must contain at least one finite value")
+    benchmark_sharpe_ratio = expected_max_sharpe_ratio(
+        n_trials=n_trials,
+        trial_sharpe_ratio_std=(
+            float(standard_deviation(trial_sharpe_ratios)) if n_trials > 1 else 0.0
+        ),
+    )
+    return probabilistic_sharpe_ratio(
+        returns,
+        benchmark_sharpe_ratio=benchmark_sharpe_ratio,
+        risk_free_rate=risk_free_rate,
+    )
+
+
+def _prepare_weighted_returns(
+    returns: FloatArray, *, sample_weight: FloatArray
+) -> tuple[FloatArray, FloatArray]:
+    """Prepare returns and weights for calculations that exclude NaNs.
+
+    Inputs must be NumPy arrays of floats and are not modified.
+
+    Parameters
+    ----------
+    returns : ndarray of shape (n_observations,) or (n_observations, n_assets)
+        Return values, possibly containing NaNs.
+
+    sample_weight : ndarray of shape (n_observations,)
+        Observation weights already checked to be finite and nonnegative.
+
+    Returns
+    -------
+    returns : ndarray
+        Returns after removing zero-weight rows and replacing NaNs with zero.
+        Each replacement also receives zero weight, so it does not contribute
+        to the calculation. If all input weights are zero, no rows remain.
+
+    sample_weight : ndarray of shape (n_observations,) or (n_observations, n_assets)
+        Missing returns receive zero weight, and the remaining weights are
+        rescaled to sum to one. A nonempty column with no remaining positive
+        weight produces NaN weights.
+        Weights stay 1D for 1D returns or inputs without NaNs. For 2D returns
+        containing NaNs, each column gets its own normalized weight vector.
+    """
+    positive = sample_weight > 0
+    if not positive.all():
+        returns, sample_weight = returns[positive], sample_weight[positive]
+    missing = np.isnan(returns)
+    if missing.any():
+        sample_weight = np.where(
+            missing, 0.0, sample_weight[:, None] if returns.ndim == 2 else sample_weight
+        )
+        returns = np.where(missing, 0.0, returns)
+    return returns, _normalize_sample_weight(sample_weight)
+
+
+def _prepare_deviations(
+    returns: ArrayLike,
+    *,
+    sample_weight: FloatArray | None,
+    target: float | FloatArray | None = None,
+) -> tuple[FloatArray, FloatArray | None, float | FloatArray]:
+    """Prepare returns and weights, then subtract a target return.
+
+    Parameters
+    ----------
+    returns : array-like of shape (n_observations,) or (n_observations, n_assets)
+        Return values, possibly containing NaNs.
+
+    sample_weight : ndarray of shape (n_observations,) or None
+        Relative observation weights. Must be finite and nonnegative. If None,
+        equal weights are assumed.
+
+    target : float or ndarray of shape (n_assets,), optional
+        Return to subtract. If None, use the mean of each column with the
+        supplied weights, excluding NaNs.
+
+    Returns
+    -------
+    deviations : ndarray
+        Prepared returns minus the target. With weights, zero-weight rows are
+        removed and missing returns are replaced before subtraction. Their
+        deviations must be excluded using the returned weights. Without
+        weights, NaNs remain in place.
+
+    sample_weight : ndarray or None
+        Weights aligned with the deviations and normalized after excluding NaN
+        returns, separately for each column when needed. None if no weights
+        were supplied.
+
+    target : float or ndarray of shape (n_assets,)
+        Target subtracted from the returns. When no target was supplied, this is
+        the mean computed using the prepared returns and weights.
+    """
+    returns = np.asarray(returns, dtype=float)
+    if sample_weight is not None:
+        sample_weight = _validate_sample_weight(
+            sample_weight, n_observations=returns.shape[0]
+        )
+        returns, sample_weight = _prepare_weighted_returns(
+            returns, sample_weight=sample_weight
+        )
+    if target is None:
+        target = _mean(returns, sample_weight=sample_weight)
+    return returns - target, sample_weight, target
+
+
+def _standardized_moment(
+    returns: ArrayLike,
+    *,
+    order: int,
+    sample_weight: FloatArray | None,
+) -> float | FloatArray:
+    """Compute skew or kurtosis from centered returns.
+
+    Parameters
+    ----------
+    returns : array-like of shape (n_observations,) or (n_observations, n_assets)
+        Return values, possibly containing NaNs.
+
+    order : {3, 4}
+        Moment order. Three gives skew and four gives kurtosis.
+
+    sample_weight : ndarray of shape (n_observations,) or None
+        Relative observation weights. None gives equal weights.
+
+    Returns
+    -------
+    value : float or ndarray of shape (n_assets,)
+        Standardized moment. NaN if no usable observations remain, the second
+        moment is at most `(eps * mean)**2`, or the quotient is non-finite.
+    """
+    deviations, sample_weight, mean_return = _prepare_deviations(
+        returns, sample_weight=sample_weight
+    )
+    # Remove the residual offset left by rounding the mean.
+    deviations -= _mean(deviations, sample_weight=sample_weight)
+    moment = _mean(deviations**order, sample_weight=sample_weight)
+    second_moment = _mean(deviations**2, sample_weight=sample_weight)
+    undefined = second_moment <= (np.finfo(float).eps * mean_return) ** 2
+    denominator = np.where(undefined, np.nan, second_moment ** (order / 2))
+    return safe_divide(moment, denominator, fill_value=np.nan)
+
+
+def _mean(
+    values: FloatArray, *, sample_weight: FloatArray | None = None
+) -> float | FloatArray:
+    """Compute the mean from prepared values and optional normalized weights.
+
+    Parameters
+    ----------
+    values : ndarray of shape (n_observations,) or (n_observations, n_assets)
+        Values to average. Without weights, NaNs are excluded. With weights,
+        missing values must have been handled by `_prepare_weighted_returns`
+        before computing these values.
+
+    sample_weight : ndarray of shape (n_observations,) or (n_observations, n_assets), optional
+        Normalized weights from `_prepare_weighted_returns`, or None for an
+        unweighted mean. This function does not validate or normalize weights.
+
+    Returns
+    -------
+    value : float or ndarray of shape (n_assets,)
+        Mean, or one mean per column. Empty inputs and columns with no usable
+        observations produce NaN.
+    """
+    if values.shape[0] == 0:
+        return np.full(values.shape[1:], np.nan)[()]
+    if sample_weight is None:
+        if np.isfinite(values).all():
+            return values.mean(axis=0)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            return np.nanmean(values, axis=0)
+    return _weighted_sum(values, sample_weight=sample_weight)
+
+
+def _weighted_sum(
+    values: FloatArray, *, sample_weight: FloatArray
+) -> float | FloatArray:
     """Sum over observations, using column-specific weights when needed.
 
     Parameters
@@ -1114,7 +1661,7 @@ def _weighted_sum(values: FloatArray, weights: FloatArray) -> float | FloatArray
     values : ndarray of shape (n_observations,) or (n_observations, n_assets)
         Values to sum along the observation axis.
 
-    weights : ndarray of shape (n_observations,) or (n_observations, n_assets)
+    sample_weight : ndarray of shape (n_observations,) or (n_observations, n_assets)
         A 1D weight vector shared by all columns, or a 2D array matching
         `values` that assigns weights separately for each column.
 
@@ -1124,80 +1671,15 @@ def _weighted_sum(values: FloatArray, weights: FloatArray) -> float | FloatArray
         Weighted sum. A scalar for 1D values, or one result per column for
         2D values.
     """
-    if weights.ndim == 1:
-        return weights @ values
+    if sample_weight.ndim == 1:
+        return sample_weight @ values
     # Avoid allocating a full product array for column-specific weights.
-    return np.einsum("ij,ij->j", weights, values)
-
-
-def _prepare_weighted_returns(
-    returns: FloatArray, weights: FloatArray
-) -> tuple[FloatArray, FloatArray]:
-    """Prepare returns and weights for calculations that exclude NaNs.
-
-    Inputs must be floating-point arrays and are not modified.
-
-    Parameters
-    ----------
-    returns : ndarray of shape (n_observations,) or (n_observations, n_assets)
-        Return values, possibly containing NaNs.
-
-    weights : ndarray of shape (n_observations,)
-        Non-negative observation weights.
-
-    Returns
-    -------
-    returns : ndarray with the same shape as the input
-        Returns with NaN entries replaced by zero as an arithmetic placeholder.
-        These zeros do not represent observed returns.
-
-    weights : ndarray of shape (n_observations,) or (n_observations, n_assets)
-        Missing returns receive zero weight, and the remaining weights are
-        rescaled to sum to one. If no positive weight remains, the normalized
-        weights are NaN.
-        Weights stay 1D for 1D returns or inputs without NaNs. For 2D returns
-        containing NaNs, each column gets its own normalized weight vector.
-    """
-    missing = np.isnan(returns)
-    if missing.any():
-        weights = np.where(
-            missing, 0.0, weights[:, None] if returns.ndim == 2 else weights
-        )
-        # This is a new array: normalize in place, with 0/0 marking empty columns.
-        with np.errstate(invalid="ignore"):
-            weights /= weights.sum(axis=0)
-        returns = np.where(missing, 0.0, returns)
-    else:
-        total = weights.sum()
-        if not _sums_to_one(total, n_observations=weights.shape[0]):
-            # Rescale into a new array, so the caller's weights are left untouched.
-            with np.errstate(invalid="ignore"):
-                weights = weights / total
-    return returns, weights
-
-
-def _sums_to_one(total: float, n_observations: int) -> bool:
-    r"""Check whether a sum of weights equals one up to floating-point rounding.
-
-    Parameters
-    ----------
-    total : float
-        Sum of the weights.
-
-    n_observations : int
-        Number of weights in the sum.
-
-    Returns
-    -------
-    value : bool
-        True if :math:`|s - 1| \leq 4 n \epsilon`, where :math:`s` is `total`,
-        :math:`n` is `n_observations` and :math:`\epsilon` is the machine epsilon.
-    """
-    return bool(abs(total - 1.0) <= 4 * n_observations * np.finfo(float).eps)
+    return np.einsum("ij,ij->j", sample_weight, values)
 
 
 def _weighted_variance(
     returns: FloatArray,
+    *,
     sample_weight: FloatArray,
     biased: bool,
     min_acceptable_return: float | FloatArray | None = None,
@@ -1238,25 +1720,149 @@ def _weighted_variance(
         remaining positive weight produce NaN. The unbiased result is also
         NaN when its correction is zero.
     """
-    returns, weights = _prepare_weighted_returns(
-        np.asarray(returns, dtype=float), weights=np.asarray(sample_weight, dtype=float)
+    returns = np.asarray(returns, dtype=float)
+    n_observations = returns.shape[0]
+    sample_weight = _validate_sample_weight(
+        sample_weight, n_observations=n_observations
     )
-    if returns.shape[0] == 0:
+    returns, sample_weight = _prepare_weighted_returns(
+        returns, sample_weight=sample_weight
+    )
+    if len(returns) == 0:
         return np.full(returns.shape[1:], np.nan)[()]
     if min_acceptable_return is None:
-        min_acceptable_return = _weighted_sum(returns, weights=weights)
+        min_acceptable_return = _weighted_sum(returns, sample_weight=sample_weight)
     deviations = returns - min_acceptable_return
     if downside:
         np.minimum(deviations, 0.0, out=deviations)
     np.square(deviations, out=deviations)
-    result = _weighted_sum(deviations, weights=weights)
+    result = _weighted_sum(deviations, sample_weight=sample_weight)
     if biased:
         return result
-    correction = 1.0 - _weighted_sum(weights, weights=weights)
+    correction = 1.0 - _weighted_sum(sample_weight, sample_weight=sample_weight)
     return result / np.where(correction == 0, np.nan, correction)
 
 
-def _standardized_evar(losses: FloatArray, beta: float) -> float:
+def _tail_risk(
+    returns: ArrayLike,
+    *,
+    beta: float,
+    sample_weight: FloatArray | None,
+    conditional: bool,
+) -> float | FloatArray:
+    """Compute VaR or CVaR over usable observations, optionally weighted.
+
+    NaN returns are excluded separately for each column. When weights are
+    supplied, zero-weight observations are also excluded and the remaining
+    weights are rescaled to sum to one.
+
+    Parameters
+    ----------
+    returns : array-like of shape (n_observations,) or (n_observations, n_assets)
+        Return values, possibly containing NaNs.
+
+    beta : float
+        Confidence level in [0, 1].
+
+    sample_weight : ndarray of shape (n_observations,) or None
+        Non-negative observation weights. If None, the remaining observations
+        have equal weight.
+
+    conditional : bool
+        If True, return CVaR, the average loss in the lower return tail.
+        If False, return VaR, the lower `beta`-quantile of the loss.
+
+    Returns
+    -------
+    value : float or ndarray of shape (n_assets,)
+        VaR or CVaR. A scalar for 1D returns, or one result per column for
+        2D returns. The result is NaN if no observations or no positive
+        weight remain.
+    """
+    returns = np.asarray(returns, dtype=float)
+    eps = np.finfo(float).eps
+
+    def _unweighted(values: FloatArray) -> float | FloatArray:
+        """Compute the unweighted tail measure using the enclosing settings."""
+        size = values.shape[0]
+        if size == 0:
+            return np.nan
+        if beta == 1:
+            return -values.min(axis=0)
+        k = (1.0 - beta) * size
+        if conditional:
+            i = max(0, int(np.ceil(k) - 1))
+        else:
+            # The tolerance absorbs the floating-point error of `k`, so that an
+            # integer tail size such as `(1 - 0.9) * 10` is not rounded down.
+            i = min(size - 1, int(np.floor(k + 4 * eps * size)))
+        # Partition keeps the unweighted calculation linear in the sample size.
+        part = np.partition(values, i, axis=0)
+        if conditional:
+            return -np.sum(part[:i], axis=0) / k + part[i] * (i / k - 1.0)
+        return -part[i]
+
+    if sample_weight is None:
+        missing = np.isnan(returns)
+        if missing.all():
+            return np.full(returns.shape[1:], np.nan)[()]
+        if not missing.any():
+            return _unweighted(returns)
+        if returns.ndim == 1:
+            return _unweighted(returns[~missing])
+        return np.array(
+            [_unweighted(returns[~missing[:, j], j]) for j in range(returns.shape[1])]
+        )
+
+    sample_weight = _validate_sample_weight(
+        sample_weight, n_observations=returns.shape[0]
+    )
+    positive = sample_weight > 0
+
+    def _weighted(column: FloatArray) -> float:
+        """Compute the weighted tail measure for one return column."""
+        valid = ~np.isnan(column) & positive
+        values, probs = column[valid], sample_weight[valid]
+        if len(probs) == 0:
+            return np.nan
+        probs = _normalize_sample_weight(probs)
+        if beta == 0:
+            return -probs @ values if conditional else -values.max()
+        if beta == 1:
+            return -values.min()
+        if np.all(probs == probs[0]):
+            # Preserve the unweighted empirical rank convention exactly.
+            return float(_unweighted(values))
+        order = np.argsort(values)
+        values, probs = values[order], probs[order]
+        cumulative = np.cumsum(probs)
+        tail_mass = (1.0 - beta) * cumulative[-1]
+        if not conditional:
+            # Allow for rounding in beta and in the accumulated weights.
+            # Scale the weight tolerance by the tail mass: even a tiny probability
+            # can cover the whole tail when beta is close to one.
+            beta_tolerance = 0.5 * np.spacing(beta) * cumulative[-1]
+            weight_tolerance = 4 * eps * len(values) * tail_mass
+            i = np.searchsorted(
+                cumulative,
+                tail_mass + (beta_tolerance + weight_tolerance),
+                side="right",
+            )
+            return -values[min(i, len(values) - 1)]
+        i = np.searchsorted(cumulative, tail_mass)
+        if i == 0:
+            return -values[i]
+        return (
+            -(probs[:i] @ values[:i] + values[i] * (tail_mass - cumulative[i - 1]))
+            / tail_mass
+        )
+
+    if returns.ndim == 1:
+        return _weighted(returns)
+    return np.array([_weighted(column) for column in returns.T])
+
+
+def _unweighted_evar(losses: FloatArray, beta: float) -> float:
     r"""Compute the EVaR of losses standardized to [-1, 0] with a maximum of 0.
 
     With :math:`t = 1 / \theta` and :math:`c = \log(n (1 - \beta))`, the EVaR is the
@@ -1305,110 +1911,76 @@ def _standardized_evar(losses: FloatArray, beta: float) -> float:
     return objective(sco.brentq(gradient_sign, lower, upper))
 
 
-def _tail_risk(
-    returns: ArrayLike,
-    beta: float,
-    sample_weight: FloatArray | None,
-    conditional: bool,
-) -> float | FloatArray:
-    """Compute VaR or CVaR over usable observations, optionally weighted.
-
-    NaN returns are excluded separately for each column. When weights are
-    supplied, zero-weight observations are also excluded and the remaining
-    weights are rescaled to sum to one.
+def _weighted_evar(
+    losses: FloatArray, beta: float, log_probabilities: FloatArray
+) -> float:
+    """Compute weighted EVaR for losses scaled to [-1, 0], with maximum 0.
 
     Parameters
     ----------
-    returns : array-like of shape (n_observations,) or (n_observations, n_assets)
-        Return values, possibly containing NaNs.
+    losses : ndarray of shape (n_observations,)
+        Finite losses scaled so the minimum is -1 and the maximum is 0.
+        Observations with zero probability must already have been removed.
 
     beta : float
-        Confidence level in [0, 1] for VaR and [0, 1) for CVaR.
+        Confidence level strictly between 0 and 1.
 
-    sample_weight : ndarray of shape (n_observations,) or None
-        Non-negative observation weights. If None, the remaining observations
-        have equal weight.
-
-    conditional : bool
-        If True, return CVaR, the average loss in the lower return tail.
-        If False, return VaR, the lower `beta`-quantile of the loss.
+    log_probabilities : ndarray of shape (n_observations,)
+        Natural logarithms of the positive observation probabilities, aligned
+        with `losses`. These probabilities must sum to one. Keeping them in
+        logarithmic form preserves very small probabilities in the calculation.
 
     Returns
     -------
-    value : float or ndarray of shape (n_assets,)
-        VaR or CVaR. A scalar for 1D returns, or one result per column for
-        2D returns. The result is NaN if no observations or no positive
-        weight remain.
+    value : float
+        EVaR of the scaled losses, between their weighted mean and zero.
+
+    Notes
+    -----
+    Find the minimum of the EVaR objective by locating where its derivative
+    changes sign. The search uses the logarithm of the inverse temperature,
+    where temperature is the positive scale parameter in the EVaR formula.
+
+    Near confidence zero, use the weighted mean if Hoeffding's bound puts it
+    within 1e-12 of EVaR. At a large inverse temperature, use the maximum loss
+    if the objective is within 1e-12 of it. This second error is bounded by
+    `log((1 - beta) / probability_at_maximum) / inverse_temperature`.
+    Both bounds apply on the scaled loss range [-1, 0].
     """
-    returns = np.asarray(returns, dtype=float)
-    eps = np.finfo(float).eps
+    log_tail = np.log1p(-beta)
+    log_maximum_mass = scs.logsumexp(log_probabilities[losses == 0])
+    if log_maximum_mass >= log_tail:
+        return 0.0
+    probabilities = _normalize_sample_weight(np.exp(log_probabilities))
+    risk_tolerance = 1e-12
+    if np.sqrt(-0.5 * log_tail) <= risk_tolerance:
+        return float(probabilities @ losses)
 
-    def _unweighted(values: FloatArray) -> float | FloatArray:
-        """Compute the unweighted tail measure using the enclosing settings."""
-        size = values.shape[0]
-        if size == 0:
-            return np.nan
-        k = (1.0 - beta) * size
-        if conditional:
-            i = max(0, int(np.ceil(k) - 1))
+    def evaluate(log_inverse_temperature: float) -> tuple[float, float]:
+        """Return the EVaR objective and a value with its derivative's sign."""
+        inverse_temperature = np.exp(log_inverse_temperature)
+        scaled_losses = inverse_temperature * losses
+        if inverse_temperature < 1:
+            # At small confidence levels the exponential average is close to one.
+            # Preserve its small change instead of subtracting rounded logarithms.
+            log_average = np.log1p(probabilities @ np.expm1(scaled_losses))
+            tilted_weights = probabilities * np.exp(scaled_losses - log_average)
         else:
-            # The tolerance absorbs the floating-point error of `k`, so that an
-            # integer tail size such as `(1 - 0.9) * 10` is not rounded down.
-            i = min(size - 1, int(np.floor(k + 4 * eps * size)))
-        # Partition keeps the unweighted calculation linear in the sample size.
-        part = np.partition(values, i, axis=0)
-        if conditional:
-            return -np.sum(part[:i], axis=0) / k + part[i] * (i / k - 1.0)
-        return -part[i]
+            log_average = scs.logsumexp(log_probabilities + scaled_losses)
+            tilted_weights = np.exp(log_probabilities + scaled_losses - log_average)
+        objective = (log_average - log_tail) / inverse_temperature
+        gradient = tilted_weights @ scaled_losses - log_average + log_tail
+        return objective, gradient
 
-    if sample_weight is None:
-        missing = np.isnan(returns)
-        if missing.all():
-            return np.full(returns.shape[1:], np.nan)[()]
-        if not missing.any():
-            return _unweighted(returns)
-        if returns.ndim == 1:
-            return _unweighted(returns[~missing])
-        return np.array(
-            [_unweighted(returns[~missing[:, j], j]) for j in range(returns.shape[1])]
-        )
+    def gradient_sign(log_inverse_temperature: float) -> float:
+        """Return a value with the same sign as the objective's derivative."""
+        return evaluate(log_inverse_temperature)[1]
 
-    weights = np.asarray(sample_weight, dtype=float)
-    positive = weights > 0
-
-    def _weighted(column: FloatArray) -> float:
-        """Compute the weighted tail measure for one return column."""
-        valid = ~np.isnan(column) & positive
-        values, probs = column[valid], weights[valid]
-        if len(probs) == 0:
-            return np.nan
-        probs /= probs.sum()
-        if beta == 0:
-            return -probs @ values if conditional else -values.max()
-        if beta == 1:
-            return -values.min()
-        if np.all(probs == probs[0]):
-            # Preserve the unweighted empirical rank convention exactly.
-            return float(_unweighted(values))
-        order = np.argsort(values)
-        values, probs = values[order], probs[order]
-        cumulative = np.cumsum(probs)
-        tail_mass = (1.0 - beta) * cumulative[-1]
-        if not conditional:
-            # The tolerance absorbs the floating-point error of `tail_mass` and of
-            # the cumulative sum, which grows with the number of observations.
-            i = np.searchsorted(
-                cumulative, tail_mass + 4 * eps * len(values), side="right"
-            )
-            return -values[min(i, len(values) - 1)]
-        i = np.searchsorted(cumulative, tail_mass)
-        if i == 0:
-            return -values[i]
-        return (
-            -(probs[:i] @ values[:i] + values[i] * (tail_mass - cumulative[i - 1]))
-            / tail_mass
-        )
-
-    if returns.ndim == 1:
-        return _weighted(returns)
-    return np.array([_weighted(column) for column in returns.T])
+    lower = 0.5 * np.log(-2.0 * log_tail)
+    upper = 20.0
+    while gradient_sign(upper) <= 0:
+        if (log_tail - log_maximum_mass) * np.exp(-upper) <= risk_tolerance:
+            return 0.0
+        upper += 4.0
+    root = sco.brentq(gradient_sign, lower, upper)
+    return evaluate(root)[0]

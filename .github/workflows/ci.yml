@@ -310,6 +310,4 @@ jobs:
       # which the deployment workflow runs in full.
       - name: Build docs in fast mode
         working-directory: ./docs
-        env:
-          SKFOLIO_DOCS_FAST: "1"
-        run: uv run --no-dev --group docs sphinx-build -b html . _build
+        run: uv run --no-dev --group docs sphinx-build -b html -t fast . _build

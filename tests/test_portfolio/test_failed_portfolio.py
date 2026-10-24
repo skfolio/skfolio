@@ -32,7 +32,7 @@ from skfolio.utils.tools import args_names
     scope="module",
     params=list(PerfMeasure)
     + list(RiskMeasure)
-    + list(RiskMeasure)
+    + list(RatioMeasure)
     + list(ExtraRiskMeasure),
 )
 def measure(request):
@@ -274,7 +274,11 @@ def test_portfolio_clear_cache(portfolio, measure):
         if measure != ExtraRiskMeasure.VALUE_AT_RISK:
             assert m != new_m
         if isinstance(measure, RatioMeasure):
-            assert getattr(portfolio, measure.value) == portfolio.mean / new_m
+            excess_mean = portfolio.mean - portfolio.risk_free_rate
+            if measure.is_annualized:
+                excess_mean *= portfolio.annualization_factor
+            risk = getattr(portfolio, measure.linked_risk_measure.value)
+            np.testing.assert_allclose(new_m, excess_mean / risk)
 
 
 def test_portfolio_read_only(portfolio):

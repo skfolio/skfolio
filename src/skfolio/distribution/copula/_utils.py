@@ -439,20 +439,36 @@ def _apply_rotation_cdf(
     rotated_cdf : ndarray of shape (n_observations,)
        The transformed CDF values after applying the rotation.
     """
-    rotated_X = _apply_copula_rotation(X, rotation=rotation)
-    cdf = func(X=rotated_X, **kwargs)
+    u, v = X.T
+    # Every copula satisfies max(u + v - 1, 0) <= C(u, v) <= min(u, v).
+    # This evaluation order keeps the lower bound accurate when u + v is near 1.
+    upper_bound = np.minimum(u, v)
+    lower_bound = np.maximum(upper_bound - (1.0 - np.maximum(u, v)), 0.0)
 
+    rotated_X = _apply_copula_rotation(X, rotation=rotation)
+    rotated_u, rotated_v = rotated_X.T
+    # On the boundary, C(u, v) = min(u, v). Evaluate the numerical formula only
+    # inside the unit square, where its logarithms and powers are well-defined.
+    # Check after rotation because 1 - u can round to 1 for very small u.
+    cdf = np.minimum(rotated_u, rotated_v)
+    interior_mask = (cdf > 0) & (np.maximum(rotated_u, rotated_v) < 1)
+    if np.any(interior_mask):
+        cdf[interior_mask] = func(X=rotated_X[interior_mask], **kwargs)
+
+    # Convert the unrotated CDF at the transformed coordinates to the rotated CDF.
     match rotation:
         case CopulaRotation.R0:
             pass
         case CopulaRotation.R90:
-            cdf = X[:, 1] - cdf
+            cdf = v - cdf
         case CopulaRotation.R180:
-            cdf = np.sum(X, axis=1) - 1 + cdf
+            cdf = u + v - 1 + cdf
         case CopulaRotation.R270:
-            cdf = X[:, 0] - cdf
+            cdf = u - cdf
 
-    return cdf
+    # Correct subtraction roundoff. The bounds coincide when an original margin
+    # is 0 or 1, so this also restores exact boundary values after rotation.
+    return np.clip(cdf, lower_bound, upper_bound)
 
 
 def _apply_rotation_partial_derivatives(

@@ -10,7 +10,11 @@ from sklearn.base import BaseEstimator
 
 from skfolio.containers import AssetPanel, Field3D
 from skfolio.pre_selection import DropCorrelated
-from skfolio.utils.validation import validate_asset_panel, validate_cross_sectional_data
+from skfolio.utils.validation import (
+    _validate_pairwise_matrix,
+    validate_asset_panel,
+    validate_cross_sectional_data,
+)
 
 
 class DummyEstimator(BaseEstimator):
@@ -514,3 +518,27 @@ class TestValidateCrossSectionalData:
         assert y_val.shape == (5, 4)
         assert w_val.shape == (5, 4)
         np.testing.assert_allclose(w_val, weights)
+
+
+class TestValidatePairwiseMatrix:
+    """Test the shared availability rules for pairwise matrices."""
+
+    def test_availability_uses_only_the_diagonal(self):
+        """Retain finite and missing entries involving an unavailable asset."""
+        X = np.array([[0.0, np.nan, 0.2], [7.0, np.nan, np.nan], [0.2, 9.0, 0.0]])
+        validated, available = _validate_pairwise_matrix(X)
+        np.testing.assert_array_equal(validated, X)
+        np.testing.assert_array_equal(available, [True, False, True])
+
+    def test_missing_values_between_available_assets(self):
+        """Reject missing pairwise values for available assets."""
+        X = np.array([[0.0, np.nan], [np.nan, 0.0]])
+        with pytest.raises(ValueError, match="missing values between available assets"):
+            _validate_pairwise_matrix(X)
+
+    @pytest.mark.parametrize("value", [np.inf, -np.inf])
+    def test_infinity_for_unavailable_assets(self, value):
+        """Reject infinities even when they involve an unavailable asset."""
+        X = np.array([[0.0, value], [np.nan, np.nan]])
+        with pytest.raises(ValueError, match="infinity"):
+            _validate_pairwise_matrix(X)

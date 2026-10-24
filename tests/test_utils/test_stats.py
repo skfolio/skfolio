@@ -33,6 +33,7 @@ from skfolio.utils.stats import (
     inverse_multiply,
     is_cholesky_dec,
     is_positive_definite,
+    is_positive_semidefinite,
     minimize_relative_weight_deviation,
     multiply_by_inverse,
     n_bins_freedman,
@@ -157,6 +158,29 @@ def test_n_bins_knuth_can_return_n_bins():
 )
 def test_is_positive_definite(x, expected):
     assert is_positive_definite(x) == expected
+
+
+@pytest.mark.parametrize(
+    ("x", "expected"),
+    [
+        (np.eye(2), True),
+        (np.ones((2, 2)), True),
+        (np.zeros((2, 2)), True),
+        (np.array([[1.0, 2.0], [2.0, 1.0]]), False),
+        (np.diag([1.0, -1e-14]), False),
+    ],
+)
+def test_is_positive_semidefinite(x, expected):
+    assert is_positive_semidefinite(x) is expected
+
+
+@pytest.mark.parametrize(
+    ("eigenvalue", "expected"),
+    [(-2e-12, False), (-1e-12, True), (-5e-13, True), (0.0, True)],
+)
+def test_is_positive_semidefinite_tolerance(eigenvalue, expected):
+    x = np.diag([1.0, eigenvalue])
+    assert is_positive_semidefinite(x, atol=1e-12) is expected
 
 
 def test_cov_nearest(nasdaq_X):
@@ -1475,6 +1499,43 @@ class TestCsPearsonCorrelation:
 class TestCsRank:
     """Tests for cs_rank."""
 
+    @pytest.mark.parametrize("axis", [0, -1])
+    @pytest.mark.parametrize("value", [2.0, np.nan, np.inf, -np.inf])
+    def test_scalar(self, value, axis):
+        """Scalar inputs retain NumPy's one-element ranking behavior."""
+        result = cs_rank(np.array(value), axis=axis)
+        assert result.shape == (1,)
+        assert result.dtype == np.float64
+        assert_allclose(result, [1.0 if np.isfinite(value) else np.nan])
+
+    @pytest.mark.parametrize("shape", [(0,), (0, 3), (2, 0)])
+    def test_empty(self, shape):
+        """Empty arrays preserve shape and still reject out-of-range axes."""
+        a = np.empty(shape)
+        for axis in range(-a.ndim, a.ndim):
+            result = cs_rank(a, axis=axis)
+            assert result.shape == shape
+            assert result.dtype == np.float64
+        with pytest.raises(IndexError, match="out of bounds"):
+            cs_rank(a, axis=a.ndim)
+
+    @pytest.mark.parametrize(
+        "ndim, axis", [(1, 0), (2, 0), (2, 1), (3, 0), (3, 1), (3, 2), (3, -1)]
+    )
+    def test_ties_and_nonfinite_values(self, ndim, axis):
+        """Finite ties share midranks independently along the selected axis."""
+        values = [4.0, 1.0, 1.0, np.nan, np.inf, -np.inf, 3.0, 4.0]
+        expected = [4.5, 1.5, 1.5, np.nan, np.nan, np.nan, 3.0, 4.5]
+        shape = (2,) * (ndim - 1) + (len(values),)
+        a = np.moveaxis(np.broadcast_to(values, shape), -1, axis)
+        expected = np.moveaxis(np.broadcast_to(expected, shape), -1, axis)
+
+        assert_allclose(cs_rank(a, axis=axis), expected, equal_nan=True)
+
+    def test_all_ties(self):
+        """A constant finite cross-section receives its shared central rank."""
+        assert_allclose(cs_rank(np.array([2.0, np.nan, 2.0, 2.0])), [2, np.nan, 2, 2])
+
     def test_basic_1d(self):
         a = np.array([30.0, 10.0, 20.0])
         expected = np.array([3.0, 1.0, 2.0])
@@ -1520,6 +1581,59 @@ class TestCsRank:
 
 class TestCsSpearmanCorrelation:
     """Tests for cs_spearman_correlation."""
+
+    @pytest.mark.parametrize("axis", [1, -1])
+    @pytest.mark.parametrize("missing", [False, True])
+    @pytest.mark.parametrize("min_count", [3, 4])
+    def test_broadcast_inputs_of_different_dimensions(self, axis, missing, min_count):
+        """Broadcast ranks use each pair's finite observations and sample count."""
+        a = np.array([1.0, 1.0, 2.0, 3.0])
+        b = np.array([[1.0, 2.0, 2.0, 4.0], [1.0, 2.0, 3.0, 4.0]])
+        if missing:
+            b[1, 1] = np.nan
+        before_a, before_b = a.copy(), b.copy()
+        a.setflags(write=False)
+        b.setflags(write=False)
+
+        # Midranks give 5/6 and 3/sqrt(10); removing the second asset leaves
+        # identical ranks [1, 2, 3] in the second pair, with only three samples.
+        second = 1.0 if missing else 3.0 / np.sqrt(10.0)
+        if missing and min_count == 4:
+            second = np.nan
+        assert_allclose(
+            cs_spearman_correlation(a, b, axis=axis, min_count=min_count),
+            [5.0 / 6.0, second],
+        )
+        np.testing.assert_array_equal(a, before_a)
+        np.testing.assert_array_equal(b, before_b)
+
+    def test_broadcast_constant_along_rank_axis(self):
+        """A repeated scalar stays constant across the broadcast ranking axis."""
+        a = np.ones((2, 1))
+        b = np.array([[1.0, 2.0, 3.0, 4.0], [4.0, 3.0, 2.0, 1.0]])
+        assert_allclose(cs_spearman_correlation(a, b, axis=1), [np.nan, np.nan])
+
+    @pytest.mark.parametrize("axis", [0, 1, -1])
+    def test_ties_with_pairwise_mask_and_broadcasting(self, axis):
+        """Joint masking precedes midranking across broadcast factor axes."""
+        a = np.tile([1.0, 1.0, 2.0, 3.0, np.inf, 0.0], (2, 1))[:, :, None]
+        b = np.array([1.0, 2.0, 2.0, 4.0, 9.0, np.nan])
+        b = np.broadcast_to(np.stack([b, -b], axis=-1), (2, 6, 2))
+        # The retained ranks are [1.5, 1.5, 3, 4] and [1, 2.5, 2.5, 4].
+        expected = np.tile([5.0 / 6.0, -5.0 / 6.0], (2, 1))
+
+        assert_allclose(
+            cs_spearman_correlation(
+                np.moveaxis(a, 1, axis), np.moveaxis(b, 1, axis), axis=axis
+            ),
+            expected,
+        )
+
+    def test_all_ties(self):
+        """Constant ranks have undefined correlation rather than positional order."""
+        assert np.isnan(
+            cs_spearman_correlation(np.ones(4), np.array([1.0, 2.0, 3.0, 4.0]))
+        )
 
     def test_matches_scipy_spearmanr_1d(self):
         from scipy.stats import spearmanr

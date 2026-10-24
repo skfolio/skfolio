@@ -38,8 +38,13 @@ The :class:`ReturnDistribution` is a dataclass containing:
     * `mu`: Estimated expected returns of shape (n_assets,)
     * `covariance`: Estimated covariance matrix of shape (n_assets, n_assets)
     * `returns`: (Estimated) asset returns of shape (n_observations, n_assets)
-    * `sample_weight` : Sample weight for each observation of shape (n_observations,) (optional)
+    * `sample_weight` : Optional finite, nonnegative scenario probabilities of shape
+      (n_observations,), summing to one within an absolute tolerance of 1.001e-5.
     * `cholesky` : Lower-triangular Cholesky factor of the covariance (optional)
+
+Custom priors must normalize relative weights before constructing a
+:class:`ReturnDistribution`. Unnormalized weights raise `ValueError`.
+Totals within this tolerance are rescaled to one without modifying the input array.
 
 When native NaN-aware moment estimators are used, a prior can keep the full asset
 universe in `return_distribution_` while non-investable assets are represented by NaNs
@@ -198,7 +203,7 @@ Tutorials:
    
     # Load historical prices and convert them to returns
     prices = load_sp500_dataset()
-    X = prices_to_returns(prices, factors)
+    X = prices_to_returns(prices)
    
     # Instantiate the SyntheticData model and fit it
     model = SyntheticData()
@@ -207,13 +212,13 @@ Tutorials:
 
     # Minimum CVaR optimization on synthetic returns
     vine = VineCopula(log_transform=True, n_jobs=-1)
-    prior = =SyntheticData(distribution_estimator=vine, n_samples=2000)
+    prior = SyntheticData(distribution_estimator=vine, n_samples=2000)
     model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=prior)
     model.fit(X)
     print(model.weights_)
 
     # Stress Test
-    vine = VineCopula(log_transform=True, central_assets=["BAC"]  n_jobs=-1)
+    vine = VineCopula(log_transform=True, central_assets=["BAC"], n_jobs=-1)
     vine.fit(X)
     X_stressed = vine.sample(n_samples=10000, conditioning = {"BAC": -0.2})
     ptf_stressed = model.predict(X_stressed)
@@ -362,10 +367,17 @@ Tutorials:
     
     print(opinion_pooling.return_distribution_.sample_weight)
     
-    # CVaR Risk Parity optimization on opinion Pooling
+We use SCS (`pip install scs`) for CVaR risk parity because concentrated scenario
+probabilities can cause numerical difficulties for CLARABEL. See the
+:ref:`solver fallback example <sphx_glr_auto_examples_mean_risk_plot_17_failure_and_fallbacks.py>`
+to keep CLARABEL as the primary solver and fall back to SCS on failure.
+
+.. code-block:: python
+
     model = RiskBudgeting(
         risk_measure=RiskMeasure.CVAR,
-        prior_estimator=opinion_pooling
+        prior_estimator=opinion_pooling,
+        solver="SCS",
     )
     model.fit(X)
     print(model.weights_)
@@ -486,7 +498,7 @@ This can be achieved by combining :class:`EntropyPooling` with :class:`Synthetic
 
     # Entropy Pooling by imposing a CVaR-95% of 10% on Apple
     entropy_pooling = EntropyPooling(
-        prior_estimator=factor_synth,
+        prior_estimator=synth,
         cvar_views=["AAPL == 0.10"],
     )
 

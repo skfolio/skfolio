@@ -124,8 +124,8 @@ def test_independent_score_exact(X, fitted_model):
 
 
 def test_independent_aic_bic_exact(X, fitted_model):
-    np.isclose(fitted_model.aic(X), 0.0)
-    np.isclose(fitted_model.bic(X), 0.0)
+    assert np.isclose(fitted_model.aic(X), 0.0)
+    assert np.isclose(fitted_model.bic(X), 0.0)
 
 
 def test_cdf_exact(

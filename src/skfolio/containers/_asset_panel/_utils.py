@@ -224,7 +224,8 @@ def _positions_from_unique_labels(labels: AnyArray, selected: Any) -> slice | In
         return index.slice_indexer(selected.start, selected.stop, selected.step)
     if isinstance(selected, (str, bytes)) or np.isscalar(selected):
         loc = index.get_loc(selected)
-        return slice(int(loc), int(loc) + 1)
+        # Exact lookups on unique asset labels return an integer position.
+        return slice(int(loc), int(loc) + 1)  # ty: ignore[invalid-argument-type]
 
     positions = []
     missing = []
@@ -234,7 +235,7 @@ def _positions_from_unique_labels(labels: AnyArray, selected: Any) -> slice | In
         except KeyError:
             missing.append(label)
             continue
-        positions.append(int(loc))
+        positions.append(int(loc))  # ty: ignore[invalid-argument-type]
     if missing:
         raise KeyError(f"Labels not found: {missing}")
     return np.asarray(positions, dtype=np.intp)
@@ -250,7 +251,7 @@ def _positions_from_labels(labels: AnyArray, selected: Any) -> slice | IntArray:
         if isinstance(loc, slice):
             return loc
         if isinstance(loc, np.ndarray):
-            return np.flatnonzero(loc) if loc.dtype == np.bool_ else loc
+            return np.flatnonzero(loc) if loc.dtype == np.bool_ else loc  # ty: ignore[invalid-return-type]
         return slice(int(loc), int(loc) + 1)
 
     positions = []
