@@ -299,10 +299,7 @@ class Attribution:
                 _format_contrib_with_ci_margin(m, s, z)
                 for m, s in zip(mu_vals, se_vals, strict=True)
             ]
-            df.drop(
-                columns=[mu_contrib_col, "Mean Return Uncertainty"],
-                inplace=True,
-            )
+            df = df.drop(columns=[mu_contrib_col, "Mean Return Uncertainty"])
 
         if formatted:
             pct_cols = [
