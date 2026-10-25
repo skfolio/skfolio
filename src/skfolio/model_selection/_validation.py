@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import warnings
 from collections import defaultdict
+from collections.abc import Iterator, Sequence
+from itertools import chain, islice
 from typing import TYPE_CHECKING, Any, TypeVar
 
 import numpy as np
@@ -44,7 +46,9 @@ _EstimatorT = TypeVar("_EstimatorT", bound=skb.BaseEstimator)
 
 
 def cross_val_predict(
-    estimator: BaseOptimization | Pipeline,
+    estimator: BaseOptimization
+    | Pipeline
+    | Sequence[tuple[str, BaseOptimization | Pipeline]],
     X: ArrayLike,
     y: ArrayLike = None,
     cv: sks.BaseCrossValidator
@@ -61,7 +65,7 @@ def cross_val_predict(
     portfolio_params: dict | None = None,
     entry_rebalancing_params: dict | None = None,
 ) -> MultiPeriodPortfolio | Population:
-    """Generate cross-validated `Portfolios` estimates.
+    """Generate cross-validated portfolios.
 
     The data is split according to the `cv` parameter.
     The optimization estimator is fitted on the training set and portfolios are
@@ -80,6 +84,10 @@ def cross_val_predict(
     :class:`~skfolio.portfolio.MultiPeriodPortfolio` objects (each test produces a
     collection of paths rather than a single path).
 
+    When a list of `(name, estimator)` pairs is provided, all estimators are
+    evaluated on the same splits and their portfolios are returned together in a
+    :class:`~skfolio.population.Population`.
+
     If the final estimator in the pipeline (or the estimator itself) declares
     `needs_previous_weights=True`, this function automatically propagates
     `previous_weights` from one fold to the next for sequential CV strategies
@@ -87,9 +95,10 @@ def cross_val_predict(
 
     Parameters
     ----------
-    estimator : BaseEstimator | Pipeline
+    estimator : BaseEstimator | Pipeline | sequence of (str, estimator)
         Portfolio optimization estimator or pipeline whose last step is an optimization
-        estimator.
+        estimator. To evaluate several estimators, pass a sequence of `(name, estimator)`
+        pairs with unique string names.
 
     X : array-like of shape (n_observations, n_assets)
         Price returns of the assets.
@@ -108,9 +117,10 @@ def cross_val_predict(
         * An iterable that generates (train, test) splits as arrays of indices.
 
     n_jobs : int, optional
-        The number of jobs to run in parallel for `fit` of all `estimators`.
+        The number of jobs to run in parallel.
         `None` means 1 unless in a `joblib.parallel_backend` context. -1 means
-        using all processors.
+        using all processors. Named estimators share one worker pool. Folds that
+        depend on previous holdings run sequentially within each path.
 
     method : str
         Invokes the passed method name of the passed estimator.
@@ -159,31 +169,39 @@ def cross_val_predict(
         portfolio are passed as `previous_weights` to the next fit. A value passed here
         overrides the optimizer's `portfolio_params`.
 
-        Optimizer parameters such as `transaction_costs`, `management_fees` and
-        `previous_weights` are not accepted here. Set them on the optimizer.
+        Optimization parameters such as `transaction_costs`, `management_fees` and
+        `previous_weights` are not accepted here. Set them on the optimization
+        estimator.
 
         `name`, `tag`, `sample_weight` and `check_observations_order` apply to the
         returned `MultiPeriodPortfolio` only.
 
+        For named estimators, these settings apply to every estimator. `name` and
+        `tag` are set from the estimator names and cannot be overridden here.
+
     entry_rebalancing_params : dict, optional
-        Portfolio optimizer parameters applied only while constructing the first
+        Optimization estimator parameters applied only while constructing the first
         portfolio of each sequential path. This is useful when the strategy starts with
         no existing position, while later portfolios represent regular rebalancing from
         the previously predicted weights. For example, the entry rebalancing can relax
         `max_turnover` or use lower `transaction_costs` to avoid a slow ramp from cash
         caused by recurring rebalancing constraints. The first portfolio is included in
-        the result. The regular optimizer parameters are used for all subsequent
+        the result. The regular estimator parameters are used for all subsequent
         optimizations. When provided, `cross_val_predict` evaluates a sequential
         strategy path and propagates `previous_weights` between portfolios. This is only
         supported for sequential CV strategies such as
         :class:`~skfolio.model_selection.WalkForward`,
         :class:`~sklearn.model_selection.TimeSeriesSplit` and
         :class:`~skfolio.model_selection.MultipleRandomizedCV`.
+        For named estimators, these settings apply to every estimator.
 
     Returns
     -------
     predictions : MultiPeriodPortfolio | Population
-        This is the result of calling `predict`
+        A `MultiPeriodPortfolio` for single-path CV, or a `Population` for multi-path CV.
+        Named estimators always return a `Population`, with one `MultiPeriodPortfolio`
+        per estimator and path, ordered by estimator then path. Estimator names set
+        `name` and `tag`.
 
     Notes
     -----
@@ -195,30 +213,79 @@ def cross_val_predict(
     observation when `weight_drift=True`. Failed and empty portfolios are skipped
     when propagating holdings. With a non-sequential CV, drift is applied inside
     each test fold and nothing is propagated.
-    """
-    if not _is_portfolio_optimization_estimator(estimator):
-        raise TypeError(
-            "skfolio's `cross_val_predict` only supports portfolio optimization "
-            "estimators. For non-portfolio optimization estimators, use "
-            "`sklearn.model_selection.cross_val_predict`."
-        )
 
-    estimator, portfolio_params, explicit_measure_param_names = (
-        _resolve_evaluation_portfolio_params(estimator, portfolio_params)
+    Examples
+    --------
+    Evaluate an inverse-volatility portfolio with walk-forward cross-validation:
+
+    >>> from skfolio.datasets import load_sp500_dataset
+    >>> from skfolio.model_selection import WalkForward, cross_val_predict
+    >>> from skfolio.optimization import EqualWeighted, InverseVolatility
+    >>> from skfolio.preprocessing import prices_to_returns
+
+    >>> prices = load_sp500_dataset()
+    >>> X = prices_to_returns(prices)
+
+    >>> cv = WalkForward(train_size=252, test_size=63)
+    >>> mpp = cross_val_predict(InverseVolatility(), X, cv=cv)  # MultiPeriodPortfolio
+
+    To compare estimators on the same splits, pass a list of named estimators:
+
+    >>> estimators = [
+    ...     ("equal_weighted", EqualWeighted()),
+    ...     ("inverse_volatility", InverseVolatility()),
+    ... ]
+    >>> population = cross_val_predict(estimators, X, cv=cv)
+    >>> [mpp.name for mpp in population]
+    ['equal_weighted', 'inverse_volatility']
+    """
+    is_collection = isinstance(estimator, Sequence) and not isinstance(
+        estimator, str | bytes | bytearray
     )
+    named_estimators = (
+        _validate_named_estimators(estimator) if is_collection else [(None, estimator)]
+    )
+    if is_collection:
+        conflicting_params = sorted({"name", "tag"} & set(portfolio_params or {}))
+        if conflicting_params:
+            raise ValueError(
+                f"{conflicting_params} cannot be set in `portfolio_params` when "
+                "`cross_val_predict` receives named estimators: their names determine "
+                "the portfolio names and tags."
+            )
+
+    evaluations = []
+    for name, est in named_estimators:
+        if not _is_portfolio_optimization_estimator(est):
+            description = (
+                f", but the estimator named {name!r} is of type {type(est).__name__}"
+                if is_collection
+                else ""
+            )
+            raise TypeError(
+                "skfolio's `cross_val_predict` only supports portfolio optimization "
+                f"estimators{description}. For non-portfolio optimization estimators, "
+                "use `sklearn.model_selection.cross_val_predict`."
+            )
+        est, evaluation_params, explicit_measure_params = (
+            _resolve_evaluation_portfolio_params(est, portfolio_params)  # ty: ignore[invalid-argument-type]
+        )
+        if is_collection:
+            evaluation_params.update(name=name, tag=name)
+        evaluations.append((est, evaluation_params, explicit_measure_params))
 
     X, y = safe_split(X, y, indices=column_indices, axis=1)
     X, y = sku.indexable(X, y)
-
+    cv = sks.check_cv(cv, y)
     routed_params = _route_params(
-        estimator,
+        [est for est, _, _ in evaluations],
         params,
         cv=cv,
         owner="cross_val_predict",
         callee="fit",
     )
+    fit_params = routed_params.estimator_params
 
-    cv = sks.check_cv(cv, y)
     splits = list(cv.split(X, y, **routed_params.splitter.split))
     if len(splits) == 0:
         raise ValueError(
@@ -227,7 +294,11 @@ def cross_val_predict(
         )
 
     # We ensure that the folds are not shuffled
-    if not isinstance(cv, BaseCombinatorialCV | MultipleRandomizedCV):
+    path_ids = None
+    if isinstance(cv, BaseCombinatorialCV | MultipleRandomizedCV):
+        path_ids = cv.get_path_ids()
+        path_nb = np.max(path_ids) + 1
+    else:
         try:
             if cv.shuffle:
                 raise ValueError(
@@ -243,137 +314,179 @@ def cross_val_predict(
                         "`cross_val_predict` only works with un-shuffled folds"
                     ) from None
 
-    # estimator can be a Pipeline
-    last_step = _get_last_step(estimator)
+        test_indices = [split[1] for split in splits]
+        concat = np.concatenate(test_indices)
+        if np.unique(concat, axis=0).shape[0] != concat.shape[0]:
+            raise ValueError(
+                "`cross_val_predict` only works with non-duplicated test indices"
+            )
+        # Unshuffled test folds can still be yielded in a different order.
+        sorted_fold_id = np.argsort([indices[0] for indices in test_indices])
 
     is_sequential_cv = isinstance(
         cv, WalkForward | MultipleRandomizedCV | sks.TimeSeriesSplit
-    )
-    use_sequential_path = (
-        getattr(last_step, "needs_previous_weights", False)
-        or entry_rebalancing_params is not None
     )
     if entry_rebalancing_params is not None and not is_sequential_cv:
         raise ValueError(
             "`entry_rebalancing_params` is only supported with sequential CV "
             "strategies: `WalkForward`, `TimeSeriesSplit` and `MultipleRandomizedCV`."
         )
+    use_sequential_paths = [
+        is_sequential_cv
+        and (
+            getattr(_get_last_step(est), "needs_previous_weights", False)
+            or entry_rebalancing_params is not None
+        )
+        for est, _, _ in evaluations
+    ]
+    paths = [splits]
+    if isinstance(cv, MultipleRandomizedCV) and any(use_sequential_paths):
+        grouped_splits = defaultdict(list)
+        for split, path_id in zip(splits, path_ids, strict=True):  # ty: ignore[invalid-argument-type]
+            grouped_splits[path_id].append(split)
+        paths = [grouped_splits[path_id] for path_id in sorted(grouped_splits)]
 
-    predictions: list[Any]
-    if use_sequential_path and is_sequential_cv:
-        if isinstance(cv, MultipleRandomizedCV):
-            splits = list(cv.split(X, y, **routed_params.splitter.split))
-            path_ids = cv.get_path_ids()
-            paths = defaultdict(list)
-            for (train, test, col_idx), pid in zip(splits, path_ids, strict=True):
-                paths[pid].append((train, test, col_idx))
+    def tasks() -> Iterator[tuple]:
+        """Yield jobs for `Parallel`, with sequential paths before independent folds."""
+        for (est, _, _), est_params, use_sequential_path in sorted(
+            zip(evaluations, fit_params, use_sequential_paths, strict=True),
+            key=lambda item: not item[2],
+        ):
+            if use_sequential_path:
+                for path in paths:
+                    yield skp.delayed(_run_path)(
+                        estimator=est,
+                        X=X,
+                        y=y,
+                        routed_params=sku.Bunch(estimator_params=est_params),
+                        method=method,
+                        path_splits=path,
+                        entry_rebalancing_params=entry_rebalancing_params,
+                    )
+            else:
+                for train, test, *column_indices in splits:
+                    yield skp.delayed(fit_and_predict)(
+                        sk.clone(est),
+                        X,
+                        y,
+                        train=train,
+                        test=test,
+                        fit_params=est_params,
+                        method=method,
+                        column_indices=column_indices[0] if column_indices else None,
+                    )
 
-            parallel = skp.Parallel(
-                n_jobs=n_jobs, verbose=verbose, pre_dispatch=pre_dispatch
+    if len(evaluations) == 1 and use_sequential_paths[0] and len(paths) == 1:
+        if n_jobs not in (None, 1):
+            warnings.warn(
+                "Parallel processing has been disabled because the optimization "
+                "method requires sequential processing of previous weights or "
+                "`entry_rebalancing_params`. To suppress this warning, set "
+                "`n_jobs=None`, remove `entry_rebalancing_params`, or disable the "
+                "options that require previous weights, such as `weight_drift`, "
+                "transaction costs, `max_turnover`, or a previous-weights fallback.",
+                stacklevel=2,
             )
-            predictions = parallel(
-                skp.delayed(_run_path)(
-                    estimator=estimator,
-                    X=X,
-                    y=y,
-                    routed_params=routed_params,
-                    method=method,
-                    path_splits=paths[pid],
-                    entry_rebalancing_params=entry_rebalancing_params,
-                )
-                for pid in sorted(paths.keys())
-            )
-            predictions = [ptf for path in predictions for ptf in path]
-
-        else:
-            if n_jobs not in (None, 1):
-                warnings.warn(
-                    "Parallel processing has been disabled because the optimization "
-                    "method requires sequential processing of previous weights or "
-                    "`entry_rebalancing_params`. To suppress this warning, set "
-                    "`n_jobs=None`, remove `entry_rebalancing_params`, or disable the "
-                    "options that require previous weights, such as `weight_drift`, "
-                    "transaction costs, `max_turnover`, or a previous-weights fallback.",
-                    stacklevel=2,
-                )
-            predictions = _run_path(
-                estimator=estimator,
+        results = [
+            _run_path(
+                estimator=evaluations[0][0],
                 X=X,
                 y=y,
-                routed_params=routed_params,
+                routed_params=sku.Bunch(estimator_params=fit_params[0]),
                 method=method,
-                path_splits=splits,
+                path_splits=paths[0],
                 entry_rebalancing_params=entry_rebalancing_params,
             )
-
+        ]
     else:
-        # We clone the estimator to make sure that all the folds are independent
-        # and that it is pickle-able.
         parallel = skp.Parallel(
             n_jobs=n_jobs, verbose=verbose, pre_dispatch=pre_dispatch
         )
-        # TODO remove when https://github.com/joblib/joblib/issues/1071 is fixed
-        predictions = parallel(
-            skp.delayed(fit_and_predict)(
-                sk.clone(estimator),
-                X,
-                y,
-                train=train,
-                test=test,
-                fit_params=routed_params.estimator_params,
-                method=method,
-                column_indices=column_indices[0] if column_indices else None,
-            )
-            for train, test, *column_indices in splits
-        )
+        results = parallel(tasks())
 
-    if isinstance(cv, BaseCombinatorialCV | MultipleRandomizedCV):
-        path_ids = cv.get_path_ids()
-        path_nb = np.max(path_ids) + 1
-        portfolios = [[] for _ in range(path_nb)]
-        if isinstance(cv, BaseCombinatorialCV):
-            # Combinatorial CV never runs the sequential path: each prediction is a
-            # list of portfolios.
-            for i, prediction in enumerate(predictions):
-                for j, p in enumerate(prediction):  # ty: ignore[invalid-argument-type]
-                    path_id = path_ids[i, j]
-                    portfolios[path_id].append(p)
+    n_path_tasks = len(paths) * sum(use_sequential_paths)
+    path_results = islice(results, n_path_tasks)
+    fold_results = islice(results, n_path_tasks, None)
+    population = []
+    predictions: list[Any]
+    for (_, evaluation_params, explicit_measure_params), use_sequential_path in zip(
+        evaluations, use_sequential_paths, strict=True
+    ):
+        predictions = list(
+            islice(path_results, len(paths))
+            if use_sequential_path
+            else islice(fold_results, len(splits))
+        )
+        if use_sequential_path:
+            predictions = list(chain.from_iterable(predictions))
+        if path_ids is not None:
+            portfolios = [[] for _ in range(path_nb)]
+            if isinstance(cv, BaseCombinatorialCV):
+                # Combinatorial CV never runs the sequential path: each prediction is a
+                # list of portfolios.
+                for i, prediction in enumerate(predictions):
+                    for j, p in enumerate(prediction):
+                        path_id = path_ids[i, j]
+                        portfolios[path_id].append(p)
+            else:
+                for i, prediction in enumerate(predictions):
+                    portfolios[path_ids[i]].append(prediction)
+
+            name = evaluation_params.pop("name", "path")
+            pred = Population(
+                [
+                    MultiPeriodPortfolio(
+                        name=f"{name}_{i}",
+                        portfolios=portfolios[i],
+                        **evaluation_params,
+                    )
+                    for i in range(path_nb)
+                ]
+            )
         else:
-            for i, prediction in enumerate(predictions):
-                portfolios[path_ids[i]].append(prediction)
-
-        name = portfolio_params.pop("name", "path")
-        pred = Population(
-            [
-                MultiPeriodPortfolio(
-                    name=f"{name}_{i}", portfolios=portfolios[i], **portfolio_params
-                )
-                for i in range(path_nb)
-            ]
-        )
-    else:
-        # We need to re-order the test folds in case they were un-ordered by the
-        # CV generator.
-        # Because the tests folds are not shuffled, we use the first index of each
-        # fold to order them.
-        test_indices = [test for _, test in splits]  # ty: ignore[invalid-assignment]
-        concat = np.concatenate(test_indices)
-        if np.unique(concat, axis=0).shape[0] != concat.shape[0]:
-            raise ValueError(
-                "`cross_val_predict` only works with non-duplicated test indices"
+            pred = MultiPeriodPortfolio(
+                portfolios=[predictions[fold_id] for fold_id in sorted_fold_id],
+                **evaluation_params,
             )
-        sorted_fold_id = np.argsort([x[0] for x in test_indices])
-        pred = MultiPeriodPortfolio(
-            portfolios=[predictions[fold_id] for fold_id in sorted_fold_id],
-            **portfolio_params,
-        )
 
-    if is_sequential_cv and not use_sequential_path:
-        for path in pred if isinstance(pred, Population) else [pred]:
-            path.portfolios = _propagate_previous_weights(portfolios=path.portfolios)
+        if is_sequential_cv and not use_sequential_path:
+            for path in pred if isinstance(pred, Population) else [pred]:
+                path.portfolios = _propagate_previous_weights(
+                    portfolios=path.portfolios
+                )
 
-    _sync_measure_params_to_portfolios(pred, explicit_measure_param_names)
-    return pred
+        _sync_measure_params_to_portfolios(pred, explicit_measure_params)
+        if not is_collection:
+            return pred
+        population.extend(pred if isinstance(pred, Population) else [pred])
+    return Population(population)
+
+
+def _validate_named_estimators(
+    estimators: Sequence,
+) -> list[tuple[str, skb.BaseEstimator | Pipeline]]:
+    """Validate a collection of estimators with unique string names."""
+    if not estimators:
+        raise ValueError("Received an empty collection of estimators.")
+    named_estimators = []
+    names = set()
+    for item in estimators:
+        if not isinstance(item, tuple | list) or len(item) != 2:
+            raise TypeError(
+                f"Each element must be a `(name, estimator)` pair, got {item!r}."
+            )
+        name, estimator = item
+        if not isinstance(name, str):
+            raise TypeError(f"Estimator names must be strings, got {name!r}.")
+        if not name:
+            raise ValueError("Estimator names must be non-empty strings.")
+        if name in names:
+            raise ValueError(
+                f"Estimator names must be unique, got duplicated names: {[name]}."
+            )
+        names.add(name)
+        named_estimators.append((name, estimator))
+    return named_estimators
 
 
 def _routing_enabled() -> bool:
@@ -389,19 +502,19 @@ def _routing_enabled() -> bool:
 
 
 def _route_params(
-    estimator: skb.BaseEstimator | Pipeline,
+    estimator: skb.BaseEstimator | Pipeline | list[skb.BaseEstimator | Pipeline],
     params: dict | None = None,
     *,
     owner: str,
     callee: str,
     cv: object | None = None,
 ) -> sku.Bunch:
-    """Build routed parameter bunches for an estimator method.
+    """Build routed parameter bunches for estimator methods.
 
     Parameters
     ----------
-    estimator : BaseEstimator | Pipeline
-        The estimator (or pipeline) to route parameters for.
+    estimator : BaseEstimator | Pipeline | list[BaseEstimator | Pipeline]
+        The estimator (or pipeline) to route parameters for, or a list of them.
 
     params : dict, optional
         Raw parameters from the caller.
@@ -420,23 +533,34 @@ def _route_params(
     Returns
     -------
     routed_params : Bunch
-        Routed parameters with `.estimator_params` attribute and, when `cv` is provided,
-        `.splitter.split`. Values are plain dictionaries, so the result can be passed to
-        worker processes.
+        Routed parameters with `.estimator_params` and, when `cv` is provided,
+        `.splitter.split`. `.estimator_params` is a dictionary for a single estimator
+        and a list with one dictionary per estimator, in input order, for a list input.
+        The parameter payloads are plain dictionaries for use in worker processes.
 
     Raises
     ------
     UnsetMetadataPassedError
-        If metadata routing is enabled and `params` contains metadata that the estimator
-        has not explicitly requested.
+        If metadata routing is enabled and `params` contains metadata whose request
+        status is unset for an estimator or the splitter.
     """
+    is_collection = isinstance(estimator, list)
+    estimators = (
+        {f"estimator_{i}": est for i, est in enumerate(estimator)}
+        if is_collection
+        else {"estimator": estimator}
+    )
     params = params or {}
 
     if not params or not _routing_enabled():
         # With routing disabled the parameters are passed through unchanged, and with no
         # metadata there is nothing to route. `process_routing` is bypassed because it
         # returns a placeholder object that cannot be pickled when metadata is empty.
-        routed_params = sku.Bunch(estimator_params=params)
+        routed_params = sku.Bunch(
+            estimator_params=[params.copy() for _ in estimators]
+            if is_collection
+            else params
+        )
         if cv is not None:
             routed_params.splitter = sku.Bunch(split={})
         return routed_params
@@ -450,10 +574,11 @@ def _route_params(
             splitter=cv,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="split"),
         )
-    router.add(
-        estimator=estimator,
-        method_mapping=skm.MethodMapping().add(caller="fit", callee=callee),
-    )
+    for key, est in estimators.items():
+        router.add(
+            method_mapping=skm.MethodMapping().add(caller="fit", callee=callee),
+            **{key: est},
+        )
     try:
         router_params = skm.process_routing(router, "fit", **params)
     except ske.UnsetMetadataPassedError as e:
@@ -463,12 +588,14 @@ def _route_params(
         # to make it more suitable for this case.
         unrequested_params = sorted(e.unrequested_params)
         request_method = f"set_{callee}_request"
+        description = (
+            "estimator: " if len(estimators) == 1 else "estimators: "
+        ) + ", ".join(type(est).__name__ for est in estimators.values())
         raise ske.UnsetMetadataPassedError(
             message=(
                 f"{unrequested_params} are passed to `{owner}` but are"
                 " not explicitly set as requested or not requested for"
-                f" {owner}'s estimator: "
-                f"{estimator.__class__.__name__}. Call"
+                f" {owner}'s {description}. Call"
                 f" `.{request_method}({{metadata}}=True)` on the estimator"
                 f" for each metadata in {unrequested_params} that you want"
                 " to use and `metadata=False` if you are not using it. See the"
@@ -482,7 +609,10 @@ def _route_params(
 
     # Keep only the payload as plain dictionaries: the result is passed to worker
     # processes.
-    routed_params = sku.Bunch(estimator_params=dict(router_params.estimator[callee]))
+    payloads = [dict(router_params[key][callee]) for key in estimators]
+    routed_params = sku.Bunch(
+        estimator_params=payloads if is_collection else payloads[0]
+    )
     if cv is not None:
         routed_params.splitter = sku.Bunch(split=dict(router_params.splitter.split))
 
@@ -490,7 +620,7 @@ def _route_params(
 
 
 def _has_asset_names(X: ArrayLike) -> bool:
-    """Return whether the optimizer's actual input carries string asset names."""
+    """Return whether the estimator's actual input carries string asset names."""
     return hasattr(X, "columns") and all(isinstance(name, str) for name in X.columns)  # ty: ignore[not-iterable]
 
 
@@ -561,8 +691,8 @@ def _resolve_evaluation_portfolio_params(
     Settings listed in `_PORTFOLIO_MEASURE_PARAMS` configure every resulting
     `MultiPeriodPortfolio` and each `Portfolio` it contains. When absent from the
     evaluation call, the `MultiPeriodPortfolio` inherits the corresponding value from
-    the portfolio optimizer's `portfolio_params`. `risk_free_rate` also falls back to
-    the optimizer attribute when available. An evaluation-level `weight_drift` is
+    the estimator's `portfolio_params`. `risk_free_rate` also falls back to
+    the estimator attribute when available. An evaluation-level `weight_drift` is
     copied into the final estimator step so `predict` can construct each `Portfolio`
     return series and its `ending_weights`.
 
@@ -665,14 +795,14 @@ def _sync_measure_params_to_portfolios(
 
 
 def _is_portfolio_optimization_estimator(
-    estimator: skb.BaseEstimator | Pipeline,
+    estimator: object,
 ) -> bool:
     """Return whether the estimator or the last pipeline step is a portfolio
     optimization estimator.
 
     Parameters
     ----------
-    estimator : BaseEstimator or Pipeline
+    estimator : object
         Estimator to inspect. If a `Pipeline` is provided, its last step is
         inspected.
 
@@ -690,7 +820,9 @@ def _is_portfolio_optimization_estimator(
     # postponed, so the `TYPE_CHECKING` import above covers the signature.
     from skfolio.optimization._base import BaseOptimization
 
-    return isinstance(_get_last_step(estimator), BaseOptimization)
+    return isinstance(estimator, skb.BaseEstimator) and isinstance(
+        _get_last_step(estimator), BaseOptimization
+    )
 
 
 def _apply_entry_rebalancing_params(
