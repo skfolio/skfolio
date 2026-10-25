@@ -126,11 +126,15 @@ routing, the distance's `fit` must explicitly accept `sample_weight`. These
 probabilities replace weights routed from the optimizer's `fit` or `partial_fit`.
 A prior with `sample_weight=None` gives scenarios equal weight.
 
-Built-in distances fitted on scenario rows do not use `sample_weight`, even when
-portfolio risk uses weighted scenarios. To weight a `CovarianceDistance`, supply
-a covariance estimator that accepts weights and call
-`set_fit_request(sample_weight=True)` on it. A distance using the prior's covariance
-retains any weighting already incorporated into that covariance.
+With metadata routing enabled, a :class:`~skfolio.distance.CovarianceDistance`
+using :class:`~skfolio.moments.EmpiricalCovariance` receives scenario weights only
+after `set_fit_request(sample_weight=True)` is called on the covariance estimator.
+Otherwise, the prior's scenario weights are not forwarded and no warning is
+emitted. Other covariance estimators must also support and request `sample_weight`
+to use these weights. Built-in distances computed directly from scenario rows,
+such as :class:`~skfolio.distance.PearsonDistance`, do not use `sample_weight`.
+A distance using the prior's covariance retains any weighting already
+incorporated into that covariance.
 
 With `distance_from_prior=False`, the distance receives targets and requested
 metadata aligned with the optimizer's input returns. An EW covariance estimator

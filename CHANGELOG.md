@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v1.12.0 (2026-10-25)
+
+### Features
+
+- **model_selection**: Support named estimator collections in cross_val_predict
+  ([#403](https://github.com/skfolio/skfolio/pull/403),
+  [`3d6ec2c`](https://github.com/skfolio/skfolio/commit/3d6ec2cc3fd8c3a6fa45a08e35dc360b39bfbf04))
+
+
+## v1.11.0 (2026-10-24)
+
+### Features
+
+- **moments**: Add sample_weight support to EmpiricalCovariance
+  ([#417](https://github.com/skfolio/skfolio/pull/417),
+  [`ef0cbfd`](https://github.com/skfolio/skfolio/commit/ef0cbfd31e32f9fa6a7f53972ebcd3656679eb5b))
+
+
 ## v1.10.3 (2026-10-23)
 
 ### Bug Fixes
