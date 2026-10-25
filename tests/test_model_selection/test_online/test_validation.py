@@ -12,7 +12,7 @@ from sklearn import config_context
 from sklearn.exceptions import UnsetMetadataPassedError
 from sklearn.pipeline import make_pipeline
 
-from skfolio import FailedPortfolio, MultiPeriodPortfolio
+from skfolio import FailedPortfolio, MultiPeriodPortfolio, Population
 from skfolio.measures import RatioMeasure
 from skfolio.metrics import (
     diagonal_calibration_ratio,
@@ -1155,3 +1155,236 @@ def test_online_empty_prediction_keeps_previous_holdings(X, monkeypatch, weight_
     np.testing.assert_allclose(
         pred[2].weights, pred[0].ending_weights + np.array([0.1, 0.0])
     )
+
+
+class TestOnlinePredictNamedEstimators:
+    """Test `online_predict` with a collection of named estimators."""
+
+    @pytest.mark.parametrize("n_jobs", [None, 2])
+    def test_matches_individual_runs(self, X, n_jobs):
+        """Each named estimator matches its own single-estimator evaluation."""
+        estimators = [
+            ("ew", _make_online_estimator()),
+            ("regime", _make_regime_online_estimator()),
+            (
+                "costs",
+                _make_online_estimator(
+                    objective_function=ObjectiveFunction.MAXIMIZE_UTILITY,
+                    transaction_costs=0.001,
+                ),
+            ),
+        ]
+        population = online_predict(
+            estimators,
+            X,
+            warmup_size=400,
+            test_size=100,
+            portfolio_params={"weight_drift": True, "compounded": True},
+            n_jobs=n_jobs,
+        )
+
+        assert isinstance(population, Population)
+        assert [mpp.name for mpp in population] == ["ew", "regime", "costs"]
+        assert [mpp.tag for mpp in population] == ["ew", "regime", "costs"]
+        for mpp, (_, estimator) in zip(population, estimators, strict=True):
+            expected = online_predict(
+                estimator,
+                X,
+                warmup_size=400,
+                test_size=100,
+                portfolio_params={"weight_drift": True, "compounded": True},
+            )
+            assert mpp.compounded
+            assert all(p.weight_drift for p in mpp.portfolios)
+            np.testing.assert_array_equal(mpp.observations, expected.observations)
+            np.testing.assert_allclose(mpp.returns, expected.returns)
+            for p, p_expected in zip(mpp.portfolios, expected.portfolios, strict=True):
+                np.testing.assert_allclose(p.weights, p_expected.weights)
+                np.testing.assert_allclose(
+                    p.previous_weights, p_expected.previous_weights
+                )
+
+    def test_filter_by_tag(self, X):
+        """Estimator names can be used to filter the population."""
+        population = online_predict(
+            [("fast", _make_online_estimator()), ("slow", _make_online_estimator())],
+            X,
+            warmup_size=400,
+            test_size=300,
+        )
+        assert [mpp.name for mpp in population.filter(tags="slow")] == ["slow"]
+
+    def test_single_named_estimator_returns_population(self, X):
+        """A collection with one estimator still returns a Population."""
+        population = online_predict(
+            [("only", _make_online_estimator())],
+            X,
+            warmup_size=400,
+            test_size=300,
+            n_jobs=2,
+        )
+        assert isinstance(population, Population)
+        assert len(population) == 1
+        assert population[0].name == "only"
+        assert population[0].tag == "only"
+
+    def test_tuple_collection(self, X):
+        """A tuple of named estimators is accepted."""
+        population = online_predict(
+            (("a", _make_online_estimator()), ["b", _make_online_estimator()]),
+            X,
+            warmup_size=400,
+            test_size=300,
+        )
+        assert [mpp.name for mpp in population] == ["a", "b"]
+
+    def test_entry_rebalancing_params_apply_to_every_estimator(self, X):
+        """Shared entry rebalancing params apply to each estimator's first portfolio."""
+        population = online_predict(
+            [
+                ("a", PreviousWeightsAwareOptimization()),
+                ("b", PreviousWeightsAwareOptimization(scale=3.0)),
+            ],
+            X,
+            warmup_size=400,
+            test_size=300,
+            reduce_test=True,
+            entry_rebalancing_params={"scale": 2.0},
+        )
+        for mpp, scale in zip(population, (1.0, 3.0), strict=True):
+            first_expected = np.zeros(X.shape[1])
+            first_expected[0] = 2.0
+            second_expected = first_expected.copy()
+            second_expected[1] = scale
+            np.testing.assert_array_equal(mpp[0].weights, first_expected)
+            np.testing.assert_array_equal(mpp[1].weights, second_expected)
+
+    def test_estimators_not_mutated(self, X):
+        """Input estimators stay unfitted."""
+        estimators = [("a", _make_online_estimator()), ("b", _make_online_estimator())]
+        online_predict(estimators, X, warmup_size=400, test_size=300, n_jobs=2)
+        for _, estimator in estimators:
+            assert not hasattr(estimator, "weights_")
+
+    def test_single_estimator_ignores_n_jobs(self, X):
+        """A single estimator returns a MultiPeriodPortfolio regardless of n_jobs."""
+        pred = online_predict(
+            _make_online_estimator(), X, warmup_size=400, test_size=300, n_jobs=2
+        )
+        assert isinstance(pred, MultiPeriodPortfolio)
+
+    def test_n_jobs_is_keyword_only(self, X):
+        """Execution options cannot be passed positionally."""
+        args = [None] * 12
+        with pytest.raises(TypeError, match="positional"):
+            online_predict(_make_online_estimator(), X, *args)
+
+    def test_metadata_routing(self, X):
+        """Metadata is routed according to each estimator's partial_fit request."""
+        estimation_mask = _make_estimation_mask(X, start=420, stop=480)
+
+        with config_context(enable_metadata_routing=True):
+            routed = _make_regime_online_estimator()
+            routed.prior_estimator.covariance_estimator.set_partial_fit_request(
+                estimation_mask=True
+            )
+            unrouted = _make_regime_online_estimator()
+            unrouted.prior_estimator.covariance_estimator.set_partial_fit_request(
+                estimation_mask=False
+            )
+            population = online_predict(
+                [("routed", routed), ("unrouted", unrouted)],
+                X,
+                warmup_size=400,
+                test_size=50,
+                reduce_test=True,
+                params={"estimation_mask": estimation_mask},
+            )
+            expected_routed = online_predict(
+                routed,
+                X,
+                warmup_size=400,
+                test_size=50,
+                reduce_test=True,
+                params={"estimation_mask": estimation_mask},
+            )
+            expected_unrouted = online_predict(
+                _make_regime_online_estimator(),
+                X,
+                warmup_size=400,
+                test_size=50,
+                reduce_test=True,
+            )
+
+        for mpp, expected in zip(
+            population, (expected_routed, expected_unrouted), strict=True
+        ):
+            for p, p_expected in zip(mpp.portfolios, expected.portfolios, strict=True):
+                np.testing.assert_allclose(p.weights, p_expected.weights)
+
+    def test_metadata_routing_requires_request(self, X):
+        """Unrequested metadata raises for named estimators."""
+        estimation_mask = _make_estimation_mask(X, start=420, stop=480)
+        with config_context(enable_metadata_routing=True):
+            with pytest.raises(UnsetMetadataPassedError, match="partial_fit"):
+                online_predict(
+                    [
+                        ("a", _make_regime_online_estimator()),
+                        ("b", _make_regime_online_estimator()),
+                    ],
+                    X,
+                    warmup_size=400,
+                    test_size=50,
+                    params={"estimation_mask": estimation_mask},
+                )
+
+    @pytest.mark.parametrize("param", ["name", "tag"])
+    def test_name_and_tag_rejected_in_portfolio_params(self, X, param):
+        """`name` and `tag` conflict with the estimator names."""
+        with pytest.raises(ValueError, match=param):
+            online_predict(
+                [("a", _make_online_estimator())],
+                X,
+                warmup_size=400,
+                test_size=300,
+                portfolio_params={param: "x"},
+            )
+
+    @pytest.mark.parametrize(
+        "estimators, error, match",
+        [
+            ([], ValueError, "empty collection"),
+            ([_make_online_estimator()], TypeError, "pair"),
+            ([("a", _make_online_estimator(), 1)], TypeError, "pair"),
+            ([(1, _make_online_estimator())], TypeError, "must be strings"),
+            ([("", _make_online_estimator())], ValueError, "non-empty"),
+            (
+                [("a", _make_online_estimator()), ("a", _make_online_estimator())],
+                ValueError,
+                "unique",
+            ),
+        ],
+    )
+    def test_invalid_collection_raises(self, X, estimators, error, match):
+        """Invalid collections of named estimators raise clear errors."""
+        with pytest.raises(error, match=match):
+            online_predict(estimators, X, warmup_size=400, test_size=300)
+
+    @pytest.mark.parametrize(
+        "estimator, match",
+        [
+            (EWCovariance(), "only supports portfolio optimization estimators"),
+            (make_pipeline(_make_online_estimator()), "Pipeline is not supported"),
+            (InverseVolatility(), "does not implement partial_fit"),
+        ],
+    )
+    def test_invalid_estimator_names_offender(self, X, estimator, match):
+        """Errors for invalid estimators name the offending entry."""
+        with pytest.raises(TypeError, match=match) as excinfo:
+            online_predict(
+                [("good", _make_online_estimator()), ("bad", estimator)],
+                X,
+                warmup_size=400,
+                test_size=300,
+            )
+        assert "named 'bad'" in str(excinfo.value)
