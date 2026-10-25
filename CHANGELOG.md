@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.12.0 (2026-10-25)
+
+### Features
+
+- **model_selection**: Support named estimator collections in cross_val_predict
+  ([#403](https://github.com/skfolio/skfolio/pull/403),
+  [`3d6ec2c`](https://github.com/skfolio/skfolio/commit/3d6ec2cc3fd8c3a6fa45a08e35dc360b39bfbf04))
+
+
 ## v1.11.0 (2026-10-24)
 
 ### Features
