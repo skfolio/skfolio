@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v1.12.2 (2026-10-26)
+
+### Bug Fixes
+
+- Avoid pandas inplace keyword deprecated in pandas 3.1
+  ([#468](https://github.com/skfolio/skfolio/pull/468),
+  [`f4cd3a9`](https://github.com/skfolio/skfolio/commit/f4cd3a94362350a2732d6538d9bbd57fea144149))
+
+### Documentation
+
+- Clarify AI contributions and PR review guidelines
+  ([#470](https://github.com/skfolio/skfolio/pull/470),
+  [`cd76bbe`](https://github.com/skfolio/skfolio/commit/cd76bbeca74fc68dccdd6cd81166f85a4bd7f3df))
+
+
 ## v1.12.1 (2026-10-25)
 
 ### Bug Fixes
