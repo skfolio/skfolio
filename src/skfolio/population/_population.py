@@ -188,7 +188,7 @@ class Population(list):
             )
         df = pd.concat(returns, axis=1, sort=False)
         # Sort index because pd.concat unsort NaNs at the end
-        df.sort_index(inplace=True)
+        df = df.sort_index()
         df.columns = deduplicate_names(names)
         return df
 
@@ -222,7 +222,7 @@ class Population(list):
             )
         df = pd.concat(cumulative_returns, axis=1, sort=False)
         # Sort index because pd.concat unsort NaNs at the end
-        df.sort_index(inplace=True)
+        df = df.sort_index()
         df.columns = deduplicate_names(names)
         return df
 
@@ -251,7 +251,7 @@ class Population(list):
             )
         df = pd.concat(drawdowns, axis=1)
         # Sort index because pd.concat unsort NaNs at the end
-        df.sort_index(inplace=True)
+        df = df.sort_index()
         df.columns = deduplicate_names(names)
         return df
 
@@ -541,12 +541,9 @@ class Population(list):
             comp = ptf.composition
             if display_sub_ptf_name:
                 if isinstance(ptf, MultiPeriodPortfolio):
-                    comp.rename(
-                        columns={c: f"{ptf.name}_{c}" for c in comp.columns},
-                        inplace=True,
-                    )
+                    comp.columns = [f"{ptf.name}_{c}" for c in comp.columns]
             else:
-                comp.rename(columns={c: ptf.name for c in comp.columns}, inplace=True)
+                comp.columns = [ptf.name] * len(comp.columns)
             res.append(comp)
 
         df = pd.concat(res, axis=1)
@@ -592,14 +589,11 @@ class Population(list):
             )
             if display_sub_ptf_name:
                 if isinstance(ptf, MultiPeriodPortfolio):
-                    contribution.rename(
-                        columns={c: f"{ptf.name}_{c}" for c in contribution.columns},
-                        inplace=True,
-                    )
+                    contribution.columns = [
+                        f"{ptf.name}_{c}" for c in contribution.columns
+                    ]
             else:
-                contribution.rename(
-                    columns={c: ptf.name for c in contribution.columns}, inplace=True
-                )
+                contribution.columns = [ptf.name] * len(contribution.columns)
             res.append(contribution)
 
         df = pd.concat(res, axis=1)
@@ -650,7 +644,7 @@ class Population(list):
         df = pd.concat(rolling_measures, axis=1)
         df.columns = deduplicate_names(names)
         # Sort index because pd.concat unsort NaNs at the end
-        df.sort_index(inplace=True)
+        df = df.sort_index()
         return df
 
     def plot_distribution(

@@ -862,10 +862,11 @@ class Portfolio(BasePortfolio):
         filtered out. Use `weights_dict` to access all weights, including zeros.
         """
         weights = self.weights[self.nonzero_assets_index]
-        df = pd.DataFrame({"asset": self.nonzero_assets, "weight": weights})
-        df.sort_values(by="weight", ascending=False, inplace=True)
-        df.rename(columns={"weight": self.name}, inplace=True)
-        df.set_index("asset", inplace=True)
+        df = pd.DataFrame(
+            {"weight": weights}, index=pd.Index(self.nonzero_assets, name="asset")
+        )
+        df = df.sort_values(by="weight", ascending=False)
+        df.columns = [self.name]
         return df
 
     @property
@@ -1101,7 +1102,7 @@ class Portfolio(BasePortfolio):
         if not to_df:
             return np.array(contribution)
         df = pd.DataFrame(contribution, index=assets, columns=[self.name])
-        df.sort_values(by=self.name, ascending=False, inplace=True)
+        df = df.sort_values(by=self.name, ascending=False)
         return df
 
     def summary(self, formatted: bool = True) -> pd.Series:
