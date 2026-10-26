@@ -121,7 +121,7 @@ def prices_to_returns(
 
     # Forward fill missing values
     if fill_nan:
-        df = df.ffill()
+        df.ffill(inplace=True)
     # Drop rows according to drop_inceptions_nan
     df = df.dropna(how="any" if drop_inceptions_nan else "all")
 

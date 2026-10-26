@@ -339,6 +339,29 @@ def test_portfolio_methods(X, weights):
     assert isinstance(portfolio.previous_weights_dict, dict)
 
 
+@pytest.mark.filterwarnings("error:The inplace keyword")
+@pytest.mark.parametrize("name", ["portfolio", "asset", "weight"])
+@pytest.mark.parametrize(
+    "weights, expected_assets, expected_weights",
+    [
+        ([0.5, 0.0, -0.25, 0.75], ["D", "A", "C"], [0.75, 0.5, -0.25]),
+        ([0.0, 0.0, 0.0, 0.0], [], []),
+    ],
+)
+def test_portfolio_composition(name, weights, expected_assets, expected_weights):
+    X = pd.DataFrame(np.arange(12).reshape(3, 4) / 100, columns=list("ABCD"))
+    portfolio = Portfolio(X=X, weights=weights, name=name)
+    expected = pd.DataFrame(
+        {name: np.array(expected_weights, dtype=float)},
+        index=pd.Index(expected_assets, name="asset"),
+    )
+
+    composition = portfolio.composition
+    pd.testing.assert_frame_equal(composition, expected)
+    composition.iloc[:, 0] = 0.0
+    pd.testing.assert_frame_equal(portfolio.composition, expected)
+
+
 def test_portfolio_magic_methods(X, weights):
     n_assets = X.shape[1]
     ptf_1 = Portfolio(X=X, weights=rand_weights(n=n_assets))

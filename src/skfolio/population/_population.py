@@ -541,11 +541,9 @@ class Population(list):
             comp = ptf.composition
             if display_sub_ptf_name:
                 if isinstance(ptf, MultiPeriodPortfolio):
-                    comp = comp.rename(
-                        columns={c: f"{ptf.name}_{c}" for c in comp.columns}
-                    )
+                    comp.columns = [f"{ptf.name}_{c}" for c in comp.columns]
             else:
-                comp = comp.rename(columns={c: ptf.name for c in comp.columns})
+                comp.columns = [ptf.name] * len(comp.columns)
             res.append(comp)
 
         df = pd.concat(res, axis=1)
@@ -591,13 +589,11 @@ class Population(list):
             )
             if display_sub_ptf_name:
                 if isinstance(ptf, MultiPeriodPortfolio):
-                    contribution = contribution.rename(
-                        columns={c: f"{ptf.name}_{c}" for c in contribution.columns}
-                    )
+                    contribution.columns = [
+                        f"{ptf.name}_{c}" for c in contribution.columns
+                    ]
             else:
-                contribution = contribution.rename(
-                    columns={c: ptf.name for c in contribution.columns}
-                )
+                contribution.columns = [ptf.name] * len(contribution.columns)
             res.append(contribution)
 
         df = pd.concat(res, axis=1)

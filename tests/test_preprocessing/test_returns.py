@@ -42,6 +42,37 @@ def test_returns(prices, factor_prices):
     assert np.all(X.index == y.index)
 
 
+@pytest.mark.filterwarnings("error:The inplace keyword")
+@pytest.mark.parametrize("with_factors", [False, True])
+def test_returns_preserves_inputs_when_filling(with_factors):
+    index = pd.date_range("2026-01-01", periods=4)
+    prices = pd.DataFrame(
+        {
+            "A": [100.0, np.nan, 121.0, 133.1],
+            "B": [50.0, 55.0, 60.5, 66.55],
+            "empty": np.nan,
+        },
+        index=index,
+    )
+    factors = pd.DataFrame({"factor": [10.0, 11.0, np.nan, 12.1]}, index=index)
+    original_prices = prices.copy()
+    original_factors = factors.copy()
+
+    result = prices_to_returns(prices, y=factors if with_factors else None)
+
+    expected_returns = pd.DataFrame(
+        {"A": [0.0, 0.21, 0.1], "B": [0.1, 0.1, 0.1]}, index=index[1:]
+    )
+    if with_factors:
+        result, factor_returns = result
+        expected_factors = pd.DataFrame({"factor": [0.1, 0.0, 0.1]}, index=index[1:])
+        pd.testing.assert_frame_equal(factor_returns, expected_factors)
+
+    pd.testing.assert_frame_equal(result, expected_returns)
+    pd.testing.assert_frame_equal(prices, original_prices)
+    pd.testing.assert_frame_equal(factors, original_factors)
+
+
 def test_returns_nan_threshold_ignores_y():
     """Verify target NaNs do not affect the asset missingness threshold."""
     index = pd.date_range("2026-01-01", periods=4)

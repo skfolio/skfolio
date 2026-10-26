@@ -862,10 +862,11 @@ class Portfolio(BasePortfolio):
         filtered out. Use `weights_dict` to access all weights, including zeros.
         """
         weights = self.weights[self.nonzero_assets_index]
-        df = pd.DataFrame({"asset": self.nonzero_assets, "weight": weights})
+        df = pd.DataFrame(
+            {"weight": weights}, index=pd.Index(self.nonzero_assets, name="asset")
+        )
         df = df.sort_values(by="weight", ascending=False)
-        df = df.rename(columns={"weight": self.name})
-        df = df.set_index("asset")
+        df.columns = [self.name]
         return df
 
     @property

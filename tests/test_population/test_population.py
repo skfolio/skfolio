@@ -459,6 +459,7 @@ def test_population_failed_portfolio(small_population, failed_portfolio):
     assert pop.plot_returns_distribution()
 
 
+@pytest.mark.filterwarnings("error:The inplace keyword")
 def test_population_composition_and_contribution_sub_ptf_names(
     small_population, multi_period_portfolio
 ):
