@@ -21,6 +21,9 @@ Please report security vulnerabilities according to our
 For substantial changes, consider opening an issue first. This gives maintainers and
 contributors an opportunity to discuss the scope and approach before implementation.
 
+New dependencies must be discussed with the core maintainers before
+implementation. We aim to keep the core dependency set small.
+
 ### Report a bug
 
 A useful bug report includes:
@@ -39,6 +42,25 @@ A useful feature proposal:
 - Describes the expected behavior.
 - Keeps the initial scope as narrow as practical.
 - Mentions alternatives or prior approaches when relevant.
+
+## AI contributions
+
+AI-assisted and fully AI-generated PRs are welcome, including submissions by AI
+agents. All PRs must follow the same contributing guidelines, including the
+[tests and code quality checks](#tests-and-code-quality).
+
+Complete the **AI use** section of the pull request template. If no AI was used
+to prepare the PR, write **None**. Otherwise, list the tools and models used
+(if known), describe what AI did, and state whether a person reviewed all, some,
+or none of the changes before submission. Use **Unknown** where needed.
+
+## How we review PRs
+
+PR review and approval are handled exclusively by skfolio's core maintainers.
+We combine AI reviews using the latest versions of two different frontier models
+with a full human review. We hold every PR to the highest standards of correctness
+and maintainability, ensuring consistency with skfolio's architecture and API
+design.
 
 ## Development setup
 
@@ -226,6 +248,10 @@ git add .
 git commit -m "feat(scope): describe your change"
 git push origin name-of-your-bugfix-or-feature
 ```
+
+Contributors without write access can have up to two open PRs at a time. This
+helps us keep the review queue manageable and give each contribution proper
+attention.
 
 Open a pull request through GitHub, or use the GitHub CLI:
 
