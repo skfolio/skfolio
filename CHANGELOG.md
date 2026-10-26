@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.12.1 (2026-10-25)
+
+### Bug Fixes
+
+- **utils**: Keep stationary bootstrap from changing NumPy's global RNG
+  ([#465](https://github.com/skfolio/skfolio/pull/465),
+  [`4d546b4`](https://github.com/skfolio/skfolio/commit/4d546b42f1bf1869d9fcf737828b020cdda5a89d))
+
+
 ## v1.12.0 (2026-10-25)
 
 ### Features
