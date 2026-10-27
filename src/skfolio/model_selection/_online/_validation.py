@@ -12,7 +12,7 @@ from __future__ import annotations
 import datetime as dt
 import numbers
 from collections.abc import Generator
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
@@ -636,15 +636,15 @@ def _online_walk_forward(
 
 
 def _online_predict(
-    estimator: skb.BaseEstimator,
+    estimator: Any,  # noqa: ANN401  # duck-typed estimator
     X: ArrayLike,
     y: ArrayLike | None,
     routed_params: sku.Bunch,
     *,
     warmup_size: int,
     test_size: int,
-    freq=None,
-    freq_offset=None,
+    freq: str | pd.offsets.BaseOffset | None = None,
+    freq_offset: pd.offsets.BaseOffset | dt.timedelta | None = None,
     previous: bool = False,
     purged_size: int = 0,
     reduce_test: bool = False,
@@ -691,7 +691,7 @@ def _online_predict(
             reduce_test=reduce_test,
             refit_last=refit_last,
         ):
-            portfolio = estimator.predict(X[test_slice])
+            portfolio = estimator.predict(X[test_slice])  # ty: ignore[invalid-argument-type, not-subscriptable]
             if needs_prev_weights and isinstance(portfolio, Population):
                 raise ValueError(
                     "Sequential propagation of `previous_weights` requires one "
@@ -730,16 +730,16 @@ def _online_predict(
 
 
 def _online_score(
-    estimator: skb.BaseEstimator,
+    estimator: Any,  # noqa: ANN401  # duck-typed estimator
     X: ArrayLike,
     y: ArrayLike | None,
-    scoring,
+    scoring: skt.Scoring,
     routed_params: sku.Bunch,
     *,
     warmup_size: int,
     test_size: int,
-    freq=None,
-    freq_offset=None,
+    freq: str | pd.offsets.BaseOffset | None = None,
+    freq_offset: pd.offsets.BaseOffset | dt.timedelta | None = None,
     previous: bool = False,
     purged_size: int = 0,
     reduce_test: bool = False,
@@ -756,12 +756,10 @@ def _online_score(
     scores : ndarray or dict[str, ndarray]
         Per-step score arrays.
     """
-    multi_scoring = isinstance(scoring, dict)
-
-    if multi_scoring:
-        scores = {name: [] for name in scoring}
-    else:
-        scores = []
+    multi_scores: dict[str, list[Any]] = (
+        {name: [] for name in scoring} if isinstance(scoring, dict) else {}
+    )
+    scores: list[Any] = []
 
     for test_slice in _online_walk_forward(
         estimator,
@@ -777,17 +775,17 @@ def _online_score(
         reduce_test=reduce_test,
         refit_last=refit_last,
     ):
-        X_test = X[test_slice]
-        if multi_scoring:
+        X_test = X[test_slice]  # ty: ignore[invalid-argument-type, not-subscriptable]
+        if isinstance(scoring, dict):
             for name, score_func in scoring.items():
-                scores[name].append(score_func(estimator, X_test))
-        elif scoring is not None:
+                multi_scores[name].append(score_func(estimator, X_test))
+        elif callable(scoring):
             scores.append(scoring(estimator, X_test))
         else:
             scores.append(estimator.score(X_test))
 
-    if multi_scoring:
-        return {name: np.array(vals) for name, vals in scores.items()}
+    if isinstance(scoring, dict):
+        return {name: np.array(vals) for name, vals in multi_scores.items()}
     return np.array(scores)
 
 
@@ -796,12 +794,12 @@ def _evaluate_online(
     X: ArrayLike,
     y: ArrayLike | None,
     *,
-    scoring,
+    scoring: skt.Scoring,
     routed_params: sku.Bunch,
     warmup_size: int,
     test_size: int,
-    freq=None,
-    freq_offset=None,
+    freq: str | pd.offsets.BaseOffset | None = None,
+    freq_offset: pd.offsets.BaseOffset | dt.timedelta | None = None,
     previous: bool = False,
     purged_size: int = 0,
     reduce_test: bool = False,
@@ -826,7 +824,6 @@ def _evaluate_online(
         Multi-Period Portfolio for portfolio estimators, otherwise `None`.
     """
     is_portfolio = _is_portfolio_optimization_estimator(estimator)
-    multi_scoring = isinstance(scoring, dict)
 
     if is_portfolio:
         multi_period_portfolio = _online_predict(
@@ -845,15 +842,16 @@ def _evaluate_online(
             portfolio_params=portfolio_params,
             entry_rebalancing_params=entry_rebalancing_params,
         )
-        if multi_scoring:
+        if isinstance(scoring, dict):
             agg = {
                 name: _score_multi_period_portfolio(
-                    multi_period_portfolio, single_scoring
+                    multi_period_portfolio,
+                    single_scoring,  # ty: ignore[invalid-argument-type]
                 )
                 for name, single_scoring in scoring.items()
             }
         else:
-            agg = _score_multi_period_portfolio(multi_period_portfolio, scoring)
+            agg = _score_multi_period_portfolio(multi_period_portfolio, scoring)  # ty: ignore[invalid-argument-type]
         return agg, multi_period_portfolio
 
     per_step = _online_score(
@@ -871,7 +869,7 @@ def _evaluate_online(
         reduce_test=reduce_test,
         refit_last=refit_last,
     )
-    if multi_scoring:
+    if isinstance(per_step, dict):
         agg = {name: float(np.mean(vals)) for name, vals in per_step.items()}
     else:
         agg = float(np.mean(per_step))
@@ -880,7 +878,7 @@ def _evaluate_online(
 
 def _score_multi_period_portfolio(
     multi_period_portfolio: MultiPeriodPortfolio,
-    scoring: BaseMeasure | None,
+    scoring: skt.Measure | None,
 ) -> float:
     """Score a :class:`~skfolio.portfolio.MultiPeriodPortfolio` using a measure.
 

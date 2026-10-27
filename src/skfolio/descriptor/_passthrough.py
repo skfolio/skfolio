@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from skfolio.containers import AssetPanel
 from skfolio.descriptor._base import BaseDescriptor
 from skfolio.typing import FloatArray, IntArray
@@ -48,7 +50,7 @@ class Passthrough(BaseDescriptor, stateless=True):
         self.field = field
 
     def fit_transform(
-        self, X: AssetPanel, y=None, **fit_params
+        self, X: AssetPanel, y: None = None, **fit_params: Any
     ) -> FloatArray | IntArray:
         """Return the configured panel field.
 

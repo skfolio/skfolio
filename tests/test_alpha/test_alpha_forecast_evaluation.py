@@ -22,7 +22,10 @@ from skfolio.alpha import (
 from skfolio.alpha._evaluation import (
     _calibration_curve,
     _compute_factor_correlation_diagnostics,
+    _correlation_stats,
     _coverage_stats,
+    _mean_inference,
+    _quadratic_spectral_basis,
 )
 from skfolio.containers import AssetPanel
 from skfolio.descriptor import Passthrough
@@ -70,6 +73,29 @@ def _perfect_forecast_panel() -> AssetPanel:
         asset_names=assets,
     )
     return panel
+
+
+def _noisy_forecast_panel(n_obs: int = 150, n_assets: int = 12) -> AssetPanel:
+    """Create a panel where a noisy signal predicts next-period returns.
+
+    Use a fixed seed. Signals on the last date are NaN because there is no
+    next-period return.
+    """
+    rng = np.random.default_rng(7)
+    observations = pd.bdate_range("2020-01-01", periods=n_obs).to_numpy()
+    assets = np.array([f"asset_{i}" for i in range(n_assets)])
+    idio_returns = 0.01 * rng.standard_normal((n_obs, n_assets))
+    signal = np.vstack(
+        [
+            0.3 * idio_returns[1:] + 0.01 * rng.standard_normal((n_obs - 1, n_assets)),
+            np.full((1, n_assets), np.nan),
+        ]
+    )
+    return AssetPanel(
+        fields={_IDIO_RETURNS: idio_returns, "signal": signal},
+        observations=observations,
+        asset_names=assets,
+    )
 
 
 def _decay_common_sample_panel() -> AssetPanel:
@@ -158,6 +184,56 @@ def evaluation_with_diagnostics():
 class TestAlphaForecastEvaluation:
     """Test alpha forecast evaluation diagnostics."""
 
+    @pytest.mark.parametrize("constant", [False, True])
+    @pytest.mark.parametrize("missing_asset", [False, True])
+    @pytest.mark.parametrize("swap_tied_assets", [False, True])
+    def test_tied_forecasts(self, constant, missing_asset, swap_tied_assets):
+        """Public diagnostics use midranks without arbitrary tied-asset positions."""
+        signal = np.array([1.0, 1.0, 2.0, 3.0])
+        returns = np.array([0.01, 0.02, 0.02, 0.04])
+        if constant:
+            signal[:] = 1.0
+        if missing_asset:
+            signal = np.append(signal, 0.0)
+            returns = np.append(returns, np.nan)
+        order = np.arange(len(signal))
+        if swap_tied_assets:
+            order[:2] = [1, 0]
+        signal = np.tile(signal[order], (8, 1))
+        returns = np.tile(returns[order], (8, 1))
+        panel = AssetPanel(
+            fields={"signal": signal.copy(), _IDIO_RETURNS: returns.copy()},
+            observations=pd.bdate_range("2020-01-01", periods=8).to_numpy(),
+            asset_names=np.array([f"asset_{i}" for i in order]),
+        )
+        panel.add_3d_field(
+            _EXPOSURES,
+            np.stack([returns, -returns], axis=-1),
+            third_axis_name="factors",
+            third_axis_labels=["positive", "negative"],
+        )
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            panel,
+            n_forward_periods=1,
+            factor_correlation_method=CorrelationMethod.SPEARMAN,
+        )
+
+        # Centered midranks [-1, -1, .5, 1.5] imply 200%-gross weights
+        # [-.5, -.5, .25, .75] and a 2% return; constant scores have zero exposure.
+        expected_ic = np.nan if constant else 5.0 / 6.0
+        np.testing.assert_allclose(evaluation.spearman_ic, expected_ic)
+        np.testing.assert_allclose(
+            evaluation.rank_weighted_portfolio_return, 0.0 if constant else 0.02
+        )
+        np.testing.assert_allclose(evaluation.rank_weighted_turnover[1:], 0.0)
+        np.testing.assert_allclose(
+            evaluation.factor_correlation,
+            np.tile([expected_ic, -expected_ic], (8, 1)),
+        )
+        np.testing.assert_array_equal(panel["signal"], signal)
+        np.testing.assert_array_equal(panel[_IDIO_RETURNS], returns)
+
     def test_ic_matches_stats_helpers(self, alpha_deterministic_panel):
         """Spearman and Pearson IC reuse cross-sectional stats helpers."""
         model = _fixed_signal_alpha()
@@ -208,6 +284,9 @@ class TestAlphaForecastEvaluation:
             "std",
             "icir",
             "t_stat",
+            "p_value",
+            "mean_ci_lower",
+            "mean_ci_upper",
             "hit_rate",
         ]
         assert list(evaluation.portfolio_summary().index) == [
@@ -236,12 +315,25 @@ class TestAlphaForecastEvaluation:
         assert "spearman_mean_ic" in evaluation.holding_period_summary().columns
         assert "spearman_mean_ic" in evaluation.decay_summary().columns
         assert "spearman_icir" in evaluation.decay_summary().columns
-        assert "spearman_ic_t_stat" in evaluation.decay_summary().columns
+        for prefix in ("spearman", "pearson"):
+            for suffix in (
+                "ic_t_stat",
+                "ic_p_value",
+                "mean_ic_ci_lower",
+                "mean_ic_ci_upper",
+            ):
+                assert f"{prefix}_{suffix}" in evaluation.decay_summary().columns
+                assert (
+                    f"{prefix}_{suffix}" in evaluation.holding_period_summary().columns
+                )
         assert list(evaluation.factor_correlation_summary().columns) == [
             "mean",
             "std",
             "ir",
             "t_stat",
+            "p_value",
+            "mean_ci_lower",
+            "mean_ci_upper",
             "hit_rate",
         ]
         assert evaluation.factor_correlation_summary().empty
@@ -257,24 +349,6 @@ class TestAlphaForecastEvaluation:
             np.nanmean(evaluation.coverage)
         )
         assert coverage["min_n_valid_assets"] == np.nanmin(evaluation.n_valid_assets)
-
-    def test_ic_summary_t_stat(self, alpha_deterministic_panel):
-        """IC t-stat is computed from finite evaluation dates."""
-        evaluation = alpha_forecast_evaluation(
-            _fixed_signal_alpha(),
-            alpha_deterministic_panel,
-            holding_period=1,
-            signal_lag=1,
-        )
-
-        spearman_ic = evaluation.spearman_ic[np.isfinite(evaluation.spearman_ic)]
-        expected = np.nanmean(spearman_ic) / (
-            np.nanstd(spearman_ic, ddof=1) / np.sqrt(spearman_ic.size)
-        )
-
-        assert evaluation.ic_summary().loc["spearman_ic", "t_stat"] == pytest.approx(
-            expected
-        )
 
     def test_return_summaries_are_annualized(self, alpha_deterministic_panel):
         """Portfolio and quantile summaries annualize return statistics."""
@@ -500,6 +574,7 @@ class TestAlphaForecastEvaluation:
     def test_unavailable_diagnostic_plot_raises(
         self, method, evaluation_with_diagnostics
     ):
+        """Plots raise when their required diagnostics are unavailable."""
         evaluation = replace(
             evaluation_with_diagnostics,
             holding_period_diagnostics=pd.DataFrame(),
@@ -649,20 +724,54 @@ class TestAlphaForecastEvaluation:
         )
         assert evaluation.factor_correlation_method is CorrelationMethod.PEARSON
 
-    def test_factor_correlation_plot(self):
-        """Factor correlation plot shows top mean correlations as bars."""
+    @pytest.mark.parametrize(
+        "kwargs,expected_names,expected_values",
+        [
+            ({"top_n": 2}, ["Positive Factor", "Negative Factor"], [1.0, -1.0]),
+            (
+                {"families": "style", "top_n": None},
+                ["Positive Factor", "Negative Factor"],
+                [1.0, -1.0],
+            ),
+            (
+                {"factors": ["mixed_factor"], "families": "unknown"},
+                ["Mixed Factor"],
+                [np.nan],
+            ),
+            (
+                {},
+                ["Positive Factor", "Negative Factor", "Mixed Factor"],
+                [1.0, -1.0, np.nan],
+            ),
+        ],
+    )
+    def test_factor_correlation_plot(
+        self, monkeypatch, kwargs, expected_names, expected_values
+    ):
+        """Plot selected factor means, including missing data, without inference."""
         evaluation = alpha_forecast_evaluation(
             _fixed_signal_alpha(),
             _factor_correlation_panel(),
             holding_period=1,
             signal_lag=1,
         )
+        correlations = evaluation.factor_correlation.copy()
+        correlations[:2, 0] = np.nan
+        correlations[:, 2] = np.nan
+        evaluation = replace(evaluation, factor_correlation=correlations)
 
-        fig = evaluation.plot_factor_correlation(top_n=2)
+        def unexpected_inference(*args, **kwargs):
+            """Fail if plotting requests inference instead of only computing means."""
+            pytest.fail("Plotting factor means should not compute inference.")
+
+        monkeypatch.setattr(
+            "skfolio.alpha._evaluation._mean_inference", unexpected_inference
+        )
+        fig = evaluation.plot_factor_correlation(**kwargs)
 
         assert fig.data[0].orientation is None
-        assert len(fig.data[0].x) == 2
-        assert list(fig.data[0].x) == ["Positive Factor", "Negative Factor"]
+        assert list(fig.data[0].x) == expected_names
+        np.testing.assert_allclose(fig.data[0].y, expected_values, equal_nan=True)
         assert fig.layout.yaxis.range == (-1.0, 1.0)
 
     def test_perfect_forecast_calibration_slope(self):
@@ -1007,3 +1116,441 @@ class TestAlphaForecastEvaluation:
         assert np.isnan(stats["ir"])
         assert np.isnan(stats["hit_rate"])
         assert stats["n_valid_assets"] == pytest.approx(4.0)
+
+    def test_window_summaries_return_copies_of_stored_frames(self):
+        """Editing returned summaries leaves the stored diagnostics unchanged."""
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            _noisy_forecast_panel(),
+            holding_period=2,
+            n_forward_periods=3,
+        )
+        for stored, method in (
+            (evaluation.holding_period_diagnostics, evaluation.holding_period_summary),
+            (evaluation.decay, evaluation.decay_summary),
+        ):
+            summary = method()
+            pd.testing.assert_frame_equal(stored, summary)
+            summary.iloc[0, 0] = 123.0
+            assert stored.iloc[0, 0] != 123.0
+            pd.testing.assert_frame_equal(stored, method())
+
+    def test_summary_without_common_sample_keeps_schema(
+        self, evaluation_with_diagnostics
+    ):
+        """Empty comparisons retain the normal summary columns and index."""
+        panel = _perfect_forecast_panel()
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            panel,
+            n_forward_periods=3,
+            min_count=panel.n_assets + 1,
+        )
+        for method in ("holding_period_summary", "decay_summary"):
+            summary = getattr(evaluation, method)()
+            reference = getattr(evaluation_with_diagnostics, method)()
+            pd.testing.assert_index_equal(summary.index, reference.index)
+            pd.testing.assert_index_equal(summary.columns, reference.columns)
+            assert summary.isna().all().all()
+
+
+class TestHacInference:
+    """Check HAC statistics against direct kernel and bootstrap calculations."""
+
+    @staticmethod
+    def _overlapping_series(n=300, window=10, mean=0.1, seed=1):
+        """Generate `n` overlapping Gaussian averages with the requested mean."""
+        noise = np.random.default_rng(seed).normal(size=n + window - 1)
+        return np.convolve(noise, np.ones(window) / window, mode="valid") + mean
+
+    @staticmethod
+    def _reference_kernel(positions, span):
+        """Build the full quadratic spectral kernel matrix for comparison.
+
+        Use bandwidth `0.1 * span`, with `positions` and `span` as defined in
+        `_quadratic_spectral_basis`.
+        """
+        distance = np.abs(np.subtract.outer(positions, positions)) / (0.1 * span)
+        kernel = np.ones_like(distance, dtype=float)
+        nonzero = distance != 0
+        z = 6 * np.pi * distance[nonzero] / 5
+        kernel[nonzero] = 3 * (np.sin(z) / z - np.cos(z)) / z**2
+        return kernel
+
+    @classmethod
+    def _reference_t_stat(cls, arr):
+        """Compute the HAC t-statistic directly from the full kernel matrix.
+
+        Keep the gaps left by non-finite values in `arr`.
+        """
+        positions = np.flatnonzero(np.isfinite(arr))
+        positions -= positions[0]
+        values = arr[np.isfinite(arr)]
+        centered_values = values - values.mean()
+        kernel = cls._reference_kernel(positions, positions[-1] + 1)
+        return (
+            values.mean()
+            * values.size
+            / np.sqrt(centered_values @ kernel @ centered_values)
+        )
+
+    @pytest.mark.parametrize("span", [20, 250, 5000])
+    def test_quadrature_matches_exact_kernel(self, span):
+        """The compact basis reproduces the full quadratic spectral kernel."""
+        positions = np.unique(np.linspace(0, span - 1, min(span, 101), dtype=int))
+        kernel_basis = _quadratic_spectral_basis(positions, span)
+        np.testing.assert_allclose(
+            kernel_basis @ kernel_basis.T,
+            self._reference_kernel(positions, span),
+            atol=1e-12,
+            rtol=1e-10,
+        )
+
+    @pytest.mark.parametrize("gaps", [False, True])
+    def test_t_stat_matches_quadratic_spectral_reference(self, gaps):
+        """The HAC statistic matches a direct calculation with or without gaps."""
+        arr = self._overlapping_series(n=200, window=5, seed=2)
+        if gaps:
+            arr[[40, 41, 150]] = np.nan
+        stats = _correlation_stats(arr, ratio_name="icir")
+        assert stats["t_stat"] == pytest.approx(self._reference_t_stat(arr), rel=1e-10)
+        if gaps:
+            compacted = _correlation_stats(arr[np.isfinite(arr)], ratio_name="icir")
+            assert stats["t_stat"] != pytest.approx(compacted["t_stat"], rel=1e-9)
+
+    @pytest.mark.parametrize("gaps", [False, True])
+    @pytest.mark.parametrize("changing_variance", [False, True])
+    def test_calibration_matches_direct_independent_wild_bootstrap(
+        self, gaps, changing_variance
+    ):
+        """Bootstrap calibration agrees with directly simulated observations."""
+        arr = self._overlapping_series(n=80, window=5, mean=0.12, seed=21)
+        if changing_variance:
+            arr *= np.where(np.arange(arr.size) < 55, 0.2, 1.0)
+        if gaps:
+            arr[[8, 9, 10, 34, 55, 56]] = np.nan
+        positions = np.flatnonzero(np.isfinite(arr))
+        values = arr[positions]
+        n = values.size
+        kernel = self._reference_kernel(positions, arr.size)
+        centered_values = values - values.mean()
+        standard_error = np.sqrt(centered_values @ kernel @ centered_values) / n
+        t_stat = values.mean() / standard_error
+        draws = np.random.default_rng(12).standard_normal((39_999, n)) * centered_values
+        boot_mean = draws.mean(axis=1)
+        draws -= boot_mean[:, None]
+        boot_scale = np.sqrt(np.sum((draws @ kernel) * draws, axis=1)) / n
+        abs_boot = np.abs(boot_mean / boot_scale)
+        reference_p = (1 + np.count_nonzero(abs_boot >= abs(t_stat))) / 40_000
+        critical = np.sort(abs_boot)[38_000]
+        stats = _mean_inference(arr)
+        assert stats["t_stat"] == pytest.approx(t_stat, rel=1e-10)
+        # Different random draws produce slightly different p-values and intervals.
+        assert stats["p_value"] == pytest.approx(reference_p, abs=0.02)
+        half_width = (stats["mean_ci_upper"] - stats["mean_ci_lower"]) / 2
+        assert half_width == pytest.approx(critical * standard_error, rel=0.06)
+
+    def test_overlap_shrinks_t_stat_versus_independent_dates(self):
+        """Positive dependence reduces significance for this overlapping series."""
+        arr = self._overlapping_series(n=2000, mean=0.1)
+        t_stat = _mean_inference(arr)["t_stat"]
+        iid = np.mean(arr) / (np.std(arr, ddof=1) / np.sqrt(arr.size))
+        assert 0 < t_stat < iid
+
+    @pytest.mark.parametrize("mean", [-0.3, 0.0, 0.3])
+    def test_p_value_and_confidence_interval(self, mean):
+        """P-values and intervals agree on significance for either sign of mean."""
+        arr = self._overlapping_series(mean=0.0)
+        arr = arr - arr.mean() + mean
+        stats = _mean_inference(arr)
+        assert stats["mean_ci_lower"] < mean < stats["mean_ci_upper"]
+        excludes_zero = stats["mean_ci_lower"] > 0 or stats["mean_ci_upper"] < 0
+        assert excludes_zero == (stats["p_value"] < 0.05) == (mean != 0)
+
+    def test_confidence_interval_matches_strict_p_value_boundary(self, monkeypatch):
+        """An interval touching zero corresponds to a p-value of exactly 0.05."""
+        arr = np.tile([0.0, 2.0], 20)
+        statistic = _mean_inference(arr)["t_stat"]
+        bootstrap = statistic * np.r_[np.full(95, 0.5), 1.0, np.full(3, 2.0)]
+        monkeypatch.setattr(
+            "skfolio.alpha._evaluation._wild_bootstrap_t_stats", lambda *_: bootstrap
+        )
+        stats = _mean_inference(arr)
+        assert stats["p_value"] == 0.05
+        assert stats["mean_ci_lower"] == pytest.approx(0.0, abs=1e-14)
+        bootstrap *= 0.99
+        stats = _mean_inference(arr)
+        assert stats["p_value"] == 0.04
+        assert stats["mean_ci_lower"] > 0
+
+    def test_inference_is_reproducible_without_touching_global_random_state(self):
+        """Repeated calls agree without changing the global random state."""
+        arr = self._overlapping_series()
+        state = np.random.get_state()
+        first = _mean_inference(arr)
+        _mean_inference(arr[::2])
+        second = _mean_inference(arr.copy())
+        assert first == second
+        after = np.random.get_state()
+        assert state[0] == after[0]
+        np.testing.assert_array_equal(state[1], after[1])
+        assert state[2:] == after[2:]
+
+    @pytest.mark.parametrize("kind", ["iid", "overlap", "changing_variance"])
+    def test_null_rejection_rate(self, monkeypatch, kind):
+        """False-positive rates stay near 5% across the tested null processes."""
+        monkeypatch.setattr("skfolio.alpha._evaluation._N_BOOTSTRAP_SAMPLES", 999)
+        rng = np.random.default_rng(11)
+        n_trials, rejections = 300, 0
+        for _ in range(n_trials):
+            noise = rng.standard_normal(250 + 9)
+            arr = (
+                3 * np.convolve(noise, np.ones(10) / 10, mode="valid")
+                if kind == "overlap"
+                else noise[:250]
+            )
+            if kind == "changing_variance":
+                arr *= np.where(np.arange(250) < 200, 0.2, 1.0)
+            rejections += _mean_inference(arr)["p_value"] < 0.05
+        assert 0.02 <= rejections / n_trials <= 0.09
+
+    @pytest.mark.parametrize("value", [0.0, 0.1, np.nan])
+    def test_nan_with_degenerate_series(self, value):
+        """Constant and entirely missing series have no inference results."""
+        assert all(np.isnan(x) for x in _mean_inference(np.full(50, value)).values())
+
+    def test_nan_with_fewer_than_20_valid_observations(self):
+        """Short histories retain descriptive statistics but have no inference."""
+        arr = self._overlapping_series(n=30)
+        arr[:11] = np.nan
+        stats = _correlation_stats(arr, ratio_name="icir")
+        assert np.isfinite(stats["mean"])
+        for key in ("t_stat", "p_value", "mean_ci_lower", "mean_ci_upper"):
+            assert np.isnan(stats[key])
+
+    @pytest.mark.parametrize("scale", [1e-100, 1e-6, 1e6])
+    def test_inference_is_scale_invariant(self, scale):
+        """Rescaling preserves significance and rescales the confidence interval."""
+        arr = self._overlapping_series()
+        reference = _mean_inference(arr)
+        scaled = _mean_inference(scale * arr)
+        assert scaled["t_stat"] == pytest.approx(reference["t_stat"])
+        assert scaled["p_value"] == pytest.approx(reference["p_value"], abs=0.002)
+        for key in ("mean_ci_lower", "mean_ci_upper"):
+            assert scaled[key] / scale == pytest.approx(reference[key], rel=0.02)
+
+    def test_small_dispersion_around_nonzero_mean_is_not_degenerate(self):
+        """Small but meaningful variation still allows inference."""
+        arr = 5.0 + 1e-6 * self._overlapping_series(n=100, window=5, mean=0, seed=8)
+        stats = _mean_inference(arr)
+        assert all(np.isfinite(value) for value in stats.values())
+        assert stats["mean_ci_lower"] < arr.mean() < stats["mean_ci_upper"]
+
+    @pytest.mark.parametrize(
+        "n,horizon,step,finite",
+        [
+            (60, 6, 1, True),
+            (59, 6, 1, False),
+            (60, 7, 1, False),
+            (95, 10, 1, False),
+            (100, 10, 1, True),
+            (50, 10, 2, False),
+            (51, 10, 2, True),
+        ],
+    )
+    def test_history_boundary_ignores_empty_ends(self, n, horizon, step, finite):
+        """Missing leading and trailing dates do not extend the usable history."""
+        arr = self._overlapping_series(n=n, window=3)
+        reference = _mean_inference(arr, horizon=horizon, evaluation_step=step)
+        padded = _mean_inference(
+            np.pad(arr, (40, 400), constant_values=np.nan),
+            horizon=horizon,
+            evaluation_step=step,
+        )
+        assert np.isfinite(reference["t_stat"]) == finite
+        for key in reference:
+            assert padded[key] == pytest.approx(reference[key], nan_ok=True)
+
+    def test_explicit_positions_match_nan_gaps(self):
+        """Stored positions and explicit missing values give the same inference."""
+        arr = self._overlapping_series(n=200)
+        arr[[35, 36, 81, 135]] = np.nan
+        positions = np.flatnonzero(np.isfinite(arr))
+        reference = _mean_inference(arr, horizon=10)
+        compact = _mean_inference(arr[positions], positions=positions + 100, horizon=10)
+        assert compact == reference
+
+    @pytest.mark.parametrize("evaluation_step", [1, 2])
+    def test_ic_summary_preserves_missing_dates_and_offset(self, evaluation_step):
+        """IC summaries preserve gaps when unusable forecast dates are dropped."""
+        panel = _noisy_forecast_panel()
+        target = panel[_IDIO_RETURNS].copy()
+        target[:4] = np.nan
+        target[60:62] = np.nan
+        panel[_IDIO_RETURNS] = target
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            panel,
+            holding_period=2,
+            evaluation_step=evaluation_step,
+            n_forward_periods=2,
+        )
+        rows = np.searchsorted(panel.observations, evaluation.observations)
+        positions = (rows - rows[0]) // evaluation_step
+        assert rows[0] == 2
+        summary = evaluation.ic_summary()
+        for name in ("spearman_ic", "pearson_ic"):
+            values = getattr(evaluation, name)
+            grid = np.full(positions[-1] + 1, np.nan)
+            grid[positions] = values
+            expected = _mean_inference(grid, horizon=2, evaluation_step=evaluation_step)
+            for key in expected:
+                assert summary.loc[name, key] == pytest.approx(expected[key])
+            assert summary.loc[name, "mean"] == pytest.approx(np.nanmean(values))
+            assert summary.loc[name, "std"] == pytest.approx(np.nanstd(values, ddof=1))
+            assert summary.loc[name, "hit_rate"] == pytest.approx(
+                np.mean(values[np.isfinite(values)] > 0)
+            )
+
+    def test_manually_constructed_evaluation_defaults_to_consecutive_positions(self):
+        """Evaluations without stored positions assume consecutive observations."""
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            _noisy_forecast_panel(),
+            n_forward_periods=2,
+        )
+        evaluation = replace(evaluation, _evaluation_positions=None)
+        expected = _correlation_stats(
+            evaluation.spearman_ic, ratio_name="icir", horizon=1
+        )
+        assert evaluation.ic_summary().loc["spearman_ic"].to_dict() == expected
+
+    @pytest.mark.parametrize("evaluation_step", [1, 2])
+    def test_window_inference_uses_each_target_horizon(self, evaluation_step):
+        """Each window applies the history requirement for its own return horizon."""
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            _noisy_forecast_panel(),
+            holding_period=5,
+            evaluation_step=evaluation_step,
+            n_forward_periods=3,
+        )
+        holding = evaluation.holding_period_summary()
+        decay = evaluation.decay_summary()
+        # Fewer than 150 observations remain, so a 15-period window is too long.
+        # All decay windows have length 5 and need only 50 observations.
+        for prefix in ("spearman", "pearson"):
+            for suffix in (
+                "ic_t_stat",
+                "ic_p_value",
+                "mean_ic_ci_lower",
+                "mean_ic_ci_upper",
+            ):
+                column = f"{prefix}_{suffix}"
+                assert holding[column].iloc[:2].notna().all()
+                assert np.isnan(holding[column].iloc[2])
+                assert decay[column].notna().all()
+
+    @pytest.mark.parametrize("evaluation_step", [1, 3])
+    @pytest.mark.parametrize(
+        "summary_name", ["holding_period_summary", "decay_summary"]
+    )
+    def test_window_inference_preserves_common_sample_gaps(
+        self, evaluation_step, summary_name
+    ):
+        """Window inference retains gaps left by the shared date selection."""
+        panel = _noisy_forecast_panel()
+        target = panel[_IDIO_RETURNS].copy()
+        target[:4] = np.nan
+        target[60:62] = np.nan
+        target[98] = np.nan
+        panel[_IDIO_RETURNS] = target
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            panel,
+            holding_period=2,
+            evaluation_step=evaluation_step,
+            n_forward_periods=3,
+        )
+        summary = getattr(evaluation, summary_name)()
+        windows = (
+            [(2 * period, 1) for period in range(1, 4)]
+            if summary_name == "holding_period_summary"
+            else [(2, 1 + 2 * delay) for delay in range(3)]
+        )
+        first_date = np.searchsorted(panel.observations, evaluation.observations[0])
+        grid = np.arange(first_date, panel.n_observations, evaluation_step)
+        forecasts = panel["signal"][grid]
+        targets = [
+            _forward_mean_return(target, horizon=horizon, lag=lag)[grid]
+            for horizon, lag in windows
+        ]
+        common = np.logical_and.reduce(
+            [
+                np.sum(np.isfinite(forecasts) & np.isfinite(values), axis=1) >= 2
+                for values in targets
+            ]
+        )
+        assert not common.all()
+        for i, ((horizon, _), values) in enumerate(zip(windows, targets, strict=True)):
+            for prefix, correlation in (
+                ("spearman", cs_spearman_correlation),
+                ("pearson", cs_pearson_correlation),
+            ):
+                # Keep excluded dates as NaN in this reference calculation.
+                ic = correlation(forecasts, values, axis=1)
+                ic[~common] = np.nan
+                expected = _mean_inference(
+                    ic, horizon=horizon, evaluation_step=evaluation_step
+                )
+                row = summary.iloc[i]
+                assert row[f"{prefix}_ic_t_stat"] == pytest.approx(
+                    self._reference_t_stat(ic), rel=1e-10
+                )
+                assert row[f"{prefix}_ic_p_value"] == pytest.approx(expected["p_value"])
+                for bound in ("lower", "upper"):
+                    assert row[f"{prefix}_mean_ic_ci_{bound}"] == pytest.approx(
+                        expected[f"mean_ci_{bound}"]
+                    )
+                assert row[f"{prefix}_mean_ic"] == pytest.approx(np.nanmean(ic))
+                assert row[f"{prefix}_icir"] == pytest.approx(
+                    np.nanmean(ic) / np.nanstd(ic, ddof=1)
+                )
+
+    @pytest.mark.parametrize("evaluation_step", [1, 2, 5])
+    def test_factor_summary_preserves_all_dates_and_descriptive_statistics(
+        self, evaluation_step
+    ):
+        """Factor inference uses all dates and preserves descriptive statistics."""
+        panel = _noisy_forecast_panel()
+        target = panel[_IDIO_RETURNS].copy()
+        target[:4] = np.nan
+        panel[_IDIO_RETURNS] = target
+        exposures = np.random.default_rng(3).standard_normal((150, 12, 2))
+        exposures[59] = np.nan
+        panel.add_3d_field(
+            _EXPOSURES,
+            exposures,
+            third_axis_name="factors",
+            third_axis_labels=["f0", "f1"],
+        )
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            panel,
+            holding_period=20,
+            evaluation_step=evaluation_step,
+            n_forward_periods=2,
+        )
+        summary = evaluation.factor_correlation_summary()
+        assert evaluation.ic_summary()["t_stat"].isna().all()
+        for i in range(2):
+            values = evaluation.factor_correlation[:, i]
+            mean, std = np.nanmean(values), np.nanstd(values, ddof=1)
+            assert summary.iloc[i]["mean"] == pytest.approx(mean)
+            assert summary.iloc[i]["std"] == pytest.approx(std)
+            assert summary.iloc[i]["ir"] == pytest.approx(mean / std)
+            assert summary.iloc[i]["hit_rate"] == pytest.approx(
+                np.mean(values[np.isfinite(values)] > 0)
+            )
+            for key, value in _mean_inference(values).items():
+                assert summary.iloc[i][key] == pytest.approx(value)

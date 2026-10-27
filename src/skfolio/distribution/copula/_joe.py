@@ -68,7 +68,7 @@ class JoeCopula(BaseBivariateCopula):
         Rotation are needed for archimedean copulas (e.g., Joe, Gumbel, Clayton)
         because their parameters only model positive dependence, and they exhibit
         asymmetric tail behavior. To model negative dependence, one uses rotations
-        to “flip” the copula's tail dependence.
+        to "flip" the copula's tail dependence.
 
     Parameters
     ----------
@@ -174,13 +174,13 @@ class JoeCopula(BaseBivariateCopula):
         kendall_tau: float | None = None,
         tolerance: float = 1e-4,
         random_state: int | None = None,
-    ):
+    ) -> None:
         super().__init__(random_state=random_state)
         self.itau = itau
         self.kendall_tau = kendall_tau
         self.tolerance = tolerance
 
-    def fit(self, X: ArrayLike, y=None) -> JoeCopula:
+    def fit(self, X: ArrayLike, y: None = None) -> JoeCopula:
         r"""Fit the Bivariate Joe Copula.
 
         If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.
@@ -222,7 +222,6 @@ class JoeCopula(BaseBivariateCopula):
                 else:
                     self.theta_ = _THETA_BOUNDS[1]
             else:
-                # noinspection PyTypeChecker
                 self.theta_ = so.brentq(
                     _tau_diff,
                     args=(abs_kendall_tau,),
@@ -256,7 +255,7 @@ class JoeCopula(BaseBivariateCopula):
             CDF values for each observation in X.
         """
         skv.check_is_fitted(self)
-        X = self._validate_X(X, reset=False)
+        X = self._validate_X(X, reset=False, clip=False)
         cdf = _apply_rotation_cdf(
             func=_base_cdf, X=X, rotation=self.rotation_, theta=self.theta_
         )
@@ -511,6 +510,11 @@ def _base_cdf(X: FloatArray, theta: float) -> FloatArray:
     """Bivariate Joe CDF (unrotated)."""
     z = np.power(1 - X, theta)
     cdf = 1.0 - np.power(np.sum(z, axis=1) - np.prod(z, axis=1), 1.0 / theta)
+    # Write C = 1 - (1 - w)**(1/theta) without cancellation in the lower tail.
+    # Keep the original formula above when w is near one.
+    w = np.prod(-np.expm1(theta * np.log1p(-X)), axis=1)
+    lower_tail = w < 0.5
+    cdf[lower_tail] = -np.expm1(np.log1p(-w[lower_tail]) / theta)
     return cdf
 
 

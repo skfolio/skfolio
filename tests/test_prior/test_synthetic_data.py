@@ -3,6 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 import sklearn.base as skb
+import sklearn.utils as sku
+from sklearn import config_context
 
 from skfolio import MultiPeriodPortfolio, RiskMeasure
 from skfolio.distribution import VineCopula
@@ -102,4 +104,133 @@ def test_distribution_estimator_without_sample_method(X):
 def test_distribution_estimator_sample_without_n_samples(X):
     model = SyntheticData(distribution_estimator=_SampleWithoutNSamplesEstimator())
     with pytest.raises(ValueError, match="must have `n_samples` as parameter"):
+        model.fit(X)
+
+
+class _WeightedGaussianEstimator(skb.BaseEstimator):
+    def fit(self, X, y=None, sample_weight=None):
+        X = np.asarray(X)
+        self.sample_weight_ = sample_weight
+        self.mean_ = np.average(X, axis=0, weights=sample_weight)
+        self.covariance_ = np.cov(X, rowvar=False, aweights=sample_weight)
+        return self
+
+    def sample(self, n_samples=1):
+        rng = np.random.default_rng(42)
+        return rng.multivariate_normal(self.mean_, self.covariance_, size=n_samples)
+
+
+def test_metadata_routing(X):
+    X = X.iloc[-300:]
+    sample_weight = np.linspace(0.5, 1.5, len(X))
+    with config_context(enable_metadata_routing=True):
+        model = SyntheticData(
+            distribution_estimator=_WeightedGaussianEstimator().set_fit_request(
+                sample_weight=True
+            )
+        )
+        model.fit(X, sample_weight=sample_weight)
+
+    np.testing.assert_array_equal(
+        model.distribution_estimator_.sample_weight_, sample_weight
+    )
+    assert model.return_distribution_.returns.shape == (1000, 20)
+
+
+def _conditioned_returns(X, conditioning, random_state):
+    model = SyntheticData(
+        distribution_estimator=VineCopula(
+            central_assets=list(conditioning), random_state=random_state
+        ),
+        n_samples=300,
+        sample_args=dict(conditioning=conditioning),
+    )
+    return model.fit(X).return_distribution_.returns
+
+
+@pytest.mark.parametrize("random_state", [0, np.random.RandomState(0)])
+def test_conditioning_noise_is_reproducible(X, random_state):
+    X = X.iloc[-300:, :4]
+    a, b = X.columns[:2]
+    conditioning = {a: -0.02, b: 0.01}
+    returns_1 = _conditioned_returns(X, conditioning, random_state=random_state)
+    returns_2 = _conditioned_returns(X, conditioning, random_state=random_state)
+    np.testing.assert_array_equal(returns_1, returns_2)
+
+
+def test_conditioning_noise_is_independent_across_assets(X):
+    X = X.iloc[-300:, :4]
+    a, b = X.columns[:2]
+    returns = _conditioned_returns(X, {a: -0.02, b: 0.01}, random_state=0)
+    corr = np.corrcoef(returns[:, 0], returns[:, 1])[0, 1]
+    assert abs(corr) < 0.5
+
+
+class _ConditionalGaussianEstimator(skb.BaseEstimator):
+    def __init__(self, random_state=None):
+        self.random_state = random_state
+
+    def fit(self, X, y=None):
+        self.n_features_in_ = X.shape[1]
+        return self
+
+    def sample(self, n_samples=1):
+        rng = self.random_state
+        if not isinstance(rng, np.random.Generator):
+            rng = sku.check_random_state(rng)
+        return np.column_stack(
+            (
+                0.01 * rng.standard_normal(n_samples),
+                np.full((n_samples, self.n_features_in_ - 1), -0.02),
+            )
+        )
+
+
+@pytest.mark.parametrize("random_state", [0, np.random.RandomState(0)])
+@pytest.mark.parametrize("n_assets", [2, 3])
+@pytest.mark.filterwarnings("error:The covariance matrix is not positive definite")
+def test_conditioning_noise_is_independent_of_sampled_assets(random_state, n_assets):
+    X = np.random.RandomState(42).normal(size=(100, n_assets))
+    estimator = _ConditionalGaussianEstimator(random_state=random_state)
+    expected = skb.clone(estimator).fit(X).sample(n_samples=1000)
+    model = SyntheticData(distribution_estimator=estimator, n_samples=1000)
+    returns = model.fit(X).return_distribution_.returns
+
+    np.testing.assert_array_equal(returns[:, 0], expected[:, 0])
+    correlations = np.corrcoef(returns.T)[np.triu_indices(n_assets, k=1)]
+    assert np.all(np.abs(correlations) < 0.2)
+    assert np.linalg.matrix_rank(np.cov(returns.T)) == n_assets
+    np.testing.assert_array_equal(returns, model.fit(X).return_distribution_.returns)
+
+
+class _ConstantEstimator(skb.BaseEstimator):
+    def fit(self, X, y=None):
+        self.n_features_in_ = X.shape[1]
+        return self
+
+    def sample(self, n_samples=1):
+        return np.full((n_samples, self.n_features_in_), -0.02)
+
+
+@pytest.mark.parametrize(
+    "estimator", [_ConstantEstimator(), _ConditionalGaussianEstimator()]
+)
+def test_conditioning_noise_without_seed(estimator):
+    X = np.random.RandomState(42).normal(size=(100, 2))
+    model = SyntheticData(distribution_estimator=estimator, n_samples=1000)
+    returns_1 = model.fit(X).return_distribution_.returns
+    returns_2 = model.fit(X).return_distribution_.returns
+
+    assert not np.array_equal(returns_1[:, -1], returns_2[:, -1])
+    assert np.all(np.std(returns_1, axis=0) > 0)
+
+
+def test_conditioning_noise_rejects_generator():
+    X = np.random.RandomState(42).normal(size=(100, 2))
+    model = SyntheticData(
+        distribution_estimator=_ConditionalGaussianEstimator(
+            random_state=np.random.default_rng(0)
+        )
+    )
+    with pytest.raises(ValueError, match="cannot be used to seed"):
         model.fit(X)

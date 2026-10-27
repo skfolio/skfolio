@@ -12,6 +12,12 @@ from skfolio.moments import (
 from skfolio.moments.covariance import RegimeAdjustmentMethod, RegimeAdjustmentTarget
 from skfolio.utils.stats import cov_to_corr
 
+
+def _assert_symmetric_psd(covariance):
+    np.testing.assert_almost_equal(covariance, covariance.T)
+    assert np.all(np.linalg.eigvalsh(covariance) >= -1e-10)
+
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -49,9 +55,7 @@ class TestRegimeAdjustedEWCovariance:
         assert hasattr(model, "covariance_")
         assert 0.5 < model.regime_multiplier_ < 2.0
         assert np.all(np.isfinite(model.covariance_))
-        np.testing.assert_almost_equal(model.covariance_, model.covariance_.T)
-        eigvals = np.linalg.eigvalsh(model.covariance_)
-        assert np.all(eigvals >= -1e-10)
+        _assert_symmetric_psd(model.covariance_)
 
     def test_auto_stvu(self, X):
         model_auto = RegimeAdjustedEWCovariance(half_life=11)
@@ -74,35 +78,15 @@ class TestRegimeAdjustedEWCovariance:
             RegimeAdjustmentMethod.RMS,
         ],
     )
-    def test_demeaning(self, X, regime_method):
-        """Test RegimeAdjustedEWCovariance with EWMA de-meaning."""
-        model = RegimeAdjustedEWCovariance(
-            regime_target=RegimeAdjustmentTarget.MAHALANOBIS,
-            regime_method=regime_method,
-            half_life=23,
-            assume_centered=False,
-        )
-        model.fit(X)
-        assert model.covariance_.shape == (20, 20)
-        assert np.all(np.isfinite(model.covariance_))
-        assert model.regime_multiplier_ > 0
-        np.testing.assert_almost_equal(model.covariance_, model.covariance_.T)
-        eigvals = np.linalg.eigvalsh(model.covariance_)
-        assert np.all(eigvals >= -1e-10)
-
-    @pytest.mark.parametrize(
-        "regime_method",
-        [
-            RegimeAdjustmentMethod.LOG,
-            RegimeAdjustmentMethod.FIRST_MOMENT,
-            RegimeAdjustmentMethod.RMS,
-        ],
-    )
     @pytest.mark.parametrize(
         "regime_target",
-        [RegimeAdjustmentTarget.DIAGONAL, RegimeAdjustmentTarget.PORTFOLIO],
+        [
+            RegimeAdjustmentTarget.MAHALANOBIS,
+            RegimeAdjustmentTarget.DIAGONAL,
+            RegimeAdjustmentTarget.PORTFOLIO,
+        ],
     )
-    def test_demeaning_with_regime_target(self, X, regime_method, regime_target):
+    def test_demeaning(self, X, regime_method, regime_target):
         """Test demeaning with non-default STVU targets."""
         model = RegimeAdjustedEWCovariance(
             regime_target=regime_target,
@@ -114,9 +98,7 @@ class TestRegimeAdjustedEWCovariance:
         assert model.covariance_.shape == (20, 20)
         assert np.all(np.isfinite(model.covariance_))
         assert model.regime_multiplier_ > 0
-        np.testing.assert_almost_equal(model.covariance_, model.covariance_.T)
-        eigvals = np.linalg.eigvalsh(model.covariance_)
-        assert np.all(eigvals >= -1e-10)
+        _assert_symmetric_psd(model.covariance_)
 
     @pytest.mark.parametrize(
         "regime_method",
@@ -144,9 +126,7 @@ class TestRegimeAdjustedEWCovariance:
         assert model.covariance_.shape == (20, 20)
         assert np.all(np.isfinite(model.covariance_))
         assert 0.8 <= model.regime_multiplier_ <= 1.5
-        np.testing.assert_almost_equal(model.covariance_, model.covariance_.T)
-        eigvals = np.linalg.eigvalsh(model.covariance_)
-        assert np.all(eigvals >= -1e-10)
+        _assert_symmetric_psd(model.covariance_)
 
     def test_insufficient_data(self):
         """Test with insufficient data (all below min_observations)."""
@@ -231,9 +211,7 @@ class TestRegimeAdjustedEWCovariance:
         assert model.covariance_.shape == (20, 20)
         assert np.all(np.isfinite(model.covariance_))
 
-        np.testing.assert_almost_equal(model.covariance_, model.covariance_.T)
-        eigvals = np.linalg.eigvalsh(model.covariance_)
-        assert np.all(eigvals >= -1e-10)
+        _assert_symmetric_psd(model.covariance_)
 
     def test_covariance_pure_calibration(self):
         """On IID N(0, Sigma*) with long burn-in, regime_multiplier_ should be ~1."""
@@ -518,9 +496,7 @@ class TestRegimeAdjustedEWCovariance:
         assert model.covariance_.shape == (20, 20)
         assert np.all(np.isfinite(model.covariance_))
         assert model.regime_multiplier_ > 0
-        np.testing.assert_almost_equal(model.covariance_, model.covariance_.T)
-        eigvals = np.linalg.eigvalsh(model.covariance_)
-        assert np.all(eigvals >= -1e-10)
+        _assert_symmetric_psd(model.covariance_)
 
     def test_hac_with_demeaning(self, X):
         """Test HAC with EWMA de-meaning."""
@@ -531,9 +507,7 @@ class TestRegimeAdjustedEWCovariance:
         assert model.covariance_.shape == (20, 20)
         assert np.all(np.isfinite(model.covariance_))
         assert model.regime_multiplier_ > 0
-        np.testing.assert_almost_equal(model.covariance_, model.covariance_.T)
-        eigvals = np.linalg.eigvalsh(model.covariance_)
-        assert np.all(eigvals >= -1e-10)
+        _assert_symmetric_psd(model.covariance_)
 
     def test_hac_with_separate_decay(self, X):
         """Test HAC with separate variance/correlation half-lives."""
@@ -593,9 +567,7 @@ class TestRegimeAdjustedEWCovariance:
         assert model.covariance_.shape == (20, 20)
         assert np.all(np.isfinite(model.covariance_))
         assert model.regime_multiplier_ > 0
-        np.testing.assert_almost_equal(model.covariance_, model.covariance_.T)
-        eigvals = np.linalg.eigvalsh(model.covariance_)
-        assert np.all(eigvals >= -1e-10)
+        _assert_symmetric_psd(model.covariance_)
 
     def test_hac_vs_no_hac(self, X):
         """Test that HAC produces different results than no HAC."""
@@ -654,7 +626,11 @@ class TestRegimeAdjustedEWCovariance:
         with pytest.raises(ValueError, match="hac_lags must be a positive integer"):
             model.fit(X_small)
 
-    def test_stvu_uses_pre_update_bias_correction(self):
+    @pytest.mark.parametrize(
+        "regime_target",
+        [RegimeAdjustmentTarget.PORTFOLIO, RegimeAdjustmentTarget.DIAGONAL],
+    )
+    def test_stvu_uses_pre_update_bias_correction(self, regime_target):
         """STVU must use the pre-update covariance state for one-step-ahead scaling."""
         X = np.array([[1.0], [2.0]])
         model = RegimeAdjustedEWCovariance(
@@ -662,13 +638,50 @@ class TestRegimeAdjustedEWCovariance:
             min_observations=1,
             regime_min_observations=1,
             regime_multiplier_clip=None,
-            regime_target=RegimeAdjustmentTarget.PORTFOLIO,
+            regime_target=regime_target,
             nearest=False,
         )
         model.fit(X)
 
         expected = 2.0 / np.sqrt(2.0 / np.pi)
         assert model.regime_multiplier_ == pytest.approx(expected, rel=1e-12)
+
+    @pytest.mark.parametrize("regime_method", list(RegimeAdjustmentMethod))
+    def test_single_asset_diagonal_equals_portfolio(self, regime_method):
+        """With one asset the DIAGONAL and PORTFOLIO statistics are both r^2 / s^2,
+        so every method must give the same multiplier."""
+        X = np.random.default_rng(0).standard_normal((300, 1)) * 0.01
+        multipliers = [
+            RegimeAdjustedEWCovariance(
+                half_life=20,
+                regime_target=target,
+                regime_method=regime_method,
+                regime_multiplier_clip=None,
+            )
+            .fit(X)
+            .regime_multiplier_
+            for target in (
+                RegimeAdjustmentTarget.DIAGONAL,
+                RegimeAdjustmentTarget.PORTFOLIO,
+            )
+        ]
+        assert multipliers[0] == pytest.approx(multipliers[1], rel=1e-12)
+
+    def test_diagonal_first_moment_is_calibrated_under_stationarity(self):
+        """Under iid returns with constant volatility the multiplier should be
+        close to one. Normalizing d by sqrt(n) instead of E[chi_n] biased it low
+        (about 0.95 for five assets)."""
+        X = np.random.default_rng(1).standard_normal((4000, 5)) * 0.01
+        model = RegimeAdjustedEWCovariance(
+            half_life=200,
+            regime_half_life=500,
+            regime_target=RegimeAdjustmentTarget.DIAGONAL,
+            regime_method=RegimeAdjustmentMethod.FIRST_MOMENT,
+            regime_multiplier_clip=None,
+            assume_centered=True,
+        )
+        model.fit(X)
+        assert model.regime_multiplier_ == pytest.approx(1.0, abs=0.02)
 
     @pytest.mark.parametrize(
         "regime_target",
@@ -688,9 +701,7 @@ class TestRegimeAdjustedEWCovariance:
         assert model.covariance_.shape == (20, 20)
         assert np.all(np.isfinite(model.covariance_))
         assert model.regime_multiplier_ > 0
-        np.testing.assert_almost_equal(model.covariance_, model.covariance_.T)
-        eigvals = np.linalg.eigvalsh(model.covariance_)
-        assert np.all(eigvals >= -1e-10)
+        _assert_symmetric_psd(model.covariance_)
 
     def test_regime_targets_produce_different_results(self, X):
         """Test that different STVU targets produce different regime multipliers."""
@@ -824,9 +835,7 @@ class TestRegimeAdjustedEWCovariance:
         assert model.covariance_.shape == (20, 20)
         assert np.all(np.isfinite(model.covariance_))
         assert model.regime_multiplier_ > 0
-        np.testing.assert_almost_equal(model.covariance_, model.covariance_.T)
-        eigvals = np.linalg.eigvalsh(model.covariance_)
-        assert np.all(eigvals >= -1e-10)
+        _assert_symmetric_psd(model.covariance_)
 
     def test_regime_portfolio_weights_2d_partial_fit(self, X):
         """Multi-portfolio streaming matches batch."""

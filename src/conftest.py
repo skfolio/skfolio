@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 from functools import partial
 
 import numpy as np
+import pandas as pd
 import pytest
 import sklearn
 from _pytest.doctest import DoctestItem
@@ -35,6 +37,9 @@ def _doctest_environment(request, tmp_path, monkeypatch, remote_dataset):
     of the working tree. Optimizer and SyntheticData arrays use four decimal places;
     other arrays keep eight to preserve small values. NumPy scalars
     display as plain numbers, including inside dictionaries.
+
+    The print options favour readable examples over matching a default Python
+    session. Keep them here rather than in the examples.
     """
     name = request.node.name
     if name in NETWORK_DOCTESTS:
@@ -50,6 +55,20 @@ def _doctest_environment(request, tmp_path, monkeypatch, remote_dataset):
     suppress_scientific = compact_arrays or name.startswith(
         ("skfolio.alpha.", "skfolio.prior._entropy_pooling.")
     )
+    # Fix the visible columns for these wide tables instead of relying on pandas'
+    # version-dependent automatic terminal-width truncation.
+    table_columns = {
+        "skfolio.datasets._base.load_ftse100_dataset": 8,
+        "skfolio.model_selection._covariance_forecast_evaluation."
+        "CovarianceForecastComparison": 2,
+    }.get(name)
+    table_display = (
+        nullcontext()
+        if table_columns is None
+        else pd.option_context(
+            "display.expand_frame_repr", False, "display.max_columns", table_columns
+        )
+    )
     with (
         np.printoptions(
             precision=4 if compact_arrays else 8,
@@ -57,5 +76,6 @@ def _doctest_environment(request, tmp_path, monkeypatch, remote_dataset):
             legacy="1.25",
         ),
         sklearn.config_context(transform_output="default"),
+        table_display,
     ):
         yield

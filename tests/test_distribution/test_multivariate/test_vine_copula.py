@@ -4,6 +4,7 @@ import gc
 import tracemalloc
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from skfolio.distribution import (
@@ -1628,6 +1629,72 @@ def test_vine_score_samples_log_transform(small_returns):
     assert np.all(np.isfinite(scores))
 
 
+def test_vine_score_samples_log_transform_applies_jacobian(small_returns):
+    """Scoring a log-transformed vine returns the density in return space.
+
+    Fitting on ``log1p(X)`` maps the density, so the log-density of ``X``
+    carries the change-of-variables term ``-sum(log1p(x))``.
+    """
+    params = dict(
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula()],
+        random_state=0,
+    )
+    scores = (
+        VineCopula(log_transform=True, **params)
+        .fit(small_returns)
+        .score_samples(small_returns)
+    )
+    log_returns = np.log1p(small_returns)
+    untransformed = (
+        VineCopula(log_transform=False, **params)
+        .fit(log_returns)
+        .score_samples(log_returns)
+    )
+    np.testing.assert_allclose(scores, untransformed - np.sum(log_returns, axis=1))
+
+
+@pytest.mark.parametrize("mask", [[True, False, False], [1, 0, 0], [1.0, 0.0, 0.0]])
+def test_vine_score_samples_log_transform_partial_mask(small_returns, mask):
+    """Only the transformed columns contribute their Jacobian term."""
+    params = dict(
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula()],
+        random_state=0,
+    )
+    scores = (
+        VineCopula(log_transform=mask, **params)
+        .fit(small_returns)
+        .score_samples(small_returns)
+    )
+    transformed = np.column_stack(
+        [np.log1p(small_returns[:, 0]), small_returns[:, 1], small_returns[:, 2]]
+    )
+    untransformed = (
+        VineCopula(log_transform=False, **params)
+        .fit(transformed)
+        .score_samples(transformed)
+    )
+    np.testing.assert_allclose(scores, untransformed - np.log1p(small_returns[:, 0]))
+
+
+@pytest.mark.parametrize("log_transform", [True, [True, False, False]])
+def test_vine_score_samples_log_transform_without_marginals(
+    small_uniforms, log_transform
+):
+    """An independent copula contributes only the log-transform Jacobian."""
+    X = np.where(log_transform, np.expm1(small_uniforms), small_uniforms)
+    model = VineCopula(
+        fit_marginals=False,
+        log_transform=log_transform,
+        copula_candidates=[IndependentCopula()],
+        random_state=0,
+    ).fit(X)
+
+    expected = -np.sum(np.where(log_transform, small_uniforms, 0.0), axis=1)
+    np.testing.assert_allclose(model.score_samples(X), expected)
+
+
 def test_vine_score_samples_without_marginals(small_uniforms):
     model = VineCopula(
         fit_marginals=False, copula_candidates=[GaussianCopula()], random_state=0
@@ -1677,3 +1744,51 @@ def test_vine_sampling_order_incomplete(small_model):
 def test_vine_plot_marginal_distributions_raise_ndim(small_model):
     with pytest.raises(ValueError, match="X should be an 2D array"):
         small_model.plot_marginal_distributions(X=np.zeros((2, 2, 3)))
+
+
+@pytest.mark.parametrize("named", [False, True])
+@pytest.mark.parametrize("with_history", [False, True])
+@pytest.mark.parametrize("selector", ["positions", "names", "mixed", "all"])
+def test_vine_marginal_plot_selectors(
+    small_model, small_returns, named, with_history, selector
+):
+    asset_names = ["A", "B", "C"] if named else ["x0", "x1", "x2"]
+    if named:
+        small_model.fit(pd.DataFrame(small_returns, columns=asset_names))
+    subsets = {
+        "positions": [2, 0],
+        "names": [asset_names[2], asset_names[0]],
+        "mixed": [asset_names[2], 0],
+        "all": None,
+    }
+    X = small_returns if with_history else None
+    reference = small_model.plot_marginal_distributions(X=X, n_samples=100)
+    figure = small_model.plot_marginal_distributions(
+        X=X, subset=subsets[selector], n_samples=100
+    )
+
+    positions = range(3) if selector == "all" else [2, 0]
+    stride = 2 if with_history else 1
+    expected = [
+        reference.data[stride * i + j] for i in positions for j in range(stride)
+    ]
+    assert [trace.name for trace in figure.data] == [trace.name for trace in expected]
+    for trace, expected_trace in zip(figure.data, expected, strict=True):
+        np.testing.assert_array_equal(trace.x, expected_trace.x)
+        np.testing.assert_array_equal(trace.y, expected_trace.y)
+    assert hasattr(small_model, "feature_names_in_") is named
+
+
+@pytest.mark.parametrize(
+    "subset,match",
+    [
+        (["missing"], "missing not found"),
+        ([-1], "`subset` -1 is not in"),
+        ([3], "`subset` 3 is not in"),
+        ([1.5], "`subset` 1.5 is not in"),
+        ([0, 0], "Duplicates found"),
+    ],
+)
+def test_vine_marginal_plot_invalid_selectors(small_model, subset, match):
+    with pytest.raises(ValueError, match=match):
+        small_model.plot_marginal_distributions(subset=subset)

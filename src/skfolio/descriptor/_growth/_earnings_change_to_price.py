@@ -92,5 +92,5 @@ class EarningsChangeToPrice(ChangeToScale):
     >>> earnings_change_to_price = descriptor.fit_transform(X)
     """
 
-    def __init__(self, lag: int = 252):
+    def __init__(self, lag: int = 252) -> None:
         super().__init__(field="net_income_ttm", scale_field="market_cap", lag=lag)

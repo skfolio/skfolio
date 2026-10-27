@@ -170,13 +170,13 @@ class GumbelCopula(BaseBivariateCopula):
         kendall_tau: float | None = None,
         tolerance: float = 1e-4,
         random_state: int | None = None,
-    ):
+    ) -> None:
         super().__init__(random_state=random_state)
         self.itau = itau
         self.kendall_tau = kendall_tau
         self.tolerance = tolerance
 
-    def fit(self, X: ArrayLike, y=None) -> GumbelCopula:
+    def fit(self, X: ArrayLike, y: None = None) -> GumbelCopula:
         r"""Fit the Bivariate Gumbel Copula.
 
         If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.
@@ -243,7 +243,7 @@ class GumbelCopula(BaseBivariateCopula):
             CDF values for each observation in X.
         """
         skv.check_is_fitted(self)
-        X = self._validate_X(X, reset=False)
+        X = self._validate_X(X, reset=False, clip=False)
         cdf = _apply_rotation_cdf(
             func=_base_cdf, X=X, rotation=self.rotation_, theta=self.theta_
         )
@@ -457,8 +457,12 @@ def _base_cdf(X: FloatArray, theta: float) -> FloatArray:
     .. math::
         C(u,v) = \exp\Bigl(-\Bigl[(-\ln u)^{\theta}+(-\ln v)^{\theta}\Bigr]^{1/\theta}\Bigr).
     """
-    cdf = np.exp(-np.power(np.power(-np.log(X), theta).sum(axis=1), 1.0 / theta))
-    return cdf
+    z = -np.log(X)
+    smaller = np.min(z, axis=1)
+    larger = np.max(z, axis=1)
+    # Scale the power sum so both terms cannot underflow near the upper corner.
+    norm = larger * np.exp(np.log1p(np.power(smaller / larger, theta)) / theta)
+    return np.exp(-norm)
 
 
 def _base_partial_derivative(

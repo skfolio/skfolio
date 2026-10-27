@@ -57,12 +57,12 @@ class SelectKExtremes(skf.SelectorMixin, skb.BaseEstimator):
         k: int = 10,
         measure: skt.Measure = RatioMeasure.SHARPE_RATIO,
         highest: bool = True,
-    ):
+    ) -> None:
         self.k = k
         self.measure = measure
         self.highest = highest
 
-    def fit(self, X: ArrayLike, y=None) -> SelectKExtremes:
+    def fit(self, X: ArrayLike, y: None = None) -> SelectKExtremes:
         """Run the SelectKExtremes transformer and get the appropriate assets.
 
         Parameters
@@ -97,6 +97,7 @@ class SelectKExtremes(skf.SelectorMixin, skb.BaseEstimator):
         self.to_keep_ = np.isin(np.arange(n_assets), selected_idx)
         return self
 
-    def _get_support_mask(self):
+    def _get_support_mask(self) -> BoolArray:
+        """Return the boolean mask of the selected assets `to_keep_`."""
         skv.check_is_fitted(self)
         return self.to_keep_

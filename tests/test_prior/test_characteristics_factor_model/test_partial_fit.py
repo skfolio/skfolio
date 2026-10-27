@@ -6,6 +6,8 @@ single `fit` call over the full dataset.
 
 from __future__ import annotations
 
+from operator import attrgetter
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -212,34 +214,55 @@ class TestPartialFitInverseVarianceShrinkage:
         cls.model_full = model_full
         cls.model_pf = model_pf
 
-    def test_regression_weights_accumulated(self):
+    @pytest.mark.parametrize(
+        "attribute",
+        [
+            pytest.param(
+                "factor_model_.regression_weights", id="regression_weights_accumulated"
+            ),
+            pytest.param(
+                "factor_model_.factor_returns", id="factor_returns_accumulated"
+            ),
+            pytest.param("return_distribution_.covariance", id="asset_covariance"),
+        ],
+    )
+    def test_streaming_arrays_with_absolute_tolerance(self, attribute):
+        get_array = attrgetter(attribute)
         np.testing.assert_allclose(
-            self.model_pf.factor_model_.regression_weights,
-            self.model_full.factor_model_.regression_weights,
+            get_array(self.model_pf),
+            get_array(self.model_full),
             rtol=1e-10,
             atol=1e-12,
         )
 
-    def test_factor_returns_accumulated(self):
+    @pytest.mark.parametrize(
+        "attribute",
+        [
+            pytest.param("return_distribution_.mu", id="asset_mu"),
+            pytest.param("return_distribution_.returns", id="systematic_returns"),
+            pytest.param("factor_model_.factor_covariance", id="factor_covariance"),
+            pytest.param("factor_model_.factor_mu", id="factor_mu"),
+            pytest.param("factor_model_.loading_matrix", id="loading_matrix"),
+            pytest.param("factor_model_.idio_covariance", id="idio_covariance"),
+            pytest.param("factor_model_.idio_mu", id="idio_mu"),
+            pytest.param(
+                "factor_model_.factor_returns", id="factor_returns_accumulated2"
+            ),
+            pytest.param("factor_model_.idio_returns", id="idio_returns_accumulated"),
+            pytest.param(
+                "factor_model_.idio_variances", id="idio_variances_accumulated"
+            ),
+            pytest.param("factor_model_.exposures", id="exposures_accumulated"),
+            pytest.param(
+                "factor_model_.regression_weights", id="regression_weights_accumulated2"
+            ),
+        ],
+    )
+    def test_streaming_arrays(self, attribute):
+        get_array = attrgetter(attribute)
         np.testing.assert_allclose(
-            self.model_pf.factor_model_.factor_returns,
-            self.model_full.factor_model_.factor_returns,
-            rtol=1e-10,
-            atol=1e-12,
-        )
-
-    def test_asset_covariance(self):
-        np.testing.assert_allclose(
-            self.model_pf.return_distribution_.covariance,
-            self.model_full.return_distribution_.covariance,
-            rtol=1e-10,
-            atol=1e-12,
-        )
-
-    def test_asset_mu(self):
-        np.testing.assert_allclose(
-            self.model_pf.return_distribution_.mu,
-            self.model_full.return_distribution_.mu,
+            get_array(self.model_pf),
+            get_array(self.model_full),
             rtol=1e-10,
         )
 
@@ -251,49 +274,7 @@ class TestPartialFitInverseVarianceShrinkage:
         if sqrt_pf.diagonal is not None:
             np.testing.assert_allclose(sqrt_pf.diagonal, sqrt_full.diagonal, rtol=1e-10)
 
-    def test_systematic_returns(self):
-        np.testing.assert_allclose(
-            self.model_pf.return_distribution_.returns,
-            self.model_full.return_distribution_.returns,
-            rtol=1e-10,
-        )
-
     # -- Factor model outputs --
-
-    def test_factor_covariance(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.factor_covariance,
-            self.model_full.factor_model_.factor_covariance,
-            rtol=1e-10,
-        )
-
-    def test_factor_mu(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.factor_mu,
-            self.model_full.factor_model_.factor_mu,
-            rtol=1e-10,
-        )
-
-    def test_loading_matrix(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.loading_matrix,
-            self.model_full.factor_model_.loading_matrix,
-            rtol=1e-10,
-        )
-
-    def test_idio_covariance(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.idio_covariance,
-            self.model_full.factor_model_.idio_covariance,
-            rtol=1e-10,
-        )
-
-    def test_idio_mu(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.idio_mu,
-            self.model_full.factor_model_.idio_mu,
-            rtol=1e-10,
-        )
 
     # -- Accumulated time series (shapes and values) --
 
@@ -301,41 +282,6 @@ class TestPartialFitInverseVarianceShrinkage:
         np.testing.assert_array_equal(
             self.model_pf.factor_model_.observations,
             self.model_full.factor_model_.observations,
-        )
-
-    def test_factor_returns_accumulated2(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.factor_returns,
-            self.model_full.factor_model_.factor_returns,
-            rtol=1e-10,
-        )
-
-    def test_idio_returns_accumulated(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.idio_returns,
-            self.model_full.factor_model_.idio_returns,
-            rtol=1e-10,
-        )
-
-    def test_idio_variances_accumulated(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.idio_variances,
-            self.model_full.factor_model_.idio_variances,
-            rtol=1e-10,
-        )
-
-    def test_exposures_accumulated(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.exposures,
-            self.model_full.factor_model_.exposures,
-            rtol=1e-10,
-        )
-
-    def test_regression_weights_accumulated2(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.regression_weights,
-            self.model_full.factor_model_.regression_weights,
-            rtol=1e-10,
         )
 
 
@@ -363,24 +309,25 @@ class TestPartialFitThreeWaySplit:
         cls.model_full = model_full
         cls.model_pf = model_pf
 
-    def test_asset_covariance(self):
+    @pytest.mark.parametrize(
+        "attribute",
+        [
+            pytest.param("return_distribution_.covariance", id="asset_covariance"),
+            pytest.param("return_distribution_.mu", id="asset_mu"),
+            pytest.param(
+                "factor_model_.factor_returns", id="factor_returns_accumulated"
+            ),
+            pytest.param("factor_model_.idio_returns", id="idio_returns_accumulated"),
+            pytest.param(
+                "factor_model_.idio_variances", id="idio_variances_accumulated"
+            ),
+        ],
+    )
+    def test_streaming_arrays(self, attribute):
+        get_array = attrgetter(attribute)
         np.testing.assert_allclose(
-            self.model_pf.return_distribution_.covariance,
-            self.model_full.return_distribution_.covariance,
-            rtol=1e-10,
-        )
-
-    def test_asset_mu(self):
-        np.testing.assert_allclose(
-            self.model_pf.return_distribution_.mu,
-            self.model_full.return_distribution_.mu,
-            rtol=1e-10,
-        )
-
-    def test_factor_returns_accumulated(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.factor_returns,
-            self.model_full.factor_model_.factor_returns,
+            get_array(self.model_pf),
+            get_array(self.model_full),
             rtol=1e-10,
         )
 
@@ -388,20 +335,6 @@ class TestPartialFitThreeWaySplit:
         np.testing.assert_array_equal(
             self.model_pf.factor_model_.observations,
             self.model_full.factor_model_.observations,
-        )
-
-    def test_idio_returns_accumulated(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.idio_returns,
-            self.model_full.factor_model_.idio_returns,
-            rtol=1e-10,
-        )
-
-    def test_idio_variances_accumulated(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.idio_variances,
-            self.model_full.factor_model_.idio_variances,
-            rtol=1e-10,
         )
 
 
@@ -441,24 +374,21 @@ class TestPartialFitExposureLagShortBatches:
             self.model_full.factor_model_.observations,
         )
 
-    def test_factor_returns_accumulated(self):
+    @pytest.mark.parametrize(
+        "attribute",
+        [
+            pytest.param(
+                "factor_model_.factor_returns", id="factor_returns_accumulated"
+            ),
+            pytest.param("factor_model_.idio_returns", id="idio_returns_accumulated"),
+            pytest.param("return_distribution_.covariance", id="asset_covariance"),
+        ],
+    )
+    def test_streaming_arrays(self, attribute):
+        get_array = attrgetter(attribute)
         np.testing.assert_allclose(
-            self.model_pf.factor_model_.factor_returns,
-            self.model_full.factor_model_.factor_returns,
-            rtol=1e-10,
-        )
-
-    def test_idio_returns_accumulated(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.idio_returns,
-            self.model_full.factor_model_.idio_returns,
-            rtol=1e-10,
-        )
-
-    def test_asset_covariance(self):
-        np.testing.assert_allclose(
-            self.model_pf.return_distribution_.covariance,
-            self.model_full.return_distribution_.covariance,
+            get_array(self.model_pf),
+            get_array(self.model_full),
             rtol=1e-10,
         )
 
@@ -699,24 +629,22 @@ class TestPartialFitBasketNeutral:
             self.model_full.factor_model_.factor_names
         )
 
-    def test_factor_covariance(self):
+    @pytest.mark.parametrize(
+        "attribute",
+        [
+            pytest.param("factor_model_.factor_covariance", id="factor_covariance"),
+            pytest.param("factor_model_.loading_matrix", id="loading_matrix"),
+            pytest.param(
+                "factor_model_.factor_returns", id="factor_returns_accumulated"
+            ),
+            pytest.param("return_distribution_.covariance", id="asset_covariance"),
+        ],
+    )
+    def test_streaming_arrays(self, attribute):
+        get_array = attrgetter(attribute)
         np.testing.assert_allclose(
-            self.model_pf.factor_model_.factor_covariance,
-            self.model_full.factor_model_.factor_covariance,
-            rtol=1e-10,
-        )
-
-    def test_loading_matrix(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.loading_matrix,
-            self.model_full.factor_model_.loading_matrix,
-            rtol=1e-10,
-        )
-
-    def test_factor_returns_accumulated(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.factor_returns,
-            self.model_full.factor_model_.factor_returns,
+            get_array(self.model_pf),
+            get_array(self.model_full),
             rtol=1e-10,
         )
 
@@ -726,13 +654,6 @@ class TestPartialFitBasketNeutral:
             self.model_full.factor_model_.observations,
         )
 
-    def test_asset_covariance(self):
-        np.testing.assert_allclose(
-            self.model_pf.return_distribution_.covariance,
-            self.model_full.return_distribution_.covariance,
-            rtol=1e-10,
-        )
-
     def test_resolved_constraints_cached(self):
         """After partial_fit the resolved constraints must not contain None."""
         for (
@@ -740,6 +661,16 @@ class TestPartialFitBasketNeutral:
             factor_to_drop,
         ) in self.model_pf._constrained_families:
             assert factor_to_drop is not None
+
+    def test_factor_names_full(self):
+        fm = self.model_pf.factor_model_
+        assert len(fm.factor_names) == 4, (
+            "All 4 original factor names must be preserved"
+        )
+
+    def test_basis_present(self):
+        fm = self.model_pf.factor_model_
+        assert fm.family_constraint_basis is not None
 
 
 class TestPartialFitBasketNeutralDriftingCaps:
@@ -770,90 +701,21 @@ class TestPartialFitBasketNeutralDriftingCaps:
         cls.model_full = model_full
         cls.model_pf = model_pf
 
-    def test_factor_returns_accumulated(self):
+    @pytest.mark.parametrize(
+        "attribute",
+        [
+            pytest.param(
+                "factor_model_.factor_returns", id="factor_returns_accumulated"
+            ),
+            pytest.param("factor_model_.factor_covariance", id="factor_covariance"),
+            pytest.param("return_distribution_.covariance", id="asset_covariance"),
+        ],
+    )
+    def test_streaming_arrays(self, attribute):
+        get_array = attrgetter(attribute)
         np.testing.assert_allclose(
-            self.model_pf.factor_model_.factor_returns,
-            self.model_full.factor_model_.factor_returns,
-            rtol=1e-10,
-        )
-
-    def test_factor_covariance(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.factor_covariance,
-            self.model_full.factor_model_.factor_covariance,
-            rtol=1e-10,
-        )
-
-    def test_asset_covariance(self):
-        np.testing.assert_allclose(
-            self.model_pf.return_distribution_.covariance,
-            self.model_full.return_distribution_.covariance,
-            rtol=1e-10,
-        )
-
-
-class TestPartialFitBasketNeutralBasisMode:
-    """partial_fit with basket-neutral constraints must match fit(all)."""
-
-    N_OBS = 500
-    SEED = 888
-
-    @pytest.fixture(autouse=True, scope="class")
-    @classmethod
-    def setup(cls):
-        panel, X = _make_industry_data(cls.N_OBS, seed=cls.SEED)
-
-        model_full = _make_industry_model()
-        model_full.fit(X, characteristics=panel)
-
-        split = cls.N_OBS // 2
-        model_pf = _make_industry_model()
-        model_pf.partial_fit(X.iloc[:split], characteristics=panel[:split])
-        model_pf.partial_fit(X.iloc[split:], characteristics=panel[split:])
-
-        cls.model_full = model_full
-        cls.model_pf = model_pf
-
-    def test_factor_names_full(self):
-        fm = self.model_pf.factor_model_
-        assert len(fm.factor_names) == 4, (
-            "All 4 original factor names must be preserved"
-        )
-
-    def test_basis_present(self):
-        fm = self.model_pf.factor_model_
-        assert fm.family_constraint_basis is not None
-
-    def test_factor_names_match(self):
-        assert list(self.model_pf.factor_model_.factor_names) == list(
-            self.model_full.factor_model_.factor_names
-        )
-
-    def test_factor_covariance(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.factor_covariance,
-            self.model_full.factor_model_.factor_covariance,
-            rtol=1e-10,
-        )
-
-    def test_loading_matrix(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.loading_matrix,
-            self.model_full.factor_model_.loading_matrix,
-            rtol=1e-10,
-        )
-
-    def test_factor_returns_accumulated(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.factor_returns,
-            self.model_full.factor_model_.factor_returns,
-            rtol=1e-10,
-        )
-
-    def test_asset_covariance(self):
-        np.testing.assert_allclose(
-            self.model_pf.return_distribution_.covariance,
-            self.model_full.return_distribution_.covariance,
+            get_array(self.model_pf),
+            get_array(self.model_full),
             rtol=1e-10,
         )
 
@@ -902,24 +764,23 @@ class TestPartialFitIdioCorrelation:
         np.fill_diagonal(off_diag, 0.0)
         assert np.any(np.abs(off_diag) > 1e-10)
 
-    def test_idio_covariance_match(self):
+    @pytest.mark.parametrize(
+        "attribute",
+        [
+            pytest.param("factor_model_.idio_covariance", id="idio_covariance_match"),
+            pytest.param(
+                "return_distribution_.covariance", id="asset_covariance_match"
+            ),
+            pytest.param(
+                "factor_model_.factor_returns", id="factor_returns_accumulated"
+            ),
+        ],
+    )
+    def test_streaming_arrays(self, attribute):
+        get_array = attrgetter(attribute)
         np.testing.assert_allclose(
-            self.model_pf.factor_model_.idio_covariance,
-            self.model_full.factor_model_.idio_covariance,
-            rtol=1e-10,
-        )
-
-    def test_asset_covariance_match(self):
-        np.testing.assert_allclose(
-            self.model_pf.return_distribution_.covariance,
-            self.model_full.return_distribution_.covariance,
-            rtol=1e-10,
-        )
-
-    def test_factor_returns_accumulated(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.factor_returns,
-            self.model_full.factor_model_.factor_returns,
+            get_array(self.model_pf),
+            get_array(self.model_full),
             rtol=1e-10,
         )
 
@@ -1024,24 +885,21 @@ class TestPartialFitSingleObservation:
             self.model_full.factor_model_.observations
         )
 
-    def test_asset_covariance(self):
+    @pytest.mark.parametrize(
+        "attribute",
+        [
+            pytest.param("return_distribution_.covariance", id="asset_covariance"),
+            pytest.param(
+                "factor_model_.factor_returns", id="factor_returns_accumulated"
+            ),
+            pytest.param("factor_model_.idio_returns", id="single_obs_idio_returns"),
+        ],
+    )
+    def test_streaming_arrays(self, attribute):
+        get_array = attrgetter(attribute)
         np.testing.assert_allclose(
-            self.model_pf.return_distribution_.covariance,
-            self.model_full.return_distribution_.covariance,
-            rtol=1e-10,
-        )
-
-    def test_factor_returns_accumulated(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.factor_returns,
-            self.model_full.factor_model_.factor_returns,
-            rtol=1e-10,
-        )
-
-    def test_single_obs_idio_returns(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.idio_returns,
-            self.model_full.factor_model_.idio_returns,
+            get_array(self.model_pf),
+            get_array(self.model_full),
             rtol=1e-10,
         )
 
@@ -1094,36 +952,29 @@ class TestPartialFitInvestmentUniverse:
         B = self.model_pf.factor_model_.loading_matrix
         assert B.shape[0] == self.N_INVEST
 
-    def test_asset_covariance(self):
+    @pytest.mark.parametrize(
+        "attribute",
+        [
+            pytest.param("return_distribution_.covariance", id="asset_covariance"),
+            pytest.param("factor_model_.loading_matrix", id="loading_matrix"),
+            pytest.param(
+                "factor_model_.factor_returns", id="factor_returns_accumulated"
+            ),
+            pytest.param(
+                "factor_model_.idio_returns", id="invest_universe_idio_returns"
+            ),
+        ],
+    )
+    def test_streaming_arrays(self, attribute):
+        get_array = attrgetter(attribute)
         np.testing.assert_allclose(
-            self.model_pf.return_distribution_.covariance,
-            self.model_full.return_distribution_.covariance,
-            rtol=1e-10,
-        )
-
-    def test_loading_matrix(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.loading_matrix,
-            self.model_full.factor_model_.loading_matrix,
-            rtol=1e-10,
-        )
-
-    def test_factor_returns_accumulated(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.factor_returns,
-            self.model_full.factor_model_.factor_returns,
+            get_array(self.model_pf),
+            get_array(self.model_full),
             rtol=1e-10,
         )
 
     def test_idio_returns_shape(self):
         assert self.model_pf.factor_model_.idio_returns.shape[1] == self.N_INVEST
-
-    def test_invest_universe_idio_returns(self):
-        np.testing.assert_allclose(
-            self.model_pf.factor_model_.idio_returns,
-            self.model_full.factor_model_.idio_returns,
-            rtol=1e-10,
-        )
 
 
 class _FitOnlyPrior(BasePrior):

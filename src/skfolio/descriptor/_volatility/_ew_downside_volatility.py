@@ -103,7 +103,7 @@ class EWDownsideVolatility(_BaseEWVolatility):
         half_life: float = 40.0,
         min_acceptable_return: float = 0.0,
         min_periods: int | None = None,
-    ):
+    ) -> None:
         super().__init__(
             half_life=half_life,
             min_acceptable_return=min_acceptable_return,

@@ -109,7 +109,7 @@ class GerberCovariance(BaseCovariance):
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
-    ):
+    ) -> None:
         super().__init__(
             nearest=nearest,
             higham=higham,
@@ -119,7 +119,7 @@ class GerberCovariance(BaseCovariance):
         self.threshold = threshold
         self.psd_variant = psd_variant
 
-    def fit(self, X: ArrayLike, y=None) -> GerberCovariance:
+    def fit(self, X: ArrayLike, y: None = None) -> GerberCovariance:
         """Fit the Gerber covariance estimator.
 
         Parameters

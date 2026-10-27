@@ -12,6 +12,92 @@ backward compatible within a major series. Deprecated functionality raises a
 
 This page documents the changes required to upgrade between major versions.
 
+.. _migration_2_0:
+
+Preparing for 2.0
+-----------------
+
+The following deprecated APIs remain available throughout 1.x and will be removed
+in 2.0. Their replacements are available now.
+
+Hierarchical Optimizer Imports
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Import HRP, HERC, Schur Complementary and NCO from `skfolio.optimization` or
+`skfolio.optimization.hierarchical`:
+
+.. code-block:: python
+
+    from skfolio.cluster import HierarchicalClustering
+    from skfolio.optimization.hierarchical import (
+        HierarchicalEqualRiskContribution,
+        HierarchicalRiskParity,
+        NestedClustersOptimization,
+        SchurComplementary,
+    )
+
+Imports from `skfolio.optimization.cluster` and
+`skfolio.optimization.cluster.hierarchical` raise a `FutureWarning` and return
+the same estimator classes. The `skfolio.cluster` module for clustering
+estimators is unchanged.
+
+HRP and Schur Ordering
+~~~~~~~~~~~~~~~~~~~~~~
+
+Configure hierarchical clustering through :class:`~skfolio.seriation.HierarchicalSeriation`
+on HRP and Schur Complementary.
+
+Before:
+
+.. code-block:: python
+
+    model = HierarchicalRiskParity(
+        hierarchical_clustering_estimator=HierarchicalClustering()
+    )
+
+After:
+
+.. code-block:: python
+
+    from skfolio.cluster import HierarchicalClustering
+    from skfolio.seriation import HierarchicalSeriation
+
+    model = HierarchicalRiskParity(
+        seriation_estimator=HierarchicalSeriation(
+            hierarchical_clustering_estimator=HierarchicalClustering()
+        )
+    )
+
+The old parameter warns during `fit` or the first `partial_fit` of a learning
+run. Supplying both estimators raises an error. The default ordering is unchanged.
+
+After fitting, access the clustering estimator through
+`model.seriation_estimator_.hierarchical_clustering_estimator_`. The old
+`model.hierarchical_clustering_estimator_` attribute raises a `FutureWarning`.
+This alias is only available when the fitted seriator is hierarchical.
+
+HERC's `hierarchical_clustering_estimator` and NCO's `clustering_estimator`
+remain supported.
+
+Custom Hierarchical Optimizers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+`BaseHierarchicalOptimization` is deprecated. Existing custom subclasses remain
+supported throughout 1.x.
+
+HRP, HERC and Schur Complementary no longer inherit from this base.
+`isinstance` and `issubclass` checks against `BaseHierarchicalOptimization`
+now return `False` for these estimators. Use `BaseOptimization` to recognize
+portfolio optimizers generally, or a tuple of concrete optimizer classes to
+recognize a specific family.
+
+For new custom optimizers, inherit from
+:class:`~skfolio.optimization.BaseOptimization` and implement `fit` to set
+`weights_`. When migrating an existing subclass, provide any risk calculations
+and bound conversion previously inherited through `_risk`, `_unitary_risks`
+and `_convert_weights_bounds`. The private seriation base and risk mixin are
+implementation details, not supported replacements for the public base.
+
 .. _migration_1_0:
 
 Migrating to 1.0
@@ -30,6 +116,8 @@ to 50%.
 Before:
 
 .. code-block:: python
+
+    from skfolio.moments import EWCovariance, EWMu
 
     EWMu(alpha=0.2)
     EWCovariance(alpha=0.2)
@@ -62,6 +150,8 @@ Before:
 
 .. code-block:: python
 
+    from skfolio.model_selection import WalkForward
+
     WalkForward(test_size=60, train_size=252, expend_train=True)
 
 After:
@@ -93,6 +183,11 @@ After:
 
     from skfolio.optimization import MeanRisk
     from skfolio.prior import TimeSeriesFactorModel
+    from skfolio.datasets import load_sp500_dataset, load_factors_dataset
+    from skfolio.preprocessing import prices_to_returns
+
+    X, factors = prices_to_returns(load_sp500_dataset(), load_factors_dataset())
+    X_train, factors_train = X.iloc[:252], factors.iloc[:252]
 
     model = MeanRisk(prior_estimator=TimeSeriesFactorModel())
     model.fit(X_train, factors=factors_train)

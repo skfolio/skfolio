@@ -574,7 +574,10 @@ class TestOnlinePredict:
     def test_uncertainty_set_without_partial_fit_raises(self, X, param_name, estimator):
         model = _make_online_estimator(**{param_name: estimator})
 
-        with pytest.raises(TypeError, match=param_name):
+        with pytest.raises(
+            TypeError,
+            match=f"{type(estimator).__name__} does not implement partial_fit",
+        ):
             online_predict(model, X, warmup_size=400, test_size=100)
 
     def test_bad_warmup_raises(self, X):
@@ -604,7 +607,9 @@ class TestOnlinePredict:
     def test_insufficient_data_raises(self, X):
         """Raises ValueError when data is too short."""
         model = _make_online_estimator()
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="must be less than the number of observations"
+        ):
             online_predict(model, X, warmup_size=X.shape[0], test_size=1)
 
     def test_freq(self, X):
@@ -811,7 +816,9 @@ class TestOnlineScore:
     def test_insufficient_data_raises(self, X):
         """Raises ValueError when data is too short."""
         est = EWCovariance(half_life=30)
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="must be less than the number of observations"
+        ):
             online_score(est, X, warmup_size=X.shape[0], test_size=1)
 
     def test_float_warmup_raises(self, X):
@@ -927,9 +934,7 @@ class TestOnlineScore:
         X_masked, active_mask = _make_inactive_block(X, start=420, stop=480)
 
         with config_context(enable_metadata_routing=True):
-            routed_est = EWCovariance(half_life=30).set_partial_fit_request(
-                active_mask=True
-            )
+            routed_est = EWCovariance(half_life=30)
             scores_routed = online_score(
                 routed_est,
                 X_masked,
@@ -952,13 +957,15 @@ class TestOnlineScore:
         assert not np.allclose(scores_routed, scores_plain, equal_nan=True)
 
     def test_metadata_routing_requires_request(self, X):
-        """online_score raises when metadata is passed without a request."""
+        """online_score respects an explicit None request."""
         X_masked, active_mask = _make_inactive_block(X, start=420, stop=480)
 
         with config_context(enable_metadata_routing=True):
             with pytest.raises(UnsetMetadataPassedError, match="online_score"):
                 online_score(
-                    EWCovariance(half_life=30),
+                    EWCovariance(half_life=30).set_partial_fit_request(
+                        active_mask=None
+                    ),
                     X_masked,
                     warmup_size=400,
                     test_size=50,

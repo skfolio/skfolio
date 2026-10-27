@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from skfolio._constants import _CURRENCY
 from skfolio.factor_exposure import BaseFactorExposure
@@ -225,8 +226,10 @@ def test_realized_attribution_uncertainty_marks_currency_as_direct():
 
     fm = model.factor_model_
     weights = np.full(fm.loading_matrix.shape[0], 1 / fm.loading_matrix.shape[0])
-    lagged_exposures, factor_returns, idio_returns = fm._aligned(
-        ["exposures", "factor_returns", "idio_returns"]
+    lagged_exposures, factor_returns, idio_returns = fm._require(
+        fields=["exposures", "factor_returns", "idio_returns"],
+        caller="test",
+        aligned=True,
     )
     asset_returns = (lagged_exposures @ factor_returns[:, :, np.newaxis]).squeeze(
         -1
@@ -426,15 +429,73 @@ def test_currency_returns_must_contain_every_currency_factor():
         )
 
 
-def test_currency_returns_must_be_finite():
+@pytest.mark.parametrize(("row", "value"), [(1, np.nan), (5, np.inf)])
+def test_currency_returns_must_be_finite(row, value):
     panel, X, _local_factor_returns, currency_returns, currency_factor = (
         _make_currency_data()
     )
     model = _make_model(currency_factor)
-    with_nan = currency_returns.copy()
-    with_nan.iloc[5, 1] = np.nan
+    invalid = currency_returns.copy()
+    invalid.iloc[row, 1] = value
 
     with np.testing.assert_raises_regex(
-        ValueError, "`currency_excess_returns` must contain only finite values"
+        ValueError,
+        r"`currency_excess_returns` must contain only finite values for the fitted "
+        r"observations.*Found non-finite values for \['EUR'\], first at observation "
+        rf"{row}\.",
     ):
-        model.fit(X, characteristics=panel, currency_excess_returns=with_nan)
+        model.fit(X, characteristics=panel, currency_excess_returns=invalid)
+
+
+@pytest.mark.parametrize("n_warmup", [0, 5])
+def test_currency_returns_ignore_rows_consumed_by_warmup_and_lag(n_warmup):
+    panel, X, _local_factor_returns, currency_returns, currency_factor = (
+        _make_currency_data()
+    )
+    panel["beta"][:n_warmup] = np.nan
+    model = _make_model(currency_factor)
+    n_unused = n_warmup + model.exposure_lag
+    with_nan = currency_returns.copy()
+    with_nan.iloc[:n_unused] = np.nan
+
+    reference = _make_model(currency_factor).fit(
+        X, characteristics=panel, currency_excess_returns=currency_returns
+    )
+    model.fit(X, characteristics=panel, currency_excess_returns=with_nan)
+
+    np.testing.assert_allclose(
+        model.factor_model_.factor_returns[:, 1:],
+        currency_returns.iloc[n_unused:].to_numpy(),
+    )
+    np.testing.assert_allclose(
+        model.return_distribution_.mu, reference.return_distribution_.mu
+    )
+    np.testing.assert_allclose(
+        model.return_distribution_.covariance,
+        reference.return_distribution_.covariance,
+    )
+
+
+def test_partial_fit_requires_finite_currency_returns_in_later_batches():
+    panel, X, _local_factor_returns, currency_returns, currency_factor = (
+        _make_currency_data(n_obs=100)
+    )
+    split = 45
+    model = _make_model(currency_factor)
+    model.partial_fit(
+        X.iloc[:split],
+        characteristics=panel[:split],
+        currency_excess_returns=currency_returns.iloc[:split],
+    )
+    invalid = currency_returns.iloc[split:].copy()
+    invalid.iloc[0, 0] = np.nan
+
+    with np.testing.assert_raises_regex(
+        ValueError,
+        rf"Found non-finite values for \['USD'\], first at observation {split}\.",
+    ):
+        model.partial_fit(
+            X.iloc[split:],
+            characteristics=panel[split:],
+            currency_excess_returns=invalid,
+        )

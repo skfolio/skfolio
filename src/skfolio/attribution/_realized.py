@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import fields
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -348,7 +348,7 @@ def realized_factor_attribution(
 
     if idio_variances is not None:
         regression_weights, idio_variances = _prepare_uncertainty_inputs(
-            regression_weights=regression_weights,
+            regression_weights=regression_weights,  # ty: ignore[invalid-argument-type]
             idio_variances=idio_variances,
             inactive_mask=inactive_mask,
         )
@@ -613,7 +613,7 @@ def rolling_realized_factor_attribution(
 
     if idio_variances is not None:
         regression_weights, idio_variances = _prepare_uncertainty_inputs(
-            regression_weights=regression_weights,
+            regression_weights=regression_weights,  # ty: ignore[invalid-argument-type]
             idio_variances=idio_variances,
             inactive_mask=inactive_mask,
         )
@@ -664,7 +664,7 @@ def rolling_realized_factor_attribution(
             regression_weights=(
                 regression_weights[start:end] if has_uncertainty else None
             ),
-            idio_variances=(idio_variances[start:end] if has_uncertainty else None),
+            idio_variances=(idio_variances[start:end] if has_uncertainty else None),  # ty: ignore[not-subscriptable]
             family_constraint_basis=(
                 family_constraint_basis[start:end]
                 if family_constraint_basis is not None
@@ -1488,7 +1488,7 @@ def _compute_attribution_uncertainty(
     return systematic_uncertainty, per_factor_uncertainty, per_family_uncertainty
 
 
-def _stack_dataclass(items: list):
+def _stack_dataclass(items: list) -> Any:  # noqa: ANN401  # same type as items
     """Stack a list of dataclass instances into one with arrays stacked along axis 0."""
     first_item = items[0]
     cls = first_item.__class__

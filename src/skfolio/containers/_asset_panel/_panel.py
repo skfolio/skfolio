@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import json
 import shutil
-from collections.abc import Generator, Iterable, Mapping
+from collections.abc import Collection, Generator, Iterable, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, overload
 
 import numpy as np
 import pandas as pd
@@ -272,11 +273,12 @@ class AssetPanel(_BaseAssetPanel):
     >>> loaded = AssetPanel.load("asset_panel", mmap_mode="r")
     """
 
-    fields: dict[str, BaseField]
+    fields: dict[str, BaseField] = dataclass_field()
     observations: AnyArray
-    asset_names: StrArray | list[str]
-    active_mask: BoolArray = None
-    estimation_mask: BoolArray = None
+    asset_names: StrArray
+    # `None` is replaced by a mask of ones in `__post_init__`.
+    active_mask: BoolArray = None  # ty: ignore[invalid-assignment]
+    estimation_mask: BoolArray = None  # ty: ignore[invalid-assignment]
 
     _validate_on_init: bool = True
 
@@ -328,7 +330,13 @@ class AssetPanel(_BaseAssetPanel):
         """Return the number of observations."""
         return self.n_observations
 
-    def __getitem__(self, key: Any) -> AnyArray | AssetPanelView:
+    @overload
+    def __getitem__(self, key: str) -> AnyArray: ...
+
+    @overload
+    def __getitem__(self, key: slice | ArrayLike) -> AssetPanelView: ...
+
+    def __getitem__(self, key: str | slice | ArrayLike) -> AnyArray | AssetPanelView:
         """Return field values or an observation view. Slice selectors are zero-copy.
         Integer or boolean array selectors follow NumPy fancy-indexing semantics on
          access and may copy.
@@ -459,7 +467,7 @@ class AssetPanel(_BaseAssetPanel):
         """Number of fields."""
         return len(self.fields)
 
-    def keys(self) -> Iterable[str]:
+    def keys(self) -> Collection[str]:
         """Return field names.
 
         Returns
@@ -485,7 +493,10 @@ class AssetPanel(_BaseAssetPanel):
         return self.fields[name]
 
     def isel(
-        self, *, observations: Any = None, assets: Any = None
+        self,
+        *,
+        observations: slice | ArrayLike | None = None,
+        assets: slice | ArrayLike | None = None,
     ) -> AssetPanel | AssetPanelView:
         """Select observations and assets by integer position.
 
@@ -519,8 +530,8 @@ class AssetPanel(_BaseAssetPanel):
     def sel(
         self,
         *,
-        observations: Any = None,
-        assets: Any = None,
+        observations: Any = None,  # noqa: ANN401  # any label selector
+        assets: Any = None,  # noqa: ANN401  # any label selector
         fields: str | Iterable[str] | None = None,
     ) -> AssetPanel | AssetPanelView:
         """Select observations, assets and fields by label.
@@ -563,7 +574,7 @@ class AssetPanel(_BaseAssetPanel):
             fields=field_names,
         )
 
-    def drop(self, *, observations: Any = None, assets: Any = None) -> AssetPanel:
+    def drop(self, *, observations: Any = None, assets: Any = None) -> AssetPanel:  # noqa: ANN401  # any label selector
         """Return a panel with selected labels removed.
 
         Parameters
@@ -982,6 +993,8 @@ class AssetPanel(_BaseAssetPanel):
         categorical and third-axis labels and a `_metadata.json` manifest.
         Object-dtype axis labels and field metadata labels are converted to strings
         so the panel is loaded with `allow_pickle=False`.
+        Field names must be unique ignoring case to keep saved files distinct on
+        case-insensitive filesystems.
 
         Parameters
         ----------
@@ -991,9 +1004,16 @@ class AssetPanel(_BaseAssetPanel):
         overwrite : bool, default=False
             If `True`, replace an existing saved panel at `path`. Existing directories
             that do not contain `_metadata.json` are never overwritten.
+
+        Raises
+        ------
+        ValueError
+            If `path` is a file or an existing directory that is not a saved panel,
+            or a field name is invalid or conflicts with another name ignoring case.
         """
         path = Path(path)
-        if path.exists():
+        path_exists = path.exists()
+        if path_exists:
             if path.is_file():
                 raise ValueError(f"Path '{path}' is a file, not a directory.")
             if not (path / _METADATA_FILENAME).exists():
@@ -1006,11 +1026,21 @@ class AssetPanel(_BaseAssetPanel):
                     f"Directory '{path}' already contains a saved AssetPanel. "
                     "Use overwrite=True to replace it."
                 )
-            shutil.rmtree(path)
 
+        # Validate every field path before removing an existing saved panel.
+        file_names: dict[str, str] = {}
         for name in self.fields:
             _validate_field_name(name)
+            folded_name = name.casefold()
+            if folded_name in file_names:
+                raise ValueError(
+                    "Field names must be unique ignoring case when saving: "
+                    f"{file_names[folded_name]!r} and {name!r}."
+                )
+            file_names[folded_name] = name
 
+        if path_exists:
+            shutil.rmtree(path)
         path.mkdir(parents=True)
         fields_dir = path / "fields"
         fields_dir.mkdir()
@@ -1075,7 +1105,7 @@ class AssetPanel(_BaseAssetPanel):
         cls,
         path: str | Path,
         *,
-        mmap_mode: str | None = None,
+        mmap_mode: Literal["r+", "r", "w+", "c"] | None = None,
         fields: list[str] | None = None,
     ) -> AssetPanel:
         """Load a panel saved with `save`.
@@ -1085,7 +1115,7 @@ class AssetPanel(_BaseAssetPanel):
         path : str or pathlib.Path
             Directory containing a saved panel.
 
-        mmap_mode : str or None, optional
+        mmap_mode : {"r+", "r", "w+", "c"} or None, optional
             Memory-mapping mode passed to `numpy.load` for field and mask arrays.
             Use `r` for read-only memory maps.
 
@@ -1435,9 +1465,9 @@ def _info_mask_lines(title: str, mask: BoolArray | None) -> list[str]:
         f"  ({coverage_percent:.1f}%)"
     )
     assets_per_observation = mask.sum(axis=1)
-    min_assets = int(assets_per_observation.min())
+    min_assets = int(np.min(assets_per_observation))
     median_assets = int(np.median(assets_per_observation))
-    max_assets = int(assets_per_observation.max())
+    max_assets = int(np.max(assets_per_observation))
     lines.append(
         f"Assets per obs       : min={min_assets:,}, "
         f"median={median_assets:,}, max={max_assets:,}"
@@ -1448,8 +1478,8 @@ def _info_mask_lines(title: str, mask: BoolArray | None) -> list[str]:
     lines.append(f"Assets in mask       : {assets_in_mask:,} / {n_assets:,}")
     if assets_in_mask > 0:
         median_duration = int(np.median(durations))
-        min_duration = int(durations.min())
-        max_duration = int(durations.max())
+        min_duration = int(np.min(durations))
+        max_duration = int(np.max(durations))
         lines.append(f"  median duration    : {median_duration:,} observations")
         lines.append(
             f"  shortest / longest : {min_duration:,} / {max_duration:,} observations"
@@ -1587,7 +1617,7 @@ def _info_categorical_lines(panel: AssetPanel) -> list[str]:
         lines.append("  Min number of assets per level (over time):")
         for lower, upper in buckets:
             if lower == 0:
-                in_bucket = min_assets_per_level < upper
+                in_bucket = min_assets_per_level < upper  # ty: ignore[unsupported-operator]
                 label = f"< {upper}"
             elif upper is not None:
                 in_bucket = (min_assets_per_level >= lower) & (

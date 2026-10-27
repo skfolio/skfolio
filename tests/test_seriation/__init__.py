@@ -1,0 +1,1 @@
+"""Seriation tests."""

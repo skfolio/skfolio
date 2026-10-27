@@ -21,6 +21,9 @@ Please report security vulnerabilities according to our
 For substantial changes, consider opening an issue first. This gives maintainers and
 contributors an opportunity to discuss the scope and approach before implementation.
 
+New dependencies must be discussed with the core maintainers before
+implementation. We aim to keep the core dependency set small.
+
 ### Report a bug
 
 A useful bug report includes:
@@ -39,6 +42,25 @@ A useful feature proposal:
 - Describes the expected behavior.
 - Keeps the initial scope as narrow as practical.
 - Mentions alternatives or prior approaches when relevant.
+
+## AI contributions
+
+AI-assisted and fully AI-generated PRs are welcome, including submissions by AI
+agents. All PRs must follow the same contributing guidelines, including the
+[tests and code quality checks](#tests-and-code-quality).
+
+Complete the **AI use** section of the pull request template. If no AI was used
+to prepare the PR, write **None**. Otherwise, list the tools and models used
+(if known), describe what AI did, and state whether a person reviewed all, some,
+or none of the changes before submission. Use **Unknown** where needed.
+
+## How we review PRs
+
+PR review and approval are handled exclusively by skfolio's core maintainers.
+We combine AI reviews using the latest versions of two different frontier models
+with a full human review. We hold every PR to the highest standards of correctness
+and maintainability, ensuring consistency with skfolio's architecture and API
+design.
 
 ## Development setup
 
@@ -85,10 +107,13 @@ test file:
 uv run pytest tests/path/to/test_file.py
 ```
 
-Run the complete test suite when appropriate:
+Before you open a pull request, run the complete test suite, which includes the
+docstring examples, and check that imports in `src` match the dependencies declared
+in `pyproject.toml`:
 
 ```shell
 uv run pytest
+uv run deptry src
 ```
 
 Format and lint your changes with:
@@ -98,11 +123,32 @@ uv run ruff check --fix
 uv run ruff format
 ```
 
-CI runs the latest Ruff release; if CI lint fails and local passes, run `uv sync --upgrade`.
+The commit hook runs the same Ruff commands on staged files, type checks `src` with
+ty, checks that every module, class and function in `src` has a docstring, and checks
+YAML syntax and file endings. To run it on all files, as CI does, use `uv run pre-commit run --all-files`.
 
-### Refreshing your environment
+Type check `src` with [ty](https://docs.astral.sh/ty/). Warnings also fail the check:
 
-To refresh all dependencies to the latest versions allowed by `pyproject.toml`:
+```shell
+uv run ty check
+```
+
+Fix diagnostics that reveal a bug or a wrong annotation. When ty cannot follow code
+that is already correct, add a `# ty: ignore[<rule>]` comment on the reported line
+rather than adding checks or restructuring the code only to satisfy the checker.
+Unused ignore comments also fail the check.
+
+### Dependency versions
+
+skfolio is a library that supports the dependency versions allowed by
+`pyproject.toml`, so `uv.lock` is not committed. CI tests this range, from the
+minimum supported versions to the latest releases, lints with the latest Ruff
+release and type checks with the latest ty release. ty is in beta, so a new ty
+release can report diagnostics on code that has not changed.
+
+`uv sync` keeps the versions recorded in your local `uv.lock`. If CI reports a
+failure that you cannot reproduce locally, update your environment to the latest
+allowed versions:
 
 ```shell
 uv sync --upgrade
@@ -112,36 +158,62 @@ Add `--group docs` or `--group notebooks` if you use those tools.
 
 ## Documentation
 
+Run these commands from the repository root.
+
 If your change affects the documentation, install the documentation dependencies:
 
 ```shell
 uv sync --group docs
-cd docs
 ```
 
-For a fast build without executing the tutorials:
+For a fast build without executing the tutorials, as run by CI:
 
 ```shell
-uv run sphinx-build -b html -D plot_gallery=0 . _build
+uv run sphinx-build -b html -t fast docs docs/_build
 ```
+
+Fast mode also skips the JupyterLite site and the sphinx-llm Markdown build.
 
 To execute a single tutorial, replace the filename in `filename_pattern`:
 
 ```shell
-uv run sphinx-build -b html -D 'sphinx_gallery_conf.filename_pattern=plot_characteristics_factor_model\.py$' -D sphinx_gallery_conf.run_stale_examples=True . _build
+uv run sphinx-build -b html -D 'sphinx_gallery_conf.filename_pattern=plot_characteristics_factor_model\.py$' -D sphinx_gallery_conf.run_stale_examples=True docs docs/_build
 ```
 
 To execute the complete gallery locally when needed:
 
 ```shell
-uv run sphinx-build -b html . _build
+uv run sphinx-build -b html docs docs/_build
 ```
 
 The complete gallery can take about 30 minutes and is also executed by the
 documentation deployment workflow.
 
+To preview a completed build:
+
+```shell
+uv run python -m http.server --directory docs/_build
+```
+
+Open [localhost:8000](http://localhost:8000) in your browser. Press `Ctrl+C` to stop
+the server.
+
 Sphinx-Gallery generates `docs/auto_examples` and `docs/_contents`.
 Edit the source tutorials under `examples` rather than editing these generated files.
+
+### Docstrings
+
+Every module, class and function in `src` has a docstring, including private helpers
+and nested functions. Dunder methods are exempt, and `__init__` parameters are
+documented in the class docstring. Public classes, functions and methods use the
+numpydoc sections, such as `Parameters` and `Returns`. A one-line summary is enough
+for private helpers.
+
+To list missing docstrings across `src`:
+
+```shell
+uv run pre-commit run numpydoc-validation --all-files
+```
 
 ### Docstring examples
 
@@ -168,8 +240,8 @@ Use `type(scope): description`, where the scope is optional. Common types are:
 - `ci`: Continuous integration changes.
 - `chore`: Repository maintenance.
 
-Add `!` for a breaking change, for example
-`feat!: remove deprecated parameter`.
+Discuss backward-incompatible changes with the maintainers before implementation.
+Major releases are coordinated by the maintainers.
 
 ```shell
 git add .
@@ -177,11 +249,18 @@ git commit -m "feat(scope): describe your change"
 git push origin name-of-your-bugfix-or-feature
 ```
 
+Contributors without write access can have up to two open PRs at a time. This
+helps us keep the review queue manageable and give each contribution proper
+attention.
+
 Open a pull request through GitHub, or use the GitHub CLI:
 
 ```shell
 gh pr create --fill
 ```
+
+Use the same format for the pull request title. It becomes the commit message when
+the pull request is squash-merged.
 
 Draft pull requests are welcome and are a good place to discuss work in progress.
 Before requesting a review:
@@ -189,7 +268,7 @@ Before requesting a review:
 - Include tests for feature changes and bug fixes.
 - Update the documentation when behavior or public APIs change.
 - Keep the pull request focused on one coherent change.
-- Confirm that the relevant local checks pass.
+- Confirm that the [tests and code quality checks](#tests-and-code-quality) pass.
 - Ensure that continuous integration passes.
 
 [gh-issues]: https://github.com/skfolio/skfolio/issues

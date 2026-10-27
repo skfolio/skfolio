@@ -87,6 +87,9 @@ Functions
     measures.owa_gmd_weights
     measures.effective_number_assets
     measures.correlation
+    measures.expected_max_sharpe_ratio
+    measures.probabilistic_sharpe_ratio
+    measures.deflated_sharpe_ratio
 
 .. _portfolio_ref:
 
@@ -302,12 +305,12 @@ Classes
     optimization.DistributionallyRobustCVaR
 
 
-.. _optimization_cluster_ref:
+.. _optimization_hierarchical_ref:
 
-:mod:`skfolio.optimization.cluster`: Clustering Optimization Estimators
-==========================================================================
+:mod:`skfolio.optimization.hierarchical`: Hierarchical Optimization Estimators
+==============================================================================
 
-.. automodule:: skfolio.optimization.cluster
+.. automodule:: skfolio.optimization.hierarchical
    :no-members:
    :no-inherited-members:
 
@@ -320,7 +323,6 @@ Classes
     :toctree: generated/
     :template: class.rst
 
-    optimization.BaseHierarchicalOptimization
     optimization.HierarchicalRiskParity
     optimization.HierarchicalEqualRiskContribution
     optimization.SchurComplementary
@@ -749,6 +751,26 @@ Classes
     distance.DistanceCorrelation
     distance.MutualInformation
 
+.. _seriation_ref:
+
+:mod:`skfolio.seriation`: Seriation Estimators
+==============================================
+
+.. automodule:: skfolio.seriation
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    seriation.BaseSeriation
+    seriation.HierarchicalSeriation
+    seriation.SpectralSeriation
+
 .. _cluster_ref:
 
 :mod:`skfolio.cluster`: Cluster Estimators
@@ -1108,6 +1130,7 @@ Functions
     stats.inverse_volatility_weights
     stats.safe_cholesky
     stats.is_cholesky_dec
+    stats.is_positive_semidefinite
     stats.minimize_relative_weight_deviation
     stats.multiply_by_inverse
     stats.n_bins_freedman
@@ -1312,3 +1335,29 @@ Enum
     :template: class.rst
 
     distribution.CopulaRotation
+
+.. _exceptions_ref:
+
+:mod:`skfolio.exceptions`: Exceptions
+=====================================
+
+.. automodule:: skfolio.exceptions
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    exceptions.SkfolioError
+    exceptions.OptimizationError
+    exceptions.ConvexOptimizationError
+    exceptions.SolverError
+    exceptions.DuplicateGroupsError
+    exceptions.EquationToMatrixError
+    exceptions.FactorNotFoundError
+    exceptions.GroupNotFoundError
+    exceptions.NonPositiveVarianceError

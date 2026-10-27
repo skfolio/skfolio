@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import itertools
 import math
 
 import numpy as np
+import pandas as pd
 import pytest
 from sklearn.pipeline import Pipeline
 
@@ -19,7 +21,7 @@ from skfolio.model_selection._combinatorial import (
     _avg_train_size,
     _n_test_paths,
 )
-from skfolio.optimization import InverseVolatility
+from skfolio.optimization import EqualWeighted, InverseVolatility
 from skfolio.pre_selection import SelectKExtremes
 
 
@@ -444,3 +446,74 @@ def test_combinatorial_purged_cv_split_rejects_too_large_purge_and_embargo():
         match="sum of `purged_size` and `embargo_size` must be smaller than the size",
     ):
         list(cv.split(X))
+
+
+@pytest.mark.parametrize(
+    "n_samples,n_folds,n_test_folds,expected_fold_sizes",
+    [
+        (11, 5, 2, [2, 2, 2, 2, 3]),
+        (12, 5, 2, [2, 2, 2, 2, 4]),
+        (13, 5, 2, [2, 2, 2, 2, 5]),
+        (89, 10, 2, [8] * 9 + [17]),
+        (14, 5, 3, [2, 2, 2, 2, 6]),
+        (12, 4, 2, [3, 3, 3, 3]),
+        (23, 6, 2, [3, 3, 3, 3, 3, 8]),
+    ],
+)
+def test_combinatorial_purged_cv_fold_boundaries_and_paths(
+    n_samples, n_folds, n_test_folds, expected_fold_sizes
+):
+    """Keep the remainder in the last fold and cover each observation once per path."""
+    X = pd.DataFrame(
+        np.zeros((n_samples, 2)),
+        index=pd.date_range("2020-01-01", periods=n_samples),
+    )
+    cv = CombinatorialPurgedCV(n_folds=n_folds, n_test_folds=n_test_folds)
+    indices = np.arange(n_samples)
+    expected_folds = np.split(indices, np.cumsum(expected_fold_sizes)[:-1])
+    for (train, tests), fold_ids in zip(
+        cv.split(X), itertools.combinations(range(n_folds), n_test_folds), strict=True
+    ):
+        for test, fold_id in zip(tests, fold_ids, strict=True):
+            np.testing.assert_array_equal(test, expected_folds[fold_id])
+        expected_test = np.concatenate([expected_folds[i] for i in fold_ids])
+        np.testing.assert_array_equal(train, np.setdiff1d(indices, expected_test))
+
+    pred = cross_val_predict(EqualWeighted(), X, cv=cv)
+    assert len(pred) == math.comb(n_folds - 1, n_test_folds - 1)
+    for path in pred:
+        np.testing.assert_array_equal(path.observations, X.index)
+        assert [fold.n_observations for fold in path.portfolios] == expected_fold_sizes
+
+
+@pytest.mark.parametrize(
+    "purged_size,embargo_size,test_fold_ids,expected_train",
+    [
+        (0, 0, (0, 5), np.arange(4, 20)),
+        (1, 0, (0, 5), np.arange(5, 19)),
+        (0, 1, (0, 5), np.arange(5, 20)),
+        (1, 1, (0, 5), np.arange(6, 19)),
+        (1, 1, (4, 5), np.arange(15)),
+        (1, 1, (0, 1), np.arange(10, 29)),
+    ],
+)
+def test_combinatorial_purged_cv_uneven_folds_purge_and_embargo(
+    purged_size, embargo_size, test_fold_ids, expected_train
+):
+    """Purge around test blocks, including an enlarged final fold and adjacent folds."""
+    cv = CombinatorialPurgedCV(
+        n_folds=6,
+        n_test_folds=2,
+        purged_size=purged_size,
+        embargo_size=embargo_size,
+    )
+    splits = list(cv.split(np.zeros((29, 2))))
+    split_id = list(itertools.combinations(range(6), 2)).index(test_fold_ids)
+    train, tests = splits[split_id]
+    expected_folds = np.split(np.arange(29), [4, 8, 12, 16, 20])
+
+    np.testing.assert_array_equal(train, expected_train)
+    for test, fold_id in zip(tests, test_fold_ids, strict=True):
+        np.testing.assert_array_equal(test, expected_folds[fold_id])
+    # Adjacent test folds form one block: their shared boundary must not be purged.
+    assert np.all(cv.index_train_test_[np.concatenate(tests), split_id] == 1)

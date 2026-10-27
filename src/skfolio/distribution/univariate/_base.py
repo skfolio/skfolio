@@ -32,7 +32,7 @@ class BaseUnivariateDist(BaseDistribution, ABC):
 
     _scipy_model: st.rv_continuous
 
-    def __init__(self, random_state: int | None = None):
+    def __init__(self, random_state: int | None = None) -> None:
         super().__init__(random_state=random_state)
 
     @property
@@ -43,8 +43,18 @@ class BaseUnivariateDist(BaseDistribution, ABC):
 
     @property
     def n_params(self) -> int:
-        """Number of model parameters."""
-        return len(self._scipy_params)
+        """Number of model parameters estimated during fitting.
+
+        Parameters fixed by the user at initialization (`loc` and/or `scale`) are
+        treated as known and excluded, so that the AIC and BIC penalize only the
+        free parameters.
+        """
+        # Only loc and scale can be fixed in the current univariate estimators.
+        # Shape parameters, including StudentT's degrees of freedom, are always fitted.
+        n_fixed = sum(
+            getattr(self, name, None) is not None for name in ("loc", "scale")
+        )
+        return len(self._scipy_params) - n_fixed
 
     @property
     def fitted_repr(self) -> str:
@@ -54,7 +64,7 @@ class BaseUnivariateDist(BaseDistribution, ABC):
         return f"{self.__class__.__name__}({params})"
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None) -> BaseUnivariateDist:
+    def fit(self, X: ArrayLike, y: None = None) -> BaseUnivariateDist:
         """Fit the univariate distribution model.
 
         Parameters
@@ -116,7 +126,7 @@ class BaseUnivariateDist(BaseDistribution, ABC):
         log_density = self._scipy_model.logpdf(X, **self._scipy_params).ravel()
         return log_density
 
-    def sample(self, n_samples: int = 1):
+    def sample(self, n_samples: int = 1) -> FloatArray:
         """Generate random samples from the fitted distribution.
 
         Currently, this is implemented only for gaussian and tophat kernels.

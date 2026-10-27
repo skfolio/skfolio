@@ -12,8 +12,8 @@ from skfolio.cluster import HierarchicalClustering, LinkageMethod
 from skfolio.model_selection import CombinatorialPurgedCV
 from skfolio.moments import ImpliedCovariance
 from skfolio.optimization import EqualWeighted
-from skfolio.optimization.cluster import NestedClustersOptimization
 from skfolio.optimization.convex import MeanRisk, ObjectiveFunction
+from skfolio.optimization.hierarchical import NestedClustersOptimization
 from skfolio.population import Population
 from skfolio.prior import EmpiricalPrior
 
@@ -263,15 +263,16 @@ def test_metadata_routing(X_medium, implied_vol, implied_vol_medium):
         )
         model = NestedClustersOptimization(inner_estimator=est)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             model.fit(X_medium)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="implied_vol has wrong number of observations"
+        ):
             model.fit(X_medium, implied_vol=implied_vol)
 
         model.fit(X_medium, implied_vol=implied_vol_medium)
 
-    # noinspection PyUnresolvedReferences
     assert model.inner_estimators_[
         0
     ].prior_estimator_.covariance_estimator_.r2_scores_.shape == (5,)

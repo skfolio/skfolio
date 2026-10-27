@@ -10,6 +10,7 @@ from copy import copy
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.pipeline import Pipeline
 
 import skfolio.measures as mt
 from skfolio import (
@@ -23,7 +24,9 @@ from skfolio import (
     RiskMeasure,
 )
 from skfolio.datasets import load_sp500_dataset
+from skfolio.optimization import MeanRisk
 from skfolio.portfolio._base import _MEASURES
+from skfolio.pre_selection import SelectKExtremes
 from skfolio.preprocessing import prices_to_returns
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import rand_weights
@@ -77,7 +80,7 @@ def portfolio(X: pd.DataFrame, weights: FloatArray) -> Portfolio:
     scope="module",
     params=list(PerfMeasure)
     + list(RiskMeasure)
-    + list(RiskMeasure)
+    + list(RatioMeasure)
     + list(ExtraRiskMeasure),
 )
 def measure(request):
@@ -206,6 +209,44 @@ def test_portfolio_annualized(X, weights, annualization_factor):
     )
 
 
+@pytest.mark.parametrize("risk_free_rate", [0.0, 0.02 / 252, 0.05 / 252])
+def test_portfolio_annualized_ratios_with_risk_free_rate(X, weights, risk_free_rate):
+    """Test that annualized ratios scale the per-period ratio by the square root of
+    the annualization factor and match the full-window rolling measure."""
+    annualization_factor = 252.0
+    portfolio = Portfolio(
+        X=X,
+        weights=weights,
+        annualization_factor=annualization_factor,
+        risk_free_rate=risk_free_rate,
+    )
+
+    np.testing.assert_almost_equal(
+        portfolio.sharpe_ratio,
+        (portfolio.mean - risk_free_rate) / portfolio.standard_deviation,
+    )
+    np.testing.assert_almost_equal(
+        portfolio.annualized_sharpe_ratio,
+        portfolio.sharpe_ratio * np.sqrt(annualization_factor),
+    )
+    np.testing.assert_almost_equal(
+        portfolio.annualized_sortino_ratio,
+        portfolio.sortino_ratio * np.sqrt(annualization_factor),
+    )
+
+    # Over the full sample, the rolling measure equals the scalar measure.
+    for measure in [
+        RatioMeasure.ANNUALIZED_SHARPE_RATIO,
+        RatioMeasure.ANNUALIZED_SORTINO_RATIO,
+    ]:
+        rolling = portfolio.rolling_measure(
+            measure=measure, window=portfolio.n_observations
+        )
+        np.testing.assert_almost_equal(
+            getattr(portfolio, str(measure.value)), rolling.iloc[-1]
+        )
+
+
 def test_portfolio_deprecated_annualized_factor(X, weights):
     with pytest.warns(FutureWarning, match="annualized_factor"):
         portfolio = Portfolio(X=X, weights=weights, annualized_factor=12)
@@ -275,7 +316,7 @@ def test_portfolio_methods(X, weights):
     np.testing.assert_almost_equal(portfolio.nonzero_assets_index, idx)
     names_1 = np.array(X.columns[idx])
     assert np.array_equal(portfolio.nonzero_assets, names_1)
-    names_2 = portfolio.composition.index.to_numpy()
+    names_2 = portfolio.composition.index.to_numpy(copy=True)
     names_2.sort()
     names_1.sort()
     assert np.array_equal(names_1, names_2)
@@ -296,6 +337,29 @@ def test_portfolio_methods(X, weights):
     assert isinstance(portfolio.summary(), pd.Series)
     assert isinstance(portfolio.weights_dict, dict)
     assert isinstance(portfolio.previous_weights_dict, dict)
+
+
+@pytest.mark.filterwarnings("error:The inplace keyword")
+@pytest.mark.parametrize("name", ["portfolio", "asset", "weight"])
+@pytest.mark.parametrize(
+    "weights, expected_assets, expected_weights",
+    [
+        ([0.5, 0.0, -0.25, 0.75], ["D", "A", "C"], [0.75, 0.5, -0.25]),
+        ([0.0, 0.0, 0.0, 0.0], [], []),
+    ],
+)
+def test_portfolio_composition(name, weights, expected_assets, expected_weights):
+    X = pd.DataFrame(np.arange(12).reshape(3, 4) / 100, columns=list("ABCD"))
+    portfolio = Portfolio(X=X, weights=weights, name=name)
+    expected = pd.DataFrame(
+        {name: np.array(expected_weights, dtype=float)},
+        index=pd.Index(expected_assets, name="asset"),
+    )
+
+    composition = portfolio.composition
+    pd.testing.assert_frame_equal(composition, expected)
+    composition.iloc[:, 0] = 0.0
+    pd.testing.assert_frame_equal(portfolio.composition, expected)
 
 
 def test_portfolio_magic_methods(X, weights):
@@ -384,7 +448,40 @@ def test_portfolio_sric(portfolio):
 
 
 def test_portfolio_diversification(portfolio):
-    np.testing.assert_almost_equal(portfolio.diversification, 1.449839842913199)
+    np.testing.assert_almost_equal(portfolio.diversification, 1.4503211175631066)
+
+
+@pytest.mark.parametrize("weighted", [False, True])
+def test_portfolio_diversification_volatility_estimator(X, weighted):
+    X = X.iloc[:24]
+    sample_weight = None
+    if weighted:
+        sample_weight = np.random.default_rng(42).random(len(X))
+        sample_weight /= sample_weight.sum()
+
+    single_asset = Portfolio(X, weights={"AAPL": 1.0}, sample_weight=sample_weight)
+    np.testing.assert_almost_equal(single_asset.diversification, 1.0)
+
+    weights = np.full(X.shape[1], 1 / X.shape[1])
+    portfolio = Portfolio(X, weights=weights, sample_weight=sample_weight)
+    cov = np.cov(X, rowvar=False, aweights=sample_weight)
+    expected = weights @ np.sqrt(np.diag(cov)) / np.sqrt(weights @ cov @ weights)
+    np.testing.assert_almost_equal(portfolio.diversification, expected)
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+def test_portfolio_diversification_missing_returns(X, weight_drift):
+    X = X.iloc[:24]
+    X_gaps = X.copy()
+    X_gaps.iloc[::5, X.columns.get_loc("AAPL")] = np.nan
+    single_asset = Portfolio(X_gaps, weights={"AAPL": 1.0}, weight_drift=weight_drift)
+    np.testing.assert_almost_equal(single_asset.diversification, 1.0)
+
+    weights = {"AAPL": 0.5, "BAC": 0.3, "KO": 0.2}
+    expected = Portfolio(X, weights=weights, weight_drift=weight_drift)
+    X_unlisted = X.assign(XOM=np.nan)
+    portfolio = Portfolio(X_unlisted, weights=weights, weight_drift=weight_drift)
+    np.testing.assert_almost_equal(portfolio.diversification, expected.diversification)
 
 
 @pytest.mark.parametrize(
@@ -420,7 +517,7 @@ def test_portfolio_slots(portfolio):
 
 
 def test_copy(portfolio):
-    with pytest.raises(AttributeError):
+    with pytest.raises(AttributeError, match="has no attribute '_assets_names'"):
         _ = portfolio._assets_names
     _ = portfolio.nonzero_assets
     _ = copy(portfolio)
@@ -468,7 +565,11 @@ def test_portfolio_clear_cache(portfolio, measure):
         if measure != ExtraRiskMeasure.VALUE_AT_RISK:
             assert m != new_m
         if isinstance(measure, RatioMeasure):
-            assert getattr(portfolio, measure.value) == portfolio.mean / new_m
+            excess_mean = portfolio.mean - portfolio.risk_free_rate
+            if measure.is_annualized:
+                excess_mean *= portfolio.annualization_factor
+            risk = getattr(portfolio, measure.linked_risk_measure.value)
+            np.testing.assert_allclose(new_m, excess_mean / risk)
 
 
 def test_portfolio_read_only(portfolio):
@@ -487,7 +588,8 @@ def test_portfolio_delete_attr(portfolio):
         delattr(portfolio, "dummy")
 
 
-def test_portfolio_rolling_measure(X, weights):
+@pytest.mark.parametrize("min_periods", [None, 30])
+def test_portfolio_rolling_measure(X, weights, min_periods):
     window = 30
     portfolio = Portfolio(X=X[:50], weights=weights, annualization_factor=252)
     ref = Portfolio(
@@ -495,8 +597,288 @@ def test_portfolio_rolling_measure(X, weights):
     )
 
     for measure in _MEASURES:
-        res = portfolio.rolling_measure(measure=measure, window=30)
+        res = portfolio.rolling_measure(
+            measure=measure, window=30, min_periods=min_periods
+        )
         np.testing.assert_almost_equal(res.iloc[-1], getattr(ref, measure.value))
+
+
+@pytest.mark.parametrize("min_periods", [None, 30])
+def test_portfolio_rolling_measure_sample_weight(X, weights, min_periods):
+    # Each rolling value must equal the measure of a portfolio built on that window
+    # with its slice of the weights, renormalized. Checking the first, a middle and
+    # the last window pins down the slice boundaries.
+    window = 30
+    n = 50
+    sample_weight = np.random.default_rng(0).random(n)
+    sample_weight /= sample_weight.sum()
+    portfolio = Portfolio(
+        X=X[:n],
+        weights=weights,
+        annualization_factor=252,
+        sample_weight=sample_weight,
+    )
+    references = {}
+    for end in [29, 40, 49]:
+        start = end - window + 1
+        window_weight = sample_weight[start : end + 1]
+        references[end] = Portfolio(
+            X=X.iloc[start : end + 1],
+            weights=weights,
+            annualization_factor=252,
+            sample_weight=window_weight / window_weight.sum(),
+        )
+
+    for measure in _MEASURES:
+        res = portfolio.rolling_measure(
+            measure=measure, window=window, min_periods=min_periods
+        )
+        for end, ref in references.items():
+            np.testing.assert_almost_equal(res.iloc[end], getattr(ref, measure.value))
+
+
+@pytest.mark.parametrize(
+    "measure", [PerfMeasure.MEAN, RiskMeasure.STANDARD_DEVIATION, RiskMeasure.CVAR]
+)
+def test_portfolio_rolling_measure_sample_weight_is_used(X, weights, measure):
+    # With clearly non-uniform weights, a weight-aware measure must differ from the
+    # unweighted result, otherwise the weights are being ignored.
+    window = 30
+    n = 50
+    sample_weight = np.random.default_rng(1).random(n) ** 4
+    sample_weight /= sample_weight.sum()
+    kwargs = {"X": X[:n], "weights": weights, "annualization_factor": 252}
+    weighted = Portfolio(sample_weight=sample_weight, **kwargs)
+    unweighted = Portfolio(**kwargs)
+    res_weighted = weighted.rolling_measure(measure=measure, window=window)
+    res_unweighted = unweighted.rolling_measure(measure=measure, window=window)
+    assert not np.allclose(res_weighted.dropna(), res_unweighted.dropna())
+
+
+@pytest.mark.parametrize("missing", [np.nan, np.inf, -np.inf])
+@pytest.mark.parametrize("min_periods", [None, 2])
+@pytest.mark.parametrize("zero_missing_weight", [False, True])
+@pytest.mark.parametrize(
+    "measure",
+    [
+        PerfMeasure.MEAN,
+        RatioMeasure.ANNUALIZED_SHARPE_RATIO,
+        RiskMeasure.CDAR,
+        RatioMeasure.CALMAR_RATIO,
+    ],
+)
+def test_rolling_measure_sample_weight_nonfinite_returns(
+    missing, min_periods, zero_missing_weight, measure
+):
+    returns = np.array([0.1, missing, -0.2, 0.3, -0.4, 0.5])
+    # Duplicate labels must not affect positional alignment after a skipped window.
+    observations = np.array([2, 2, 5, 7, 7, 11])
+    kwargs = {"returns": returns, "observations": observations}
+    unweighted = BasePortfolio(**kwargs)
+    sample_weight = np.ones(6)
+    if zero_missing_weight:
+        sample_weight[1] = 0
+    weighted = BasePortfolio(
+        sample_weight=sample_weight / sample_weight.sum(), **kwargs
+    )
+
+    # Windows containing infinities must not reach the drawdown calculation.
+    with np.errstate(invalid="raise"):
+        expected = unweighted.rolling_measure(
+            measure, window=3, min_periods=min_periods
+        )
+        result = weighted.rolling_measure(measure, window=3, min_periods=min_periods)
+
+    first_valid = 2 if np.isnan(missing) and min_periods == 2 else 4
+    np.testing.assert_array_equal(result.notna(), np.arange(6) >= first_valid)
+    pd.testing.assert_series_equal(result, expected)
+
+
+@pytest.mark.parametrize("weighted", [False, True])
+@pytest.mark.parametrize("window", [0, -1, 1.5, True])
+def test_rolling_measure_invalid_window(weighted, window):
+    portfolio = BasePortfolio(
+        returns=[0.1, -0.2, 0.3],
+        observations=[0, 1, 2],
+        sample_weight=np.full(3, 1 / 3) if weighted else None,
+    )
+    with pytest.raises(ValueError, match="window must be a positive integer"):
+        portfolio.rolling_measure(PerfMeasure.MEAN, window=window)
+
+
+@pytest.mark.parametrize("weighted", [False, True])
+@pytest.mark.parametrize("window", [np.int64(1), 3, np.uint32(3), np.uint64(3), 5])
+@pytest.mark.parametrize("min_periods", [None, np.int64(1), np.uint64(1)])
+def test_rolling_measure_window_boundaries(weighted, window, min_periods):
+    returns = np.array([0.1, -0.2, 0.3])
+    sample_weight = np.array([0.2, 0.3, 0.5]) if weighted else None
+    portfolio = BasePortfolio(
+        returns=returns, observations=[4, 4, 9], sample_weight=sample_weight
+    )
+    expected = pd.Series(np.nan, index=portfolio.observations)
+    for end in range(window if min_periods is None else min_periods, len(returns) + 1):
+        start = max(0, end - int(window))
+        expected.iloc[end - 1] = np.average(
+            returns[start:end],
+            weights=sample_weight[start:end] if weighted else None,
+        )
+    pd.testing.assert_series_equal(
+        portfolio.rolling_measure(
+            PerfMeasure.MEAN, window=window, min_periods=min_periods
+        ),
+        expected,
+    )
+
+
+@pytest.mark.parametrize("min_periods", [0, -1, 4, 1.5, 2.0, True, np.bool_(False)])
+def test_rolling_measure_invalid_min_periods(min_periods):
+    portfolio = BasePortfolio(returns=[0.1, -0.2, 0.3], observations=[0, 1, 2])
+    with pytest.raises(ValueError, match="min_periods must be"):
+        portfolio.rolling_measure(window=3, min_periods=min_periods)
+
+
+@pytest.mark.parametrize("weighted", [False, True])
+@pytest.mark.parametrize(
+    "returns", [[0.01, np.nan, 0.03], [np.nan, 0.01, 0.03], [0.01, 0.03, np.nan]]
+)
+def test_rolling_measure_min_periods_mean(returns, weighted):
+    returns = np.array(returns)
+    weights = np.array([0.2, 0.3, 0.5]) if weighted else None
+    portfolio = BasePortfolio(returns, [0, 1, 2], sample_weight=weights)
+    expected = np.full(3, np.nan)
+    for end in range(2, 4):
+        valid = ~np.isnan(returns[:end])
+        if valid.sum() >= 2:
+            expected[end - 1] = np.average(
+                returns[:end][valid],
+                weights=weights[:end][valid] if weighted else None,
+            )
+    np.testing.assert_allclose(
+        portfolio.rolling_measure(PerfMeasure.MEAN, window=3, min_periods=2), expected
+    )
+
+
+@pytest.mark.parametrize("weighted", [False, True])
+@pytest.mark.parametrize("compounded", [False, True])
+def test_rolling_measure_min_periods_all_measures(weighted, compounded):
+    returns = np.array([np.nan, -0.02, 0.01, np.nan, -0.03, 0.02, np.nan, 0.03])
+    weights = np.arange(1, 9, dtype=float) / 36 if weighted else None
+    returns.setflags(write=False)
+    if weights is not None:
+        weights.setflags(write=False)
+    kwargs = {"compounded": compounded, "risk_free_rate": 0.001, "cvar_beta": 0.6}
+    portfolio = BasePortfolio(returns, np.arange(8), sample_weight=weights, **kwargs)
+    references = {}
+    for end in range(3, 9):
+        start = max(0, end - 5)
+        window_weights = None if weights is None else weights[start:end]
+        if window_weights is not None:
+            window_weights = window_weights / window_weights.sum()
+        references[end - 1] = BasePortfolio(
+            returns[start:end],
+            portfolio.observations[start:end],
+            sample_weight=window_weights,
+            **kwargs,
+        )
+    for measure in _MEASURES:
+        result = portfolio.rolling_measure(measure, window=5, min_periods=2)
+        assert result.iloc[:2].isna().all()
+        for end, ref in references.items():
+            # Equivalent weight normalizations can differ by roundoff near zero.
+            np.testing.assert_allclose(
+                result.iloc[end],
+                ref.get_measure(measure),
+                rtol=1e-12,
+                atol=1e-15,
+                err_msg=f"{measure.value}, window ending at {end}",
+            )
+        assert result.iloc[2:].notna().all()
+
+
+@pytest.mark.parametrize("returns", [[], [np.nan] * 4])
+def test_rolling_measure_min_periods_no_observations(returns):
+    portfolio = BasePortfolio(returns, np.arange(len(returns)))
+    pd.testing.assert_series_equal(
+        portfolio.rolling_measure(PerfMeasure.MEAN, window=3, min_periods=1),
+        pd.Series(np.nan, index=portfolio.observations),
+    )
+
+
+def test_rolling_measure_min_periods_zero_weights():
+    portfolio = BasePortfolio(
+        returns=[-0.1, np.nan, 0.3, -0.2, 0.4],
+        observations=np.arange(5),
+        sample_weight=[0, 0, 0, 0.25, 0.75],
+    )
+    np.testing.assert_allclose(
+        portfolio.rolling_measure(PerfMeasure.MEAN, window=3, min_periods=2),
+        [np.nan, np.nan, np.nan, -0.2, 0.25],
+    )
+    np.testing.assert_allclose(
+        portfolio.rolling_measure(RiskMeasure.VARIANCE, window=3, min_periods=2),
+        [np.nan, np.nan, np.nan, np.nan, 0.18],
+    )
+    np.testing.assert_allclose(
+        portfolio.rolling_measure(RiskMeasure.MAX_DRAWDOWN, window=3, min_periods=2),
+        [np.nan, np.nan, 0.1, 0.2, 0.2],
+    )
+
+
+def test_rolling_measure_zero_weight_windows():
+    sample_weight = np.array([0.0, 0.0, 0.0, 0.2, 0.3, 0.5])
+    sample_weight.setflags(write=False)
+    portfolio = BasePortfolio(
+        returns=[-0.2, 0.1, -0.4, 0.3, -0.1, 0.2],
+        observations=np.arange(6),
+        sample_weight=sample_weight,
+    )
+    np.testing.assert_allclose(
+        portfolio.rolling_measure(PerfMeasure.MEAN, window=3),
+        [np.nan, np.nan, np.nan, 0.3, 0.06, 0.13],
+    )
+    # A full-path extremum stays defined even when the local weight sum is zero.
+    drawdowns = portfolio.rolling_measure(RiskMeasure.MAX_DRAWDOWN, window=3)
+    assert drawdowns.iloc[2] == pytest.approx(0.5)
+    np.testing.assert_array_equal(sample_weight, [0.0, 0.0, 0.0, 0.2, 0.3, 0.5])
+
+
+def test_rolling_measure_uses_realized_returns_and_parameters():
+    X = np.array(
+        [[0.2, -0.1], [0.1, 0.4], [-0.3, 0.1], [0.05, -0.2], [0.1, 0.03], [-0.2, 0.3]]
+    )
+    sample_weight = np.arange(1, 7, dtype=float) / 21
+    portfolio = Portfolio(
+        X,
+        weights=[0.6, 0.4],
+        weight_drift=True,
+        sample_weight=sample_weight,
+        compounded=True,
+        risk_free_rate=0.003,
+        annualization_factor=12,
+        cvar_beta=0.6,
+    )
+    results = {
+        measure: portfolio.rolling_measure(measure, window=3)
+        for measure in [
+            RatioMeasure.ANNUALIZED_SHARPE_RATIO,
+            RatioMeasure.CALMAR_RATIO,
+            RiskMeasure.CVAR,
+        ]
+    }
+    for end in range(3, len(X) + 1):
+        returns = portfolio.returns[end - 3 : end]
+        weights = sample_weight[end - 3 : end]
+        excess_mean = np.average(returns, weights=weights) - 0.003
+        std = np.sqrt(np.cov(returns, aweights=weights))
+        wealth = np.r_[1.0, np.cumprod(1 + returns)]
+        max_drawdown = -np.min(wealth / np.maximum.accumulate(wealth) - 1)
+        expected = {
+            RatioMeasure.ANNUALIZED_SHARPE_RATIO: excess_mean / std * np.sqrt(12),
+            RatioMeasure.CALMAR_RATIO: excess_mean / max_drawdown,
+            RiskMeasure.CVAR: mt.cvar(returns, beta=0.6, sample_weight=weights),
+        }
+        for measure, value in expected.items():
+            assert results[measure].iloc[end - 1] == pytest.approx(value)
 
 
 def test_portfolio_expected_returns_from_assets(X, weights):
@@ -523,7 +905,10 @@ def test_portfolio_variance_from_assets(X, weights):
 def test_portfolio_plot_cumulative_returns(portfolio):
     assert portfolio.plot_cumulative_returns()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="Plotting with logarithm scaling must be done on cumulative returns",
+    ):
         portfolio.plot_cumulative_returns(log_scale=True)
 
     portfolio.compounded = True
@@ -550,6 +935,89 @@ def test_portfolio_contribution(portfolio):
     assert np.isclose(np.sum(contribution), portfolio.standard_deviation)
 
     assert portfolio.plot_contribution(measure=RiskMeasure.STANDARD_DEVIATION)
+
+
+@pytest.mark.parametrize(
+    "measure",
+    [
+        RiskMeasure.MAX_DRAWDOWN,
+        RiskMeasure.AVERAGE_DRAWDOWN,
+        RiskMeasure.CDAR,
+        RiskMeasure.EDAR,
+        RiskMeasure.ULCER_INDEX,
+    ],
+)
+def test_portfolio_drawdown_contribution_sums_to_measure(portfolio, measure):
+    # Uncompounded drawdown measures are positively homogeneous in the weights, so
+    # the contributions sum to the measure (Euler).
+    contribution = portfolio.contribution(measure=measure)
+    np.testing.assert_allclose(
+        np.sum(contribution), getattr(portfolio, measure.value), rtol=1e-4
+    )
+
+
+@pytest.mark.parametrize("dtype", [np.float16, np.float32, np.float64])
+@pytest.mark.parametrize("compounded", [False, True])
+@pytest.mark.parametrize(
+    "measure, expected, compounded_expected",
+    [
+        (RiskMeasure.MAX_DRAWDOWN, [0.015, 0.035], [0.01465, 0.03415]),
+        (RiskMeasure.AVERAGE_DRAWDOWN, [0.0125, 0.0275], [0.012325, 0.027075]),
+        (RiskMeasure.CDAR, [0.04 / 3, 0.03], [0.0131, 0.0883 / 3]),
+        (RiskMeasure.EDAR, [0.01375, 0.03125], [0.0134875, 0.0306125]),
+    ],
+)
+def test_portfolio_drawdown_contribution_weights_dtype(
+    dtype, compounded, measure, expected, compounded_expected
+):
+    # Both observations lose money, so the final observation is the worst drawdown.
+    X = np.array([[-0.02, -0.04], [-0.01, -0.03]])
+    weights = np.array([0.5, 0.5], dtype=dtype)
+    # CDaR's tail weights are [1/3, 2/3]. Choose EDaR's confidence from the relative
+    # entropy to uniform probabilities, giving tilted probabilities [1/4, 3/4].
+    edar_beta = 1 - np.exp(-(0.25 * np.log(0.5) + 0.75 * np.log(1.5)))
+    portfolio = Portfolio(
+        X, weights=weights, compounded=compounded, cdar_beta=0.25, edar_beta=edar_beta
+    )
+
+    np.testing.assert_allclose(
+        portfolio.contribution(measure),
+        compounded_expected if compounded else expected,
+        rtol=1e-8,
+    )
+    np.testing.assert_array_equal(weights, [0.5, 0.5])
+    np.testing.assert_array_equal(portfolio.weights, weights)
+    assert portfolio.weights.dtype == dtype
+
+
+@pytest.mark.parametrize("compounded", [False, True])
+def test_portfolio_max_drawdown_contribution_sp500(X, compounded):
+    X = X.loc["2020"].to_numpy()
+    weights = np.full(X.shape[1], 1 / X.shape[1])
+    portfolio = Portfolio(X, weights=weights, compounded=compounded)
+    returns = X @ weights
+    path = (
+        np.r_[1.0, np.cumprod(1 + returns)]
+        if compounded
+        else np.r_[0.0, np.cumsum(returns)]
+    )
+    trough = np.argmin(portfolio.drawdowns) + 1
+    peak = np.argmax(path[:trough])
+
+    # Differentiate the return over the active peak-to-trough interval directly.
+    if compounded:
+        gross_returns = 1 + returns[peak:trough]
+        gradient = -np.prod(gross_returns) * np.sum(
+            X[peak:trough] / gross_returns[:, None], axis=0
+        )
+    else:
+        gradient = -np.sum(X[peak:trough], axis=0)
+
+    np.testing.assert_allclose(
+        portfolio.contribution(RiskMeasure.MAX_DRAWDOWN),
+        weights * gradient,
+        rtol=1e-7,
+    )
 
 
 def test_weights_per_observation(portfolio):
@@ -580,11 +1048,22 @@ def test_sample_weight_error(portfolio, sample_weight):
     with pytest.raises(ValueError, match="sample_weight must have the same length as"):
         portfolio.sample_weight = np.ones(5)
 
-    with pytest.raises(ValueError, match="sample_weight must sum to one"):
+    with pytest.raises(
+        ValueError,
+        match=rf"sample_weight must sum to one, got {len(sample_weight)}\.0\. Normalize",
+    ):
         portfolio.sample_weight = np.ones(len(sample_weight))
 
     with pytest.raises(ValueError, match="sample_weight must be a 1D array"):
         portfolio.sample_weight = [[1]]
+
+
+@pytest.mark.parametrize(
+    "weights", [[-0.1, 0.3, 0.8], [np.nan, 0.5, 0.5], [np.inf, 0, 0], [0.2j, 0.3, 0.5]]
+)
+def test_portfolio_rejects_invalid_probabilities(weights):
+    with pytest.raises(ValueError, match="sample_weight"):
+        BasePortfolio([0.1, -0.2, 0.3], [0, 1, 2], sample_weight=weights)
 
 
 @pytest.mark.parametrize(
@@ -667,6 +1146,75 @@ def test_weight_dict(X, weights):
     )
 
 
+@pytest.mark.parametrize("weight_drift", [False, True])
+@pytest.mark.parametrize(
+    "weights, expected_weights, constant_returns, drifted_returns",
+    [
+        (
+            {"A": 0.6, "B": 0.4, "C": 0.0},
+            [0.4, 0.6],
+            [0.18, 0.28],
+            [0.18, 1.52 / 1.18 - 1],
+        ),
+        (
+            {"A": 0.5, "B": 0.3, "C": 0.2},
+            [0.3, 0.5],
+            [0.14, 0.22],
+            [0.14, 1.406 / 1.14 - 1],
+        ),
+    ],
+    ids=["excluded-zero", "excluded-nonzero"],
+)
+def test_weight_dict_reuses_full_universe(
+    weights, expected_weights, constant_returns, drifted_returns, weight_drift
+):
+    """Reuse full-universe weights on reordered subsets without renormalizing."""
+    X = pd.DataFrame({"A": [0.1, 0.2], "B": [0.3, 0.4], "C": [0.5, 0.6]})
+    original_X = X.copy(deep=True)
+    original_weights = weights.copy()
+    full = Portfolio(X=X, weights=weights)
+    reused = full.weights_dict
+    subset = X[["B", "A"]]
+    portfolio = Portfolio(X=subset, weights=reused, weight_drift=weight_drift)
+
+    np.testing.assert_array_equal(portfolio.assets, ["B", "A"])
+    np.testing.assert_array_equal(portfolio.weights, expected_weights)
+    # Literal labeled dot products apply without drift. With drift, wealth starts
+    # at one and retains cash: the nonzero exclusion leaves 0.2 uninvested.
+    expected_returns = drifted_returns if weight_drift else constant_returns
+    np.testing.assert_allclose(portfolio.returns, expected_returns, rtol=1e-14)
+    assert portfolio.X is subset
+    pd.testing.assert_frame_equal(X, original_X)
+    assert weights == original_weights
+    assert reused == original_weights
+    assert full.weights_dict == original_weights
+
+
+@pytest.mark.parametrize(
+    "weights, expected_weights, expected_returns",
+    [
+        ({"B": 0.5, "A": 0.5}, [0.5, 0.5], [0.2, 0.3]),
+        ({"A": 0.5, "C": 0.5}, [0.5, 0.0], [0.05, 0.1]),
+        ({}, [0.0, 0.0], [0.0, 0.0]),
+        ({"C": 1.0}, [0.0, 0.0], [0.0, 0.0]),
+        ({"B": -0.5, "A": 1.5, "C": 0.2}, [1.5, -0.5], [0.0, 0.1]),
+    ],
+)
+def test_weight_dict_aligns_to_current_assets(
+    weights, expected_weights, expected_returns
+):
+    """Align labels, ignore extras, and zero-fill omissions without scaling weights."""
+    X = pd.DataFrame({"A": [0.1, 0.2], "B": [0.3, 0.4]})
+    original_weights = weights.copy()
+    portfolio = Portfolio(X=X, weights=weights)
+    np.testing.assert_array_equal(portfolio.assets, ["A", "B"])
+    np.testing.assert_array_equal(portfolio.weights, expected_weights)
+    # These returns are explicit labeled dot products, independent of conversion.
+    np.testing.assert_allclose(portfolio.returns, expected_returns, atol=1e-16)
+    assert portfolio.X is X
+    assert weights == original_weights
+
+
 def test_portfolio_nan_handling(X, weights):
     """Test that NaN values in X are handled gracefully."""
     X_with_nan = X.to_numpy().copy()
@@ -708,6 +1256,184 @@ def test_portfolio_nan_handling(X, weights):
     portfolio_nan = Portfolio(X=X_nan_zero_only, weights=weights)
     portfolio_ref = Portfolio(X=X, weights=weights)
     np.testing.assert_array_almost_equal(portfolio_nan.returns, portfolio_ref.returns)
+
+
+TREEMAP_GROUPS = {
+    "a": ["Equity", "US"],
+    "b": ["Equity", "EU"],
+    "c": ["Bond", "US"],
+    "d": ["Bond", "EU"],
+}
+
+
+@pytest.fixture
+def X_treemap() -> pd.DataFrame:
+    rng = np.random.default_rng(42)
+    return pd.DataFrame(rng.normal(0.001, 0.02, (60, 4)), columns=["a", "b", "c", "d"])
+
+
+def _get_treemap_hierarchy(fig) -> list[tuple[str, str]]:
+    """Return the (label, parent label) pairs of the treemap nodes."""
+    trace = fig.data[0]
+    label_by_id = dict(zip(trace.ids, trace.labels, strict=True))
+    return [
+        (label, label_by_id.get(parent, ""))
+        for label, parent in zip(trace.labels, trace.parents, strict=True)
+    ]
+
+
+def _get_treemap_node(fig, name: str) -> dict:
+    """Return the value, net weight and color of the treemap node `name`."""
+    trace = fig.data[0]
+    i = [node_name for node_name, _ in trace.customdata].index(name)
+    return {
+        "value": trace.values[i],
+        "net_weight": trace.customdata[i][1],
+        "color": trace.marker.colors[i],
+    }
+
+
+def _parse_rgb(color: str) -> tuple[float, ...]:
+    return tuple(float(c) for c in color.removeprefix("rgb(")[:-1].split(","))
+
+
+def test_plot_composition_treemap(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.4, 0.3, 0.2, 0.1], name="ptf")
+    fig = ptf.plot_composition_treemap(groups=TREEMAP_GROUPS)
+    trace = fig.data[0]
+    assert trace.branchvalues == "total"
+    assert _get_treemap_hierarchy(fig) == [
+        ("ptf  100.0%", ""),
+        ("Equity  70.0%", "ptf  100.0%"),
+        ("US  40.0%", "Equity  70.0%"),
+        ("a", "US  40.0%"),
+        ("EU  30.0%", "Equity  70.0%"),
+        ("b", "EU  30.0%"),
+        ("Bond  30.0%", "ptf  100.0%"),
+        ("US  20.0%", "Bond  30.0%"),
+        ("c", "US  20.0%"),
+        ("EU  10.0%", "Bond  30.0%"),
+        ("d", "EU  10.0%"),
+    ]
+    np.testing.assert_almost_equal(
+        trace.values, [1.0, 0.7, 0.4, 0.4, 0.3, 0.3, 0.3, 0.2, 0.2, 0.1, 0.1]
+    )
+    assert fig.layout.title.text == "Portfolio Composition"
+    assert "Gross Weight" not in trace.hovertemplate
+
+
+def test_plot_composition_treemap_group_formats(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.4, 0.3, 0.2, 0.1])
+    fig_dict = ptf.plot_composition_treemap(groups=TREEMAP_GROUPS)
+    fig_array = ptf.plot_composition_treemap(
+        groups=[["Equity", "Equity", "Bond", "Bond"], ["US", "EU", "US", "EU"]]
+    )
+    assert _get_treemap_hierarchy(fig_dict) == _get_treemap_hierarchy(fig_array)
+
+    fig_scalar = ptf.plot_composition_treemap(
+        groups={"a": "Equity", "b": "Equity", "c": "Bond", "d": "Bond"}
+    )
+    fig_array = ptf.plot_composition_treemap(
+        groups=[["Equity", "Equity", "Bond", "Bond"]]
+    )
+    assert _get_treemap_hierarchy(fig_scalar) == _get_treemap_hierarchy(fig_array)
+
+
+def test_plot_composition_treemap_without_groups(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.4, 0.3, 0.2, 0.1], name="ptf")
+    fig = ptf.plot_composition_treemap()
+    assert _get_treemap_hierarchy(fig) == [
+        ("ptf  100.0%", ""),
+        ("a", "ptf  100.0%"),
+        ("b", "ptf  100.0%"),
+        ("c", "ptf  100.0%"),
+        ("d", "ptf  100.0%"),
+    ]
+
+
+def test_plot_composition_treemap_short_positions(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.8, 0.5, -0.2, -0.1], name="ptf")
+    fig = ptf.plot_composition_treemap(groups=TREEMAP_GROUPS)
+
+    assert _get_treemap_node(fig, "ptf")["value"] == pytest.approx(1.6)
+
+    short = _get_treemap_node(fig, "c")
+    assert short["value"] == pytest.approx(0.2)
+    assert short["net_weight"] == pytest.approx(-0.2)
+
+    bond = _get_treemap_node(fig, "Bond")
+    assert bond["value"] == pytest.approx(0.3)
+    assert bond["net_weight"] == pytest.approx(-0.3)
+    assert ("Bond  -30.0%", "ptf  100.0%") in _get_treemap_hierarchy(fig)
+
+    long_red, _, long_blue = _parse_rgb(_get_treemap_node(fig, "a")["color"])
+    short_red, _, short_blue = _parse_rgb(short["color"])
+    assert long_blue > long_red
+    assert short_red > short_blue
+
+    assert (
+        "Long 130.0% | Short -30.0% | Net 100.0% | Gross 160.0%"
+        in fig.layout.title.text
+    )
+    assert "Gross Weight" in fig.data[0].hovertemplate
+
+
+def test_plot_composition_treemap_ignores_zero_weights_and_extra_assets(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.6, 0.4, 0.0, 0.0], name="ptf")
+    groups = {"a": ["Equity", "US"], "b": ["Equity", "EU"], "e": ["Cash", "US"]}
+    fig = ptf.plot_composition_treemap(groups=groups)
+    assert _get_treemap_hierarchy(fig) == [
+        ("ptf  100.0%", ""),
+        ("Equity  100.0%", "ptf  100.0%"),
+        ("US  60.0%", "Equity  100.0%"),
+        ("a", "US  60.0%"),
+        ("EU  40.0%", "Equity  100.0%"),
+        ("b", "EU  40.0%"),
+    ]
+
+
+def test_plot_composition_treemap_optimization_groups(X_treemap):
+    model = MeanRisk(groups=TREEMAP_GROUPS, linear_constraints=["Equity <= 0.6"])
+    ptf = model.fit_predict(X_treemap)
+    fig = ptf.plot_composition_treemap(groups=model.groups)
+    assert _get_treemap_node(fig, "Equity")["net_weight"] <= 0.6 + 1e-6
+
+
+def test_plot_composition_treemap_pre_selection(X_treemap):
+    pipe = Pipeline(
+        [("pre_selection", SelectKExtremes(k=2)), ("optimization", MeanRisk())]
+    ).set_output(transform="pandas")
+    pipe.fit(X_treemap)
+    ptf = pipe.predict(X_treemap)
+    fig = ptf.plot_composition_treemap(groups=TREEMAP_GROUPS)
+    leaves = {label for label in fig.data[0].labels if label in TREEMAP_GROUPS}
+    assert leaves == set(ptf.nonzero_assets)
+
+
+def test_plot_composition_treemap_failed_portfolio(X_treemap):
+    fig = FailedPortfolio(X=X_treemap).plot_composition_treemap(groups=TREEMAP_GROUPS)
+    assert not fig.data[0].labels
+
+
+@pytest.mark.parametrize(
+    "groups,match",
+    [
+        (
+            {"a": ["Equity"], "b": ["Equity"], "c": ["Bond"]},
+            r"missing from `groups`: \['d'\]",
+        ),
+        (
+            {"a": ["Equity", "US"], "b": ["Equity"], "c": ["Bond"], "d": ["Bond"]},
+            "same number of group levels",
+        ),
+        ([["Equity", "Equity", "Bond"]], "array-like of shape"),
+        (["Equity", "Equity", "Bond", "Bond"], "array-like of shape"),
+    ],
+)
+def test_plot_composition_treemap_errors(X_treemap, groups, match):
+    ptf = Portfolio(X=X_treemap, weights=[0.4, 0.3, 0.2, 0.1])
+    with pytest.raises(ValueError, match=match):
+        ptf.plot_composition_treemap(groups=groups)
 
 
 class TestPortfolioFactorAttribution:

@@ -4,7 +4,7 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 
-from skfolio.utils._array_buffer import _ArrayBuffer
+from skfolio.utils._array_buffer import _ArrayBuffer, _update_buffer
 
 
 class TestArrayBufferInit:
@@ -283,3 +283,9 @@ class TestArrayBufferEdgeCases:
         data = np.zeros((100, 5))
         g.append(data)
         assert g._buffer.shape[0] == 100
+
+
+def test_update_buffer_with_no_observations_keeps_buffer():
+    buffer = np.arange(6.0).reshape(3, 2)
+    _update_buffer(buffer, np.empty((0, 2)), lag=3)
+    npt.assert_array_equal(buffer, np.arange(6.0).reshape(3, 2))

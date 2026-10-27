@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
@@ -36,9 +38,20 @@ class EquilibriumMu(BaseMu):
         The default value is `1.0`.
 
     weights : array-like of shape (n_assets,), optional
-        Asset weights used to compute the Expected Return Equilibrium.
-        The default is to use the equal-weighted equilibrium (1/N).
-        For a Market Cap weighted equilibrium, you must provide the asset Market Caps.
+        Reference portfolio weights used to compute the implied excess returns.
+        Supplied weights are used as given, without normalization. They may
+        contain negative values and need not sum to one. Their scale is
+        preserved, so changing the portfolio exposure changes the estimated
+        returns.
+
+        For a market-cap-weighted equilibrium, provide normalized market
+        capitalizations: `market_caps / market_caps.sum()`.
+
+        Other weights define a reverse-optimization prior for the chosen
+        reference portfolio, which may be leveraged, long-short, or
+        market-neutral.
+
+        The default (`None`) is to use equal weights (1/N).
 
     covariance_estimator : BaseCovariance, optional
         :ref:`Covariance estimator <covariance_estimator>` used to estimate the
@@ -68,20 +81,28 @@ class EquilibriumMu(BaseMu):
         risk_aversion: float = 1,
         weights: FloatArray | None = None,
         covariance_estimator: BaseCovariance | None = None,
-    ):
+    ) -> None:
         self.risk_aversion = risk_aversion
         self.weights = weights
         self.covariance_estimator = covariance_estimator
 
-    def get_metadata_routing(self):
-        # noinspection PyTypeChecker
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of `covariance_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             covariance_estimator=self.covariance_estimator,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> EquilibriumMu:
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> EquilibriumMu:
         """Fit the EquilibriumMu estimator model.
 
         Parameters
@@ -112,7 +133,6 @@ class EquilibriumMu(BaseMu):
             default=EmpiricalCovariance(),
             check_type=BaseCovariance,
         )
-        # noinspection PyArgumentList
         self.covariance_estimator_.fit(X, y, **routed_params.covariance_estimator.fit)
 
         # we validate and convert to numpy after all models have been fitted to keep

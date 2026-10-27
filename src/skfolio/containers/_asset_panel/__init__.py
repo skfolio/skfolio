@@ -1,3 +1,5 @@
+"""Asset panel container module."""
+
 from skfolio.containers._asset_panel._concat import concat
 from skfolio.containers._asset_panel._fields import (
     MISSING_CATEGORY_CODE,
