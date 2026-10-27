@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -314,7 +315,7 @@ class ParametricPortfolioPolicy(BaseOptimization):
         fallback: skt.Fallback = None,
         previous_weights: skt.MultiInput | None = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             portfolio_params=portfolio_params,
             fallback=fallback,
@@ -334,7 +335,7 @@ class ParametricPortfolioPolicy(BaseOptimization):
     def fit(
         self,
         X: pd.DataFrame,
-        y=None,
+        y: None = None,
         characteristics: AssetPanel | None = None,
     ) -> ParametricPortfolioPolicy:
         """Fit the Parametric Portfolio Policy estimator.
@@ -548,7 +549,9 @@ class ParametricPortfolioPolicy(BaseOptimization):
         return characteristics
 
     @staticmethod
-    def _investment_index(characteristics: AssetPanel, asset_names) -> IntArray:
+    def _investment_index(
+        characteristics: AssetPanel, asset_names: Sequence[str] | pd.Index
+    ) -> IntArray:
         """Positions of the investment universe in the coverage universe."""
         asset_idx = {name: i for i, name in enumerate(characteristics.asset_names)}
         try:
@@ -708,6 +711,7 @@ class ParametricPortfolioPolicy(BaseOptimization):
         r = np.where(inputs.holdable & np.isfinite(next_returns), next_returns, 0.0)
 
         def portfolio_returns(theta: FloatArray) -> FloatArray:
+            """Realised portfolio return path for the policy coefficients `theta`."""
             weights = self._policy_weights(theta, inputs, self.long_only)
             path = np.einsum("ti,ti->t", weights, r)
             if cost > 0.0:
@@ -724,6 +728,7 @@ class ParametricPortfolioPolicy(BaseOptimization):
             return path
 
         def objective(theta: FloatArray) -> float:
+            """Negative mean CRRA utility of the return path for `theta`."""
             path = portfolio_returns(theta)
             if np.any(1.0 + path <= 0.0):
                 return np.inf
