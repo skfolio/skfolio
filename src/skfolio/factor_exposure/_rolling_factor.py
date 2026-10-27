@@ -6,11 +6,13 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 
 import skfolio.typing as skt
-from skfolio._constants import _BENCHMARK_WEIGHTS, _PASSTHROUGH
+from skfolio._constants import _BENCHMARK_WEIGHTS
 from skfolio.containers import AssetPanel
 from skfolio.factor_exposure._base import BaseFactorExposure
 from skfolio.preprocessing import BaseCSTransformer, CSStandardScaler, CSWinsorizer
@@ -196,7 +198,7 @@ class RollingFactor(BaseFactorExposure):
         outlier_transformer: skt.CSTransformer = "passthrough",
         scoring_transformer: skt.CSTransformer = None,
         transform_by_group: str | None = None,
-    ):
+    ) -> None:
         super().__init__(family=family)
         self.source = source
         self.windows = windows
@@ -205,7 +207,9 @@ class RollingFactor(BaseFactorExposure):
         self.scoring_transformer = scoring_transformer
         self.transform_by_group = transform_by_group
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Compute the rolling factor exposures from a clean state.
 
         Parameters
@@ -228,7 +232,9 @@ class RollingFactor(BaseFactorExposure):
         self._reset()
         return self.partial_fit_transform(X, y, **fit_params)
 
-    def partial_fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def partial_fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Update state and compute the rolling factor exposures.
 
         This method supports online updates by continuing from the current fitted
@@ -292,11 +298,11 @@ class RollingFactor(BaseFactorExposure):
         )
         for j in range(self.n_factors_):
             column = exposures[:, :, j]
-            if self.outlier_transformer_ != _PASSTHROUGH:
+            if isinstance(self.outlier_transformer_, BaseCSTransformer):
                 column = self.outlier_transformer_.fit_transform(
                     column, cs_weights=cs_weight, cs_groups=cs_group
                 )
-            if self.scoring_transformer_ != _PASSTHROUGH:
+            if isinstance(self.scoring_transformer_, BaseCSTransformer):
                 column = self.scoring_transformer_.fit_transform(
                     column, cs_weights=cs_weight, cs_groups=cs_group
                 )
