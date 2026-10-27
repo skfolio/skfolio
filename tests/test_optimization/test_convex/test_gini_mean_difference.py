@@ -309,7 +309,7 @@ def test_sweep_reuses_problem_and_keeps_last_attempt(
         save_problem=save_problem,
     )
     expectation = (
-        pytest.warns(UserWarning, match="Solver 'CLARABEL' failed")
+        pytest.warns(UserWarning, match="The optimization problem is infeasible")
         if 1.0 in targets
         else nullcontext()
     )
@@ -438,10 +438,12 @@ def test_truly_unbounded_problem_is_rejected(raise_on_failure):
         save_problem=True,
     )
     if raise_on_failure:
-        with pytest.raises(cp.SolverError, match="Solver 'CLARABEL' failed"):
+        with pytest.raises(
+            cp.SolverError, match="The optimization problem is unbounded"
+        ):
             model.fit(returns)
     else:
-        with pytest.warns(UserWarning, match="Solver 'CLARABEL' failed"):
+        with pytest.warns(UserWarning, match="The optimization problem is unbounded"):
             model.fit(returns)
         assert model.weights_ is None
     assert model.problem_.status in {cp.UNBOUNDED, cp.UNBOUNDED_INACCURATE}
