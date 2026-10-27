@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import warnings
+from typing import Any
 
 import numpy as np
 
@@ -136,7 +137,7 @@ class EWMarketBeta(BaseDescriptor):
         min_group_size: int = 5,
         shrinkage_bounds: tuple[float, float] = (0.0, 1.0),
         eps: float = 1e-12,
-    ):
+    ) -> None:
         self.half_life = half_life
         self.aggregation_period = aggregation_period
         self.min_periods = min_periods
@@ -145,7 +146,9 @@ class EWMarketBeta(BaseDescriptor):
         self.shrinkage_bounds = shrinkage_bounds
         self.eps = eps
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Compute exponentially weighted market betas.
 
         Parameters
@@ -168,7 +171,9 @@ class EWMarketBeta(BaseDescriptor):
         self._reset()
         return self.partial_fit_transform(X, y, **fit_params)
 
-    def partial_fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def partial_fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Update EWMA state on X and return betas for this batch.
 
         This method supports online updates by continuing from the current fitted state.
@@ -226,7 +231,7 @@ class EWMarketBeta(BaseDescriptor):
 
         group_labels = None
         if self._shrinkage_enabled:
-            group_field = X.get_field(self.shrinkage_group)
+            group_field = X.get_field(self.shrinkage_group)  # ty: ignore[invalid-argument-type]
             if not group_field.is_categorical:
                 raise ValueError(
                     f"Field '{self.shrinkage_group}' must be a CategoricalField."
@@ -239,7 +244,9 @@ class EWMarketBeta(BaseDescriptor):
                 if self._shrinkage_enabled and self._t >= self._min_periods:
                     # Shrinkage applied every observation since betas update every time
                     self._shrunk_betas = self._apply_shrinkage(
-                        self._betas, group_labels[i], market_caps[i]
+                        self._betas,
+                        group_labels[i],  # ty: ignore[not-subscriptable]
+                        market_caps[i],
                     )
                     betas[i] = self._shrunk_betas
                 else:
@@ -256,7 +263,9 @@ class EWMarketBeta(BaseDescriptor):
                     # Apply shrinkage only on flush (when betas update)
                     if self._shrinkage_enabled and self._t >= self._min_periods:
                         self._shrunk_betas = self._apply_shrinkage(
-                            self._betas, group_labels[i], market_caps[i]
+                            self._betas,
+                            group_labels[i],  # ty: ignore[not-subscriptable]
+                            market_caps[i],
                         )
 
                 # Output: shrunk betas if available, else raw betas
@@ -275,7 +284,8 @@ class EWMarketBeta(BaseDescriptor):
 
         return betas
 
-    def _reset(self):
+    def _reset(self) -> None:
+        """Reset fitted state."""
         if hasattr(self, _FITTED_ATTR):
             delattr(self, _FITTED_ATTR)
 

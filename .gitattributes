@@ -19,8 +19,6 @@
 *.bash text eol=lf
 
 # Packaging / build / CI
-Dockerfile text eol=lf
-*.dockerfile text eol=lf
 Makefile text eol=lf
 *.mk text eol=lf
 *.github/** text eol=lf

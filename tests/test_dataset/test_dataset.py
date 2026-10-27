@@ -90,172 +90,68 @@ class TestClearDataHome:
             pytest.fail(f"Unexpected error: {e}")
 
 
-class TestLoadSp500Dataset:
-    #  Loads the S&P 500 dataset successfully
-    def test_load_sp500_dataset_success(self):
-        # Call the load_sp500_dataset function
-        df = load_sp500_dataset()
-
-        # Check if the returned object is a pandas DataFrame
-        assert isinstance(df, pd.DataFrame)
-        assert isinstance(df.index, pd.DatetimeIndex)
-
-        # Check if the DataFrame is not empty
-        assert not df.empty
-
-    #  Returns a pandas DataFrame with the correct shape
-    def test_load_sp500_dataset_shape(self):
-        # Call the load_sp500_dataset function
-        df = load_sp500_dataset()
-
-        # Check if the shape of the DataFrame is correct
-        assert df.shape == (8313, 20)
-
-    #  DataFrame has the correct column names
-    def test_load_sp500_dataset_columns(self):
-        # Call the load_sp500_dataset function
-        df = load_sp500_dataset()
-
-        # Define the expected column names
-        expected_columns = [
-            "AAPL",
-            "AMD",
-            "BAC",
-            "BBY",
-            "CVX",
-            "GE",
-            "HD",
-            "JNJ",
-            "JPM",
-            "KO",
-            "LLY",
-            "MRK",
-            "MSFT",
-            "PEP",
-            "PFE",
-            "PG",
-            "RRC",
-            "UNH",
-            "WMT",
-            "XOM",
-        ]
-
-        # Check if the column names of the DataFrame are correct
-        assert list(df.columns) == expected_columns
+def _assert_dataset_frame(df, shape):
+    assert isinstance(df, pd.DataFrame)
+    assert isinstance(df.index, pd.DatetimeIndex)
+    assert not df.empty
+    assert df.shape == shape
 
 
-class TestLoadSp500Index:
-    def test_load_sp500_index_success(self):
-        df = load_sp500_index()
-
-        # Check if the returned object is a pandas DataFrame
-        assert isinstance(df, pd.DataFrame)
-        assert isinstance(df.index, pd.DatetimeIndex)
-
-        # Check if the DataFrame is not empty
-        assert not df.empty
-
-    #  Returns a pandas DataFrame with the correct shape
-    def test_load_sp500_index_shape(self):
-        df = load_sp500_index()
-
-        # Check if the shape of the DataFrame is correct
-        assert df.shape == (8313, 1)
-
-    #  DataFrame has the correct column names
-    def test_load_sp500_dataset_columns(self):
-        df = load_sp500_index()
-
-        # Define the expected column names
-        expected_columns = ["SP500"]
-
-        # Check if the column names of the DataFrame are correct
-        assert list(df.columns) == expected_columns
-
-
-class TestLoadFactorsDataset:
-    def test_load_factors_dataset_success(self):
-        df = load_factors_dataset()
-
-        # Check if the returned object is a pandas DataFrame
-        assert isinstance(df, pd.DataFrame)
-        assert isinstance(df.index, pd.DatetimeIndex)
-
-        # Check if the DataFrame is not empty
-        assert not df.empty
-
-    #  Returns a pandas DataFrame with the correct shape
-    def test_load_factors_dataset_shape(self):
-        df = load_factors_dataset()
-
-        # Check if the shape of the DataFrame is correct
-        assert df.shape == (2264, 5)
-
-    def test_load_factors_dataset_columns(self):
-        df = load_factors_dataset()
-
-        # Define the expected column names
-        expected_columns = ["MTUM", "QUAL", "SIZE", "USMV", "VLUE"]
-
-        # Check if the column names of the DataFrame are correct
-        assert list(df.columns) == expected_columns
+@pytest.mark.parametrize(
+    "loader,shape,columns",
+    [
+        pytest.param(
+            load_sp500_dataset,
+            (8313, 20),
+            [
+                "AAPL",
+                "AMD",
+                "BAC",
+                "BBY",
+                "CVX",
+                "GE",
+                "HD",
+                "JNJ",
+                "JPM",
+                "KO",
+                "LLY",
+                "MRK",
+                "MSFT",
+                "PEP",
+                "PFE",
+                "PG",
+                "RRC",
+                "UNH",
+                "WMT",
+                "XOM",
+            ],
+            id="sp500",
+        ),
+        pytest.param(load_sp500_index, (8313, 1), ["SP500"], id="sp500-index"),
+        pytest.param(
+            load_factors_dataset,
+            (2264, 5),
+            ["MTUM", "QUAL", "SIZE", "USMV", "VLUE"],
+            id="factors",
+        ),
+    ],
+)
+def test_bundled_dataset(loader, shape, columns):
+    df = loader()
+    _assert_dataset_frame(df, shape)
+    assert list(df.columns) == columns
 
 
-class TestLoadFtse100Dataset:
-    def test_load_ftse100_dataset_success(self, remote_dataset):
-        df = remote_dataset(load_ftse100_dataset)
-
-        # Check if the returned object is a pandas DataFrame
-        assert isinstance(df, pd.DataFrame)
-        assert isinstance(df.index, pd.DatetimeIndex)
-
-        # Check if the DataFrame is not empty
-        assert not df.empty
-
-    #  Returns a pandas DataFrame with the correct shape
-    def test_load_ftse100_dataset_shape(self, remote_dataset):
-        df = remote_dataset(load_ftse100_dataset)
-
-        # Check if the shape of the DataFrame is correct
-        assert df.shape == (5960, 64)
-
-
-class TestNasdaqDataset:
-    def test_load_nasdaq_dataset_success(self, remote_dataset):
-        df = remote_dataset(load_nasdaq_dataset)
-
-        # Check if the returned object is a pandas DataFrame
-        assert isinstance(df, pd.DataFrame)
-        assert isinstance(df.index, pd.DatetimeIndex)
-
-        # Check if the DataFrame is not empty
-        assert not df.empty
-
-    #  Returns a pandas DataFrame with the correct shape
-    def test_load_nasdaq_dataset_shape(self, remote_dataset):
-        df = remote_dataset(load_nasdaq_dataset)
-
-        # Check if the shape of the DataFrame is correct
-        assert df.shape == (1362, 1455)
-
-
-class TestSp500ImpliedVolDataset:
-    def test_load_sp500_implied_vol_dataset_success(self, remote_dataset):
-        df = remote_dataset(load_sp500_implied_vol_dataset)
-
-        # Check if the returned object is a pandas DataFrame
-        assert isinstance(df, pd.DataFrame)
-        assert isinstance(df.index, pd.DatetimeIndex)
-
-        # Check if the DataFrame is not empty
-        assert not df.empty
-
-    #  Returns a pandas DataFrame with the correct shape
-    def test_load_sp500_implied_vol_dataset_shape(self, remote_dataset):
-        df = remote_dataset(load_sp500_implied_vol_dataset)
-
-        # Check if the shape of the DataFrame is correct
-        assert df.shape == (3270, 20)
+@pytest.mark.parametrize(
+    "loader,shape",
+    [
+        pytest.param(load_ftse100_dataset, (5960, 64), id="ftse100"),
+        pytest.param(load_nasdaq_dataset, (1362, 1455), id="nasdaq"),
+        pytest.param(load_sp500_implied_vol_dataset, (3270, 20), id="implied-vol"),
+    ],
+)
+def test_remote_dataset(remote_dataset, loader, shape):
+    _assert_dataset_frame(remote_dataset(loader), shape)
 
 
 def _write_valid_gz(path: str) -> None:
@@ -280,7 +176,7 @@ class TestDownloadDatasetCache:
 
         monkeypatch.setattr(_base.ur, "urlretrieve", interrupted)
 
-        with pytest.raises(error):
+        with pytest.raises(error, match="connection lost"):
             download_dataset("dataset", data_home=tmp_path)
 
         assert not dest.exists()

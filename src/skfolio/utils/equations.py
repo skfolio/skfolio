@@ -202,9 +202,6 @@ def equations_to_matrix(
             if raise_if_group_missing:
                 raise
             warnings.warn(str(e), stacklevel=2)
-        except FactorNotFoundError:
-            # Always raise for factor constraints
-            raise
     return (
         np.array(a_equality, dtype=float)
         if a_equality
@@ -657,7 +654,7 @@ def _parse_expression(
         token = tokens[position]
 
         if token in _SUB_ADD_OPERATORS:
-            sign = 1 if token == "+" else -1
+            sign *= 1 if token == "+" else -1
             position += 1
             expect_term = True
             continue

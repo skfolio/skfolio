@@ -79,9 +79,20 @@ sequentially. A value passed to `cross_val_predict` overrides the optimizer's
 `Portfolio` objects. `name`, `tag`, `sample_weight` and `check_observations_order`
 apply to the resulting `MultiPeriodPortfolio` only.
 
+By default, the resulting portfolio inherits its children's sample weights.
+An explicit `sample_weight` overrides them (see :ref:`portfolio`).
+
 For example, to evaluate a drifted, compounded path with transaction costs:
 
 .. code-block:: python
+
+    from skfolio.datasets import load_sp500_dataset
+    from skfolio.model_selection import WalkForward, cross_val_predict
+    from skfolio.optimization import MeanRisk
+    from skfolio.preprocessing import prices_to_returns
+
+    prices = load_sp500_dataset()
+    X = prices_to_returns(prices)
 
     pred = cross_val_predict(
         MeanRisk(transaction_costs=0.001 / 5),
@@ -111,6 +122,7 @@ such as `KFold`, drift is evaluated inside each test fold and is not propagated.
     from skfolio.datasets import load_sp500_dataset
     from skfolio.model_selection import (
         CombinatorialPurgedCV,
+        MultipleRandomizedCV,
         WalkForward,
         cross_val_predict,
     )
@@ -148,14 +160,51 @@ such as `KFold`, drift is evaluated inside each test fold and is not propagated.
         MeanRisk(),
         X,
         cv=MultipleRandomizedCV(
-            walk_forward=WalkForward(test_size=1, train_size=2),
+            walk_forward=WalkForward(test_size=60, train_size=252),
             n_subsamples=2,
             asset_subset_size=3,
+            random_state=0,
         )
     )
     print(pred.summary())
     print(np.asarray(pred))  # predicted returns matrix
 
+
+
+To compare several portfolio optimization estimators on the same splits, you can pass
+a list of `(name, estimator)` pairs with unique names. The result is a
+:class:`~skfolio.population.Population` ordered by estimator and then by path. Each
+name sets the `name` and `tag` of the estimator's `MultiPeriodPortfolio` objects, with
+a path suffix in the name for multi-path cross-validation. The `n_jobs` parameter
+controls parallel evaluation of independent folds and paths across estimators.
+
+Using the returns `X` from the example above, we compare the measures side by side:
+
+.. code-block:: python
+
+    from skfolio.optimization import EqualWeighted, InverseVolatility
+
+    estimators = [
+        ("equal_weighted", EqualWeighted()),
+        ("inverse_volatility", InverseVolatility()),
+    ]
+    population = cross_val_predict(
+        estimators, X, cv=WalkForward(train_size=252, test_size=63), n_jobs=2
+    )
+    population.summary()
+
+With multi-path cross-validation, we compare the Sharpe ratio distributions by estimator:
+
+.. code-block:: python
+
+    from skfolio import RatioMeasure
+    from skfolio.model_selection import CombinatorialPurgedCV
+
+    population = cross_val_predict(estimators, X, cv=CombinatorialPurgedCV(), n_jobs=2)
+    population.boxplot_measure(
+        measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO,
+        tag_list=["equal_weighted", "inverse_volatility"],
+    )
 
 
 Walk-Forward Cross-Validation
@@ -173,6 +222,11 @@ Combinatorial Purged Cross-Validation
 Compared to `KFold`, which splits the data into k folds and generates one single testing
 path, the :class:`CombinatorialPurgedCV` uses the combination of multiple
 train/test sets to generate multiple testing paths.
+
+Observations are partitioned into consecutive folds without shuffling. The first
+`n_folds - 1` folds each contain `n_samples // n_folds` observations, and the
+last fold contains all remaining observations. Each reconstructed testing path
+covers every observation exactly once.
 
 To avoid data leakage, purging and embargoing can be performed.
 
@@ -214,14 +268,16 @@ For that, you can use the function :func:`optimal_folds_number` as shown in the 
 
 .. code-block:: python
 
+    from skfolio.model_selection import optimal_folds_number
+
     n_folds, n_test_folds = optimal_folds_number(
-        n_observations=X_test.shape[0],
+        n_observations=X.shape[0],
         target_n_test_paths=100,
         target_train_size=252,
     )
 
     cv = CombinatorialPurgedCV(n_folds=n_folds, n_test_folds=n_test_folds)
-    cv.summary(X_test)
+    cv.summary(X)
 
 
 
@@ -254,6 +310,7 @@ When used with :func:`cross_val_predict`, the object returned is a
         n_subsamples=100,
         asset_subset_size=3,
         window_size=2*252,
+        random_state=0,
     )
 
     pred = cross_val_predict(MeanRisk(), X, cv=cv)

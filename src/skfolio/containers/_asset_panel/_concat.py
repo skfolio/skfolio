@@ -18,7 +18,7 @@ from skfolio.containers._asset_panel._fields import (
     FieldCategorical,
 )
 from skfolio.containers._asset_panel._panel import AssetPanel
-from skfolio.typing import AnyArray, IntArray, StrArray
+from skfolio.typing import AnyArray, StrArray
 
 __all__ = ["concat"]
 
@@ -165,7 +165,9 @@ def _validate_field_schema(
             f"at position {position}; expected {reference_field.inactive_policy!r}."
         )
 
-    if isinstance(reference_field, FieldCategorical):
+    if isinstance(reference_field, FieldCategorical) and isinstance(
+        field, FieldCategorical
+    ):
         if not np.array_equal(field.levels, reference_field.levels):
             raise ValueError(
                 f"Categorical field '{name}' has different levels in panel at "
@@ -173,7 +175,7 @@ def _validate_field_schema(
             )
         return
 
-    if isinstance(reference_field, Field3D):
+    if isinstance(reference_field, Field3D) and isinstance(field, Field3D):
         if field.third_axis_name != reference_field.third_axis_name:
             raise ValueError(
                 f"Field3D '{name}' has a different third_axis_name in panel at "
@@ -198,7 +200,7 @@ def _validate_optional_groups(
     *,
     name: str,
     reference_groups: StrArray | None,
-    groups: IntArray | None,
+    groups: StrArray | None,
     position: int,
 ) -> None:
     """Validate optional third-axis groups for a 3D field."""

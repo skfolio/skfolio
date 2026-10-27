@@ -69,5 +69,5 @@ class CapexToAssetsChangeInIntensity(ChangeInIntensity):
     >>> capex_intensity_change = descriptor.fit_transform(X)
     """
 
-    def __init__(self, lag: int = 252):
+    def __init__(self, lag: int = 252) -> None:
         super().__init__(field="capex_ttm", scale_field="total_assets", lag=lag)

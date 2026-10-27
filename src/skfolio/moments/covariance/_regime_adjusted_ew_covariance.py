@@ -10,9 +10,11 @@ import numbers
 import warnings
 from collections import deque
 from enum import auto
+from typing import ClassVar
 
 import numpy as np
 import scipy.special as scs
+import sklearn.utils as sku
 import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance._base import BaseCovariance
@@ -211,6 +213,9 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
 
     For standard exponentially weighted covariance without regime adjustment,
     see :class:`EWCovariance`.
+
+    With metadata routing enabled, `active_mask` is requested by default for
+    `fit` and `partial_fit`. See :ref:`default_metadata_requests`.
 
     Parameters
     ----------
@@ -503,6 +508,10 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
 
     regime_multiplier_: float
 
+    # Route universe membership to this estimator by default.
+    __metadata_request__fit: ClassVar[dict[str, bool]] = {"active_mask": True}
+    __metadata_request__partial_fit: ClassVar[dict[str, bool]] = {"active_mask": True}
+
     def __init__(
         self,
         half_life: float = 40,
@@ -540,7 +549,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
     def fit(
         self,
         X: ArrayLike,
-        y=None,
+        y: None = None,
         *,
         active_mask: ArrayLike | None = None,
         estimation_mask: ArrayLike | None = None,
@@ -599,7 +608,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
     def partial_fit(
         self,
         X: ArrayLike,
-        y=None,
+        y: None = None,
         *,
         active_mask: ArrayLike | None = None,
         estimation_mask: ArrayLike | None = None,
@@ -812,7 +821,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
         else:
             self._regime_portfolio_weights = None
 
-        self._regime_state = None
+        self._regime_state = 0.0
 
         self._decay = half_life_to_decay_factor(self.half_life)
 
@@ -1107,16 +1116,17 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
                 match self.regime_target:
                     case RegimeAdjustmentTarget.PORTFOLIO:
                         denom = np.sqrt(n_active) * np.sqrt(2.0 / np.pi)
-                    case RegimeAdjustmentTarget.MAHALANOBIS:
+                    case (
+                        RegimeAdjustmentTarget.MAHALANOBIS
+                        | RegimeAdjustmentTarget.DIAGONAL
+                    ):
+                        # E[chi_n] avoids the sqrt(n) bias for independent standard normal returns.
+                        # DIAGONAL calibration remains approximate with correlation,
+                        # non-Gaussian returns, or estimated variances.
                         denom = np.sqrt(2.0) * np.exp(
                             scs.gammaln(0.5 * (n_active + 1))
                             - scs.gammaln(0.5 * n_active)
                         )
-                    case RegimeAdjustmentTarget.DIAGONAL:
-                        # Diagonal STVU ignores correlations, so only the second
-                        # moment calibration is exact in general. Keep the
-                        # first-moment normalization as the diagonal-risk proxy.
-                        denom = np.sqrt(n_active)
                 transformed_values = sqrt_stats / denom
             case RegimeAdjustmentMethod.LOG:
                 transformed_values = (
@@ -1124,7 +1134,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
                 )
         transformed = float(np.mean(transformed_values))
 
-        if self._regime_state is None:
+        if self._n_regime_observations == 0:
             self._regime_state = transformed
         else:
             self._regime_state = (
@@ -1214,7 +1224,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
             return outer
 
         for j, past_ret in enumerate(reversed(self._return_buffer), start=1):
-            w_j = 1.0 - j / (self.hac_lags + 1)
+            w_j = 1.0 - j / (self.hac_lags + 1)  # ty: ignore[unsupported-operator]
             # Zero out NaN entries in lagged returns for pairwise HAC
             filled_past_ret = np.where(np.isnan(past_ret), 0.0, past_ret)
             cross = np.outer(ret, filled_past_ret)
@@ -1226,3 +1236,9 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
         """Reset fitted state."""
         if hasattr(self, _FITTED_ATTR):
             delattr(self, _FITTED_ATTR)
+
+    def __sklearn_tags__(self) -> sku.Tags:
+        """Declare support for missing observations and inactive assets."""
+        tags = super().__sklearn_tags__()
+        tags.input_tags.allow_nan = True
+        return tags

@@ -19,6 +19,37 @@ from skfolio.attribution import (
 from ._utils import _create_realized_model
 
 
+@pytest.fixture
+def rolling_static_attribution_step_30(rolling_static_model):
+    return rolling_realized_factor_attribution(
+        **rolling_static_model, window_size=60, step=30
+    )
+
+
+@pytest.fixture
+def rolling_time_varying_attribution_step_20(rolling_time_varying_model):
+    return rolling_realized_factor_attribution(
+        **rolling_time_varying_model, window_size=60, step=20
+    )
+
+
+@pytest.fixture
+def rolling_static_attribution_step_20(rolling_static_model):
+    return rolling_realized_factor_attribution(
+        **rolling_static_model, window_size=60, step=20
+    )
+
+
+@pytest.fixture
+def rolling_static_attribution_step_30_with_asset_contributions(rolling_static_model):
+    return rolling_realized_factor_attribution(
+        **rolling_static_model,
+        window_size=60,
+        step=30,
+        compute_asset_factor_contribs=True,
+    )
+
+
 class TestAttributionProperties:
     """Tests for Attribution dataclass properties."""
 
@@ -55,11 +86,9 @@ class TestAttributionProperties:
         assert result.is_rolling is False
         assert result.observations is None
 
-    def test_is_rolling_true_for_rolling(self, rolling_static_model):
+    def test_is_rolling_true_for_rolling(self, rolling_static_attribution_step_30):
         """Test is_rolling is True for rolling attribution."""
-        result = rolling_realized_factor_attribution(
-            **rolling_static_model, window_size=60, step=30
-        )
+        result = rolling_static_attribution_step_30
         assert result.is_rolling is True
         assert result.observations is not None
 
@@ -98,12 +127,12 @@ class TestAttributionPlotMethods:
 
     # === Exposure Chart Tests ===
 
-    def test_plot_exposure_returns_figure(self, simple_factor_model):
-        """Test that plot_exposure returns a go.Figure."""
+    def test_plot_exposure_returns_figure_contract(self, simple_factor_model):
         result = predicted_factor_attribution(**simple_factor_model)
         fig = result.plot_exposure()
         assert isinstance(fig, go.Figure)
         assert fig.layout.yaxis.autorangeoptions.include == (-1, 1)
+        assert "Factor Exposure" in fig.layout.title.text
 
     def test_plot_exposure_contains_factors(self, simple_factor_model):
         """Test that exposure chart contains all factors."""
@@ -112,11 +141,6 @@ class TestAttributionPlotMethods:
         assert "Momentum" in bar_data.x
         assert "Value" in bar_data.x
         assert "Idiosyncratic" not in bar_data.x
-
-    def test_plot_exposure_title(self, simple_factor_model):
-        """Test that exposure chart has correct title."""
-        result = predicted_factor_attribution(**simple_factor_model)
-        assert "Factor Exposure" in result.plot_exposure().layout.title.text
 
     def test_plot_exposure_by_family(self, model_with_families):
         """Test that exposure chart can aggregate by factor family."""
@@ -134,11 +158,11 @@ class TestAttributionPlotMethods:
         assert len(bar_data.error_y.array) == result.n_factors
         assert "Error bars: +/- 1 exposure std" in fig.layout.title.text
 
-    def test_plot_exposure_rolling_line_chart(self, rolling_time_varying_model):
+    def test_plot_exposure_rolling_line_chart(
+        self, rolling_time_varying_attribution_step_20
+    ):
         """Test that rolling exposure chart returns lines and std bands."""
-        result = rolling_realized_factor_attribution(
-            **rolling_time_varying_model, window_size=60, step=20
-        )
+        result = rolling_time_varying_attribution_step_20
         fig = result.plot_exposure(top_n=2)
 
         assert isinstance(fig, go.Figure)
@@ -160,10 +184,14 @@ class TestAttributionPlotMethods:
 
     # === Vol Bar Chart Tests ===
 
-    def test_plot_vol_bar_returns_figure(self, simple_factor_model):
-        """Test that plot_vol_bar returns a go.Figure."""
+    def test_plot_vol_bar_returns_figure_contract(self, simple_factor_model):
         result = predicted_factor_attribution(**simple_factor_model)
-        assert isinstance(result.plot_vol_contrib(), go.Figure)
+        fig = result.plot_vol_contrib()
+        assert isinstance(fig, go.Figure)
+        bar_data = fig.data[0]
+        assert "Momentum" in bar_data.x
+        assert "Value" in bar_data.x
+        assert "Vol Contribution" in fig.layout.title.text
 
     def test_plot_labels_formatted(self, simple_factor_model):
         model = {
@@ -174,13 +202,6 @@ class TestAttributionPlotMethods:
         bar = result.plot_vol_contrib(top_n=None, include_idio=False).data[0]
         assert list(bar.x) == ["Non Linear Size", "Earnings Yield"]
 
-    def test_vol_bar_contains_factors(self, simple_factor_model):
-        """Test that vol bar chart contains all factors."""
-        result = predicted_factor_attribution(**simple_factor_model)
-        bar_data = result.plot_vol_contrib().data[0]
-        assert "Momentum" in bar_data.x
-        assert "Value" in bar_data.x
-
     @pytest.mark.parametrize("include_idio,expected", [(True, True), (False, False)])
     def test_vol_bar_residual_inclusion(
         self, simple_factor_model, include_idio, expected
@@ -189,11 +210,6 @@ class TestAttributionPlotMethods:
         result = predicted_factor_attribution(**simple_factor_model)
         bar_data = result.plot_vol_contrib(include_idio=include_idio).data[0]
         assert ("Idiosyncratic" in bar_data.x) == expected
-
-    def test_vol_bar_title(self, simple_factor_model):
-        """Test that vol bar has correct title."""
-        result = predicted_factor_attribution(**simple_factor_model)
-        assert "Vol Contribution" in result.plot_vol_contrib().layout.title.text
 
     def test_vol_bar_other_aggregation(self):
         """Test that plot_vol_contrib aggregates remaining factors into 'Other'."""
@@ -238,19 +254,18 @@ class TestAttributionPlotMethods:
 
     # === Return Bar Chart Tests ===
 
-    def test_plot_return_bar_returns_figure(self, simple_factor_model_with_perf):
-        """Test that plot_return_bar returns a go.Figure."""
+    def test_plot_return_bar_returns_figure_contract(
+        self, simple_factor_model_with_perf
+    ):
         result = predicted_factor_attribution(**simple_factor_model_with_perf)
-        assert isinstance(result.plot_return_contrib(), go.Figure)
-
-    def test_return_bar_contains_factors(self, simple_factor_model_with_perf):
-        """Test that return bar chart contains all factors."""
-        result = predicted_factor_attribution(**simple_factor_model_with_perf)
-        bar_data = result.plot_return_contrib().data[0]
+        fig = result.plot_return_contrib()
+        assert isinstance(fig, go.Figure)
+        bar_data = fig.data[0]
         assert "Momentum" in bar_data.x
         assert "Value" in bar_data.x
         assert bar_data.customdata.shape[1] == 2
         assert "% of Total" not in str(bar_data.hovertemplate)
+        assert "Return Contribution" in fig.layout.title.text
 
     @pytest.mark.parametrize("include_idio,expected", [(True, True), (False, False)])
     def test_return_bar_residual_inclusion(
@@ -260,11 +275,6 @@ class TestAttributionPlotMethods:
         result = predicted_factor_attribution(**simple_factor_model_with_perf)
         bar_data = result.plot_return_contrib(include_idio=include_idio).data[0]
         assert ("Idiosyncratic" in bar_data.x) == expected
-
-    def test_return_bar_title(self, simple_factor_model_with_perf):
-        """Test that return bar has correct title."""
-        result = predicted_factor_attribution(**simple_factor_model_with_perf)
-        assert "Return Contribution" in result.plot_return_contrib().layout.title.text
 
     def test_return_bar_other_aggregation(self):
         """Test that plot_return_contrib aggregates remaining factors into 'Other'."""
@@ -312,19 +322,21 @@ class TestAttributionPlotMethods:
 
     # === Scatter Plot Tests ===
 
-    def test_plot_return_vs_vol_scatter_returns_figure(
+    def test_plot_return_vs_vol_scatter_returns_figure_contract(
         self, simple_factor_model_with_perf
     ):
-        """Test that plot_return_vs_vol_contrib returns a go.Figure."""
         result = predicted_factor_attribution(**simple_factor_model_with_perf)
-        assert isinstance(result.plot_return_vs_vol_contrib(), go.Figure)
-
-    def test_scatter_contains_factors(self, simple_factor_model_with_perf):
-        """Test that scatter plot contains all factors (in legend)."""
-        result = predicted_factor_attribution(**simple_factor_model_with_perf)
-        trace_names = [t.name for t in result.plot_return_vs_vol_contrib().data]
+        fig = result.plot_return_vs_vol_contrib()
+        assert isinstance(fig, go.Figure)
+        trace_names = [t.name for t in fig.data]
         assert "Momentum" in trace_names
         assert "Value" in trace_names
+        shapes = fig.layout.shapes
+        assert len(shapes) >= 2
+        assert "Return vs Vol" in fig.layout.title.text
+        sizes = [t.marker.size for t in fig.data if t.name != "Idiosyncratic"]
+        assert len(sizes) >= 2
+        assert len(np.unique(sizes)) > 1
 
     @pytest.mark.parametrize("include_idio,expected", [(True, True), (False, False)])
     def test_scatter_residual_inclusion(
@@ -337,17 +349,6 @@ class TestAttributionPlotMethods:
             for t in result.plot_return_vs_vol_contrib(include_idio=include_idio).data
         ]
         assert ("Idiosyncratic" in trace_names) == expected
-
-    def test_scatter_has_reference_lines(self, simple_factor_model_with_perf):
-        """Test that scatter plot has x=0 and y=0 reference lines."""
-        result = predicted_factor_attribution(**simple_factor_model_with_perf)
-        shapes = result.plot_return_vs_vol_contrib().layout.shapes
-        assert len(shapes) >= 2
-
-    def test_scatter_title(self, simple_factor_model_with_perf):
-        """Test that scatter plot has correct title."""
-        result = predicted_factor_attribution(**simple_factor_model_with_perf)
-        assert "Return vs Vol" in result.plot_return_vs_vol_contrib().layout.title.text
 
     def test_scatter_other_aggregation(self):
         """Test that plot_return_vs_vol_contrib aggregates remaining factors."""
@@ -396,18 +397,6 @@ class TestAttributionPlotMethods:
         expected_other_mu = np.sum(factor_mu_contrib[sorted_idx[3:]])
         np.testing.assert_allclose(other_vol, expected_other_vol, rtol=1e-10)
         np.testing.assert_allclose(other_mu, expected_other_mu, rtol=1e-10)
-
-    def test_scatter_marker_sizes_proportional_to_exposure(
-        self, simple_factor_model_with_perf
-    ):
-        """Test that single-point scatter marker sizes are proportional to |exposure|."""
-        result = predicted_factor_attribution(**simple_factor_model_with_perf)
-        fig = result.plot_return_vs_vol_contrib()
-
-        # Factor traces (exclude Idiosyncratic) should have varying sizes
-        sizes = [t.marker.size for t in fig.data if t.name != "Idiosyncratic"]
-        assert len(sizes) >= 2
-        assert len(np.unique(sizes)) > 1
 
     def test_scatter_size_max_parameter(self, simple_factor_model_with_perf):
         """Test that size_max parameter is respected for single-point attribution."""
@@ -508,11 +497,11 @@ class TestAttributionPlotMethods:
 
     # === Rolling Attribution Plot Tests ===
 
-    def test_plot_vol_contrib_rolling_line_chart(self, rolling_static_model):
+    def test_plot_vol_contrib_rolling_line_chart(
+        self, rolling_static_attribution_step_20
+    ):
         """Test that rolling plot_vol_contrib returns one line per component."""
-        result = rolling_realized_factor_attribution(
-            **rolling_static_model, window_size=60, step=20
-        )
+        result = rolling_static_attribution_step_20
         fig = result.plot_vol_contrib(top_n=2, include_idio=True)
 
         assert isinstance(fig, go.Figure)
@@ -537,21 +526,20 @@ class TestAttributionPlotMethods:
 
     # === Rolling Return-vs-Vol Scatter (Animated) Tests ===
 
-    def test_plot_return_vs_vol_rolling_returns_figure(self, rolling_static_model):
-        """Test that plot_return_vs_vol_contrib returns go.Figure for rolling."""
-        result = rolling_realized_factor_attribution(
-            **rolling_static_model, window_size=60, step=20
-        )
+    def test_plot_return_vs_vol_rolling_returns_figure_contract(
+        self, rolling_static_attribution_step_20
+    ):
+        result = rolling_static_attribution_step_20
         fig = result.plot_return_vs_vol_contrib()
         assert isinstance(fig, go.Figure)
+        assert "Over Time" in fig.layout.title.text
+        assert len(fig.layout.shapes) >= 2
 
     def test_plot_return_vs_vol_rolling_has_animation_frames(
-        self, rolling_time_varying_model
+        self, rolling_time_varying_attribution_step_20
     ):
         """Test that rolling plot_return_vs_vol_contrib has animation frames."""
-        result = rolling_realized_factor_attribution(
-            **rolling_time_varying_model, window_size=60, step=20
-        )
+        result = rolling_time_varying_attribution_step_20
         fig = result.plot_return_vs_vol_contrib()
 
         # px.scatter with animation_frame creates frames
@@ -560,42 +548,23 @@ class TestAttributionPlotMethods:
         # Number of frames should match number of windows
         assert len(fig.frames) == len(result.observations)
 
-    def test_plot_return_vs_vol_rolling_title(self, rolling_static_model):
-        """Test that rolling scatter has correct title."""
-        result = rolling_realized_factor_attribution(
-            **rolling_static_model, window_size=60, step=20
-        )
-        fig = result.plot_return_vs_vol_contrib()
-        assert "Over Time" in fig.layout.title.text
-
-    def test_plot_return_vs_vol_rolling_has_reference_lines(self, rolling_static_model):
-        """Test that rolling scatter has x=0 and y=0 reference lines."""
-        result = rolling_realized_factor_attribution(
-            **rolling_static_model, window_size=60, step=20
-        )
-        fig = result.plot_return_vs_vol_contrib()
-        # Reference lines are added as shapes
-        assert len(fig.layout.shapes) >= 2
-
     @pytest.mark.parametrize("include_idio", [True, False])
     def test_plot_return_vs_vol_rolling_idio_inclusion(
-        self, rolling_time_varying_model, include_idio
+        self, rolling_time_varying_attribution_step_20, include_idio
     ):
         """Test that rolling scatter includes/excludes idiosyncratic correctly."""
-        result = rolling_realized_factor_attribution(
-            **rolling_time_varying_model, window_size=60, step=20
-        )
+        result = rolling_time_varying_attribution_step_20
         fig = result.plot_return_vs_vol_contrib(include_idio=include_idio)
 
         # Check trace names in the legend
         trace_names = [trace.name for trace in fig.data]
         assert ("Idiosyncratic" in trace_names) == include_idio
 
-    def test_plot_return_vs_vol_rolling_other_aggregation(self, rolling_static_model):
+    def test_plot_return_vs_vol_rolling_other_aggregation(
+        self, rolling_static_attribution_step_20
+    ):
         """Test that rolling plot_return_vs_vol_contrib aggregates factors."""
-        result = rolling_realized_factor_attribution(
-            **rolling_static_model, window_size=60, step=20
-        )
+        result = rolling_static_attribution_step_20
         # 3 factors, request top_n=2, so 1 factor goes to "Other"
         fig = result.plot_return_vs_vol_contrib(top_n=2, include_idio=True)
 
@@ -606,12 +575,10 @@ class TestAttributionPlotMethods:
         assert "Idiosyncratic" in trace_names
 
     def test_plot_return_vs_vol_rolling_marker_sizes_change_over_time(
-        self, rolling_time_varying_model
+        self, rolling_time_varying_attribution_step_20
     ):
         """Test that marker sizes change across frames with time-varying exposures."""
-        result = rolling_realized_factor_attribution(
-            **rolling_time_varying_model, window_size=60, step=20
-        )
+        result = rolling_time_varying_attribution_step_20
         fig = result.plot_return_vs_vol_contrib(include_idio=False)
 
         # Collect marker sizes from each frame for the first trace
@@ -643,12 +610,10 @@ class TestAttributionPlotMethods:
         assert "Idiosyncratic" in trace_names
 
     def test_plot_return_vs_vol_rolling_size_max_parameter(
-        self, rolling_time_varying_model
+        self, rolling_time_varying_attribution_step_20
     ):
         """Test that size_max parameter is respected."""
-        result = rolling_realized_factor_attribution(
-            **rolling_time_varying_model, window_size=60, step=20
-        )
+        result = rolling_time_varying_attribution_step_20
         # Just verify it doesn't raise an error with custom size_max
         fig = result.plot_return_vs_vol_contrib(size_max=30)
         assert isinstance(fig, go.Figure)
@@ -893,23 +858,20 @@ class TestRollingAssetAttribution:
 
         assert result.assets is None
 
-    def test_rolling_asset_factor_contribs_default_off(self, rolling_static_model):
+    def test_rolling_asset_factor_contribs_default_off(
+        self, rolling_static_attribution_step_30
+    ):
         """Test asset_factor_contribs is None by default for rolling."""
-        result = rolling_realized_factor_attribution(
-            **rolling_static_model, window_size=60, step=30
-        )
+        result = rolling_static_attribution_step_30
 
         # By default, compute_asset_factor_contribs=False
         assert result.asset_by_factor_contrib is None
 
-    def test_rolling_asset_factor_contribs_enabled(self, rolling_static_model):
+    def test_rolling_asset_factor_contribs_enabled(
+        self, rolling_static_attribution_step_30_with_asset_contributions
+    ):
         """Test asset_factor_contribs is computed when enabled."""
-        result = rolling_realized_factor_attribution(
-            **rolling_static_model,
-            window_size=60,
-            step=30,
-            compute_asset_factor_contribs=True,
-        )
+        result = rolling_static_attribution_step_30_with_asset_contributions
 
         n_windows = len(result.observations)
         n_assets = 5
@@ -922,48 +884,37 @@ class TestRollingAssetAttribution:
             n_factors,
         )
 
-    def test_rolling_asset_factor_df_requires_idx(self, rolling_static_model):
+    def test_rolling_asset_factor_df_requires_idx(
+        self, rolling_static_attribution_step_30_with_asset_contributions
+    ):
         """Test asset_factor_df requires observation_idx for rolling."""
-        result = rolling_realized_factor_attribution(
-            **rolling_static_model,
-            window_size=60,
-            step=30,
-            compute_asset_factor_contribs=True,
-        )
+        result = rolling_static_attribution_step_30_with_asset_contributions
 
         with pytest.raises(ValueError, match="must specify `observation_idx`"):
             result.asset_factor_df()
 
-    def test_rolling_asset_factor_df_with_idx(self, rolling_static_model):
+    def test_rolling_asset_factor_df_with_idx(
+        self, rolling_static_attribution_step_30_with_asset_contributions
+    ):
         """Test asset_factor_df works with observation_idx."""
-        result = rolling_realized_factor_attribution(
-            **rolling_static_model,
-            window_size=60,
-            step=30,
-            compute_asset_factor_contribs=True,
-        )
+        result = rolling_static_attribution_step_30_with_asset_contributions
 
         afc_df = result.asset_factor_df(observation_idx=0, formatted=False)
 
         assert afc_df.shape == (5, 3)  # 5 assets x 3 factors
 
-    def test_rolling_asset_factor_df_invalid_idx(self, rolling_static_model):
+    def test_rolling_asset_factor_df_invalid_idx(
+        self, rolling_static_attribution_step_30_with_asset_contributions
+    ):
         """Test asset_factor_df validates observation_idx."""
-        result = rolling_realized_factor_attribution(
-            **rolling_static_model,
-            window_size=60,
-            step=30,
-            compute_asset_factor_contribs=True,
-        )
+        result = rolling_static_attribution_step_30_with_asset_contributions
 
         with pytest.raises(IndexError, match=r"`observation_idx` .* is out of range"):
             result.asset_factor_df(observation_idx=len(result.observations))
 
-    def test_rolling_assets_df_multiindex(self, rolling_static_model):
+    def test_rolling_assets_df_multiindex(self, rolling_static_attribution_step_30):
         """Test rolling assets_df returns MultiIndex DataFrame."""
-        result = rolling_realized_factor_attribution(
-            **rolling_static_model, window_size=60, step=30
-        )
+        result = rolling_static_attribution_step_30
         assets_df = result.assets_df(formatted=False)
 
         assert isinstance(assets_df.index, pd.MultiIndex)
@@ -1078,22 +1029,20 @@ class TestMixedStaticTimeVarying:
 class TestAttributionGetItem:
     """Tests for Attribution.__getitem__ indexing method."""
 
-    def test_getitem_returns_single_point_attribution(self, rolling_static_model):
+    def test_getitem_returns_single_point_attribution(
+        self, rolling_static_attribution_step_20
+    ):
         """Test that indexing rolling attribution returns a single-point Attribution."""
-        result = rolling_realized_factor_attribution(
-            **rolling_static_model, window_size=60, step=20
-        )
+        result = rolling_static_attribution_step_20
         single = result[0]
 
         assert isinstance(single, Attribution)
         assert single.is_rolling is False
         assert single.observations is None
 
-    def test_getitem_values_match_window(self, rolling_static_model):
+    def test_getitem_values_match_window(self, rolling_static_attribution_step_20):
         """Test that indexed values match the corresponding window."""
-        result = rolling_realized_factor_attribution(
-            **rolling_static_model, window_size=60, step=20
-        )
+        result = rolling_static_attribution_step_20
 
         for i in [0, 1, len(result.observations) - 1]:
             single = result[i]
@@ -1156,11 +1105,11 @@ class TestAttributionGetItem:
         with pytest.raises(TypeError, match="not rolling"):
             _ = result[0]
 
-    def test_getitem_raises_indexerror_for_out_of_bounds(self, rolling_static_model):
+    def test_getitem_raises_indexerror_for_out_of_bounds(
+        self, rolling_static_attribution_step_20
+    ):
         """Test that out-of-bounds index raises IndexError."""
-        result = rolling_realized_factor_attribution(
-            **rolling_static_model, window_size=60, step=20
-        )
+        result = rolling_static_attribution_step_20
         n_windows = len(result.observations)
 
         with pytest.raises(IndexError, match="out of range"):
@@ -1315,6 +1264,11 @@ class TestAttributionPostInitValidation:
             ValueError, match=r"`assets.weight_std` has shape \(7,\), expected \(3,\)"
         ):
             replace(result, assets=replace(result.assets, weight_std=np.ones(7)))
+
+    def test_single_scalar_weight_std_skips_shape_check(self, simple_factor_model):
+        result = self._single(simple_factor_model)
+        updated = replace(result, assets=replace(result.assets, weight_std=0.0))
+        assert updated.assets.weight_std == 0.0
 
     def test_single_mu_contrib_uncertainty_wrong_shape(self, simple_factor_model):
         result = self._single(simple_factor_model)
@@ -1603,33 +1557,31 @@ class TestAttributionPostInitValidation:
 class TestPlotHelpers:
     """Tests for private plotting helpers and rolling chart branches."""
 
-    def test_plot_exposure_rolling_without_std(self, rolling_static_model):
-        result = rolling_realized_factor_attribution(
-            **rolling_static_model, window_size=60, step=30
-        )
+    def test_plot_exposure_rolling_without_std(
+        self, rolling_static_attribution_step_30
+    ):
+        result = rolling_static_attribution_step_30
         fig = result.plot_exposure(show_std=False)
         assert isinstance(fig, go.Figure)
         assert all(trace.fill is None for trace in fig.data)
         assert fig.layout.title.text == "Factor Exposure Over Time"
         assert all("Exposure Std" not in trace.hovertemplate for trace in fig.data)
 
-    def test_breakdown_to_df_rolling_requires_observations(self, rolling_static_model):
-        result = rolling_realized_factor_attribution(
-            **rolling_static_model, window_size=60, step=30
-        )
+    def test_breakdown_to_df_rolling_requires_observations(
+        self, rolling_static_attribution_step_30
+    ):
+        result = rolling_static_attribution_step_30
         with pytest.raises(
             ValueError, match="observations must be provided for rolling attribution"
         ):
             result.factors._to_df(is_realized=True, formatted=False, observations=None)
 
     def test_plot_contribution_chart_rolling_requires_observations(
-        self, rolling_static_model
+        self, rolling_static_attribution_step_30
     ):
         from skfolio.attribution._model._attribution import _plot_contribution_chart
 
-        result = rolling_realized_factor_attribution(
-            **rolling_static_model, window_size=60, step=30
-        )
+        result = rolling_static_attribution_step_30
         with pytest.raises(
             ValueError, match="observations required for rolling contribution chart"
         ):

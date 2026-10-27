@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any, Literal
+
 import numpy as np
 import sklearn as sk
 import sklearn.utils.metadata_routing as skm
@@ -141,8 +143,8 @@ class FixedWeightedFactor(BaseFactorExposure, BaseDescriptorComposition):
 
     descriptors_: list[BaseDescriptor]
     named_descriptors_: dict[str, BaseDescriptor]
-    outlier_transformer_: skt.CSTransformer
-    scoring_transformer_: skt.CSTransformer
+    outlier_transformer_: BaseCSTransformer | Literal["passthrough"]
+    scoring_transformer_: BaseCSTransformer | Literal["passthrough"]
 
     def __init__(
         self,
@@ -155,7 +157,7 @@ class FixedWeightedFactor(BaseFactorExposure, BaseDescriptorComposition):
         scoring_transformer: skt.CSTransformer = None,
         transform_by_group: str | None = None,
         n_jobs: int = 1,
-    ):
+    ) -> None:
         super().__init__(family=family)
         self.descriptors = descriptors
         self.weights = weights
@@ -165,7 +167,9 @@ class FixedWeightedFactor(BaseFactorExposure, BaseDescriptorComposition):
         self.transform_by_group = transform_by_group
         self.n_jobs = n_jobs
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Compute factor exposure from a clean descriptor state.
 
         Parameters
@@ -188,7 +192,9 @@ class FixedWeightedFactor(BaseFactorExposure, BaseDescriptorComposition):
         self._reset()
         return self._fit_transform(X, method="fit_transform", **fit_params)
 
-    def partial_fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def partial_fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Update descriptor state and compute factor exposure.
 
         Parameters
@@ -219,7 +225,7 @@ class FixedWeightedFactor(BaseFactorExposure, BaseDescriptorComposition):
         X: AssetPanel,
         *,
         method: str,
-        **fit_params,
+        **fit_params: Any,
     ) -> FloatArray:
         """Compute factor exposure using the requested descriptor transform method."""
         routing_method = method.removesuffix("_transform")
@@ -291,20 +297,20 @@ class FixedWeightedFactor(BaseFactorExposure, BaseDescriptorComposition):
             np.multiply(score, weight, out=contribution, where=valid)
             np.add(weighted_scores, contribution, out=weighted_scores, where=valid)
 
-        scores = safe_divide(weighted_scores, w_sum, fill_value=np.nan)
-        scores[w_sum < self.min_coverage] = np.nan
-        return scores
+        composite = safe_divide(weighted_scores, w_sum, fill_value=np.nan)
+        composite[w_sum < self.min_coverage] = np.nan
+        return composite
 
-    def _reset(self):
+    def _reset(self) -> None:
         """Reset fitted descriptor state."""
         if hasattr(self, _FITTED_ATTR):
             delattr(self, _FITTED_ATTR)
 
-    def _validate_params(self):
+    def _validate_params(self) -> None:
         """Validate hyperparameters."""
         _validate_unit_interval(self.min_coverage, "min_coverage")
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         """Initialize descriptors, transformers and descriptor weights."""
         names, descriptors = self._validate_descriptors()
 

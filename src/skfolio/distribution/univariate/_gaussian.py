@@ -96,7 +96,7 @@ class Gaussian(BaseUnivariateDist):
         loc: float | None = None,
         scale: float | None = None,
         random_state: int | None = None,
-    ):
+    ) -> None:
         super().__init__(random_state=random_state)
         self.loc = loc
         self.scale = scale
@@ -106,7 +106,7 @@ class Gaussian(BaseUnivariateDist):
         """Dictionary of parameters to pass to the underlying SciPy distribution."""
         return {"loc": self.loc_, "scale": self.scale_}
 
-    def fit(self, X: ArrayLike, y=None) -> Gaussian:
+    def fit(self, X: ArrayLike, y: None = None) -> Gaussian:
         """Fit the univariate Gaussian distribution model.
 
         Parameters

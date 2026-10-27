@@ -31,7 +31,7 @@ from skfolio.utils.tools import safe_indexing
 def online_covariance_forecast_evaluation(
     estimator: skb.BaseEstimator | Pipeline,
     X: ArrayLike,
-    y: ArrayLike | None = None,
+    y: None = None,
     warmup_size: int = 252,
     test_size: int = 1,
     portfolio_weights: ArrayLike | None = None,

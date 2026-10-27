@@ -6,51 +6,49 @@ Welcome to skfolio, and thanks for contributing!
 <!--
 Example: Fixes #1234. See also #3456.
 
-Please use keywords (e.g., Fixes) to create link to the issues or pull requests
-you resolved, so that they will automatically be closed when your pull request
-is merged. See https://github.com/blog/1506-closing-issues-via-pull-requests.
-If no issue exists, you can open one here: https://github.com/skfolio/skfolio/issues
--->
+Use a closing keyword such as "Fixes" so that the issue is closed when the pull
+request is merged. See
+https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue.
 
+Write "None" if there is no related issue or pull request. For substantial changes,
+consider opening an issue first: https://github.com/skfolio/skfolio/issues.
+-->
 
 #### What does this implement/fix? Explain your changes.
 <!--
 A clear and concise description of what you have implemented.
 -->
 
-#### Does your contribution introduce a new dependency? If yes, which one?
+#### AI use
 
-<!--
-Only relevant if you changed pyproject.toml.
-We try to minimize dependencies in the core dependency set.
--->
+AI-assisted and fully AI-generated PRs are welcome, including submissions by AI
+agents. All PRs must follow our [contributing guidelines](https://github.com/skfolio/skfolio/blob/main/CONTRIBUTING.md#ai-contributions).
 
-#### What should a reviewer concentrate their feedback on?
+If no AI was used to prepare this PR, write **None** and remove the fields below.
+Otherwise, complete them:
 
-<!-- This section is particularly useful if you have a pull request that is still in development. You can guide the reviews to focus on the parts that are ready for their comments. We suggest using bullets (indicated by * or -) and filled checkboxes [x] here -->
+- **Tools and models:** List the AI tools used, including model names or versions if known.
+- **What AI did:** Briefly describe its involvement—for example, editing wording, investigating a bug, writing tests, or generating the entire PR.
+- **Human review before submission:** All changes / Some changes / None / Unknown.
 
-#### Did you add any tests for the change?
-
-<!-- This section is useful if you have added a test in addition to the existing ones. This will ensure that further changes to these files won't introduce the same kind of bug. It is considered good practice to add tests with newly added code to enforce the fact that the code actually works. This will reduce the chance of introducing logical bugs.
--->
+See [how we review PRs](https://github.com/skfolio/skfolio/blob/main/CONTRIBUTING.md#how-we-review-prs).
 
 #### Any other comments?
 <!--
-We value all user contributions, no matter how small or complex they are. Please feel free to any additional comments.
+Add anything else that reviewers should know.
 -->
 
 #### PR checklist
 <!--
-Please go through the checklist below. Please feel free to remove points if they are not applicable.
+Remove the items that do not apply.
 -->
 
 ##### For all contributions
-- [ ] The PR title starts with either [ENH], [MNT], [DOC], or [BUG]. [BUG] - bugfix, [MNT] - CI, test framework, [ENH] - adding or improving code, [DOC] - writing or improving documentation or docstrings.
+- [ ] The PR title follows [Conventional Commits](https://www.conventionalcommits.org), for example `fix(portfolio): ...`, with a type listed in [CONTRIBUTING.md](https://github.com/skfolio/skfolio/blob/main/CONTRIBUTING.md#submit-your-changes).
+- [ ] New behavior and bug fixes are covered by tests.
+- [ ] The [tests and code quality checks](https://github.com/skfolio/skfolio/blob/main/CONTRIBUTING.md#tests-and-code-quality) pass locally.
+- [ ] The documentation is updated when behavior or public APIs change.
 
 ##### For new estimators
-- [ ] I've added the estimator to the API reference in `docs/api.rst`.
-- [ ] I've added one or more illustrative usage examples to the docstring and the `examples` section.
-
-<!--
-Thanks for contributing!
--->
+- [ ] The estimator is listed in the API reference in `docs/api.rst`.
+- [ ] The docstring and the `examples` gallery include a usage example.

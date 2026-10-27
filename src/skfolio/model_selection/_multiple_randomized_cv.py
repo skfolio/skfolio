@@ -204,7 +204,7 @@ class MultipleRandomizedCV:
         asset_subset_size: int,
         window_size: int | None = None,
         random_state: int | None = None,
-    ):
+    ) -> None:
         self.walk_forward = walk_forward
         self.n_subsamples = n_subsamples
         self.asset_subset_size = asset_subset_size
@@ -212,7 +212,7 @@ class MultipleRandomizedCV:
         self.random_state = random_state
 
     def split(
-        self, X: ArrayLike, y=None
+        self, X: ArrayLike, y: None = None
     ) -> Iterator[tuple[IntArray, IntArray, IntArray]]:
         """Generate indices to split data into training and test set.
 
@@ -221,7 +221,7 @@ class MultipleRandomizedCV:
         X : array-like of shape (n_observations, n_assets)
             Price returns of the assets.
 
-        y : array-like of shape (n_observations, n_targets)
+        y : None
             Always ignored, exists for compatibility.
 
         Yields
@@ -293,7 +293,10 @@ class MultipleRandomizedCV:
                 start_obs = 0
                 X_sample = X
             else:
-                start_obs = rng.randint(low=0, high=n_observations - self.window_size)
+                # randint excludes its upper bound, so include the terminal valid start.
+                start_obs = rng.randint(
+                    low=0, high=n_observations - self.window_size + 1
+                )
                 obs_indices = np.arange(start_obs, start_obs + self.window_size)
                 X_sample, _ = safe_split(X, indices=obs_indices, axis=0)
 
@@ -305,7 +308,12 @@ class MultipleRandomizedCV:
                     asset_indices[i, :],
                 )
 
-    def get_n_splits(self, X=None, y=None, groups=None) -> int:
+    def get_n_splits(
+        self,
+        X: ArrayLike | None = None,
+        y: None = None,
+        groups: None = None,
+    ) -> int:
         """Return the number of splitting iterations in the cross-validator.
 
         When combining a frequency-based walk-forward with `window_size`, the exact
@@ -320,10 +328,10 @@ class MultipleRandomizedCV:
             (i.e. `window_size` is `None` or the inner walk-forward has no frequency).
             Ignored after :meth:`split` has been called.
 
-        y : array-like of shape (n_observations, n_targets)
+        y : None
             Always ignored, exists for compatibility.
 
-        groups : array-like of shape (n_observations,)
+        groups : None
             Always ignored, exists for compatibility.
 
         Returns

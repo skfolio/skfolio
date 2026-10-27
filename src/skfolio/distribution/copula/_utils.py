@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import operator
 import warnings
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from enum import Enum
+from typing import Any
 
 import numpy as np
 import plotly.graph_objects as go
@@ -87,15 +88,18 @@ def compute_pseudo_observations(X: ArrayLike) -> FloatArray:
 
 
 def empirical_tail_concentration(X: ArrayLike, quantiles: ArrayLike) -> FloatArray:
-    """
+    r"""
     Compute empirical tail concentration for the two variables in X.
     This function computes the concentration at each quantile provided.
 
-    The tail concentration are estimated as:
-      - Lower tail: λ_L(q) = P(U₂ ≤ q | U₁ ≤ q)
-      - Upper tail: λ_U(q) = P(U₂ ≥ q | U₁ ≥ q)
+    The lower and upper tail concentrations are estimated as:
 
-    where U₁ and U₂ are the pseudo-observations.
+    .. math::
+        \lambda_L(q) = P(U_2 \le q \mid U_1 \le q)
+
+        \lambda_U(q) = P(U_2 \ge q \mid U_1 \ge q)
+
+    where :math:`U_1` and :math:`U_2` are the pseudo-observations.
 
     Parameters
     ----------
@@ -131,6 +135,7 @@ def empirical_tail_concentration(X: ArrayLike, quantiles: ArrayLike) -> FloatArr
         raise ValueError("quantiles must be between 0.0 and 1.0.")
 
     def func(q: FloatArray, is_lower: bool) -> FloatArray:
+        """Compute the empirical lower or upper tail concentration at quantiles `q`."""
         op = operator.le if is_lower else operator.ge
         cond = op(X[:, 0, np.newaxis], q)
         count = np.count_nonzero(cond, axis=0).astype(float)
@@ -148,7 +153,7 @@ def empirical_tail_concentration(X: ArrayLike, quantiles: ArrayLike) -> FloatArr
 
 
 def plot_tail_concentration(
-    tail_concentration_dict: dict[str, ArrayLike],
+    tail_concentration_dict: Mapping[str, ArrayLike],
     quantiles: ArrayLike,
     title: str = "Empirical Tail Dependencies",
     smoothing: float | None = 0.5,
@@ -268,7 +273,7 @@ def _select_rotation_itau(
     for rotation in CopulaRotation:
         X_rotated = _apply_copula_rotation(X, rotation=rotation)
         results[rotation] = func(X=X_rotated, theta=theta)
-    best_rotation = min(results, key=results.get)
+    best_rotation = min(results, key=results.get)  # ty: ignore[no-matching-overload]
     return best_rotation
 
 
@@ -338,10 +343,10 @@ def _select_theta_and_rotation_mle(
         raise RuntimeError("Optimization failed for all rotations")
 
     best = min(results, key=lambda d: d["neg_log_likelihood"])
-    return best["theta"], best["rotation"]
+    return best["theta"], best["rotation"]  # ty: ignore[invalid-return-type]
 
 
-def _apply_copula_rotation(X: ArrayLike, rotation: CopulaRotation) -> FloatArray:
+def _apply_copula_rotation(X: FloatArray, rotation: CopulaRotation) -> FloatArray:
     r"""Apply a bivariate copula rotation using the standard (clockwise) convention.
 
     The transformations are defined as follows:
@@ -353,7 +358,7 @@ def _apply_copula_rotation(X: ArrayLike, rotation: CopulaRotation) -> FloatArray
 
     Parameters
     ----------
-    X : array-like of shape (n_observations, 2)
+    X : ndarray of shape (n_observations, 2)
         An array of bivariate inputs `(u, v)` where each row represents a
         bivariate observation.
 
@@ -410,7 +415,7 @@ def _apply_margin_swap(X: FloatArray, first_margin: bool) -> FloatArray:
 
 
 def _apply_rotation_cdf(
-    func: Callable, X: FloatArray, rotation: CopulaRotation, **kwargs
+    func: Callable, X: FloatArray, rotation: CopulaRotation, **kwargs: Any
 ) -> FloatArray:
     """
     Apply a copula rotation to X and compute the corresponding CDF values.
@@ -434,20 +439,36 @@ def _apply_rotation_cdf(
     rotated_cdf : ndarray of shape (n_observations,)
        The transformed CDF values after applying the rotation.
     """
-    rotated_X = _apply_copula_rotation(X, rotation=rotation)
-    cdf = func(X=rotated_X, **kwargs)
+    u, v = X.T
+    # Every copula satisfies max(u + v - 1, 0) <= C(u, v) <= min(u, v).
+    # This evaluation order keeps the lower bound accurate when u + v is near 1.
+    upper_bound = np.minimum(u, v)
+    lower_bound = np.maximum(upper_bound - (1.0 - np.maximum(u, v)), 0.0)
 
+    rotated_X = _apply_copula_rotation(X, rotation=rotation)
+    rotated_u, rotated_v = rotated_X.T
+    # On the boundary, C(u, v) = min(u, v). Evaluate the numerical formula only
+    # inside the unit square, where its logarithms and powers are well-defined.
+    # Check after rotation because 1 - u can round to 1 for very small u.
+    cdf = np.minimum(rotated_u, rotated_v)
+    interior_mask = (cdf > 0) & (np.maximum(rotated_u, rotated_v) < 1)
+    if np.any(interior_mask):
+        cdf[interior_mask] = func(X=rotated_X[interior_mask], **kwargs)
+
+    # Convert the unrotated CDF at the transformed coordinates to the rotated CDF.
     match rotation:
         case CopulaRotation.R0:
             pass
         case CopulaRotation.R90:
-            cdf = X[:, 1] - cdf
+            cdf = v - cdf
         case CopulaRotation.R180:
-            cdf = np.sum(X, axis=1) - 1 + cdf
+            cdf = u + v - 1 + cdf
         case CopulaRotation.R270:
-            cdf = X[:, 0] - cdf
+            cdf = u - cdf
 
-    return cdf
+    # Correct subtraction roundoff. The bounds coincide when an original margin
+    # is 0 or 1, so this also restores exact boundary values after rotation.
+    return np.clip(cdf, lower_bound, upper_bound)
 
 
 def _apply_rotation_partial_derivatives(
@@ -455,7 +476,7 @@ def _apply_rotation_partial_derivatives(
     X: FloatArray,
     rotation: CopulaRotation,
     first_margin: bool,
-    **kwargs,
+    **kwargs: Any,
 ) -> FloatArray:
     """
     Apply a copula rotation to X and compute the corresponding partial derivatives.

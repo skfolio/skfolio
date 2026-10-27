@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 
 from skfolio.containers import AssetPanel
@@ -126,11 +128,13 @@ class EWAmihudIlliquidity(BaseDescriptor):
 
     illiquidity_: FloatArray
 
-    def __init__(self, half_life: float = 63.0, min_periods: int | None = None):
+    def __init__(self, half_life: float = 63.0, min_periods: int | None = None) -> None:
         self.half_life = half_life
         self.min_periods = min_periods
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Compute exponentially weighted Amihud illiquidity.
 
         Parameters
@@ -152,7 +156,9 @@ class EWAmihudIlliquidity(BaseDescriptor):
         self._reset()
         return self.partial_fit_transform(X, y, **fit_params)
 
-    def partial_fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def partial_fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Update state and return smoothed illiquidity for this batch.
 
         This method supports online updates by continuing from the current fitted state.
@@ -222,7 +228,8 @@ class EWAmihudIlliquidity(BaseDescriptor):
 
         return result
 
-    def _reset(self):
+    def _reset(self) -> None:
+        """Reset fitted state."""
         if hasattr(self, _FITTED_ATTR):
             delattr(self, _FITTED_ATTR)
 

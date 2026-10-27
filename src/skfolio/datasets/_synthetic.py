@@ -276,6 +276,7 @@ def make_synthetic_characteristics(
     trait_liquidity = rng.standard_normal(n_assets)
 
     def noise(scale: float) -> FloatArray:
+        """Draw one standard normal value per asset, scaled by `scale`."""
         return scale * rng.standard_normal(n_assets)
 
     # Per-asset characteristic ratios derived from the latent traits.

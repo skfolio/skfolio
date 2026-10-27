@@ -23,6 +23,12 @@ def X_with_nans(X):
     return X_nan
 
 
+def _assert_positive_variance(variance):
+    assert variance.shape == (20,)
+    assert np.all(np.isfinite(variance))
+    assert np.all(variance > 0)
+
+
 class TestRegimeAdjustedEWVarianceBasic:
     def test_basic(self, X):
         """Test basic functionality with default parameters."""
@@ -57,9 +63,7 @@ class TestRegimeAdjustedEWVarianceBasic:
         """Test different STVU methods produce valid results."""
         model = RegimeAdjustedEWVariance(regime_method=regime_method, half_life=23)
         model.fit(X)
-        assert model.variance_.shape == (20,)
-        assert np.all(np.isfinite(model.variance_))
-        assert np.all(model.variance_ > 0)
+        _assert_positive_variance(model.variance_)
         assert 0.5 < model.regime_multiplier_ < 2.0
 
     def test_regime_methods_produce_different_results(self, X):
@@ -89,9 +93,7 @@ class TestRegimeAdjustedEWVarianceBasic:
             regime_method=regime_method, half_life=23, assume_centered=False
         )
         model.fit(X)
-        assert model.variance_.shape == (20,)
-        assert np.all(np.isfinite(model.variance_))
-        assert np.all(model.variance_ > 0)
+        _assert_positive_variance(model.variance_)
         assert 0.5 < model.regime_multiplier_ < 2.0
 
     def test_assume_centered_vs_not(self, X):
@@ -227,13 +229,97 @@ class TestRegimeAdjustedEWVarianceEdgeCases:
 
 
 class TestRegimeAdjustedEWVarianceHAC:
+    @pytest.mark.parametrize("hac_lags, missing_rows", [(1, 1), (3, 1), (3, 3)])
+    @pytest.mark.parametrize("half_life", [1, 23])
+    @pytest.mark.parametrize("assume_centered", [True, False])
+    @pytest.mark.parametrize("streaming", [False, True])
+    def test_hac_preserves_observation_lags(
+        self, hac_lags, missing_rows, half_life, assume_centered, streaming
+    ):
+        """Missing rows occupy Bartlett lags, independently of other assets."""
+        returns = np.full((missing_rows + 2, 1), np.nan)
+        returns[0, 0], returns[-1, 0] = 0.01, 0.02
+        original = returns.copy()
+        params = dict(
+            half_life=half_life,
+            hac_lags=hac_lags,
+            min_observations=1,
+            assume_centered=assume_centered,
+        )
+        model = RegimeAdjustedEWVariance(**params)
+        estimation_mask = np.zeros_like(returns, dtype=bool)
+        if streaming:
+            for t in range(len(returns)):
+                model.partial_fit(
+                    returns[t : t + 1], estimation_mask=estimation_mask[t : t + 1]
+                )
+        else:
+            model.fit(returns, estimation_mask=estimation_mask)
+
+        # Only two EWMA updates occur. HAC uses their observation separation,
+        # while demeaning uses the mean frozen across the intervening holidays.
+        decay = 2.0 ** (-1.0 / half_life)
+        first = 0.01
+        last = 0.02 if assume_centered else 0.02 - (1.0 - decay) * first
+        weight = max(1.0 - (missing_rows + 1) / (hac_lags + 1), 0.0)
+        expected = (decay * first**2 + last**2 + 2 * weight * first * last) / (
+            1.0 + decay
+        )
+        np.testing.assert_allclose(model.variance_, [expected], rtol=1e-12, atol=0)
+
+        # A finite, regime-excluded neighbor must not change the first asset.
+        panel = np.column_stack((returns[:, 0], np.full(len(returns), 0.03)))
+        mixed = RegimeAdjustedEWVariance(**params).fit(
+            panel, estimation_mask=np.zeros_like(panel, dtype=bool)
+        )
+        np.testing.assert_allclose(mixed.variance_[0], expected, rtol=1e-12, atol=0)
+        np.testing.assert_array_equal(returns, original)
+
+    @pytest.mark.parametrize("hac_lags", [None, 1, 3])
+    @pytest.mark.parametrize("assume_centered", [True, False])
+    def test_hac_holiday_freezes_variance_and_regime(self, hac_lags, assume_centered):
+        """Advancing the lag clock must not update holiday estimates or counts."""
+        model = RegimeAdjustedEWVariance(
+            half_life=1,
+            hac_lags=hac_lags,
+            min_observations=1,
+            regime_min_observations=1,
+            regime_multiplier_clip=None,
+            assume_centered=assume_centered,
+        ).fit([[0.01], [0.02], [-0.01], [0.015]])
+        variance = model.variance_.copy()
+        location = model.location_.copy()
+        counts = model._obs_count.copy()
+        multiplier = model.regime_multiplier_
+        model.partial_fit([[np.nan], [np.nan]])
+        np.testing.assert_array_equal(model.variance_, variance)
+        np.testing.assert_array_equal(model.location_, location)
+        np.testing.assert_array_equal(model._obs_count, counts)
+        assert model.regime_multiplier_ == multiplier
+
+    @pytest.mark.parametrize("hac_lags", [1, 3])
+    @pytest.mark.parametrize("assume_centered", [True, False])
+    def test_hac_all_inactive_rows_occupy_lags(self, hac_lags, assume_centered):
+        """Inactive finite returns expire old lags without entering the estimate."""
+        model = RegimeAdjustedEWVariance(
+            half_life=1,
+            hac_lags=hac_lags,
+            min_observations=1,
+            assume_centered=assume_centered,
+        ).fit([[0.01]])
+        inactive = np.full((hac_lags, 1), 1000.0)
+        model.partial_fit(inactive, active_mask=np.zeros_like(inactive, dtype=bool))
+        assert np.isnan(model.variance_[0])
+        # Relisting restarts the variance and mean from zero. The earlier return
+        # is outside the observation-indexed window, despite no intervening update.
+        model.partial_fit([[0.02]])
+        np.testing.assert_allclose(model.variance_, [0.02**2], rtol=1e-12, atol=0)
+
     def test_hac_basic(self, X):
         """Test basic HAC (Newey-West) functionality."""
         model = RegimeAdjustedEWVariance(half_life=23, hac_lags=5)
         model.fit(X)
-        assert model.variance_.shape == (20,)
-        assert np.all(np.isfinite(model.variance_))
-        assert np.all(model.variance_ > 0)
+        _assert_positive_variance(model.variance_)
         assert 0.5 < model.regime_multiplier_ < 2.0
 
     def test_hac_with_demeaning(self, X):
@@ -242,9 +328,7 @@ class TestRegimeAdjustedEWVarianceHAC:
             half_life=23, hac_lags=3, assume_centered=False
         )
         model.fit(X)
-        assert model.variance_.shape == (20,)
-        assert np.all(np.isfinite(model.variance_))
-        assert np.all(model.variance_ > 0)
+        _assert_positive_variance(model.variance_)
 
     @pytest.mark.parametrize(
         "regime_method",
@@ -260,9 +344,7 @@ class TestRegimeAdjustedEWVarianceHAC:
             regime_method=regime_method, half_life=23, hac_lags=5
         )
         model.fit(X)
-        assert model.variance_.shape == (20,)
-        assert np.all(np.isfinite(model.variance_))
-        assert np.all(model.variance_ > 0)
+        _assert_positive_variance(model.variance_)
 
     def test_hac_vs_no_hac(self, X):
         """Test that HAC produces different results than no HAC."""
@@ -406,9 +488,7 @@ class TestRegimeAdjustedEWVarianceNaN:
         model = RegimeAdjustedEWVariance(half_life=23)
         model.fit(X_with_nans)
 
-        assert model.variance_.shape == (20,)
-        assert np.all(np.isfinite(model.variance_))
-        assert np.all(model.variance_ > 0)
+        _assert_positive_variance(model.variance_)
         assert np.isfinite(model.regime_multiplier_)
 
     def test_nan_vs_no_nan(self, X, X_with_nans):
@@ -445,20 +525,18 @@ class TestRegimeAdjustedEWVarianceNaN:
         assert np.all(np.isfinite(model.variance_))
         assert np.isfinite(model.regime_multiplier_)
 
-    def test_nan_with_hac(self, X_with_nans):
-        """Test NaN handling with HAC correction."""
-        model = RegimeAdjustedEWVariance(half_life=23, hac_lags=3)
+    @pytest.mark.parametrize(
+        "params",
+        [
+            pytest.param({"half_life": 23, "hac_lags": 3}, id="nan_with_hac"),
+            pytest.param(
+                {"half_life": 23, "assume_centered": False}, id="nan_with_demeaning"
+            ),
+        ],
+    )
+    def test_nan_with_adjustments(self, X_with_nans, params):
+        model = RegimeAdjustedEWVariance(**params)
         model.fit(X_with_nans)
-
-        assert model.variance_.shape == (20,)
-        assert np.all(np.isfinite(model.variance_))
-        assert np.isfinite(model.regime_multiplier_)
-
-    def test_nan_with_demeaning(self, X_with_nans):
-        """Test NaN handling with demeaning."""
-        model = RegimeAdjustedEWVariance(half_life=23, assume_centered=False)
-        model.fit(X_with_nans)
-
         assert model.variance_.shape == (20,)
         assert np.all(np.isfinite(model.variance_))
         assert np.isfinite(model.regime_multiplier_)

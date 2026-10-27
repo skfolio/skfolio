@@ -55,7 +55,7 @@ def test_nullable_numeric_input(dtype):
     assert actual.X is X
     np.testing.assert_allclose(actual.returns, expected.returns)
     np.testing.assert_allclose(actual._get_weights_path(), expected._get_weights_path())
-    assert np.isnan(actual.diversification)
+    np.testing.assert_allclose(actual.diversification, expected.diversification)
     pd.testing.assert_frame_equal(X, before)
 
 
@@ -79,7 +79,7 @@ def test_sparse_dataframe(returns, sparse):
     assert actual.X is X
     np.testing.assert_allclose(actual.returns, expected.returns)
     np.testing.assert_allclose(actual._get_weights_path(), expected._get_weights_path())
-    assert np.isnan(actual.diversification)
+    np.testing.assert_allclose(actual.diversification, expected.diversification)
     pd.testing.assert_frame_equal(X, before)
 
 
@@ -123,9 +123,16 @@ def test_empty_returns(shape, dataframe):
     assert portfolio._get_weights_path().shape == shape
 
 
-@pytest.mark.parametrize("X", [np.zeros(2), np.zeros((2, 2, 2)), 0.0])
-def test_returns_require_two_dimensions(X):
-    with pytest.raises(ValueError):
+@pytest.mark.parametrize(
+    "X,match",
+    [
+        (np.zeros(2), "Expected 2D array, got 1D array"),
+        (np.zeros((2, 2, 2)), "Found array with dim 3"),
+        (0.0, "Expected 2D array, got scalar array"),
+    ],
+)
+def test_returns_require_two_dimensions(X, match):
+    with pytest.raises(ValueError, match=match):
         Portfolio(X, [0.5, 0.5])
 
 

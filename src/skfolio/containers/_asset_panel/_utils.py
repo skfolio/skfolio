@@ -25,8 +25,7 @@ from skfolio.containers._asset_panel._fields import (
 from skfolio.typing import AnyArray, ArrayLike, BoolArray, IntArray, StrArray
 
 if TYPE_CHECKING:
-    from skfolio.containers._asset_panel._panel import AssetPanel
-    from skfolio.containers._asset_panel._view import AssetPanelView
+    from skfolio.containers._asset_panel._base import _BaseAssetPanel
 
 
 _WINDOWS_RESERVED = frozenset(
@@ -179,7 +178,9 @@ def _validate_field_against_axes(
         )
 
 
-def _normalize_positional_selector(length: int, selector: Any) -> slice | IntArray:
+def _normalize_positional_selector(
+    length: int, selector: slice | ArrayLike | None
+) -> slice | IntArray:
     """Normalize a positional selector to a slice or integer positions."""
     if selector is None:
         return slice(None)
@@ -216,14 +217,15 @@ def _normalize_positional_selector(length: int, selector: Any) -> slice | IntArr
     return contiguous if contiguous is not None else selector_arr
 
 
-def _positions_from_unique_labels(labels: AnyArray, selected: Any) -> slice | IntArray:
+def _positions_from_unique_labels(labels: AnyArray, selected: Any) -> slice | IntArray:  # noqa: ANN401  # any label selector
     """Resolve unique-label selectors to positional selectors."""
     index = pd.Index(labels)
     if isinstance(selected, slice):
         return index.slice_indexer(selected.start, selected.stop, selected.step)
     if isinstance(selected, (str, bytes)) or np.isscalar(selected):
         loc = index.get_loc(selected)
-        return slice(int(loc), int(loc) + 1)
+        # Exact lookups on unique asset labels return an integer position.
+        return slice(int(loc), int(loc) + 1)  # ty: ignore[invalid-argument-type]
 
     positions = []
     missing = []
@@ -233,13 +235,13 @@ def _positions_from_unique_labels(labels: AnyArray, selected: Any) -> slice | In
         except KeyError:
             missing.append(label)
             continue
-        positions.append(int(loc))
+        positions.append(int(loc))  # ty: ignore[invalid-argument-type]
     if missing:
         raise KeyError(f"Labels not found: {missing}")
     return np.asarray(positions, dtype=np.intp)
 
 
-def _positions_from_labels(labels: AnyArray, selected: Any) -> slice | IntArray:
+def _positions_from_labels(labels: AnyArray, selected: Any) -> slice | IntArray:  # noqa: ANN401  # any label selector
     """Resolve possibly repeated label selectors to positional selectors."""
     index = pd.Index(labels)
     if isinstance(selected, slice):
@@ -249,7 +251,7 @@ def _positions_from_labels(labels: AnyArray, selected: Any) -> slice | IntArray:
         if isinstance(loc, slice):
             return loc
         if isinstance(loc, np.ndarray):
-            return np.flatnonzero(loc) if loc.dtype == np.bool_ else loc
+            return np.flatnonzero(loc) if loc.dtype == np.bool_ else loc  # ty: ignore[invalid-return-type]
         return slice(int(loc), int(loc) + 1)
 
     positions = []
@@ -361,14 +363,15 @@ def _format_observation_range(observations: AnyArray) -> str:
             raise TypeError
         first_str = str(pd.Timestamp(first).date())
         last_str = str(pd.Timestamp(last).date())
-    except Exception:
+    except (TypeError, ValueError, OverflowError):
+        # Not a date-like label (e.g. an integer index or a free-form string).
         first_str = str(first)
         last_str = str(last)
     return f"  ({first_str} -> {last_str})"
 
 
 def _to_dataframe(
-    panel: AssetPanel | AssetPanelView,
+    panel: _BaseAssetPanel,
     *,
     fields: str | Iterable[str] | None,
     assets: str | Iterable[str] | None,
@@ -422,7 +425,7 @@ def _to_dataframe(
 
 
 def _field_to_dataframe(
-    panel: AssetPanel | AssetPanelView,
+    panel: _BaseAssetPanel,
     *,
     name: str,
     asset_selector: slice | IntArray,
@@ -443,7 +446,7 @@ def _field_to_dataframe(
 
 
 def _to_long_dataframe(
-    panel: AssetPanel | AssetPanelView,
+    panel: _BaseAssetPanel,
     *,
     field_names: list[str],
     asset_selector: slice | IntArray,
@@ -484,7 +487,7 @@ def _to_long_dataframe(
 
 
 def _to_wide_dataframe(
-    panel: AssetPanel | AssetPanelView,
+    panel: _BaseAssetPanel,
     *,
     field_names: list[str],
     asset_selector: slice | IntArray,

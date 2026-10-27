@@ -86,7 +86,7 @@ class EWVolatility(_BaseEWVolatility):
     >>> volatility = descriptor.fit_transform(X)
     """
 
-    def __init__(self, half_life: float = 40.0, min_periods: int | None = None):
+    def __init__(self, half_life: float = 40.0, min_periods: int | None = None) -> None:
         super().__init__(
             half_life=half_life, min_acceptable_return=None, min_periods=min_periods
         )

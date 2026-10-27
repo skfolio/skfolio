@@ -43,10 +43,10 @@ class DropZeroVariance(skf.SelectorMixin, skb.BaseEstimator):
 
     to_keep_: BoolArray
 
-    def __init__(self, threshold: float = 1e-8):
+    def __init__(self, threshold: float = 1e-8) -> None:
         self.threshold = threshold
 
-    def fit(self, X: ArrayLike, y=None):
+    def fit(self, X: ArrayLike, y: None = None) -> DropZeroVariance:
         """Fit the transformer on some assets.
 
         Parameters
@@ -72,6 +72,7 @@ class DropZeroVariance(skf.SelectorMixin, skb.BaseEstimator):
 
         return self
 
-    def _get_support_mask(self):
+    def _get_support_mask(self) -> BoolArray:
+        """Return the boolean mask of the selected assets `to_keep_`."""
         skv.check_is_fitted(self)
         return self.to_keep_

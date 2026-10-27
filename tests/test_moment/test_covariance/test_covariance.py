@@ -1,15 +1,22 @@
 from __future__ import annotations
 
+import warnings
+from types import SimpleNamespace
+
 import numpy as np
 import pandas as pd
 import pytest
+import scipy.optimize as sco
 from sklearn import config_context
 from sklearn.covariance import OAS as SklearnOAS
 from sklearn.covariance import EmpiricalCovariance as SklearnEmpiricalCovariance
 from sklearn.covariance import LedoitWolf as SklearnLedoitWolf
 from sklearn.covariance import ShrunkCovariance as SklearnShrunkCovariance
 from sklearn.model_selection import cross_val_score
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
+from skfolio.distance import CovarianceDistance
 from skfolio.exceptions import NonPositiveVarianceError
 from skfolio.moments import (
     OAS,
@@ -26,10 +33,13 @@ from skfolio.moments import (
     LedoitWolf,
     ShrunkCovariance,
 )
+from skfolio.moments.covariance import _denoise_covariance
 from skfolio.moments.covariance._base import _reduce_to_finite_active_block
 from skfolio.moments.covariance._geodesic_shrinkage_covariance import (
     _geodesic_interpolation,
 )
+from skfolio.optimization import HierarchicalRiskParity
+from skfolio.prior import EmpiricalPrior
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import (
     _squared_mahalanobis_dist_from_cholesky,
@@ -151,6 +161,33 @@ class TestBaseCovarianceMethods:
         assert np.all(distances >= 0)
         assert np.all(np.isfinite(distances))
 
+    @pytest.mark.parametrize(
+        "estimator_class",
+        [EmpiricalCovariance, LedoitWolf, OAS, ShrunkCovariance, GraphicalLassoCV],
+    )
+    @pytest.mark.parametrize("single_observation", [False, True])
+    def test_mahalanobis_input_keywords(self, estimator_class, single_observation):
+        X = np.random.default_rng(0).normal(size=(100, 3))
+        model = estimator_class().fit(X)
+        X_test = X[0] if single_observation else X[:5]
+        expected = model.mahalanobis(X_test)
+
+        np.testing.assert_array_equal(model.mahalanobis(X=X_test), expected)
+        with pytest.warns(FutureWarning, match="`X_test` is deprecated"):
+            distances = model.mahalanobis(X_test=X_test)
+        np.testing.assert_array_equal(distances, expected)
+
+    def test_mahalanobis_conflicting_input_keywords(self):
+        X = np.random.default_rng(0).normal(size=(30, 3))
+        model = EmpiricalCovariance().fit(X)
+        with pytest.raises(ValueError, match="pass only `X`"):
+            model.mahalanobis(X=X, X_test=X)
+
+    def test_mahalanobis_missing_input(self):
+        model = EmpiricalCovariance().fit(np.random.default_rng(0).normal(size=(30, 3)))
+        with pytest.raises(TypeError, match="`X`"):
+            model.mahalanobis()
+
     def test_mahalanobis_single_observation(self, X):
         """Test mahalanobis with a single observation returns scalar."""
         model = EmpiricalCovariance()
@@ -170,7 +207,7 @@ class TestBaseCovarianceMethods:
 
         reordered = X[X.columns[::-1]]
         with pytest.raises(ValueError, match="feature names"):
-            model.mahalanobis(reordered)
+            model.mahalanobis(X=reordered)
 
     def test_mahalanobis_chi_squared_distribution(self, X):
         """Test that mahalanobis distances follow chi-squared distribution."""
@@ -1165,14 +1202,37 @@ class TestDenoiseCovariance:
                 )
             )
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
                 model.fit(X)
 
             model.fit(X, implied_vol=implied_vol)
 
-        # noinspection PyUnresolvedReferences
         assert model.covariance_estimator_.r2_scores_.shape == (20,)
         assert model.covariance_.shape == (20, 20)
+
+    def test_marchenko_pastur_variance(self, monkeypatch):
+        # Each asset has factor variance 0.5 and noise variance 1, so the noise
+        # carries 2/3 of the variance of every asset.
+        rng = np.random.default_rng(0)
+        n_observations, n_assets, n_factors = 2000, 200, 10
+        loadings = rng.normal(size=(n_assets, n_factors))
+        loadings *= np.sqrt(0.5) / np.linalg.norm(loadings, axis=1, keepdims=True)
+        X = rng.normal(size=(n_observations, n_factors)) @ loadings.T + rng.normal(
+            size=(n_observations, n_assets)
+        )
+
+        fitted_variances = []
+
+        def minimize(*args, **kwargs):
+            res = sco.minimize(*args, **kwargs)
+            fitted_variances.append(res["x"][0])
+            return res
+
+        monkeypatch.setattr(
+            _denoise_covariance, "sco", SimpleNamespace(minimize=minimize)
+        )
+        DenoiseCovariance().fit(X)
+        np.testing.assert_allclose(fitted_variances, [2 / 3], atol=0.02)
 
 
 class TestDetoneCovariance:
@@ -1638,12 +1698,11 @@ class TestDetoneCovariance:
                 )
             )
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
                 model.fit(X)
 
             model.fit(X, implied_vol=implied_vol)
 
-        # noinspection PyUnresolvedReferences
         assert model.covariance_estimator_.r2_scores_.shape == (20,)
         assert model.covariance_.shape == (20, 20)
 
@@ -2810,7 +2869,7 @@ class TestGeodesicShrinkageCovariance:
                     implied_vol=True
                 )
             )
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
                 model.fit(X)
             model.fit(X, implied_vol=implied_vol)
         assert model.covariance_estimator_.r2_scores_.shape == (20,)
@@ -2926,7 +2985,7 @@ class TestBaseCovarianceEdgeCases:
         X_test = np.full((2, X_small.shape[1]), np.nan)
         with pytest.raises(
             ValueError,
-            match="X_test has no row with any finite retained observation",
+            match="X has no row with any finite retained observation",
         ):
             model.mahalanobis(X_test)
 
@@ -3058,3 +3117,229 @@ class TestGeodesicInterpolation:
     def test_non_positive_definite_end_raises(self, end):
         with pytest.raises(ValueError, match=r"end.*positive definite"):
             _geodesic_interpolation(np.identity(2), np.array(end), alpha=0.5)
+
+
+class TestEmpiricalCovarianceSampleWeight:
+    @pytest.fixture
+    def data(self):
+        rng = np.random.default_rng(0)
+        X = rng.normal(scale=0.01, size=(50, 4))
+        sample_weight = rng.uniform(0.1, 2.0, size=50)
+        return X, sample_weight
+
+    @pytest.mark.parametrize("ddof", [0, 1, 3])
+    @pytest.mark.parametrize("assume_centered", [False, True])
+    @pytest.mark.parametrize("window_size", [None, 20])
+    def test_uniform_weights_match_unweighted(
+        self, data, ddof, assume_centered, window_size
+    ):
+        X, _ = data
+        params = dict(
+            nearest=False,
+            ddof=ddof,
+            assume_centered=assume_centered,
+            window_size=window_size,
+        )
+        unweighted = EmpiricalCovariance(**params).fit(X)
+        weighted = EmpiricalCovariance(**params).fit(
+            X, sample_weight=np.full(len(X), 3.7)
+        )
+        np.testing.assert_allclose(weighted.covariance_, unweighted.covariance_)
+        np.testing.assert_allclose(weighted.location_, unweighted.location_)
+
+    @pytest.mark.parametrize("ddof", [0, 1])
+    @pytest.mark.parametrize("enable_metadata_routing", [False, True])
+    def test_matches_numpy_reliability_weights(
+        self, data, ddof, enable_metadata_routing
+    ):
+        X, sample_weight = data
+        with (
+            config_context(enable_metadata_routing=enable_metadata_routing),
+            warnings.catch_warnings(),
+        ):
+            warnings.simplefilter("error")
+            model = EmpiricalCovariance(nearest=False, ddof=ddof).fit(
+                X, sample_weight=sample_weight
+            )
+        np.testing.assert_allclose(
+            model.covariance_,
+            np.cov(X, rowvar=False, aweights=sample_weight, ddof=ddof),
+        )
+        np.testing.assert_allclose(
+            model.location_, np.average(X, axis=0, weights=sample_weight)
+        )
+
+    def test_assume_centered(self, data):
+        X, sample_weight = data
+        model = EmpiricalCovariance(nearest=False, assume_centered=True).fit(
+            X, sample_weight=sample_weight
+        )
+        w = sample_weight / sample_weight.sum()
+        expected = (X.T * w) @ X / (1 - np.sum(w**2))
+        np.testing.assert_allclose(model.covariance_, expected)
+        np.testing.assert_array_equal(model.location_, np.zeros(X.shape[1]))
+
+    def test_scale_invariance(self, data):
+        X, sample_weight = data
+        model = EmpiricalCovariance(nearest=False)
+        a = model.fit(X, sample_weight=sample_weight).covariance_
+        b = model.fit(X, sample_weight=1e6 * sample_weight).covariance_
+        np.testing.assert_allclose(a, b)
+
+    def test_integer_weights_match_repeated_observations(self, data):
+        X, _ = data
+        counts = np.random.default_rng(1).integers(1, 4, size=len(X))
+        weighted = EmpiricalCovariance(nearest=False, ddof=0).fit(
+            X, sample_weight=counts
+        )
+        repeated = EmpiricalCovariance(nearest=False, ddof=0).fit(
+            np.repeat(X, counts, axis=0)
+        )
+        np.testing.assert_allclose(weighted.covariance_, repeated.covariance_)
+        np.testing.assert_allclose(weighted.location_, repeated.location_)
+
+    def test_zero_weights_exclude_observations(self, data):
+        X, sample_weight = data
+        sample_weight = sample_weight.copy()
+        sample_weight[:10] = 0.0
+        a = EmpiricalCovariance(nearest=False).fit(X, sample_weight=sample_weight)
+        b = EmpiricalCovariance(nearest=False).fit(
+            X[10:], sample_weight=sample_weight[10:]
+        )
+        np.testing.assert_allclose(a.covariance_, b.covariance_)
+
+    def test_window_size_slices_weights(self, data):
+        X, sample_weight = data
+        model = EmpiricalCovariance(nearest=False, window_size=20).fit(
+            X, sample_weight=sample_weight
+        )
+        np.testing.assert_allclose(
+            model.covariance_,
+            np.cov(X[-20:], rowvar=False, aweights=sample_weight[-20:]),
+        )
+
+    def test_zero_weight_window_raises(self, data):
+        X, sample_weight = data
+        sample_weight = sample_weight.copy()
+        sample_weight[-20:] = 0.0
+        with pytest.raises(ValueError, match="at least one positive weight"):
+            EmpiricalCovariance(window_size=20).fit(X, sample_weight=sample_weight)
+
+    @pytest.mark.parametrize(
+        "invalid_weight, match", [(np.nan, "finite"), (-1, "nonnegative")]
+    )
+    def test_window_size_validates_excluded_weights(self, data, invalid_weight, match):
+        X, sample_weight = data
+        sample_weight = sample_weight.copy()
+        sample_weight[0] = invalid_weight
+        with pytest.raises(ValueError, match=match):
+            EmpiricalCovariance(window_size=20).fit(X, sample_weight=sample_weight)
+
+    def test_single_asset(self, data):
+        X, sample_weight = data
+        model = EmpiricalCovariance(nearest=False).fit(
+            X[:, :1], sample_weight=sample_weight
+        )
+        assert model.covariance_.shape == (1, 1)
+        np.testing.assert_allclose(
+            model.covariance_[0, 0],
+            np.cov(X[:, 0], aweights=sample_weight),
+        )
+
+    @pytest.mark.parametrize(
+        "sample_weight, match",
+        [
+            (np.zeros(50), "at least one positive weight"),
+            (np.r_[1.0, np.zeros(49)], "too few effective observations"),
+            (-np.ones(50), "nonnegative"),
+            (np.r_[np.nan, np.ones(49)], "finite"),
+            (np.ones(10), "same length"),
+        ],
+    )
+    def test_invalid_sample_weight(self, data, sample_weight, match):
+        X, _ = data
+        with pytest.raises(ValueError, match=match):
+            EmpiricalCovariance().fit(X, sample_weight=sample_weight)
+
+    def test_ddof_equal_to_effective_observations_raises(self, data):
+        # 24 equal weights give exactly 24 effective observations, but the
+        # rounded correction 1 - ddof * sum(w**2) is eps instead of zero.
+        X, _ = data
+        sample_weight = np.r_[np.ones(24), 0.0]
+        with pytest.raises(ValueError, match="too few effective observations"):
+            EmpiricalCovariance(ddof=24).fit(X[:25], sample_weight=sample_weight)
+        model = EmpiricalCovariance(ddof=23, nearest=False).fit(
+            X[:25], sample_weight=sample_weight
+        )
+        np.testing.assert_allclose(
+            model.covariance_,
+            np.cov(X[:24], rowvar=False, ddof=23),
+        )
+
+    @pytest.mark.parametrize("weighted", [False, True])
+    def test_metadata_routing_through_distance_and_hrp(self, data, weighted):
+        X, sample_weight = data
+        fit_params = {"sample_weight": sample_weight} if weighted else {}
+        expected = np.cov(X, rowvar=False, aweights=sample_weight if weighted else None)
+        with config_context(enable_metadata_routing=True):
+            covariance = EmpiricalCovariance(nearest=False).set_fit_request(
+                sample_weight=True
+            )
+            distance = CovarianceDistance(covariance).fit(X, **fit_params)
+            np.testing.assert_allclose(
+                distance.covariance_estimator_.covariance_, expected
+            )
+
+            model = HierarchicalRiskParity(
+                distance_estimator=CovarianceDistance(covariance),
+                distance_from_prior=False,
+            ).fit(X, **fit_params)
+            np.testing.assert_allclose(
+                model.distance_estimator_.covariance_estimator_.covariance_, expected
+            )
+
+    @pytest.mark.parametrize("weight_request", ["default", True, False])
+    def test_metadata_routing_in_pipeline(self, data, weight_request):
+        X, sample_weight = data
+        with config_context(enable_metadata_routing=True), warnings.catch_warnings():
+            warnings.simplefilter("error")
+            scaler = StandardScaler().set_fit_request(sample_weight=True)
+            covariance = EmpiricalCovariance(nearest=False)
+            if weight_request != "default":
+                covariance.set_fit_request(sample_weight=weight_request)
+            model = make_pipeline(scaler, covariance)
+            if weight_request == "default":
+                with pytest.warns(UserWarning, match="recently been added"):
+                    model.fit(X, sample_weight=sample_weight)
+            else:
+                model.fit(X, sample_weight=sample_weight)
+
+        transformed = model[0].transform(X)
+        covariance_weights = sample_weight if weight_request is True else None
+        np.testing.assert_allclose(
+            model[0].mean_, np.average(X, axis=0, weights=sample_weight)
+        )
+        np.testing.assert_allclose(
+            model[-1].location_,
+            np.average(transformed, axis=0, weights=covariance_weights),
+            atol=1e-15,
+        )
+        np.testing.assert_allclose(
+            model[-1].covariance_,
+            np.cov(transformed, rowvar=False, aweights=covariance_weights),
+        )
+
+    def test_default_metadata_routing_through_prior_warns(self, data):
+        X, sample_weight = data
+        with config_context(enable_metadata_routing=True):
+            model = EmpiricalPrior(
+                covariance_estimator=EmpiricalCovariance(nearest=False)
+            )
+            with pytest.warns(UserWarning, match="recently been added"):
+                model.fit(X, sample_weight=sample_weight)
+
+        np.testing.assert_allclose(
+            model.return_distribution_.covariance, np.cov(X, rowvar=False)
+        )
+        np.testing.assert_allclose(model.return_distribution_.mu, X.mean(axis=0))
+        assert model.return_distribution_.sample_weight is None
