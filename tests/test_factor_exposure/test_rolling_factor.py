@@ -40,11 +40,25 @@ def _raw_factor(**kwargs):
     )
 
 
+# `Rolling.first`, `Rolling.last` and `Rolling.nunique` were added in pandas 3.0.
+_ROLLING_FALLBACKS = {
+    "first": lambda a: a[~np.isnan(a)][0],
+    "last": lambda a: a[~np.isnan(a)][-1],
+    "nunique": lambda a: float(np.unique(a[~np.isnan(a)]).size),
+}
+
+
+def _rolling_reference(rolling, aggregation):
+    if aggregation in _ROLLING_FALLBACKS and not hasattr(rolling, aggregation):
+        return rolling.apply(_ROLLING_FALLBACKS[aggregation], raw=True)
+    return getattr(rolling, aggregation)()
+
+
 def _pandas_reference(values, aggregation, window):
     df = pd.DataFrame(values)
     if aggregation == "lag":
         return df.shift(window).to_numpy()
-    return getattr(df.rolling(window), aggregation)().to_numpy()
+    return _rolling_reference(df.rolling(window), aggregation).to_numpy()
 
 
 class TestOutput:
@@ -416,9 +430,9 @@ class TestGapPolicy:
                     ref = series.shift(window).to_numpy(copy=True)
                     lookback = window + 1
                 else:
-                    ref = getattr(series.rolling(window), aggregation)().to_numpy(
-                        copy=True
-                    )
+                    ref = _rolling_reference(
+                        series.rolling(window), aggregation
+                    ).to_numpy(copy=True)
                     lookback = window
                 # NaN until the asset has a full lookback of active observations
                 ref[: lookback - 1] = np.nan

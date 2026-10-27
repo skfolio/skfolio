@@ -43,6 +43,30 @@ _ROLLING_AGGREGATIONS = (
     "nunique",
 )
 _AGGREGATIONS = (*_ROLLING_AGGREGATIONS, _LAG)
+
+
+def _first_non_missing(window_values: FloatArray) -> float:
+    """First non-missing value of a window."""
+    return window_values[~np.isnan(window_values)][0]
+
+
+def _last_non_missing(window_values: FloatArray) -> float:
+    """Last non-missing value of a window."""
+    return window_values[~np.isnan(window_values)][-1]
+
+
+def _n_unique_non_missing(window_values: FloatArray) -> float:
+    """Number of distinct non-missing values of a window."""
+    return float(np.unique(window_values[~np.isnan(window_values)]).size)
+
+
+# `Rolling.first`, `Rolling.last` and `Rolling.nunique` were added in pandas 3.0.
+# Older versions fall back to `Rolling.apply` with the same semantics.
+_ROLLING_FALLBACKS = {
+    "first": _first_non_missing,
+    "last": _last_non_missing,
+    "nunique": _n_unique_non_missing,
+}
 _GAP_POLICIES = ("invalidate", "skip")
 
 
@@ -514,6 +538,9 @@ def _rolling_aggregate(values: FloatArray, aggregation: str, window: int) -> Flo
     if aggregation == _LAG:
         return df.shift(window).to_numpy(dtype=float)
     rolling = df.rolling(window=window, min_periods=window)
+    if aggregation in _ROLLING_FALLBACKS and not hasattr(rolling, aggregation):
+        func = _ROLLING_FALLBACKS[aggregation]
+        return rolling.apply(func, raw=True).to_numpy(dtype=float)
     return getattr(rolling, aggregation)().to_numpy(dtype=float)
 
 
