@@ -808,6 +808,138 @@ def test_weights_per_observation(portfolio):
     assert portfolio.plot_weights_per_observation()
 
 
+@pytest.mark.parametrize("weight_drift", [False, True])
+def test_weights_per_observation_preserves_failed_periods(weight_drift):
+    X = pd.DataFrame(
+        [[0.01, -0.02], [0.03, 0.04]],
+        index=pd.date_range("2024-01-01", periods=2),
+        columns=["A", "B"],
+    )
+    failed = FailedPortfolio(X, weight_drift=weight_drift)
+    before = failed.weights_per_observation.copy(deep=True)
+    portfolio = MultiPeriodPortfolio([failed])
+
+    pd.testing.assert_frame_equal(portfolio.weights_per_observation, before)
+    for trace in portfolio.plot_weights_per_observation().data:
+        np.testing.assert_array_equal(trace.y, before[trace.name])
+    pd.testing.assert_frame_equal(failed.weights_per_observation, before)
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+@pytest.mark.parametrize("failed_assets", [["A", "B"], ["C", "D"], []])
+def test_weights_per_observation_mixed_failed_periods(weight_drift, failed_assets):
+    X = pd.DataFrame(
+        np.tile([[0.01, -0.02], [-0.03, 0.04]], (4, 1)),
+        index=pd.date_range("2024-01-01", periods=8),
+        columns=["A", "B"],
+    )
+    invested = Portfolio(X.iloc[:2], weights=[0.6, -0.2], weight_drift=weight_drift)
+    cash = Portfolio(X.iloc[2:4], weights=[0.0, 0.0], weight_drift=weight_drift)
+    failed = FailedPortfolio(
+        pd.DataFrame(0.0, index=X.index[4:6], columns=failed_assets),
+        weight_drift=weight_drift,
+    )
+    disjoint = Portfolio(
+        X.iloc[6:].set_axis(["E", "F"], axis=1),
+        weights=[0.25, 0.75],
+        weight_drift=weight_drift,
+    )
+    children = [failed, cash, disjoint, invested]
+    before = [p.weights_per_observation.copy(deep=True) for p in children]
+    returns_before = [p.returns.copy() for p in children]
+    portfolio = MultiPeriodPortfolio(children)
+
+    result = portfolio.weights_per_observation
+
+    assert result.index.is_monotonic_increasing
+    assert len(result) == len(X)
+    assert result.loc[failed.observations].isna().all().all()
+    for child in (invested, cash, disjoint):
+        expected = child.weights_per_observation.reindex(
+            columns=result.columns, fill_value=0.0
+        )
+        pd.testing.assert_frame_equal(result.loc[child.observations], expected)
+    for trace in portfolio.plot_weights_per_observation().data:
+        np.testing.assert_array_equal(trace.x, result.index)
+        np.testing.assert_array_equal(trace.y, result[trace.name])
+    for child, weights, returns in zip(children, before, returns_before, strict=True):
+        pd.testing.assert_frame_equal(child.weights_per_observation, weights)
+        np.testing.assert_array_equal(child.returns, returns)
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+@pytest.mark.parametrize("failed", [False, True])
+def test_weights_per_observation_empty_columns(weight_drift, failed):
+    X = pd.DataFrame(index=pd.date_range("2024-01-01", periods=2))
+    child = (
+        FailedPortfolio(X, weight_drift=weight_drift)
+        if failed
+        else Portfolio(X, weights=[], weight_drift=weight_drift)
+    )
+    expected = child.weights_per_observation
+    pd.testing.assert_frame_equal(
+        MultiPeriodPortfolio([child]).weights_per_observation, expected
+    )
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+@pytest.mark.parametrize("duplicate_assets", [False, True])
+def test_weights_per_observation_duplicate_labels(weight_drift, duplicate_assets):
+    X = pd.DataFrame(
+        [[0.01, -0.02], [0.03, 0.04], [-0.01, 0.02]],
+        index=pd.Index([2, 1, 1], name="observation"),
+        columns=["A", "A" if duplicate_assets else "B"],
+    )
+    invested = Portfolio(X, weights=[0.6, -0.2], weight_drift=weight_drift)
+    failed = FailedPortfolio(X, weight_drift=weight_drift)
+    portfolio = MultiPeriodPortfolio([failed, invested])
+    expected = pd.concat(
+        [failed.weights_per_observation, invested.weights_per_observation]
+    ).sort_index()
+
+    pd.testing.assert_frame_equal(portfolio.weights_per_observation, expected)
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+def test_weights_per_observation_successful_cash_control(weight_drift):
+    X = pd.DataFrame(
+        [[0.01, -0.02], [0.03, 0.04], [-0.01, 0.02], [0.04, -0.03]],
+        index=pd.date_range("2024-01-01", periods=4),
+        columns=["A", "B"],
+    )
+    invested = Portfolio(X.iloc[:2], weights=[0.6, 0.4], weight_drift=weight_drift)
+    cash = Portfolio(X.iloc[2:], weights=[0.0, 0.0], weight_drift=weight_drift)
+    expected = (
+        pd.concat([cash.weights_per_observation, invested.weights_per_observation])
+        .fillna(0.0)
+        .sort_index()
+    )
+
+    pd.testing.assert_frame_equal(
+        MultiPeriodPortfolio([cash, invested]).weights_per_observation, expected
+    )
+
+
+def test_weights_per_observation_no_periods():
+    with pytest.raises(ValueError, match="No objects to concatenate"):
+        _ = MultiPeriodPortfolio().weights_per_observation
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+@pytest.mark.parametrize("failed", [False, True])
+def test_weights_per_observation_no_observations(weight_drift, failed):
+    X = pd.DataFrame(columns=["A", "B"], dtype=float)
+    child = (
+        FailedPortfolio(X, weight_drift=weight_drift)
+        if failed
+        else Portfolio(X, weights=[0.6, 0.4], weight_drift=weight_drift)
+    )
+    pd.testing.assert_frame_equal(
+        MultiPeriodPortfolio([child]).weights_per_observation,
+        child.weights_per_observation,
+    )
+
+
 def test_long_short_exposure():
     X = pd.DataFrame(
         np.zeros((6, 3)),
