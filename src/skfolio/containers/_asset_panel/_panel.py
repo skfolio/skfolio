@@ -850,6 +850,10 @@ class AssetPanel(_BaseAssetPanel):
     ) -> AssetPanel:
         """Forward fill NaN values along the observation axis.
 
+        Only active observations are filled; inactive gaps separate fill runs.
+        Inactive values retain their field's ZERO or IGNORE convention, while
+        MISSING fields continue to store NaN outside the active universe.
+
         Parameters
         ----------
         fields : str or iterable of str
@@ -883,6 +887,10 @@ class AssetPanel(_BaseAssetPanel):
         inplace: bool = True,
     ) -> AssetPanel:
         """Backward fill NaN values along the observation axis.
+
+        Only active observations are filled; inactive gaps separate fill runs.
+        Inactive values retain their field's ZERO or IGNORE convention, while
+        MISSING fields continue to store NaN outside the active universe.
 
         Parameters
         ----------
@@ -1370,7 +1378,10 @@ class AssetPanel(_BaseAssetPanel):
                 limit=limit,
                 mask=panel.active_mask,
             )
-            values[~panel.active_mask] = np.nan
+            # The helper preserves inactive payloads. Only MISSING fields normalize
+            # them to NaN; ZERO and IGNORE fields must retain their stored values.
+            if field.inactive_policy == InactivePolicy.MISSING:
+                values[~panel.active_mask] = np.nan
             panel.fields[name] = field.with_values(values)
         return panel
 

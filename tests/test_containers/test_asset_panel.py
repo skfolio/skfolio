@@ -1420,6 +1420,140 @@ class TestMasksAndUniverse:
 
 
 class TestFill:
+    @pytest.mark.parametrize("method", ["ffill", "bfill"])
+    @pytest.mark.parametrize("limit", [None, 1])
+    @pytest.mark.parametrize("inplace", [False, True])
+    @pytest.mark.parametrize("dtype", [np.float32, np.float64])
+    def test_fill_respects_each_inactive_policy(self, method, limit, inplace, dtype):
+        """Fill active gaps while preserving each field's inactive convention."""
+        active = np.array(
+            [
+                [False, True, True],
+                [True, True, True],
+                [True, True, True],
+                [False, True, False],
+                [True, True, True],
+                [True, True, True],
+                [True, True, True],
+                [True, False, True],
+            ]
+        )
+        values = np.array(
+            [
+                [np.nan, 1, np.nan],
+                [np.nan, np.nan, 10],
+                [2, np.nan, np.nan],
+                [np.nan, 4, np.nan],
+                [np.nan, np.nan, np.nan],
+                [np.nan, 6, 40],
+                [7, np.nan, np.nan],
+                [np.nan, np.nan, 80],
+            ],
+            dtype=dtype,
+        )
+        # Literal expectations keep inactive entry/exit and internal gaps as barriers.
+        expected = np.array(
+            {
+                "ffill": [
+                    [np.nan, 1, np.nan],
+                    [np.nan, 1, 10],
+                    [2, 1, 10],
+                    [np.nan, 4, np.nan],
+                    [np.nan, 4, np.nan],
+                    [np.nan, 6, 40],
+                    [7, 6, 40],
+                    [7, np.nan, 80],
+                ],
+                "bfill": [
+                    [np.nan, 1, 10],
+                    [2, 4, 10],
+                    [2, 4, np.nan],
+                    [np.nan, 4, np.nan],
+                    [7, 6, 40],
+                    [7, 6, 40],
+                    [7, np.nan, 80],
+                    [np.nan, np.nan, 80],
+                ],
+            }[method],
+            dtype=dtype,
+        )
+        if limit == 1:
+            if method == "ffill":
+                expected[2, 1] = np.nan
+            else:
+                expected[4, 0] = expected[1, 1] = np.nan
+
+        fields = {}
+        for policy in InactivePolicy:
+            payload = values.copy()
+            if policy is InactivePolicy.ZERO:
+                payload[~active] = 0
+            elif policy is InactivePolicy.IGNORE:
+                payload[~active] = [101, 102, 103, 104]
+            else:
+                # Native MISSING admission also allows infinities; filling has always
+                # normalized these inactive nonfinite values to NaN.
+                payload[~active] = [np.nan, np.inf, -np.inf, np.nan]
+            payload.setflags(write=False)
+            fields[policy.name] = Field2D(payload, inactive_policy=policy)
+        untouched = np.arange(24, dtype=dtype).reshape(8, 3)
+        untouched.setflags(write=False)
+        fields["untouched"] = Field2D(untouched, inactive_policy=InactivePolicy.IGNORE)
+        estimation = active.copy()
+        estimation[2, 0] = False
+        panel = AssetPanel(
+            fields=fields,
+            observations=np.arange(8),
+            asset_names=["C", "A", "B"],
+            active_mask=active.copy(),
+            estimation_mask=estimation.copy(),
+        )
+        originals = {name: field.values for name, field in panel.fields.items()}
+        snapshots = {name: array.copy() for name, array in originals.items()}
+
+        result = getattr(panel, method)(
+            [policy.name for policy in InactivePolicy], limit=limit, inplace=inplace
+        )
+
+        assert (result is panel) == inplace
+        for policy in InactivePolicy:
+            wanted = expected.copy()
+            wanted[~active] = (
+                np.nan
+                if policy is InactivePolicy.MISSING
+                else snapshots[policy.name][~active]
+            )
+            np.testing.assert_array_equal(result[policy.name], wanted)
+            assert result[policy.name].dtype == np.dtype(dtype)
+            assert result.fields[policy.name].inactive_policy is policy
+            assert not np.shares_memory(result[policy.name], originals[policy.name])
+        # Even inplace fill replaces selected buffers instead of modifying the caller's
+        # read-only arrays; unselected values retain their existing sharing behavior.
+        for name, array in originals.items():
+            np.testing.assert_array_equal(array, snapshots[name])
+            assert not array.flags.writeable
+            if not inplace:
+                assert panel[name] is array
+        assert result["untouched"] is untouched
+        np.testing.assert_array_equal(result.observations, np.arange(8))
+        np.testing.assert_array_equal(result.asset_names, ["C", "A", "B"])
+        np.testing.assert_array_equal(result.active_mask, active)
+        np.testing.assert_array_equal(result.estimation_mask, estimation)
+        assert not result.active_mask.flags.writeable
+        assert not result.estimation_mask.flags.writeable
+        # Reconstruct through normal public validation, rather than copy(), which
+        # deliberately skips revalidating existing field values.
+        rebuilt = AssetPanel(
+            fields={
+                name: field.copy(deep=True) for name, field in result.fields.items()
+            },
+            observations=result.observations.copy(),
+            asset_names=result.asset_names.copy(),
+            active_mask=result.active_mask.copy(),
+            estimation_mask=result.estimation_mask.copy(),
+        )
+        _assert_panels_equal(result, rebuilt)
+
     def test_ffill_and_bfill_modify_in_place_by_default(self):
         panel = _make_panel(
             fields={
