@@ -1476,17 +1476,36 @@ class MeanRisk(ConvexOptimization):
                 ):
                     objective_args = {**args, "factor": cp.Constant(1)}
 
+                limit_func = risk_func
                 if risk_limit is not None:
-                    risk_i, constraints_i = risk_func(**args)
+                    limit_value = risk_limit
+                    # Variance and semi-variance are 2-homogeneous in the scaled
+                    # weights while the limit side is 1-homogeneous in factor, so
+                    # under the ratio objective bound their square roots instead.
+                    if isinstance(factor, cp.Variable) and risk_func in (
+                        self._variance_risk,
+                        self._semi_variance_risk,
+                    ):
+                        limit_func = (
+                            self._standard_deviation_risk
+                            if risk_func == self._variance_risk
+                            else self._semi_deviation_risk
+                        )
+                        limit_value = np.sqrt(np.asarray(risk_limit))
+                    risk_i, constraints_i = limit_func(**args)
                     constraints += constraints_i
                     parameter = cp.Parameter(nonneg=True)
                     constraints += [
                         risk_i * self._scale_constraints
                         <= parameter * factor * self._scale_constraints
                     ]
-                    parameters_values.append((parameter, risk_limit))
+                    parameters_values.append((parameter, limit_value))
                 if self.risk_measure == r_m:
-                    if risk_limit is not None and objective_args is args:
+                    if (
+                        risk_limit is not None
+                        and objective_args is args
+                        and limit_func == risk_func
+                    ):
                         risk = risk_i
                     else:
                         risk, constraints_i = risk_func(**objective_args)
