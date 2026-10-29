@@ -305,6 +305,38 @@ ranking of the parameter sets. When refitting is enabled, `weight_drift` is reta
 To use those previous holdings instead of producing a failed rebalance after an
 optimization failure, configure `fallback="previous_weights"`.
 
+To compare several portfolio optimizers on the same evaluation windows, you can pass
+a list of `(name, estimator)` pairs with unique names to `online_predict`. The result
+is a :class:`~skfolio.population.Population` with one `MultiPeriodPortfolio` per
+estimator, in input order. Each name sets the `name` and `tag` of the estimator's
+`MultiPeriodPortfolio`. The keyword-only `n_jobs` parameter evaluates the estimators
+in parallel, while the online updates of each estimator remain sequential:
+
+.. code-block:: python
+
+    from skfolio.datasets import load_sp500_dataset
+    from skfolio.model_selection import online_predict
+    from skfolio.moments import EWCovariance, EWMu
+    from skfolio.optimization import MeanRisk
+    from skfolio.preprocessing import prices_to_returns
+    from skfolio.prior import EmpiricalPrior
+
+    X = prices_to_returns(load_sp500_dataset()).tail(504)
+
+    def make_model(half_life):
+        return MeanRisk(
+            prior_estimator=EmpiricalPrior(
+                mu_estimator=EWMu(half_life=half_life),
+                covariance_estimator=EWCovariance(half_life=half_life),
+            ),
+        )
+
+    estimators = [("fast", make_model(20)), ("slow", make_model(60))]
+    population = online_predict(
+        estimators, X, warmup_size=252, test_size=5, n_jobs=2
+    )
+    population.summary()
+
 See the example
 :ref:`sphx_glr_auto_examples_online_learning_plot_3_online_portfolio_optimization_evaluation.py`
 for an end-to-end online evaluation of
