@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+import scipy.linalg as sla
 from sklearn import config_context
 
 from skfolio.moments import ImpliedCovariance
@@ -10,6 +11,7 @@ from skfolio.uncertainty_set import (
     BootstrapCovarianceUncertaintySet,
     BootstrapMuUncertaintySet,
 )
+from skfolio.utils import bootstrap
 
 
 class TestBootstrapMuUncertaintySet:
@@ -126,3 +128,88 @@ def test_bootstrap_covariance_full_geometry(X_small):
     assert geometry.shape == (16, 16)
     assert np.all(np.isfinite(geometry))
     np.testing.assert_allclose(geometry, geometry.T, atol=1e-12)
+
+
+@pytest.mark.parametrize(
+    "estimator", [BootstrapMuUncertaintySet, BootstrapCovarianceUncertaintySet]
+)
+@pytest.mark.parametrize("diagonal", [True, False])
+@pytest.mark.parametrize("dtype", [np.float16, np.float32, np.float64, np.int32])
+def test_fit_reduces_one_sample_at_a_time(monkeypatch, estimator, diagonal, dtype):
+    """Uncertainty fits preserve dense-sample results without constructing the cube."""
+    returns = np.random.default_rng(7).normal(size=(32, 3)).astype(dtype)
+    before = returns.copy()
+    prior = EmpiricalPrior().fit(returns)
+    samples = bootstrap.stationary_bootstrap(
+        prior.return_distribution_.returns, 20, block_size=3, seed=42
+    )
+    expected_state = np.random.get_state()
+    if estimator is BootstrapMuUncertaintySet:
+        deviations = np.mean(samples, axis=1) - prior.return_distribution_.mu
+    else:
+        deviations = np.array([np.cov(sample.T).ravel(order="F") for sample in samples])
+    expected = (
+        np.diag(np.sqrt(np.var(deviations, axis=0, ddof=1)))
+        if diagonal
+        else sla.sqrtm(np.cov(deviations, rowvar=False)).real
+    )
+    indexed_shapes = []
+    vstack = np.vstack
+
+    class SampleReturns(np.ndarray):
+        """Reject all-sample indexing at the shared allocation owner."""
+
+        def __getitem__(self, key):
+            """Observe indexing before a bootstrap cube can be allocated."""
+            if isinstance(key, tuple) and isinstance(key[0], np.ndarray):
+                indexed_shapes.append(key[0].shape)
+                assert key[0].ndim == 1, "fit must reduce one sample at a time"
+            return super().__getitem__(key)
+
+    def tracked_vstack(arrays):
+        """Keep ordinary stacking while observing its later advanced indexing."""
+        return vstack(arrays).view(SampleReturns)
+
+    monkeypatch.setattr(bootstrap.np, "vstack", tracked_vstack)
+    model = estimator(
+        prior_estimator=prior,
+        n_bootstrap_samples=20,
+        block_size=3,
+        diagonal=diagonal,
+        seed=42,
+    ).fit(returns)
+
+    assert indexed_shapes == [(32,)] * 20
+    # Exact dense-reference equality catches changed float32 mean accumulation.
+    np.testing.assert_array_equal(model.uncertainty_set_.geometry, expected)
+    assert model.uncertainty_set_.norm == 2
+    actual_state = np.random.get_state()
+    np.testing.assert_array_equal(actual_state[1], expected_state[1])
+    assert actual_state[0] == expected_state[0]
+    assert actual_state[2:] == expected_state[2:]
+    np.testing.assert_array_equal(returns, before)
+    assert model.prior_estimator_ is not prior
+
+
+@pytest.mark.parametrize(
+    "estimator", [BootstrapMuUncertaintySet, BootstrapCovarianceUncertaintySet]
+)
+@pytest.mark.parametrize("seed", [42, None])
+def test_fit_preserves_global_random_state(estimator, seed):
+    """Sample-local reductions retain the native bootstrap's isolated RNG."""
+    returns = np.random.default_rng(7).normal(size=(32, 3))
+    previous_state = np.random.get_state()
+    try:
+        # An unrelated initial seed prevents consecutive identical fits from
+        # hiding a reseed followed by the same bootstrap draw sequence.
+        np.random.seed(7)
+        expected_state = np.random.get_state()
+
+        estimator(n_bootstrap_samples=20, block_size=3, seed=seed).fit(returns)
+
+        actual_state = np.random.get_state()
+        np.testing.assert_array_equal(actual_state[1], expected_state[1])
+        assert actual_state[0] == expected_state[0]
+        assert actual_state[2:] == expected_state[2:]
+    finally:
+        np.random.set_state(previous_state)
