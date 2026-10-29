@@ -850,6 +850,10 @@ class AssetPanel(_BaseAssetPanel):
     ) -> AssetPanel:
         """Forward fill NaN values along the observation axis.
 
+        For each asset, NaN values are filled only where `active_mask` is True.
+        Values are not carried forward across inactive observations. Inactive values
+        are left unchanged, regardless of the field's inactive policy.
+
         Parameters
         ----------
         fields : str or iterable of str
@@ -883,6 +887,10 @@ class AssetPanel(_BaseAssetPanel):
         inplace: bool = True,
     ) -> AssetPanel:
         """Backward fill NaN values along the observation axis.
+
+        For each asset, NaN values are filled only where `active_mask` is True.
+        Values are not carried backward across inactive observations. Inactive values
+        are left unchanged, regardless of the field's inactive policy.
 
         Parameters
         ----------
@@ -1370,7 +1378,6 @@ class AssetPanel(_BaseAssetPanel):
                 limit=limit,
                 mask=panel.active_mask,
             )
-            values[~panel.active_mask] = np.nan
             panel.fields[name] = field.with_values(values)
         return panel
 
