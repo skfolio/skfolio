@@ -4,13 +4,18 @@
 #    its version. This is only a preview.
 # 2. Continue automatically for patch and minor releases. For a major release,
 #    wait for a maintainer to approve the proposed version in GitHub.
-# 3. Before publishing, check that main still points to the tested commit and
-#    that the proposed version is unchanged. Stop if either has changed.
-# 4. Create the version commit, tag and GitHub release, then upload the package
-#    distributions to PyPI and attach them to the GitHub release.
+# 3. Before preparing the release, check that main still points to the tested
+#    commit and that the proposed version is unchanged. Stop if either has changed.
+# 4. Create the version commit, tag and GitHub release, then save the package
+#    distributions as a workflow artifact.
+# 5. Publish the saved distributions to PyPI and GitHub in a separate job.
 #
 # GitHub environments control the approval step: release has no required
 # reviewers, while major-release requires a maintainer's approval.
+# After preparation succeeds, "Re-run failed jobs" retries publication using
+# the original artifact. Full reruns are blocked by the stale-commit check after
+# the version commit advances main. Reruns use the original workflow definition,
+# so they cannot pick up fixes to the publishing job.
 name: Semantic Release
 
 on:
@@ -94,7 +99,7 @@ jobs:
             "$GITHUB_REPOSITORY" "$PREVIOUS_VERSION" "$CI_SHA" >> "$GITHUB_STEP_SUMMARY"
 
   release:
-    name: Publish v${{ needs.plan.outputs.version }}
+    name: Prepare v${{ needs.plan.outputs.version }}
     needs: plan
     if: needs.plan.outputs.released == 'true'
     runs-on: ubuntu-latest
@@ -104,7 +109,10 @@ jobs:
       name: ${{ needs.plan.outputs.environment }}
     permissions:
       contents: read
-      id-token: write
+    outputs:
+      released: ${{ steps.release.outputs.released }}
+      version: ${{ steps.release.outputs.version }}
+      artifact_id: ${{ steps.distributions.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -120,7 +128,7 @@ jobs:
             exit 1
           fi
 
-      # Tags may also have changed, so recompute the version before publishing.
+      # Tags may have changed, so we recheck the version before preparing the release.
       - uses: python-semantic-release/python-semantic-release@v10.7.0
         id: preview
         with:
@@ -151,12 +159,65 @@ jobs:
         with:
           github_token: ${{ steps.generate_token.outputs.token }}
 
+      - name: Check package distributions
+        if: steps.release.outputs.released == 'true'
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          test -f "dist/skfolio-${VERSION}-py3-none-any.whl"
+          test -f "dist/skfolio-${VERSION}.tar.gz"
+
+      - name: Save package distributions
+        id: distributions
+        if: steps.release.outputs.released == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-distributions
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish v${{ needs.release.outputs.version }}
+    needs: release
+    if: needs.release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Download package distributions
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ needs.release.outputs.artifact_id }}
+          path: dist
+
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        if: steps.release.outputs.released == 'true'
+        with:
+          skip-existing: true
 
       - name: Publish package distributions to GitHub Releases
-        uses: python-semantic-release/upload-to-gh-release@v9.8.6
-        if: steps.release.outputs.released == 'true'
-        with:
-          github_token: ${{ steps.generate_token.outputs.token }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          tag="v$VERSION"
+          assets=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
+            --json assets --jq '.assets[] | [.name, .state] | @tsv')
+          # The PyPI step also adds publish attestations to dist/.
+          for file in dist/*; do
+            name=${file##*/}
+            if grep -Fxq -- "$name"$'\tuploaded' <<< "$assets"; then
+              continue
+            fi
+            # A failed upload can leave an incomplete asset that blocks a new upload.
+            if cut -f1 <<< "$assets" | grep -Fxq -- "$name"; then
+              gh release delete-asset "$tag" "$name" --repo "$GITHUB_REPOSITORY" --yes
+            fi
+            gh release upload "$tag" "$file" --repo "$GITHUB_REPOSITORY"
+          done
