@@ -589,6 +589,69 @@ def test_mean_risk_ratio_convergence(
     np.testing.assert_almost_equal(ratio, expected_ratio, 4)
 
 
+@pytest.mark.parametrize(
+    "squared_measure,root_measure",
+    [
+        (RiskMeasure.VARIANCE, RiskMeasure.STANDARD_DEVIATION),
+        (RiskMeasure.SEMI_VARIANCE, RiskMeasure.SEMI_DEVIATION),
+    ],
+)
+def test_mean_risk_ratio_squared_risk_limit(X, squared_measure, root_measure):
+    # A limit on a squared measure must bind like the same limit on its root.
+    tangency = MeanRisk(
+        objective_function=ObjectiveFunction.MAXIMIZE_RATIO
+    ).fit_predict(X)
+    root_limit = 0.9 * getattr(tangency, root_measure.value)
+    limit = root_limit**2
+
+    p = MeanRisk(
+        objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
+        **{f"max_{squared_measure.value}": limit},
+    ).fit_predict(X)
+    p_root = MeanRisk(
+        objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
+        **{f"max_{root_measure.value}": root_limit},
+    ).fit_predict(X)
+
+    assert getattr(tangency, squared_measure.value) > limit
+    assert getattr(p, squared_measure.value) <= limit * (1 + 1e-6)
+    np.testing.assert_almost_equal(p.weights, p_root.weights, 4)
+
+    # several limits at once
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
+        **{f"max_{squared_measure.value}": [limit, 0.8 * limit]},
+    )
+    population = model.fit_predict(X)
+    for p_i, limit_i in zip(population, [limit, 0.8 * limit], strict=True):
+        assert getattr(p_i, squared_measure.value) <= limit_i * (1 + 1e-6)
+
+
+@pytest.mark.parametrize(
+    "risk_measure", [RiskMeasure.VARIANCE, RiskMeasure.SEMI_VARIANCE]
+)
+@pytest.mark.parametrize(
+    "risk_limit",
+    [
+        pytest.param(np.array([1e-4, 2e-4], dtype=object), id="object-array"),
+        pytest.param(pd.Series([1e-4, 2e-4], dtype="Float64"), id="nullable-series"),
+        pytest.param(pd.array([1e-4, 2e-4], dtype="Float64"), id="nullable-array"),
+    ],
+)
+def test_mean_risk_ratio_squared_risk_limit_numeric_arrays(
+    X_tiny, risk_measure, risk_limit
+):
+    params = {
+        "objective_function": ObjectiveFunction.MAXIMIZE_RATIO,
+        "risk_measure": risk_measure,
+    }
+    limit_name = f"max_{risk_measure.value}"
+    reference = MeanRisk(**params, **{limit_name: [1e-4, 2e-4]}).fit(X_tiny)
+    model = MeanRisk(**params, **{limit_name: risk_limit}).fit(X_tiny)
+
+    np.testing.assert_allclose(model.weights_, reference.weights_, atol=1e-8)
+
+
 def test_mean_risk_feature_names_in_(X):
     model = MeanRisk()
     model.fit(X)
