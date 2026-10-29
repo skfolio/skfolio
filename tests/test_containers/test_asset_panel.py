@@ -1424,8 +1424,10 @@ class TestFill:
     @pytest.mark.parametrize("limit", [None, 1])
     @pytest.mark.parametrize("inplace", [False, True])
     @pytest.mark.parametrize("dtype", [np.float32, np.float64])
-    def test_fill_respects_each_inactive_policy(self, method, limit, inplace, dtype):
-        """Fill active gaps while preserving each field's inactive convention."""
+    def test_fill_preserves_inactive_values_for_each_policy(
+        self, method, limit, inplace, dtype
+    ):
+        """Fill active gaps without changing inactive values under any policy."""
         active = np.array(
             [
                 [False, True, True],
@@ -1489,10 +1491,10 @@ class TestFill:
             if policy is InactivePolicy.ZERO:
                 payload[~active] = 0
             elif policy is InactivePolicy.IGNORE:
-                payload[~active] = [101, 102, 103, 104]
+                payload[~active] = [101, np.nan, np.inf, -np.inf]
             else:
-                # Native MISSING admission also allows infinities; filling has always
-                # normalized these inactive nonfinite values to NaN.
+                # MISSING validation also accepts infinities; filling must preserve
+                # these inactive values as well.
                 payload[~active] = [np.nan, np.inf, -np.inf, np.nan]
             payload.setflags(write=False)
             fields[policy.name] = Field2D(payload, inactive_policy=policy)
@@ -1518,11 +1520,7 @@ class TestFill:
         assert (result is panel) == inplace
         for policy in InactivePolicy:
             wanted = expected.copy()
-            wanted[~active] = (
-                np.nan
-                if policy is InactivePolicy.MISSING
-                else snapshots[policy.name][~active]
-            )
+            wanted[~active] = snapshots[policy.name][~active]
             np.testing.assert_array_equal(result[policy.name], wanted)
             assert result[policy.name].dtype == np.dtype(dtype)
             assert result.fields[policy.name].inactive_policy is policy
