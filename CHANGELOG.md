@@ -2,6 +2,20 @@
 
 <!-- version list -->
 
+## v1.12.5 (2026-10-29)
+
+### Bug Fixes
+
+- **containers**: Preserve inactive values when filling fields
+  ([#478](https://github.com/skfolio/skfolio/pull/478),
+  [`91fb7bb`](https://github.com/skfolio/skfolio/commit/91fb7bb83112a9c345bc8f840fd1cb15eb5000a7))
+
+### Continuous Integration
+
+- Make release publishing retryable ([#481](https://github.com/skfolio/skfolio/pull/481),
+  [`75ca4c6`](https://github.com/skfolio/skfolio/commit/75ca4c689a717d9e5a345796761acbf5aa1473b8))
+
+
 ## v1.12.4 (2026-10-29)
 
 ### Bug Fixes
