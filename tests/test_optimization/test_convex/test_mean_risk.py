@@ -627,6 +627,31 @@ def test_mean_risk_ratio_squared_risk_limit(X, squared_measure, root_measure):
         assert getattr(p_i, squared_measure.value) <= limit_i * (1 + 1e-6)
 
 
+@pytest.mark.parametrize(
+    "risk_measure", [RiskMeasure.VARIANCE, RiskMeasure.SEMI_VARIANCE]
+)
+@pytest.mark.parametrize(
+    "risk_limit",
+    [
+        pytest.param(np.array([1e-4, 2e-4], dtype=object), id="object-array"),
+        pytest.param(pd.Series([1e-4, 2e-4], dtype="Float64"), id="nullable-series"),
+        pytest.param(pd.array([1e-4, 2e-4], dtype="Float64"), id="nullable-array"),
+    ],
+)
+def test_mean_risk_ratio_squared_risk_limit_numeric_arrays(
+    X_tiny, risk_measure, risk_limit
+):
+    params = {
+        "objective_function": ObjectiveFunction.MAXIMIZE_RATIO,
+        "risk_measure": risk_measure,
+    }
+    limit_name = f"max_{risk_measure.value}"
+    reference = MeanRisk(**params, **{limit_name: [1e-4, 2e-4]}).fit(X_tiny)
+    model = MeanRisk(**params, **{limit_name: risk_limit}).fit(X_tiny)
+
+    np.testing.assert_allclose(model.weights_, reference.weights_, atol=1e-8)
+
+
 def test_mean_risk_feature_names_in_(X):
     model = MeanRisk()
     model.fit(X)

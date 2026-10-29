@@ -1471,27 +1471,29 @@ class MeanRisk(ConvexOptimization):
                 # risk <= limit * factor. The ratio objective needs 2-homogeneity in w,
                 # so use factor=1 for the objective only.
                 objective_args: dict[str, Any] = args
-                if risk_func == self._worst_case_variance_risk and isinstance(
-                    factor, cp.Variable
+                if (
+                    self.objective_function == ObjectiveFunction.MAXIMIZE_RATIO
+                    and risk_func == self._worst_case_variance_risk
                 ):
                     objective_args = {**args, "factor": cp.Constant(1)}
 
                 limit_func = risk_func
                 if risk_limit is not None:
-                    limit_value = risk_limit
-                    # Variance and semi-variance are 2-homogeneous in the scaled
-                    # weights while the limit side is 1-homogeneous in factor, so
-                    # under the ratio objective bound their square roots instead.
-                    if isinstance(factor, cp.Variable) and risk_func in (
-                        self._variance_risk,
-                        self._semi_variance_risk,
+                    risk_limit = np.asarray(risk_limit, dtype=float)
+                    # In ratio optimization, variance and semi-variance scale
+                    # quadratically with the weights. Expressing their limits through
+                    # standard deviation and semi-deviation makes both sides scale
+                    # linearly.
+                    if (
+                        self.objective_function == ObjectiveFunction.MAXIMIZE_RATIO
+                        and risk_func in (self._variance_risk, self._semi_variance_risk)
                     ):
                         limit_func = (
                             self._standard_deviation_risk
                             if risk_func == self._variance_risk
                             else self._semi_deviation_risk
                         )
-                        limit_value = np.sqrt(np.asarray(risk_limit))
+                        risk_limit = np.sqrt(risk_limit)
                     risk_i, constraints_i = limit_func(**args)
                     constraints += constraints_i
                     parameter = cp.Parameter(nonneg=True)
@@ -1499,7 +1501,8 @@ class MeanRisk(ConvexOptimization):
                         risk_i * self._scale_constraints
                         <= parameter * factor * self._scale_constraints
                     ]
-                    parameters_values.append((parameter, limit_value))
+                    parameters_values.append((parameter, risk_limit))
+
                 if self.risk_measure == r_m:
                     if (
                         risk_limit is not None
