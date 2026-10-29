@@ -15,7 +15,41 @@ from skfolio.optimization import (
     ObjectiveFunction,
     RiskBudgeting,
 )
-from skfolio.optimization.convex._base import _solve
+from skfolio.optimization.convex._base import _solve, _solve_error_message
+
+
+@pytest.mark.parametrize("params_string", ["", " with parameters 0.1"])
+@pytest.mark.parametrize(
+    ("status", "expected", "reduced_accuracy"),
+    [
+        (cp.INFEASIBLE, "no solution satisfies all constraints", False),
+        (cp.UNBOUNDED, "the objective can improve without limit", False),
+        (cp.INFEASIBLE_INACCURATE, "reports infeasibility", True),
+        (cp.UNBOUNDED_INACCURATE, "reports unboundedness", True),
+        (
+            cp.settings.INFEASIBLE_OR_UNBOUNDED,
+            "but cannot distinguish between the two",
+            False,
+        ),
+        (cp.SOLVER_ERROR, "Solver 'CLARABEL' failed", False),
+        (cp.USER_LIMIT, "Solver 'CLARABEL' failed", False),
+        (None, "Solver 'CLARABEL' failed", False),
+    ],
+)
+def test_solve_error_message_depends_on_status(
+    status, expected, reduced_accuracy, params_string
+):
+    message = _solve_error_message("CLARABEL", status, params_string)
+    assert expected in message
+    assert "Solver 'CLARABEL'" in message
+    if params_string:
+        assert params_string in message
+    else:
+        assert "with parameters" not in message
+    assert ("reduced numerical accuracy" in message) == reduced_accuracy
+    if reduced_accuracy:
+        assert "Check solver settings and problem scaling" in message
+        assert "try another solver" in message
 
 
 @pytest.fixture

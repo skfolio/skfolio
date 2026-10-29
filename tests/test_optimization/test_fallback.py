@@ -311,7 +311,10 @@ def test_fallback_ignores_primary_metadata(fallback_data, fallback):
 
     assert isinstance(model.fallback_, type(fallback))
     assert len(model.fallback_chain_) == 2
-    assert "The optimization problem is infeasible" in model.fallback_chain_[0][1]
+    assert (
+        "Solver 'CLARABEL' reports that the optimization problem is infeasible"
+        in model.fallback_chain_[0][1]
+    )
     assert model.fallback_chain_[1] == (str(fallback), "success")
     assert model.error_ is None
     assert model.weights_.shape == (4,)
@@ -743,7 +746,7 @@ def test_hyperparam_tuning_on_fallback_param(X):
     assert best_model.fallback_chain_ == [
         (
             "MeanRisk(fallback=HierarchicalRiskParity(), min_weights=1.0,\n         objective_function=MAXIMIZE_RATIO)",
-            "The optimization problem is infeasible: solver 'CLARABEL' found that the constraints cannot all be satisfied. Try relaxing them, for example `min_return`, the weight bounds, the budget or the cardinality constraints",
+            "Solver 'CLARABEL' reports that the optimization problem is infeasible: no solution satisfies all constraints. Review the constraints and input data",
         ),
         ("HierarchicalRiskParity()", "success"),
     ]

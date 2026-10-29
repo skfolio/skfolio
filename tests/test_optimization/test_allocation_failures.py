@@ -78,7 +78,10 @@ def test_composite_rejects_missing_child_allocation(returns, composite, failed_c
             estimators=[("inner", inner)], final_estimator=outer, cv="ignore"
         )
     with (
-        pytest.warns(UserWarning, match="The optimization problem is infeasible"),
+        pytest.warns(
+            UserWarning,
+            match="Solver 'CLARABEL' reports that the optimization problem is infeasible",
+        ),
         pytest.raises(OptimizationError, match="returned no allocation weights"),
     ):
         model.fit(returns)

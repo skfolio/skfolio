@@ -501,7 +501,10 @@ class TestOnlinePredict:
 
         first_chain = pred[0].fallback_chain
         assert first_chain is not None
-        assert "The optimization problem is infeasible" in first_chain[0][1]
+        assert (
+            "Solver 'CLARABEL' reports that the optimization problem is infeasible"
+            in first_chain[0][1]
+        )
         assert first_chain[-1] == ("previous_weights", "success")
 
         # Later partial_fit calls reset estimator diagnostics before solving, but

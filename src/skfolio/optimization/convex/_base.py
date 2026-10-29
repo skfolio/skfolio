@@ -2730,33 +2730,43 @@ def _solve_error_message(solver: str, status: str | None, params_string: str) ->
     Returns
     -------
     message : str
-        A message stating that the problem is infeasible or unbounded when the
-        solver reported it, and a generic solver failure message otherwise.
+        A message describing the reported status, including reduced numerical
+        accuracy when applicable, or a generic solver failure message otherwise.
     """
-    if status in (cp.INFEASIBLE, cp.INFEASIBLE_INACCURATE):
+    if status == cp.INFEASIBLE:
         return (
-            f"The optimization problem is infeasible{params_string}: solver"
-            f" '{solver}' found that the constraints cannot all be satisfied. Try"
-            " relaxing them, for example `min_return`, the weight bounds, the"
-            " budget or the cardinality constraints"
+            f"Solver '{solver}' reports that the optimization problem is"
+            f" infeasible{params_string}: no solution satisfies all constraints."
+            " Review the constraints and input data"
         )
-    if status in (cp.UNBOUNDED, cp.UNBOUNDED_INACCURATE):
+    if status == cp.UNBOUNDED:
         return (
-            f"The optimization problem is unbounded{params_string}: solver"
-            f" '{solver}' found that the objective can be improved without limit."
-            " Try adding or tightening constraints, for example the weight bounds"
-            " or the budget"
+            f"Solver '{solver}' reports that the optimization problem is"
+            f" unbounded{params_string}: the objective can improve without limit."
+            " Review the objective and constraints"
+        )
+    if status == cp.INFEASIBLE_INACCURATE:
+        return (
+            f"Solver '{solver}' reports infeasibility{params_string} at reduced"
+            " numerical accuracy. Check solver settings and problem scaling,"
+            " or try another solver"
+        )
+    if status == cp.UNBOUNDED_INACCURATE:
+        return (
+            f"Solver '{solver}' reports unboundedness{params_string} at reduced"
+            " numerical accuracy. Check solver settings and problem scaling,"
+            " or try another solver"
         )
     if status == cp.settings.INFEASIBLE_OR_UNBOUNDED:
         return (
-            f"The optimization problem is infeasible or unbounded{params_string}"
-            f" according to solver '{solver}'. Check the constraints, or solve with"
-            " solver_params=dict(verbose=True) for more information"
+            f"Solver '{solver}' reports that the optimization problem is"
+            f" infeasible or unbounded{params_string}, but cannot distinguish"
+            " between the two. Try another solver, or set"
+            " solver_params=dict(verbose=True) for diagnostic output"
         )
     return (
-        f"Solver '{solver}' failed{params_string}. Try another"
-        " solver, or solve with solver_params=dict(verbose=True) for more"
-        " information"
+        f"Solver '{solver}' failed{params_string}. Try another solver, or set"
+        " solver_params=dict(verbose=True) for diagnostic output"
     )
 
 
@@ -2809,8 +2819,8 @@ def _solve(
     UserWarning
         If the solver returns a usable solution with a status other than `optimal`.
     """
-    # Only trust the status when the solve returned: if the solver raises, the
-    # problem may still hold the status of a previous solve.
+    # CVXPY may retain a previous solve's status if solve() raises so we only use the
+    # status after solve() returns normally.
     status = None
     try:
         # We suppress cvxpy warning as it is redundant with our warning
