@@ -1840,7 +1840,10 @@ def test_fallback(X):
     # Force an error by using an impossible constraint configuration
     model = MeanRisk(min_weights=1.0)
 
-    with pytest.raises(cp.error.SolverError, match="Solver 'CLARABEL' failed"):
+    with pytest.raises(
+        cp.error.SolverError,
+        match="Solver 'CLARABEL' reports that the optimization problem is infeasible",
+    ):
         model.fit(X)
 
     model = MeanRisk(
@@ -1855,7 +1858,7 @@ def test_fallback(X):
     assert model.fallback_chain_ == [
         (
             "MeanRisk(fallback=MeanRisk(min_weights=0.01), min_weights=1.0)",
-            "Solver 'CLARABEL' failed. Try another solver, or solve with solver_params=dict(verbose=True) for more information",
+            "Solver 'CLARABEL' reports that the optimization problem is infeasible: no solution satisfies all constraints. Review the constraints and input data",
         ),
         ("MeanRisk(min_weights=0.01)", "success"),
     ]
@@ -1880,7 +1883,7 @@ def test_raise_on_failure(X):
     assert model.fallback_chain_ is None
     assert (
         model.error_
-        == "Solver 'CLARABEL' failed. Try another solver, or solve with solver_params=dict(verbose=True) for more information"
+        == "Solver 'CLARABEL' reports that the optimization problem is infeasible: no solution satisfies all constraints. Review the constraints and input data"
     )
     assert model.n_features_in_ == 20
     np.testing.assert_array_equal(model.feature_names_in_, X.columns)
@@ -1903,7 +1906,7 @@ def test_raise_on_failure_multi(X):
     assert model.error_ == [
         None,
         None,
-        "Solver 'CLARABEL' failed with parameters 0.003. Try another solver, or solve with solver_params=dict(verbose=True) for more information",
+        "Solver 'CLARABEL' reports that the optimization problem is infeasible with parameters 0.003: no solution satisfies all constraints. Review the constraints and input data",
     ]
     assert model.fallback_ is None
     assert model.fallback_chain_ is None
@@ -1923,7 +1926,7 @@ def test_raise_on_failure_multi(X):
             assert isinstance(ptf, FailedPortfolio)
             assert (
                 ptf.optimization_error
-                == "Solver 'CLARABEL' failed with parameters 0.003. Try another solver, or solve with solver_params=dict(verbose=True) for more information"
+                == "Solver 'CLARABEL' reports that the optimization problem is infeasible with parameters 0.003: no solution satisfies all constraints. Review the constraints and input data"
             )
 
     assert pop.plot_measures(
@@ -1942,7 +1945,7 @@ def test_raise_on_failure_off_multi_all_fail(X):
     assert model.weights_ is None
     assert (
         model.error_
-        == "All 2 optimizations failed, with last optimization error Solver 'CLARABEL' failed with parameters 0.004. Try another solver, or solve with solver_params=dict(verbose=True) for more information"
+        == "All 2 optimizations failed, with last optimization error Solver 'CLARABEL' reports that the optimization problem is infeasible with parameters 0.004: no solution satisfies all constraints. Review the constraints and input data"
     )
     assert model.fallback_ is None
     assert model.fallback_chain_ is None
@@ -1970,7 +1973,7 @@ def test_raise_on_failure_off_multi_all_fail_fallback(X):
     assert model.fallback_chain_ == [
         (
             "MeanRisk(fallback=EqualWeighted(), min_return=[0.003, 0.004],\n         raise_on_failure=False)",
-            "All 2 optimizations failed, with last optimization error Solver 'CLARABEL' failed with parameters 0.004. Try another solver, or solve with solver_params=dict(verbose=True) for more information",
+            "All 2 optimizations failed, with last optimization error Solver 'CLARABEL' reports that the optimization problem is infeasible with parameters 0.004: no solution satisfies all constraints. Review the constraints and input data",
         ),
         ("EqualWeighted()", "success"),
     ]
@@ -1985,9 +1988,46 @@ def test_raise_on_failure_on_multi_all_fail(X):
     model = MeanRisk(min_return=[0.003, 0.004])
 
     with pytest.raises(
-        cp.error.SolverError, match="Solver 'CLARABEL' failed with parameters"
+        cp.error.SolverError,
+        match="Solver 'CLARABEL' reports that the optimization problem is infeasible with parameters",
     ):
         model.fit(X)
+
+
+def test_infeasible_problem_error_is_explicit(X):
+    # Lower bounds of 1.0 on 20 assets cannot sum to a budget of 1.
+    model = MeanRisk(min_weights=1.0)
+    with pytest.raises(ConvexOptimizationError) as caught:
+        model.fit(X)
+    message = str(caught.value)
+    assert "infeasible" in message
+    assert "Try another solver" not in message
+
+
+def test_solver_exception_after_infeasible_solve_is_not_reported_as_infeasible(
+    X, monkeypatch
+):
+    # In a sweep the same problem is re-solved, so after an infeasible first target
+    # the problem still has status "infeasible" if the solver raises on the next one.
+    original_solve = cp.Problem.solve
+    calls = []
+
+    def solve(problem, *args, **kwargs):
+        calls.append(problem)
+        if len(calls) == 2:
+            raise cp.SolverError("solver crashed")
+        return original_solve(problem, *args, **kwargs)
+
+    monkeypatch.setattr(cp.Problem, "solve", solve)
+    # A feasible last target keeps one error per target instead of a summary.
+    model = MeanRisk(min_return=[10, 11, 0.0001], raise_on_failure=False)
+    with pytest.warns(UserWarning):
+        model.fit(X)
+
+    assert len(calls) == 3
+    assert "is infeasible" in model.error_[0]
+    assert model.error_[1].startswith("Solver 'CLARABEL' failed")
+    assert model.error_[2] is None
 
 
 def test_fallback_with_raise_on_failure(X):
@@ -2000,7 +2040,7 @@ def test_fallback_with_raise_on_failure(X):
     assert model.fallback_chain_ == [
         (
             "MeanRisk(fallback=MeanRisk(), min_weights=1, raise_on_failure=False)",
-            "Solver 'CLARABEL' failed. Try another solver, or solve with solver_params=dict(verbose=True) for more information",
+            "Solver 'CLARABEL' reports that the optimization problem is infeasible: no solution satisfies all constraints. Review the constraints and input data",
         ),
         ("MeanRisk()", "success"),
     ]
@@ -2224,7 +2264,10 @@ class TestPartialFit:
         """partial_fit returns FailedPortfolio when solver failure is not raised."""
         model = _make_online_mean_risk(min_weights=1.0, raise_on_failure=False)
 
-        with pytest.warns(UserWarning, match="Solver 'CLARABEL' failed") as caught:
+        with pytest.warns(
+            UserWarning,
+            match="Solver 'CLARABEL' reports that the optimization problem is infeasible",
+        ) as caught:
             model.partial_fit(X)
 
         assert "The batch was consumed" in str(caught[0].message)
@@ -2232,7 +2275,10 @@ class TestPartialFit:
         assert model.problem_values_ is None
         assert model.fallback_ is None
         assert model.fallback_chain_ is None
-        assert "Solver 'CLARABEL' failed" in model.error_
+        assert (
+            "Solver 'CLARABEL' reports that the optimization problem is infeasible"
+            in model.error_
+        )
 
         ptf = model.predict(X)
         assert isinstance(ptf, FailedPortfolio)
@@ -2242,7 +2288,10 @@ class TestPartialFit:
         """A later successful partial_fit clears failure diagnostics."""
         model = _make_online_mean_risk(min_weights=1.0, raise_on_failure=False)
 
-        with pytest.warns(UserWarning, match="Solver 'CLARABEL' failed"):
+        with pytest.warns(
+            UserWarning,
+            match="Solver 'CLARABEL' reports that the optimization problem is infeasible",
+        ):
             model.partial_fit(X)
 
         model.set_params(min_weights=0.0)
@@ -2270,7 +2319,10 @@ class TestPartialFit:
         model.set_params(min_weights=1.0)
         failed_batch = X_tiny * 1.1
         if fallback is None:
-            with pytest.warns(UserWarning, match="Solver 'CLARABEL' failed"):
+            with pytest.warns(
+                UserWarning,
+                match="Solver 'CLARABEL' reports that the optimization problem is infeasible",
+            ):
                 model.partial_fit(failed_batch)
             assert isinstance(model.predict(X_tiny), FailedPortfolio)
         else:
@@ -2369,7 +2421,10 @@ class TestPartialFit:
         assert model.fallback_ == "previous_weights"
         assert model.fallback_chain_[-1] == ("previous_weights", "success")
         assert len(model.fallback_chain_) == 2
-        assert "Solver 'CLARABEL' failed" in model.fallback_chain_[0][1]
+        assert (
+            "Solver 'CLARABEL' reports that the optimization problem is infeasible"
+            in model.fallback_chain_[0][1]
+        )
 
         ptf = model.predict(X)
         assert isinstance(ptf, Portfolio) and not isinstance(ptf, FailedPortfolio)
@@ -2935,9 +2990,15 @@ def test_partial_fit_rejects_changed_invalid_objective(X_tiny):
 
 def test_partial_fit_solver_failure_raises(X_tiny):
     model = _make_online_mean_risk(min_weights=1.0)
-    with pytest.raises(cp.SolverError, match="Solver 'CLARABEL' failed"):
+    with pytest.raises(
+        cp.SolverError,
+        match="Solver 'CLARABEL' reports that the optimization problem is infeasible",
+    ):
         model.partial_fit(X_tiny)
-    assert "Solver 'CLARABEL' failed" in model.error_
+    assert (
+        "Solver 'CLARABEL' reports that the optimization problem is infeasible"
+        in model.error_
+    )
     assert model.problem_values_ is None
     assert model._cvx_cache == {}
 
@@ -2946,7 +3007,10 @@ def test_partial_fit_solver_failure_saves_problem(X_tiny):
     model = _make_online_mean_risk(
         min_weights=1.0, raise_on_failure=False, save_problem=True
     )
-    with pytest.warns(UserWarning, match="Solver 'CLARABEL' failed"):
+    with pytest.warns(
+        UserWarning,
+        match="Solver 'CLARABEL' reports that the optimization problem is infeasible",
+    ):
         model.partial_fit(X_tiny)
     assert model.weights_ is None
     assert isinstance(model.problem_, cp.Problem)
@@ -2984,7 +3048,10 @@ def test_failed_frontier_row_covers_full_schema(
         min_return=[0, 10],
         raise_on_failure=False,
     )
-    with pytest.warns(UserWarning, match="Solver 'CLARABEL' failed"):
+    with pytest.warns(
+        UserWarning,
+        match="Solver 'CLARABEL' reports that the optimization problem is infeasible",
+    ):
         model.fit(X)
     assert np.isfinite(model.weights_[0]).all()
     assert np.isnan(model.weights_[1]).all()
