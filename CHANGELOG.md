@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.12.4 (2026-10-29)
+
+### Bug Fixes
+
+- **optimization**: Enforce variance and semi-variance limits under MAXIMIZE_RATIO
+  ([#480](https://github.com/skfolio/skfolio/pull/480),
+  [`39a30ef`](https://github.com/skfolio/skfolio/commit/39a30ef612a0ce0ac981fb2252add6fc7362c2e5))
+
+
 ## v1.12.3 (2026-10-29)
 
 ### Bug Fixes
