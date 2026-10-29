@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.12.3 (2026-10-29)
+
+### Bug Fixes
+
+- **optimization**: Report infeasible and unbounded problems explicitly
+  ([#475](https://github.com/skfolio/skfolio/pull/475),
+  [`eb84e41`](https://github.com/skfolio/skfolio/commit/eb84e41c8578d45333a2633861299ad31b466d9a))
+
+
 ## v1.12.2 (2026-10-26)
 
 ### Bug Fixes
