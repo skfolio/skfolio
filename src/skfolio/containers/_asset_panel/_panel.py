@@ -853,6 +853,7 @@ class AssetPanel(_BaseAssetPanel):
         For each asset, NaN values are filled only where `active_mask` is True.
         Values are not carried forward across inactive observations. Inactive values
         are left unchanged, regardless of the field's inactive policy.
+        Fields are replaced only after all selected fills have been prepared successfully.
 
         Parameters
         ----------
@@ -891,6 +892,7 @@ class AssetPanel(_BaseAssetPanel):
         For each asset, NaN values are filled only where `active_mask` is True.
         Values are not carried backward across inactive observations. Inactive values
         are left unchanged, regardless of the field's inactive policy.
+        Fields are replaced only after all selected fills have been prepared successfully.
 
         Parameters
         ----------
@@ -1364,10 +1366,12 @@ class AssetPanel(_BaseAssetPanel):
         """Fill floating 2D fields along observations."""
         field_names = [fields] if isinstance(fields, str) else list(fields)
         panel = self if inplace else self.copy()
+        replacements: dict[str, BaseField] = {}
         for name in field_names:
             if name not in panel.fields:
                 raise KeyError(f"Field '{name}' not found.")
-            field = panel.fields[name]
+            # Repeated names still fill sequentially, before any result is installed.
+            field = replacements.get(name, panel.fields[name])
             if not isinstance(field, Field2D) or isinstance(field, FieldCategorical):
                 raise TypeError(f"{method} only supports numeric Field2D entries.")
             if not np.issubdtype(field.values.dtype, np.floating):
@@ -1378,7 +1382,8 @@ class AssetPanel(_BaseAssetPanel):
                 limit=limit,
                 mask=panel.active_mask,
             )
-            panel.fields[name] = field.with_values(values)
+            replacements[name] = field.with_values(values)
+        panel.fields.update(replacements)
         return panel
 
 
