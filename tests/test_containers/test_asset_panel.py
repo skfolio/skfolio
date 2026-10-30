@@ -1600,6 +1600,110 @@ class TestFill:
         assert not np.isnan(panel["a"]).any()
         assert not np.isnan(panel["b"]).any()
 
+    @pytest.mark.parametrize("method", ["ffill", "bfill"])
+    @pytest.mark.parametrize("inplace", [False, True])
+    @pytest.mark.parametrize("invalid", ["missing", "categorical", "tensor", "integer"])
+    def test_fill_rejected_selection_preserves_fields(self, method, inplace, invalid):
+        """A corrected retry must not extend a partially filled gap."""
+        values = np.array([[1.0], [np.nan], [np.nan], [np.nan]])
+        expected = np.array([[1.0], [1.0], [np.nan], [np.nan]])
+        if method == "bfill":
+            values = values[::-1].copy()
+            expected = expected[::-1].copy()
+        panel = _make_panel(
+            fields={
+                "x": values.copy(),
+                "y": values.copy(),
+                "categorical": FieldCategorical(
+                    np.zeros((4, 1), dtype=int), levels=np.array(["A"])
+                ),
+                "tensor": Field3D(
+                    np.ones((4, 1, 1)),
+                    third_axis_name="factor",
+                    third_axis_labels=np.array(["value"]),
+                ),
+                "integer": np.ones((4, 1), dtype=int),
+            },
+            observations=np.arange(4),
+            assets=np.array(["A"]),
+        )
+        original_fields = panel.fields.copy()
+        original_values = {
+            name: field.values.copy() for name, field in panel.fields.items()
+        }
+        error = KeyError if invalid == "missing" else TypeError
+        with pytest.raises(error):
+            getattr(panel, method)(["x", "y", invalid], limit=1, inplace=inplace)
+
+        for name, field in original_fields.items():
+            assert panel.fields[name] is field
+            np.testing.assert_array_equal(field.values, original_values[name])
+        # Retrying from the original data fills exactly one cell, not two.
+        result = getattr(panel, method)("x", limit=1, inplace=inplace)
+        np.testing.assert_array_equal(result["x"], expected)
+
+    @pytest.mark.parametrize("method", ["ffill", "bfill"])
+    def test_fill_preparation_failure_preserves_fields(self, method, monkeypatch):
+        """Delegate errors must occur before any prepared field is installed."""
+        panel = _make_panel(
+            fields={"x": np.array([[1.0], [np.nan]]), "y": np.ones((2, 1))},
+            observations=np.arange(2),
+            assets=np.array(["A"]),
+        )
+        original_fields = panel.fields.copy()
+        original_values = {
+            name: field.values.copy() for name, field in panel.fields.items()
+        }
+        fill = _fill_2d
+        calls = 0
+
+        def fail_second_fill(*args, **kwargs):
+            """Reject a later field after the first result has been prepared."""
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                raise ValueError("later field cannot be filled")
+            return fill(*args, **kwargs)
+
+        monkeypatch.setattr(
+            "skfolio.containers._asset_panel._panel._fill_2d", fail_second_fill
+        )
+        with pytest.raises(ValueError, match="later field cannot be filled"):
+            getattr(panel, method)(["x", "y"])
+        assert calls == 2
+        for name, field in original_fields.items():
+            assert panel.fields[name] is field
+            np.testing.assert_array_equal(field.values, original_values[name])
+
+    @pytest.mark.parametrize("method", ["ffill", "bfill"])
+    @pytest.mark.parametrize("inplace", [False, True])
+    def test_fill_duplicate_selection_preserves_sequential_limits(
+        self, method, inplace
+    ):
+        """Repeated field names apply the limit separately in selection order."""
+        values = np.array([[1.0], [np.nan], [np.nan], [np.nan]])
+        expected = np.array([[1.0], [1.0], [1.0], [np.nan]])
+        if method == "bfill":
+            values = values[::-1].copy()
+            expected = expected[::-1].copy()
+        values.flags.writeable = False
+        original_values = values.copy()
+        panel = _make_panel(
+            fields={"x": values, "untouched": np.ones((4, 1))},
+            observations=np.arange(4),
+            assets=np.array(["A"]),
+        )
+        untouched = panel["untouched"]
+        # A generator also proves selection is materialized once, without deduplication.
+        result = getattr(panel, method)(
+            (name for name in ["x", "x"]), limit=1, inplace=inplace
+        )
+        assert (result is panel) == inplace
+        np.testing.assert_array_equal(result["x"], expected)
+        assert result["untouched"] is untouched
+        assert not np.shares_memory(result["x"], values)
+        np.testing.assert_array_equal(values, original_values)
+
     def test_fill_rejects_non_numeric_2d_fields(self):
         panel = _make_panel()
         panel["sector"] = FieldCategorical(
