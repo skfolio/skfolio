@@ -548,15 +548,11 @@ class CovarianceForecastComparison:
     ...     [evaluation_30, evaluation_60],
     ...     names=["EWCov(30)", "EWCov(60)"],
     ... )
-    >>> comparison.summary()
-    estimator                      EWCov(30)  ...        EWCov(60)
-                                        mean  ...           target
-    Mahalanobis ratio               1.405...  ...              1.0
-    Diagonal ratio                  1.090...  ...              1.0
-    Portfolio standardized returns  0.010...  ...    mean=0, std=1
-    Portfolio QLIKE                -7.923...  ...  lower is better
-    <BLANKLINE>
-    [4 rows x 14 columns]
+    >>> summary = comparison.summary()
+    >>> summary.shape
+    (4, 14)
+    >>> summary[("EWCov(30)", "mean")].round(3).tolist()
+    [1.406, 1.09, 0.011, -7.923]
     >>> comparison.plot_calibration()
     Figure(...)
     """

@@ -82,6 +82,8 @@ dev = [
     "deptry",
     # Optional solver used by the opinion pooling and fallback examples.
     "scs>=3.2.0",
+    # Optional backend for analytical-gradient verification tests.
+    "autograd>=1.7",
     "pytest",
     "pytest-xdist",
     "pytest-cov",

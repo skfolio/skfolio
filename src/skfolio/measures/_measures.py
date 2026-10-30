@@ -25,6 +25,40 @@ from skfolio.utils.tools import (
 )
 
 
+def log_wealth(returns: ArrayLike, sample_weight: FloatArray | None = None) -> float:
+    """Compute the log-wealth (cumulative log return).
+
+    The log-wealth represents the logarithm of the final wealth and is computed as
+    the sum of log returns: sum(log(1 + r_t)). This is a fundamental measure in
+    online portfolio selection and Kelly criterion theory.
+
+    Parameters
+    ----------
+    returns : ndarray of shape (n_observations,)
+        Array of return values.
+
+    sample_weight : ndarray of shape (n_observations,), optional
+        Sample weights for each observation. If None, equal weights are assumed.
+        The parameter is here for compatibility with other measures but is ignored.
+
+    Returns
+    -------
+    value : float
+        The log-wealth.
+
+    Notes
+    -----
+    Missing returns are excluded, consistently with portfolio summaries that
+    retain failed periods as NaN. The result is NaN when no observed returns
+    remain. Sample weights do not change cumulative realized wealth.
+    """
+    returns = np.asarray(returns, dtype=float)
+    observed = returns[~np.isnan(returns)]
+    if observed.size == 0:
+        return float("nan")
+    return float(np.sum(np.log1p(observed)))
+
+
 def mean(
     returns: ArrayLike, sample_weight: FloatArray | None = None
 ) -> float | FloatArray:
@@ -1886,12 +1920,21 @@ def _unweighted_evar(losses: FloatArray, beta: float) -> float:
     value : float
         EVaR of the standardized losses, between -1 and 0.
     """
+    t = _unweighted_evar_tilt(losses, beta)
+    if np.isinf(t):
+        return 0.0
     c = np.log(losses.size) + np.log1p(-beta)
+    return (np.log(np.exp(t * losses).sum()) - c) / t
 
-    def objective(log_t: float) -> float:
-        """Compute :math:`f(t)`, where `log_t` is the log of :math:`t`."""
-        t = np.exp(log_t)
-        return (np.log(np.exp(t * losses).sum()) - c) / t
+
+def _unweighted_evar_tilt(losses: FloatArray, beta: float) -> float:
+    """Return the optimal exponential tilt for losses standardized to [-1, 0].
+
+    This is the shared root search for the EVaR value and envelope gradient.
+    An infinite tilt denotes the maximum-loss limit. Inputs must be nonconstant
+    with a maximum of zero and confidence strictly between zero and one.
+    """
+    c = np.log(losses.size) + np.log1p(-beta)
 
     def gradient_sign(log_t: float) -> float:
         """Compute :math:`g(t)`, where `log_t` is the log of :math:`t`."""
@@ -1907,8 +1950,8 @@ def _unweighted_evar(losses: FloatArray, beta: float) -> float:
     if gradient_sign(upper) <= 0:
         # The infimum is reached as theta tends to 0, and f is within 1e-7 of its
         # limit 0 past `upper`.
-        return 0.0
-    return objective(sco.brentq(gradient_sign, lower, upper))
+        return np.inf
+    return np.exp(sco.brentq(gradient_sign, lower, upper))
 
 
 def _weighted_evar(
