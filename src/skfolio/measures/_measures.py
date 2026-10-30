@@ -1200,6 +1200,100 @@ def effective_number_assets(weights: FloatArray) -> float:
     return 1.0 / (np.power(weights, 2).sum())
 
 
+def effective_number_trials(trial_returns: ArrayLike) -> float:
+    r"""Estimate the effective number of independent trials in a parameter search.
+
+    The Deflated Sharpe Ratio needs the number of independent trials behind a
+    selection, but a grid search over similar parameter values produces trials
+    whose Sharpe ratios are highly correlated. Counting every combination
+    overstates the search and makes the adjustment too conservative, while
+    counting the grid as one trial understates it.
+
+    This function estimates how many independent trials the observed set is
+    worth, from the correlation structure of the trial returns. Writing
+    :math:`\bar{\rho}` for the mean off-diagonal correlation:
+
+    .. math::
+
+        N_{eff} = \frac{N}{1 + (N - 1)\bar{\rho}}
+
+    This is exact when the trials are equicorrelated: the variance of the sum of
+    :math:`N` equicorrelated standard normals is :math:`N + N(N-1)\bar{\rho}`,
+    which is what :math:`N_{eff}` independent trials would give. Used as the
+    `n_trials` of `expected_max_sharpe_ratio`, it reproduces the spread of the
+    maximum Sharpe ratio across correlated trials, which is the quantity the
+    deflation depends on.
+
+    The map cannot reproduce the *level* of that maximum. Equicorrelated trials
+    share a common component, so their average Sharpe ratio is itself random
+    with standard deviation
+    :math:`\sigma\sqrt{(1 + (N-1)\bar{\rho})/N}`, whereas independent trials
+    concentrate around zero. For large :math:`\bar{\rho}` the correlated maximum
+    therefore sits above the independent one even when the spreads agree.
+
+    :math:`\bar{\rho}` is clipped to :math:`[0, 1]`. Negative correlation cannot
+    create more than :math:`N` independent trials, so it maps to :math:`N`; the
+    equicorrelated case with :math:`\bar{\rho} = 1` maps to 1.
+
+    Parameters
+    ----------
+    trial_returns : ndarray of shape (n_observations, n_trials)
+        Per-period returns of each trial, one column per trial. These are the
+        same series whose Sharpe ratios feed `deflated_sharpe_ratio`.
+
+    Returns
+    -------
+    value : float
+        Effective number of independent trials, in :math:`[1, N]`.
+
+    Raises
+    ------
+    ValueError
+        If `trial_returns` is not 2D, has fewer than two observations or trials,
+        or contains a non-finite correlation.
+
+    Notes
+    -----
+    A trial with no dispersion contributes a NaN correlation and is left out of
+    the average. The result is NaN if no pair of trials remains.
+
+    See Also
+    --------
+    expected_max_sharpe_ratio
+    deflated_sharpe_ratio
+
+    References
+    ----------
+    .. [1] "The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest
+        Overfitting, and Non-Normality".
+        Bailey, D. and Lopez de Prado, M. (2014)
+    """
+    trial_returns = np.asarray(trial_returns, dtype=float)
+    if trial_returns.ndim != 2:
+        raise ValueError(
+            f"trial_returns must be a 2D array of shape (n_observations, n_trials), "
+            f"got an array with {trial_returns.ndim} dimension(s)"
+        )
+    n_observations, n_trials = trial_returns.shape
+    if n_observations < 2:
+        raise ValueError(
+            f"trial_returns must have at least 2 observations, got {n_observations}"
+        )
+    if n_trials < 2:
+        raise ValueError(f"trial_returns must have at least 2 trials, got {n_trials}")
+
+    # A trial with no dispersion has a zero standard deviation, which makes its
+    # correlations 0/0. Those are dropped below rather than treated as an error.
+    with np.errstate(divide="ignore", invalid="ignore"):
+        corr = correlation(trial_returns)
+    off_diagonal = corr[~np.eye(n_trials, dtype=bool)]
+    if not np.isfinite(off_diagonal).any():
+        return float("nan")
+    mean_corr = float(np.mean(off_diagonal[np.isfinite(off_diagonal)]))
+    mean_corr = min(max(mean_corr, 0.0), 1.0)
+    return float(n_trials / (1.0 + (n_trials - 1) * mean_corr))
+
+
 def correlation(X: ArrayLike, sample_weight: FloatArray | None = None) -> FloatArray:
     """Compute the correlation matrix.
 
