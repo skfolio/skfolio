@@ -81,6 +81,17 @@ class _PortfolioRiskMixin:
             if not np.isfinite(value).all():
                 raise ValueError(f"{name} must be finite.")
 
+        # Variance-based risks only need the asset covariance and the weights, so the
+        # full Portfolio does not have to be built for them.
+        if self.risk_measure in (
+            RiskMeasure.VARIANCE,
+            RiskMeasure.STANDARD_DEVIATION,
+        ):
+            variance = float(weights @ return_distribution.covariance @ weights)
+            if self.risk_measure == RiskMeasure.STANDARD_DEVIATION:
+                return np.sqrt(variance)
+            return variance
+
         ptf = Portfolio(
             X=return_distribution.returns,
             sample_weight=return_distribution.sample_weight,
