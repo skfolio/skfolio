@@ -180,6 +180,24 @@ def test_covariance_rejects_observation_containers_before_learning(optimizer, me
         assert not hasattr(model.prior_estimator_, "return_distribution_")
 
 
+def test_herc_covariance_rejects_observation_containers():
+    X = pd.DataFrame(
+        np.random.default_rng(42).normal(0, 0.01, (20, 3)), columns=["A", "B", "C"]
+    )
+    panel = AssetPanel(
+        fields={"exposure": Field2D(np.ones(X.shape))},
+        observations=np.arange(len(X)),
+        asset_names=X.columns,
+    )
+    with config_context(enable_metadata_routing=True):
+        model = HierarchicalEqualRiskContribution(
+            prior_estimator=SubsetPrior(),
+            distance_estimator=CovarianceExposureDistance(),
+        )
+        with pytest.raises(ValueError, match=r"Observation metadata.*covariance"):
+            model.fit(X, exposures=panel)
+
+
 @pytest.mark.parametrize(
     "optimizer",
     [HierarchicalEqualRiskContribution, HierarchicalRiskParity, SchurComplementary],
