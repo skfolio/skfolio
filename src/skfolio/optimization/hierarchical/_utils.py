@@ -1,4 +1,4 @@
-"""Shared risk calculations and weight bounds for hierarchical optimizers."""
+"""Shared distance fitting, risk calculations and hierarchical weight bounds."""
 
 # Copyright (c) 2023-2026
 # Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
@@ -6,13 +6,21 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
+import pandas as pd
+import sklearn.utils.metadata_routing as skm
+from sklearn import get_config
 
 from skfolio._constants import _MANAGEMENT_FEES, _PREVIOUS_WEIGHTS, _TRANSACTION_COSTS
+from skfolio.distance import BaseDistance
+from skfolio.exceptions import OptimizationError
 from skfolio.measures import ExtraRiskMeasure, RiskMeasure
 from skfolio.portfolio import Portfolio
 from skfolio.prior import ReturnDistribution
-from skfolio.typing import FloatArray, IntArray, MultiInput
+from skfolio.typing import AnyArray, FloatArray, IntArray, MultiInput
+from skfolio.utils.tools import _filter_supported_params
 
 _WEIGHT_BOUNDS_TOL = 1e-8
 
@@ -125,7 +133,7 @@ def _convert_weight_bounds(
     max_weights: float | FloatArray,
     n_assets: int,
 ) -> tuple[FloatArray, FloatArray]:
-    """Broadcast cleaned bounds and validate long-only, fully invested weights.
+    """Broadcast and validate bounds before selecting the investable assets.
 
     Parameters
     ----------
@@ -148,17 +156,16 @@ def _convert_weight_bounds(
 
     Notes
     -----
-    Bound sums allow an absolute tolerance of 1e-8 around one.
+    A full-universe upper sum below one is infeasible for every subset and is rejected
+    here, allowing invalid inputs to fail before online learning. Lower sums are checked
+    by `_check_investable_weight_bounds` after selection: excluded assets do not
+    contribute to the allocation's minimum weights. Bound sums allow an absolute
+    tolerance of 1e-8 around one.
     """
     if not isinstance(min_weights, np.ndarray):
         min_weights = np.full(n_assets, min_weights)
     if np.any(min_weights < 0):
         raise ValueError("`min_weights` must be strictly positive")
-    if min_weights.sum() > 1 + _WEIGHT_BOUNDS_TOL:
-        raise ValueError(
-            f"Invalid `min_weights`: sum is {min_weights.sum():.4f}, "
-            f"but it must be at most 1.0."
-        )
 
     if not isinstance(max_weights, np.ndarray):
         max_weights = np.full(n_assets, max_weights)
@@ -226,3 +233,204 @@ def _apply_weight_constraints_to_split_factor(
         ),
     )
     return alpha
+
+
+def _check_investable_weight_bounds(
+    *, min_weights: FloatArray, max_weights: FloatArray
+) -> None:
+    """Check that investable asset weights can sum to one.
+
+    Parameters
+    ----------
+    min_weights : FloatArray of shape (n_assets,)
+        Lower weight bounds restricted to the investable assets.
+
+    max_weights : FloatArray of shape (n_assets,)
+        Upper weight bounds restricted to the investable assets.
+
+    Raises
+    ------
+    OptimizationError
+        If the lower bounds sum to more than one or the upper bounds sum to less than
+        one, allowing an absolute tolerance of 1e-8.
+    """
+    min_weights_sum = min_weights.sum()
+    max_weights_sum = max_weights.sum()
+    if (
+        min_weights_sum > 1 + _WEIGHT_BOUNDS_TOL
+        or max_weights_sum < 1 - _WEIGHT_BOUNDS_TOL
+    ):
+        raise OptimizationError(
+            "Weight bounds are infeasible for the investable assets: "
+            f"lower bounds sum to {min_weights_sum:.12g} and upper bounds sum to "
+            f"{max_weights_sum:.12g}. The lower sum must be at most 1 and the upper "
+            f"sum at least 1, within a tolerance of {_WEIGHT_BOUNDS_TOL:g}."
+        )
+
+
+def _check_investable_distances(
+    distance: FloatArray,
+    *,
+    n_assets: int,
+    asset_indices: IntArray,
+    asset_names: AnyArray | None = None,
+) -> None:
+    """Validate distances for the investable asset universe.
+
+    Parameters
+    ----------
+    distance : ndarray of shape (n_assets, n_assets)
+        Distances between the assets selected for allocation.
+
+    n_assets : int
+        Expected number of investable assets, independent of input labels.
+
+    asset_indices : ndarray of shape (n_assets,)
+        Zero-based column positions in the optimizer's original `X`, used in error
+        messages when asset names are unavailable.
+
+    asset_names : ndarray of shape (n_assets,), optional
+        Asset labels in distance order, used to identify unavailable estimates in the
+        error message. None for unlabeled input.
+
+    Raises
+    ------
+    ValueError
+        If the matrix has an unexpected shape or contains non-finite distances.
+    """
+    if distance.shape != (n_assets, n_assets):
+        raise ValueError("The distance output does not match its input asset schema.")
+
+    finite = np.isfinite(distance)
+    if finite.all():
+        return
+
+    # A missing row also invalidates every counterparty's distance to that asset.
+    unavailable = ~finite.any(axis=1) | ~finite.any(axis=0)
+    if not unavailable.any():
+        unavailable = ~finite.all(axis=1) | ~finite.all(axis=0)
+
+    message = "Distances are unavailable for prior-investable assets"
+    if asset_names is not None:
+        message += f" {asset_names[unavailable].tolist()}"
+    else:
+        message += f" at X column positions {asset_indices[unavailable].tolist()}"
+    raise ValueError(
+        f"{message}. Check the distance estimator's data coverage and "
+        "minimum-observation requirements."
+    )
+
+
+def _fit_distance_from_prior(
+    *,
+    estimator: BaseDistance,
+    return_distribution: ReturnDistribution,
+    asset_names: AnyArray | None,
+    fit_params: dict[str, Any],
+) -> FloatArray:
+    """Fit distances on a prepared prior distribution without cloning the estimator.
+
+    Parameters
+    ----------
+    estimator : BaseDistance
+        Distance estimator to fit on returns or covariance.
+
+    return_distribution : ReturnDistribution
+        Distribution restricted to the assets used for allocation.
+
+    asset_names : ndarray or None
+        Names in distribution order, or None for unlabeled inputs.
+
+    fit_params : dict
+        Routed fitting metadata. Requested scenario weights are supplied by the
+        distribution, replacing weights for the optimizer's original input. Covariance
+        input accepts no observation metadata.
+
+    Returns
+    -------
+    distance : ndarray of shape (n_assets, n_assets)
+        Fitted distances in distribution order.
+    """
+    requires_covariance_input = estimator.requires_covariance_input
+    fit_params = fit_params.copy()
+    if requires_covariance_input:
+        if fit_params:
+            raise ValueError(
+                "Observation metadata cannot be passed to a distance estimator "
+                "fitted on the prior's covariance, whose rows represent assets."
+            )
+        distance_input = return_distribution.covariance
+    else:
+        distance_input = return_distribution.returns
+        if get_config()["enable_metadata_routing"]:
+            fit_params.update(
+                dict.fromkeys(
+                    _sample_weight_names(estimator.get_metadata_routing()),
+                    return_distribution.sample_weight,
+                )
+            )
+        else:
+            fit_params.update(
+                _filter_supported_params(
+                    estimator, "fit", sample_weight=return_distribution.sample_weight
+                )
+            )
+    if asset_names is not None:
+        distance_input = pd.DataFrame(
+            distance_input,
+            columns=asset_names,
+            index=asset_names if requires_covariance_input else None,
+        )
+    estimator.fit(distance_input, None, **fit_params)
+    return estimator.distance_
+
+
+def _sample_weight_names(
+    routing: skm.MetadataRequest | skm.MetadataRouter,
+    *,
+    method: str = "fit",
+    use_alias: bool = False,
+) -> set[str]:
+    """Find the keyword names that deliver sample weights to an estimator.
+
+    Parameters
+    ----------
+    routing : MetadataRequest or MetadataRouter
+        Routing description of the distance estimator or one of its children.
+
+    method : str, default="fit"
+        Method receiving the weights. Recursive calls follow the router's method
+        mappings.
+
+    use_alias : bool, default=False
+        Use the name requested from the parent. A direct call to a consumer uses
+        `sample_weight`, while a router receives the aliases requested by its
+        children.
+
+    Returns
+    -------
+    names : set of str
+        Keywords requested for sample weights. Unrequested weights are excluded.
+    """
+    if isinstance(routing, skm.MetadataRequest):
+        request = getattr(routing, method).requests.get("sample_weight")
+        if request in (None, False, skm.WARN):
+            return set()
+        if request is True or not use_alias:
+            return {"sample_weight"}
+        return {request}
+
+    names = set()
+    for name, route in routing:
+        for caller, callee in route.mapping:
+            if caller == method:
+                # A router's own consumer keeps the current naming rule.
+                # Descendants request their weights from a parent using aliases.
+                names.update(
+                    _sample_weight_names(
+                        route.router,
+                        method=callee,
+                        use_alias=use_alias or name != "$self_request",
+                    )
+                )
+    return names

@@ -12,10 +12,8 @@ from typing import Any, cast
 
 import numpy as np
 import pandas as pd
-import sklearn.utils as sku
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
-from sklearn import get_config
 
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
@@ -24,7 +22,11 @@ from skfolio.exceptions import OptimizationError
 from skfolio.optimization._base import BaseOptimization, _check_finite_weights
 from skfolio.optimization.hierarchical._utils import (
     _WEIGHT_BOUNDS_TOL,
+    _check_investable_distances,
+    _check_investable_weight_bounds,
     _convert_weight_bounds,
+    _fit_distance_from_prior,
+    _sample_weight_names,
 )
 from skfolio.prior import BasePrior, EmpiricalPrior, ReturnDistribution
 from skfolio.seriation import BaseSeriation, HierarchicalSeriation
@@ -32,9 +34,12 @@ from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray
 from skfolio.utils.stats import assert_is_symmetric
 from skfolio.utils.tools import (
     _call_estimator,
-    _filter_supported_params,
     _validate_bool,
     check_estimator,
+)
+from skfolio.utils.validation import (
+    _check_observation_counts,
+    _is_observation_container,
 )
 
 _FITTED_ATTR = "weights_"
@@ -71,11 +76,9 @@ class _BaseSeriatedOptimization(BaseOptimization):
         If True, fit the distance estimator on the return scenarios produced by
         the prior. With `CovarianceDistance(covariance_estimator="precomputed")`,
         use the prior's covariance instead.
-
-        If False, use the `X` argument supplied to this optimizer's `fit(X)` or
-        `partial_fit(X)`, before the prior processes it. In a pipeline, `X` is
-        the output of the preceding steps. Precomputed covariance distances
-        require True.
+        If False, use the original `X` supplied to this optimizer's `fit(X)` or
+        `partial_fit(X)`. In a pipeline, `X` is the output of the preceding steps.
+        Precomputed covariance distances require True.
 
         During online learning, True refits the distance estimator on the prior's
         current scenarios or covariance at each update. False updates it from
@@ -159,8 +162,9 @@ class _BaseSeriatedOptimization(BaseOptimization):
         Fitted `prior_estimator`.
 
     distance_estimator_ : BaseDistance or None
-        Fitted `distance_estimator`. None when `distance_from_prior=True` and
-        fewer than two assets are investable.
+        Fitted `distance_estimator`. Uses only investable assets when
+        `distance_from_prior=True`, and all assets in `X` otherwise. None when
+        `distance_from_prior=True` and fewer than two assets are investable.
 
     seriation_estimator_ : BaseSeriation
         Fitted `seriation_estimator`. Its `ordering_` contains positions in the
@@ -353,13 +357,13 @@ class _BaseSeriatedOptimization(BaseOptimization):
             `_reset` before starting a new batch fit.
 
         **fit_params : dict
-            Metadata routed to the underlying estimators. Requires metadata
-            routing to be enabled. During batch fitting, metadata for a distance
-            fitted on prior return scenarios must align with those scenarios.
-            Sample weights for scenario distances always come from the prior,
-            replacing routed weights. Other observation metadata cannot be routed
-            to distances fitted from prior output during online updates.
-            Distances using the prior's covariance receive no observation metadata.
+            Parameters passed to the prior, distance and seriation estimators. Requires
+            `enable_metadata_routing=True`. Panels must contain the same observations
+            as `X`.
+            With `distance_from_prior=True`, sample weights for the distance estimator
+            come from the prior. Other arrays must match the prior's return scenarios
+            and are accepted only by `fit`. Distances fitted on the prior's covariance
+            do not accept additional fitting parameters.
 
         Returns
         -------
@@ -395,21 +399,21 @@ class _BaseSeriatedOptimization(BaseOptimization):
         # Distances fitted on prior output start afresh at each update.
         # Distances learned from X keep their state across online updates.
         if first_call or self.distance_from_prior:
-            distance = check_estimator(
+            distance_estimator = check_estimator(
                 self.distance_estimator,
                 default=PearsonDistance(),
                 check_type=BaseDistance,
             )
         else:
-            distance = cast(BaseDistance, self.distance_estimator_)
+            distance_estimator = cast(BaseDistance, self.distance_estimator_)
 
-        covariance_input = distance.requires_covariance_input
+        requires_covariance_input = distance_estimator.requires_covariance_input
         if first_call:
-            if covariance_input and not self.distance_from_prior:
+            if requires_covariance_input and not self.distance_from_prior:
                 raise ValueError(
                     "Precomputed covariance requires distance_from_prior=True."
                 )
-            self._initialize(distance)
+            self._initialize(distance_estimator)
 
         if method == "partial_fit":
             self._validate_partial_fit_fallback()
@@ -417,28 +421,29 @@ class _BaseSeriatedOptimization(BaseOptimization):
         routed = skm.process_routing(self, method, **fit_params)
         distance_method = "fit" if self.distance_from_prior else method
         distance_params = getattr(routed.distance_estimator, distance_method)
+        _check_observation_counts(X=X, metadata=distance_params)
 
-        if self.distance_from_prior and not covariance_input and distance_params:
-            # Scenario probabilities replace weights describing the original X.
-            weight_names = _sample_weight_names(distance.get_metadata_routing())
-            distance_params = {
-                name: value
-                for name, value in distance_params.items()
-                if name not in weight_names
-            }
-            routed.distance_estimator.fit = distance_params
-
-        # Covariance rows represent assets. Online prior scenarios may cover
-        # a different history from the observations in the current batch.
-        if distance_params and (
-            covariance_input or (self.distance_from_prior and method == "partial_fit")
-        ):
+        if requires_covariance_input and distance_params:
             raise ValueError(
-                "Observation metadata for X cannot be passed to a distance "
-                "estimator fitted on the prior's return scenarios or covariance, "
-                "which may have different rows. Disable the corresponding fit "
-                "requests on the distance estimator or its underlying estimators."
+                "Observation metadata cannot be passed to a distance estimator "
+                "fitted on the prior's covariance, whose rows represent assets."
             )
+        if distance_params and self.distance_from_prior and method == "partial_fit":
+            # Containers describe the new batch, independently of the prior's scenarios.
+            # Scenario weights are replaced with the prior's probabilities during fit.
+            sample_weight_names = _sample_weight_names(
+                distance_estimator.get_metadata_routing()
+            )
+            if any(
+                name not in sample_weight_names and not _is_observation_container(value)
+                for name, value in distance_params.items()
+            ):
+                raise ValueError(
+                    "During partial_fit with distance_from_prior=True, the distance "
+                    "estimator accepts only sample weights, AssetPanel and "
+                    "AssetPanelView metadata. Other metadata may not match the prior's "
+                    "return scenarios."
+                )
 
         # Keep the asset schema consistent. The prior and distance validate X.
         skv.validate_data(self, X, reset=first_call, skip_check_array=True)
@@ -467,22 +472,30 @@ class _BaseSeriatedOptimization(BaseOptimization):
         )
         if not self.distance_from_prior:
             _call_estimator(
-                distance,
+                distance_estimator,
                 method,
                 X,
                 y,
                 routed_params=routed.distance_estimator,
             )
 
-        return_distribution = self.prior_estimator_.return_distribution_
-        self.investable_mask_ = return_distribution.investable_mask
+        return_distribution = self._prepare_investable_distribution(
+            self.prior_estimator_.return_distribution_, slim=True
+        )
         investable_mask = self.investable_mask_
         if investable_mask is None:
             investable_mask = np.ones(self.n_features_in_, dtype=bool)
         investable_indices = np.flatnonzero(investable_mask)
 
+        asset_names = None
+        if isinstance(X, pd.DataFrame):
+            asset_names = X.columns
         distance_matrix = self._compute_distance_matrix(
-            return_distribution, investable_mask, distance, routed.distance_estimator
+            return_distribution=return_distribution,
+            investable_mask=investable_mask,
+            distance_estimator=distance_estimator,
+            asset_names=asset_names,
+            fit_params=distance_params,
         )
 
         seriation_method = "fit"
@@ -513,15 +526,8 @@ class _BaseSeriatedOptimization(BaseOptimization):
         ):
             lower = min_weights[investable_mask]
             upper = max_weights[investable_mask]
-            if (
-                lower.sum() > 1 + _WEIGHT_BOUNDS_TOL
-                or upper.sum() < 1 - _WEIGHT_BOUNDS_TOL
-            ):
-                raise OptimizationError(
-                    "Weight bounds are infeasible for the investable assets."
-                )
+            _check_investable_weight_bounds(min_weights=lower, max_weights=upper)
 
-            return_distribution = return_distribution.investable_subset(slim=True)
             covariance = return_distribution.covariance
             if not np.isfinite(covariance).all() or np.any(np.diag(covariance) <= 0):
                 raise ValueError(
@@ -612,10 +618,12 @@ class _BaseSeriatedOptimization(BaseOptimization):
 
     def _compute_distance_matrix(
         self,
+        *,
         return_distribution: ReturnDistribution,
         investable_mask: BoolArray,
         distance_estimator: BaseDistance,
-        routed_params: sku.Bunch,
+        asset_names: pd.Index | None,
+        fit_params: dict[str, Any],
     ) -> FloatArray | pd.DataFrame:
         """Compute the full distance matrix used for seriation.
 
@@ -626,7 +634,7 @@ class _BaseSeriatedOptimization(BaseOptimization):
         Parameters
         ----------
         return_distribution : ReturnDistribution
-            Current prior distribution over the full asset universe.
+            Current prior distribution restricted to investable assets.
 
         investable_mask : ndarray of bool of shape (n_assets,)
             Assets eligible for allocation according to the prior.
@@ -635,9 +643,12 @@ class _BaseSeriatedOptimization(BaseOptimization):
             Unfitted estimator when `distance_from_prior=True`. Otherwise, the
             fitted estimator already updated from the optimizer's input `X`.
 
-        routed_params : Bunch
-            Metadata routing for the distance estimator. Its `fit` parameters
-            are used when `distance_from_prior=True`.
+        asset_names : Index or None
+            Labels in the full input asset order, or None for unlabeled input.
+
+        fit_params : dict
+            Metadata for the distance estimator's `fit` or `partial_fit` method. Used
+            here only when `distance_from_prior=True`.
 
         Returns
         -------
@@ -659,75 +670,42 @@ class _BaseSeriatedOptimization(BaseOptimization):
         `distance_estimator_` is set to None.
         """
         distance_matrix = np.full((self.n_features_in_, self.n_features_in_), np.nan)
-        n_investable = np.count_nonzero(investable_mask)
-        ix = np.ix_(investable_mask, investable_mask)
-        if n_investable < 2:
-            distance_matrix[ix] = 0
+        n_investable = return_distribution.n_assets
+        investable_ix = np.ix_(investable_mask, investable_mask)
+        investable_asset_names = None
+        if asset_names is not None:
+            investable_asset_names = asset_names.to_numpy()[investable_mask]
+
+        if n_investable == 1:
+            investable_distance = np.zeros((1, 1))
             if self.distance_from_prior:
                 self.distance_estimator_ = None
-        else:
-            scenario_input = (
-                self.distance_from_prior
-                and not distance_estimator.requires_covariance_input
+        elif self.distance_from_prior:
+            self.distance_estimator_ = distance_estimator
+            investable_distance = _fit_distance_from_prior(
+                estimator=distance_estimator,
+                return_distribution=return_distribution,
+                asset_names=investable_asset_names,
+                fit_params=fit_params,
             )
-            if self.distance_from_prior:
-                self.distance_estimator_ = distance_estimator
-                extra_params = {}
-                if scenario_input:
-                    distance_input = return_distribution.returns[:, investable_mask]
-                    if get_config()["enable_metadata_routing"]:
-                        extra_params = dict.fromkeys(
-                            _sample_weight_names(
-                                distance_estimator.get_metadata_routing()
-                            ),
-                            return_distribution.sample_weight,
-                        )
-                    else:
-                        extra_params = _filter_supported_params(
-                            distance_estimator,
-                            "fit",
-                            sample_weight=return_distribution.sample_weight,
-                        )
-                else:
-                    distance_input = return_distribution.covariance.copy()
-                    distance_input[~investable_mask, :] = np.nan
-                    distance_input[:, ~investable_mask] = np.nan
-                if hasattr(self, "feature_names_in_"):
-                    names = self.feature_names_in_
-                    if scenario_input:
-                        names = names[investable_mask]
-                    distance_input = pd.DataFrame(
-                        distance_input,
-                        columns=names,
-                        index=None if scenario_input else names,
-                    )
-                _call_estimator(
-                    distance_estimator,
-                    "fit",
-                    distance_input,
-                    routed_params=routed_params,
-                    extra_params=extra_params,
-                )
-            expected_size = n_investable if scenario_input else self.n_features_in_
-            distance = distance_estimator.distance_
-            if distance.shape != (expected_size, expected_size):
+        else:
+            full_distance = distance_estimator.distance_
+            if full_distance.shape != (self.n_features_in_, self.n_features_in_):
                 raise ValueError(
                     "The distance output does not match its input asset schema."
                 )
-            investable_distance = distance if scenario_input else distance[ix]
-            if not np.isfinite(investable_distance).all():
-                raise ValueError(
-                    "Distances are unavailable for prior-investable assets. "
-                    "Align the learners' readiness or use the prior covariance."
-                )
-            distance_matrix[ix] = investable_distance
+            investable_distance = full_distance[investable_ix]
 
-        if hasattr(self, "feature_names_in_"):
-            return pd.DataFrame(
-                distance_matrix,
-                index=self.feature_names_in_,
-                columns=self.feature_names_in_,
-            )
+        _check_investable_distances(
+            investable_distance,
+            n_assets=n_investable,
+            asset_indices=np.flatnonzero(investable_mask),
+            asset_names=investable_asset_names,
+        )
+        distance_matrix[investable_ix] = investable_distance
+
+        if asset_names is not None:
+            return pd.DataFrame(distance_matrix, index=asset_names, columns=asset_names)
         return distance_matrix
 
     def _reset(self) -> None:
@@ -782,54 +760,3 @@ class _BaseSeriatedOptimization(BaseOptimization):
             If the algorithm cannot produce a valid allocation.
         """
         ...
-
-
-def _sample_weight_names(
-    routing: skm.MetadataRequest | skm.MetadataRouter,
-    *,
-    method: str = "fit",
-    use_alias: bool = False,
-) -> set[str]:
-    """Find the keyword names that deliver sample weights to an estimator.
-
-    Parameters
-    ----------
-    routing : MetadataRequest or MetadataRouter
-        Routing description of the distance estimator or one of its children.
-
-    method : str, default="fit"
-        Method receiving the weights. Recursive calls follow the router's method
-        mappings.
-
-    use_alias : bool, default=False
-        Use the name requested from the parent. A direct call to a consumer uses
-        `sample_weight`, while a router receives the aliases requested by its
-        children.
-
-    Returns
-    -------
-    names : set of str
-        Keywords requested for sample weights. Unrequested weights are excluded.
-    """
-    if isinstance(routing, skm.MetadataRequest):
-        request = getattr(routing, method).requests.get("sample_weight")
-        if request in (None, False, skm.WARN):
-            return set()
-        if request is True or not use_alias:
-            return {"sample_weight"}
-        return {request}
-
-    names = set()
-    for name, route in routing:
-        for caller, callee in route.mapping:
-            if caller == method:
-                # A router's own consumer keeps the current naming rule.
-                # Descendants request their weights from a parent using aliases.
-                names.update(
-                    _sample_weight_names(
-                        route.router,
-                        method=callee,
-                        use_alias=use_alias or name != "$self_request",
-                    )
-                )
-    return names
