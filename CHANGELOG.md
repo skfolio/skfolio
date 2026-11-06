@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v1.12.6 (2026-11-06)
+
+### Bug Fixes
+
+- **containers**: Validate panel inputs and support cross-validation slicing
+  ([#487](https://github.com/skfolio/skfolio/pull/487),
+  [`9c3d032`](https://github.com/skfolio/skfolio/commit/9c3d032f62ab7fd1c12ae8799d8a0ecba8e4ff1b))
+
+### Refactoring
+
+- **distance**: Split estimators into modules and reduce array copies
+  ([#486](https://github.com/skfolio/skfolio/pull/486),
+  [`153cd91`](https://github.com/skfolio/skfolio/commit/153cd9149511c1231e1783a23cb6cd4061512bd2))
+
+
 ## v1.12.5 (2026-10-29)
 
 ### Bug Fixes
