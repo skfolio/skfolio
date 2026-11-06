@@ -1194,6 +1194,26 @@ def test_evar_properties(returns, beta):
     np.testing.assert_almost_equal(skm.evar(3 * returns, beta=beta), 3 * evar, 12)
 
 
+@pytest.mark.parametrize("func", [skm.evar, skm.edar])
+@pytest.mark.parametrize("weighted", [False, True])
+def test_evar_2d_is_computed_per_column(func, weighted):
+    """2D inputs return one value per column, like the other measures."""
+    rng = np.random.default_rng(0)
+    values = rng.normal(0.001, 0.02, size=(200, 3))
+    values[5, 1] = np.nan
+    if func is skm.edar:
+        values = skm.get_drawdowns(values)
+    sample_weight = rng.uniform(0.5, 1.5, 200) if weighted else None
+
+    actual = func(values, beta=0.9, sample_weight=sample_weight)
+    expected = [
+        func(values[:, i], beta=0.9, sample_weight=sample_weight) for i in range(3)
+    ]
+
+    assert actual.shape == (3,)
+    np.testing.assert_allclose(actual, expected, rtol=1e-12)
+
+
 @pytest.mark.parametrize(
     "func,values",
     [
