@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal, TypeVar, overload
 
 import numpy as np
@@ -478,6 +479,59 @@ def _asset_positions(
             f"Assets {names[positions < 0].tolist()} are missing from {source}."
         )
     return positions
+
+
+def _is_observation_container(value: object) -> bool:
+    """Return whether a value is a skfolio observation container.
+
+    Parameters
+    ----------
+    value : object
+        Value to check.
+
+    Returns
+    -------
+    bool
+        True for AssetPanel and AssetPanelView instances.
+    """
+    # Keep this import local: `skfolio.containers` imports `skfolio.utils.tools`.
+    from skfolio.containers import AssetPanel, AssetPanelView
+
+    return isinstance(value, (AssetPanel, AssetPanelView))
+
+
+def _check_observation_counts(X: ArrayLike, metadata: Mapping[str, object]) -> None:
+    """Check observation counts of panels in metadata.
+
+    Parameters
+    ----------
+    X : array-like of shape (n_observations, n_assets)
+        Input data providing the reference number of observations. Its values are not
+        used.
+
+    metadata : mapping of str to object
+        Fit metadata keyed by argument name. AssetPanel and AssetPanelView values must
+        have the same number of observations as `X`. Other values are ignored.
+
+    Returns
+    -------
+    None
+        Returns normally when all panels match the number of observations in `X`.
+
+    Raises
+    ------
+    ValueError
+        If a panel has a different number of observations from `X`. The error message
+        identifies the metadata argument.
+    """
+    for name, value in metadata.items():
+        if _is_observation_container(value):
+            try:
+                skv.check_consistent_length(X, value)
+            except ValueError as error:
+                raise ValueError(
+                    f"X and '{name}' must have the same number of observations."
+                ) from error
 
 
 def _check_fields_exist(
