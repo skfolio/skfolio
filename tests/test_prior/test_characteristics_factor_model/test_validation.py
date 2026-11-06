@@ -9,8 +9,10 @@ from __future__ import annotations
 from typing import ClassVar
 
 import numpy as np
+import pandas as pd
 import pytest
 from sklearn import config_context
+from sklearn.model_selection import GridSearchCV, TimeSeriesSplit
 
 from skfolio._constants import (
     _BENCHMARK_WEIGHTS,
@@ -35,6 +37,103 @@ from skfolio.prior._characteristics_factor_model import (
 from skfolio.utils._factor_tools import _resolve_factor_name
 
 from .conftest import make_panel, passthrough_factor
+
+
+@pytest.mark.parametrize(
+    "columns",
+    [
+        [1, 2, 3, 4],
+        ["A", "B", "C", 4],
+        ["A", "B", "C", None],
+        pd.Index(["A", "B", "C", pd.NA], dtype="string"),
+    ],
+)
+def test_invalid_investment_asset_names(columns):
+    panel, X = make_panel(np.random.default_rng(3).normal(size=(40, 4)))
+    X.columns = columns
+    model = CharacteristicsFactorModel(factors=[])
+    with pytest.raises((TypeError, ValueError), match="string"):
+        model.fit(X, characteristics=panel)
+
+
+def test_empty_investment_universe():
+    panel, X = make_panel(np.random.default_rng(3).normal(size=(40, 4)))
+    model = CharacteristicsFactorModel(factors=[])
+    with pytest.raises(ValueError):
+        model.fit(X.iloc[:, :0], characteristics=panel)
+
+
+@pytest.mark.parametrize("with_X", [False, True])
+def test_coverage_and_investment_names(with_X):
+    names = np.array(["101", "102", "103", "104"])
+    panel, X = make_panel(
+        np.random.default_rng(3).normal(size=(40, 4)), asset_names=names
+    )
+    X = X.iloc[:, [2, 0]]
+    X.columns = pd.Index(X.columns, dtype="string")
+    original_columns = X.columns
+    model = CharacteristicsFactorModel(factors=[])
+    model._validate_data(
+        X=X if with_X else None,
+        characteristics=panel,
+        currency_excess_returns=None,
+        first_call=True,
+    )
+    np.testing.assert_array_equal(model.asset_names_, names)
+    np.testing.assert_array_equal(
+        model.feature_names_in_, names[[2, 0]] if with_X else names
+    )
+    assert X.columns is original_columns
+    if with_X:
+        np.testing.assert_array_equal(model._investment_idx_in_coverage, [2, 0])
+        with pytest.raises(ValueError, match="same order"):
+            model._validate_data(
+                X=X.iloc[:, ::-1],
+                characteristics=panel,
+                currency_excess_returns=None,
+                first_call=False,
+            )
+        with pytest.warns(UserWarning, match="does not have valid feature names"):
+            model._validate_data(
+                X=X.set_axis([0, 1], axis=1),
+                characteristics=panel,
+                currency_excess_returns=None,
+                first_call=False,
+            )
+        np.testing.assert_array_equal(model.feature_names_in_, names[[2, 0]])
+    else:
+        assert model._investment_idx_in_coverage is None
+
+
+def test_panel_observation_counts_and_duplicate_targets():
+    panel, X = make_panel(np.random.default_rng(3).normal(size=(40, 4)))
+    model = CharacteristicsFactorModel(factors=[], exposure_lag=0)
+    with pytest.raises(ValueError, match="inconsistent numbers of samples"):
+        model.fit(X[:20], characteristics=panel)
+    with pytest.raises(ValueError, match="unique"):
+        model.fit(X.iloc[:, [0, 0]], characteristics=panel)
+
+
+def test_panel_grid_search_routing():
+    rng = np.random.default_rng(18)
+    beta = np.broadcast_to(np.linspace(0.5, 1.5, 8), (120, 8)).copy()
+    returns = beta * rng.normal(0, 0.01, (120, 1)) + rng.normal(0, 0.01, beta.shape)
+    panel, X = make_panel(returns, extra_fields={"beta": beta})
+    prior = CharacteristicsFactorModel(
+        factors=[("beta", passthrough_factor("beta", family="market"))],
+        benchmark_mcap_power=0,
+        regression_mcap_power=0,
+        min_regression_assets=4,
+        factor_prior_estimator=EmpiricalPrior(),
+        idio_variance_estimator=EWVariance(min_observations=10),
+    )
+    with config_context(enable_metadata_routing=True):
+        model = HierarchicalRiskParity(prior_estimator=prior)
+        search = GridSearchCV(
+            model, {}, cv=TimeSeriesSplit(2), refit=False, error_score="raise"
+        )
+        search.fit(X, characteristics=panel)
+    assert np.isfinite(search.cv_results_["mean_test_score"]).all()
 
 
 class WeightedEmpiricalPrior(EmpiricalPrior):

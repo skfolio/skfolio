@@ -71,7 +71,7 @@ from skfolio.utils.tools import (
     call_asset_panel_transform,
     check_estimator,
 )
-from skfolio.utils.validation import validate_asset_panel
+from skfolio.utils.validation import _asset_positions, validate_asset_panel
 
 _FITTED_ATTR = "factor_model_"
 
@@ -888,10 +888,11 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
 
         characteristics : AssetPanel
             Point-in-time :class:`~skfolio.containers.AssetPanel` for the coverage
-            universe. Must include `"returns"` and, when market-cap weighting is used,
-            `"market_cap"`. The panel's `active_mask` identifies active
-            asset-observation pairs within the coverage universe and `estimation_mask`
-            identifies which active pairs contribute to estimation. For more details see
+            universe, aligned with the observations in `X`. Must include `"returns"` and,
+            when market-cap weighting is used, `"market_cap"`. The panel's `active_mask`
+            identifies active asset-observation pairs within the coverage universe and
+            `estimation_mask` identifies which active pairs contribute to estimation.
+            For more details see
             :ref:`Asset Data Representation <asset_data_representation>`.
 
         currency_excess_returns : DataFrame, optional
@@ -950,7 +951,8 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         X : DataFrame of shape (n_observations, n_assets), optional
             Asset returns whose columns define the investment universe, following the
             standard skfolio estimator API. In this estimator, `X.columns` define the
-            assets returned in `return_distribution_` and `factor_model_`.
+            assets returned in `return_distribution_` and `factor_model_`. Column names
+            must be unique strings.
 
             Factor estimation uses the `"returns"` field of `characteristics`, which can
             cover a broader point-in-time universe than `X`. This keeps the estimator
@@ -963,10 +965,11 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
 
         characteristics : AssetPanel
             Point-in-time :class:`~skfolio.containers.AssetPanel` for the coverage
-            universe. Must include `"returns"` and, when market-cap weighting is used,
-            `"market_cap"`. The panel's `active_mask` identifies active
-            asset-observation pairs within the coverage universe and `estimation_mask`
-            identifies which active pairs contribute to estimation. For more details see
+            universe, aligned with the observations in `X`. Must include `"returns"` and,
+            when market-cap weighting is used, `"market_cap"`. The panel's `active_mask`
+            identifies active asset-observation pairs within the coverage universe and
+            `estimation_mask` identifies which active pairs contribute to estimation.
+            For more details see
             :ref:`Asset Data Representation <asset_data_representation>`.
 
         currency_excess_returns : DataFrame, optional
@@ -1714,18 +1717,16 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             )
 
         if X is not None:
+            skv.check_consistent_length(X, characteristics)
             skv.validate_data(self, X, reset=first_call, ensure_all_finite=False)
             if first_call:
-                asset_idx = {v: i for i, v in enumerate(self.asset_names_)}
-                try:
-                    self._investment_idx_in_coverage = np.array(
-                        [asset_idx[x] for x in X.columns], dtype=int
-                    )
-                except KeyError as e:
-                    raise ValueError(
-                        f"Asset {e.args[0]!r} from `X` is missing from"
-                        f" `characteristics`."
-                    ) from e
+                if not hasattr(self, "feature_names_in_"):
+                    raise ValueError("X must have string column names.")
+                self._investment_idx_in_coverage = _asset_positions(
+                    names=self.feature_names_in_,
+                    coverage=self.asset_names_,
+                    source="characteristics",
+                )
         else:
             if first_call:
                 self.n_features_in_ = characteristics.n_assets

@@ -13,7 +13,7 @@ import pandas as pd
 import sklearn.utils.validation as skv
 from sklearn.utils._tags import get_tags
 
-from skfolio.typing import ArrayLike, BoolArray, FloatArray
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, StrArray
 from skfolio.utils.stats import assert_is_square
 
 if TYPE_CHECKING:
@@ -435,6 +435,49 @@ def validate_asset_panel(
         _estimator.n_assets_ = len(asset_names)
 
     return asset_panel.copy() if copy else asset_panel
+
+
+def _asset_positions(
+    *, names: StrArray, coverage: StrArray, source: str, allow_missing: bool = False
+) -> IntArray:
+    """Find positions of requested assets among available names.
+
+    Parameters
+    ----------
+    names : StrArray of shape (n_assets,)
+        Unique string asset names to look up.
+
+    coverage : StrArray of shape (n_available,)
+        Unique string names available in the source.
+
+    source : str
+        Source label used in the error message for missing assets, such as
+        "characteristics".
+
+    allow_missing : bool, default=False
+        If True, return -1 for names absent from `coverage`. Otherwise, raise a
+        ValueError for missing assets.
+
+    Returns
+    -------
+    positions : IntArray of shape (n_assets,)
+        Indices into `coverage` corresponding to `names`, with -1 for missing assets
+        when `allow_missing=True`.
+
+    Raises
+    ------
+    ValueError
+        If `names` contains duplicates, or if an asset is missing from `coverage` and
+        `allow_missing=False`.
+    """
+    if not pd.Index(names).is_unique:
+        raise ValueError("Requested asset names must be unique.")
+    positions = pd.Index(coverage).get_indexer(names)
+    if not allow_missing and np.any(positions < 0):
+        raise ValueError(
+            f"Assets {names[positions < 0].tolist()} are missing from {source}."
+        )
+    return positions
 
 
 def _check_fields_exist(
