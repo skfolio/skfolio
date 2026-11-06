@@ -26,9 +26,6 @@ from skfolio.containers._asset_panel._fields import (
     Field3D,
     FieldCategorical,
     InactivePolicy,
-    _as_observation_array,
-    _as_pickle_safe_array,
-    _validate_unique_labels,
 )
 from skfolio.containers._asset_panel._utils import (
     _as_field,
@@ -36,7 +33,6 @@ from skfolio.containers._asset_panel._utils import (
     _format_observation_range,
     _materialize_selector,
     _normalize_field_names,
-    _normalize_positional_selector,
     _positions_from_unique_labels,
     _raise_if_raw_replaces_typed_field,
     _selector_length,
@@ -45,8 +41,17 @@ from skfolio.containers._asset_panel._utils import (
     _validate_active_observations,
     _validate_field_against_axes,
     _validate_field_name,
+    _validate_field_shape,
 )
 from skfolio.containers._asset_panel._view import AssetPanelView
+from skfolio.containers._utils import (
+    _as_observation_array,
+    _as_pickle_safe_array,
+    _as_string_labels,
+    _normalize_positional_selector,
+    _observation_key,
+    _validate_unique_labels,
+)
 from skfolio.typing import AnyArray, ArrayLike, BoolArray, IntArray, StrArray
 
 __all__ = ["AssetPanel"]
@@ -95,7 +100,7 @@ class AssetPanel(_BaseAssetPanel):
         labels are converted to strings and mixed object labels are rejected.
 
     asset_names : ndarray of shape (n_assets,)
-        Unique asset labels. Object-dtype labels are converted to strings.
+        Unique string asset names. Object arrays containing strings are accepted.
 
     active_mask : boolean ndarray of shape (n_observations, n_assets), optional
         Boolean mask indicating whether each asset belongs to the universe at each
@@ -295,7 +300,7 @@ class AssetPanel(_BaseAssetPanel):
             _validate_field_name(name)
 
         self.observations = _as_observation_array(self.observations)
-        self.asset_names = _as_pickle_safe_array(self.asset_names)
+        self.asset_names = _as_string_labels(values=self.asset_names, name="assets")
         expected_shape = (self.n_observations, self.n_assets)
         if self.active_mask is None:
             self.active_mask = np.ones(expected_shape, dtype=np.bool_)
@@ -309,14 +314,11 @@ class AssetPanel(_BaseAssetPanel):
         # validate observations and assets
         if self.observations.ndim != 1:
             raise ValueError("observations must be a 1D array.")
-        if self.asset_names.ndim != 1:
-            raise ValueError("assets must be a 1D array.")
         if self.observations.shape != (self.n_observations,):
             raise ValueError(f"observations must have shape ({self.n_observations},).")
         if self.asset_names.shape != (self.n_assets,):
             raise ValueError(f"assets must have shape ({self.n_assets},).")
         _validate_unique_labels(self.observations, name="observations")
-        _validate_unique_labels(self.asset_names, name="assets")
 
         self._validate_masks_shape_and_type()
         self._enforce_estimation_mask_subset()
@@ -324,6 +326,11 @@ class AssetPanel(_BaseAssetPanel):
         if self._validate_on_init:
             for name, field in self.fields.items():
                 self._validate_field(name, field)
+        else:
+            for name, field in self.fields.items():
+                _validate_field_shape(
+                    name=name, field=field, expected_shape=expected_shape
+                )
         self._lock_masks()
 
     def __len__(self) -> int:
@@ -346,6 +353,7 @@ class AssetPanel(_BaseAssetPanel):
         key : str, int, slice or array-like
             If `key` is a string, return the underlying field array. Otherwise,
             interpret `key` as an observation selector and return an `AssetPanelView`.
+            `panel[rows, ...]` is equivalent to `panel[rows]`.
 
         Returns
         -------
@@ -353,15 +361,12 @@ class AssetPanel(_BaseAssetPanel):
             For a string key, the underlying field array (no copy). For an observation
             selector, an `AssetPanelView` whose field arrays are views into this panel.
         """
-        if isinstance(key, tuple):
-            raise TypeError(
-                "AssetPanel supports field access by name or one-dimensional "
-                "observation selectors. Use isel(..., assets=...) or "
-                "sel(..., assets=...) to select assets."
-            )
+        key = _observation_key(key)
         if isinstance(key, str):
             return self.fields[key].values
-        selector = _normalize_positional_selector(self.n_observations, key)
+        selector = _normalize_positional_selector(
+            length=self.n_observations, selector=key
+        )
         return AssetPanelView(owner=self, observation_selector=selector)
 
     def __setitem__(self, name: str, value: BaseField | ArrayLike) -> None:
@@ -517,12 +522,15 @@ class AssetPanel(_BaseAssetPanel):
             return a new panel.
         """
         observation_selector = _normalize_positional_selector(
-            self.n_observations, slice(None) if observations is None else observations
+            length=self.n_observations,
+            selector=slice(None) if observations is None else observations,
         )
         if assets is None:
             return AssetPanelView(owner=self, observation_selector=observation_selector)
 
-        asset_selector = _normalize_positional_selector(self.n_assets, assets)
+        asset_selector = _normalize_positional_selector(
+            length=self.n_assets, selector=assets
+        )
         return self._subset(
             observation_selector=observation_selector, asset_selector=asset_selector
         )
@@ -948,7 +956,15 @@ class AssetPanel(_BaseAssetPanel):
         rows = np.arange(self.n_observations)[:, np.newaxis]
 
         for name in field_names:
-            valid = ~self.fields[name].missing_mask
+            field = self.fields[name]
+            if np.issubdtype(field.dtype, np.inexact):
+                valid = np.isfinite(field.values)
+            else:
+                valid = ~field.missing_mask
+
+            if field.ndim > 2:
+                component_axes = tuple(range(2, field.ndim))
+                valid = valid.all(axis=component_axes)
             valid_active = valid & new_active_mask
             has_active = new_active_mask.any(axis=0)
             has_valid = valid_active.any(axis=0)
@@ -1056,7 +1072,7 @@ class AssetPanel(_BaseAssetPanel):
         third_axis_dir = path / "third_axis"
 
         np.save(path / "observations.npy", _as_pickle_safe_array(self.observations))
-        np.save(path / "assets.npy", _as_pickle_safe_array(self.asset_names))
+        np.save(path / "assets.npy", self.asset_names)
 
         active_mask_storage = "all_true"
         if not self.active_mask.all():
@@ -1134,6 +1150,11 @@ class AssetPanel(_BaseAssetPanel):
         -------
         panel : AssetPanel
             Loaded panel.
+
+        Notes
+        -----
+        Panels saved with numeric asset names require migration using an earlier skfolio
+        version. The asset names must be converted to strings before saving again.
         """
         path = Path(path)
         metadata_path = path / _METADATA_FILENAME
@@ -1155,7 +1176,7 @@ class AssetPanel(_BaseAssetPanel):
         observations = _as_observation_array(
             np.load(path / "observations.npy", allow_pickle=False)
         )
-        assets = _as_pickle_safe_array(np.load(path / "assets.npy", allow_pickle=False))
+        assets = np.load(path / "assets.npy", allow_pickle=False)
 
         if metadata["active_mask"] == "all_true":
             active_mask = np.ones((n_observations, n_assets), dtype=np.bool_)

@@ -18,12 +18,12 @@ from skfolio.containers._asset_panel._utils import (
     _as_field,
     _compose_observation_selectors,
     _normalize_field_names,
-    _normalize_positional_selector,
     _raise_if_raw_replaces_typed_field,
     _selector_length,
     _validate_field_against_axes,
     _validate_field_name,
 )
+from skfolio.containers._utils import _normalize_positional_selector, _observation_key
 from skfolio.typing import AnyArray, ArrayLike, BoolArray, IntArray, StrArray
 
 if TYPE_CHECKING:
@@ -79,8 +79,8 @@ class AssetPanelView(_BaseAssetPanel):
         if self.owner is None:
             raise ValueError("AssetPanelView requires an owner.")
         self.observation_selector = _normalize_positional_selector(
-            self.owner.n_observations,
-            self.observation_selector,
+            length=self.owner.n_observations,
+            selector=self.observation_selector,
         )
         for name, local_field in self._local_fields.items():
             _validate_field_name(name)
@@ -120,17 +120,16 @@ class AssetPanelView(_BaseAssetPanel):
         Notes
         -----
         Selector composition keeps slice-only chains zero-copy. When a selector is an
-        integer or boolean array, NumPy fancy indexing is applied on access and may copy.
+        integer or boolean array, NumPy fancy indexing is applied on access and may
+        copy. `view[rows, ...]` is equivalent to `view[rows]`.
         """
-        if isinstance(key, tuple):
-            raise TypeError(
-                "AssetPanelView supports field access by name or one-dimensional "
-                "observation selectors."
-            )
+        key = _observation_key(key)
         if isinstance(key, str):
             return self.get_field(key).values
 
-        inner_selector = _normalize_positional_selector(self.n_observations, key)
+        inner_selector = _normalize_positional_selector(
+            length=self.n_observations, selector=key
+        )
         composed_selector = _compose_observation_selectors(
             outer_selector=self.observation_selector,
             inner_selector=inner_selector,

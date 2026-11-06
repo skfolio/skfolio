@@ -8,6 +8,7 @@ from datetime import date
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.utils import _safe_indexing
 
 from skfolio.containers import (
     MISSING_CATEGORY_CODE,
@@ -23,6 +24,8 @@ from skfolio.containers._asset_panel._utils import (
     _compose_observation_selectors,
     _fill_2d,
     _format_observation_range,
+)
+from skfolio.containers._utils import (
     _normalize_positional_selector,
     _try_as_contiguous_slice,
 )
@@ -343,6 +346,46 @@ class TestFields:
 
 
 class TestPanelConstruction:
+    @pytest.mark.parametrize(
+        "asset_names",
+        [
+            [101, 102],
+            np.array([101, 102], dtype=object),
+            [101, "B"],
+            ["A", None],
+            ["A", np.nan],
+            pd.Index(["A", pd.NA], dtype="string"),
+        ],
+    )
+    @pytest.mark.parametrize("validate_on_init", [False, True])
+    def test_invalid_asset_names(self, asset_names, validate_on_init):
+        with pytest.raises(ValueError, match="assets must contain only strings"):
+            AssetPanel(
+                fields={"x": np.ones((2, 2))},
+                observations=np.arange(2),
+                asset_names=asset_names,
+                _validate_on_init=validate_on_init,
+            )
+
+    @pytest.mark.parametrize(
+        "asset_names",
+        [
+            ["00101", "101"],
+            np.array(["00101", "101"]),
+            np.array(["00101", "101"], dtype=object),
+            pd.Index(["00101", "101"], dtype="string"),
+            np.array([np.str_("00101"), np.str_("101")], dtype=object),
+        ],
+    )
+    def test_string_asset_names_preserve_identifiers(self, asset_names):
+        panel = AssetPanel(
+            fields={"x": np.ones((2, 2))},
+            observations=np.arange(2),
+            asset_names=asset_names,
+        )
+        np.testing.assert_array_equal(panel.asset_names, ["00101", "101"])
+        assert panel.asset_names.dtype.kind == "U"
+
     def test_integer_object_observations_are_converted(self):
         observations = np.array([1, np.int64(2)], dtype=object)
 
@@ -354,6 +397,29 @@ class TestPanelConstruction:
 
         assert panel.observations.dtype != object
         np.testing.assert_array_equal(panel.observations, [1, 2])
+
+    @pytest.mark.parametrize(
+        "observations",
+        [
+            np.array([1.0, np.nan]),
+            np.array(["2024-01-01", "NaT"], dtype="datetime64[D]"),
+            np.array([2**63, 2**63 + 1], dtype=np.uint64),
+            np.array(["first", "second"]),
+        ],
+    )
+    def test_observation_uniqueness(self, observations):
+        panel = AssetPanel(
+            fields={"x": np.ones((2, 1))},
+            observations=observations,
+            asset_names=["A"],
+        )
+        np.testing.assert_array_equal(panel.observations, observations)
+        with pytest.raises(ValueError, match="observations must be unique"):
+            AssetPanel(
+                fields={"x": np.ones((2, 1))},
+                observations=observations[[1, 1]],
+                asset_names=["A"],
+            )
 
     def test_custom_object_observations_are_rejected(self):
         with pytest.raises(ValueError, match="object dtype must contain"):
@@ -2155,6 +2221,8 @@ class TestCopy:
         assert copied is not panel
         assert copied.fields is not panel.fields
         assert copied.fields["x"].values is panel.fields["x"].values
+        assert copied.asset_names is panel.asset_names
+        assert copied.observations is panel.observations
         assert copied.active_mask is not panel.active_mask
         with copied.edit_masks():
             copied.active_mask[0, 0] = False
@@ -2355,6 +2423,22 @@ class TestConcat:
 
 
 class TestPersistence:
+    @pytest.mark.parametrize("mmap_mode", [None, "r"])
+    def test_numeric_asset_names_require_migration(self, tmp_path, mmap_mode):
+        panel = _make_panel()
+        path = tmp_path / "panel"
+        panel.save(path)
+        numeric_names = np.arange(panel.n_assets)
+        # Reproduce the asset labels of a panel saved by an earlier version.
+        np.save(path / "assets.npy", numeric_names)
+        with pytest.raises(ValueError, match="assets must contain only strings"):
+            AssetPanel.load(path, mmap_mode=mmap_mode)
+
+        np.save(path / "assets.npy", numeric_names.astype(str))
+        restored = AssetPanel.load(path, mmap_mode=mmap_mode)
+        np.testing.assert_array_equal(restored.asset_names, numeric_names.astype(str))
+        np.testing.assert_array_equal(restored["x"], panel["x"])
+
     @pytest.mark.parametrize("field_name", ["momentum", "sector", "exposures"])
     @pytest.mark.parametrize("overwrite", [False, True])
     def test_save_rejects_case_colliding_fields(self, tmp_path, field_name, overwrite):
@@ -2915,7 +2999,7 @@ class TestEdgeCases:
         assert composed == slice(6, 7)
 
     def test_normalize_positional_selector_none_selects_all(self):
-        assert _normalize_positional_selector(5, None) == slice(None)
+        assert _normalize_positional_selector(length=5, selector=None) == slice(None)
 
     def test_fill_2d_without_mask_matches_pandas(self):
         values = np.array([[np.nan, 1.0], [2.0, np.nan], [np.nan, np.nan]])
@@ -2927,3 +3011,68 @@ class TestEdgeCases:
         np.testing.assert_array_equal(
             bfilled, pd.DataFrame(values).bfill(limit=1).to_numpy()
         )
+
+
+@pytest.mark.parametrize("bad", [np.nan, np.inf, -np.inf])
+def test_align_active_mask_uses_all_field3d_components(bad):
+    values = np.ones((4, 2, 3))
+    values[:2, 0, 1] = bad
+    # Later missing data must not remove an already-active observation.
+    values[3, 0, 0] = bad
+    panel = AssetPanel(
+        fields={
+            "f": Field3D(
+                values, third_axis_name="factor", third_axis_labels=["x", "y", "z"]
+            )
+        },
+        observations=np.arange(4),
+        asset_names=["A", "B"],
+    )
+    assert panel.align_active_mask_to("f") == 2
+    np.testing.assert_array_equal(panel.active_mask[:, 0], [False, False, True, True])
+    assert panel.active_mask[:, 1].all()
+
+
+def test_load_rejects_misaligned_array_fields(tmp_path):
+    panel = AssetPanel(
+        fields={"x": np.ones((4, 1)), "y": np.ones((4, 1))},
+        observations=np.arange(4),
+        asset_names=["A"],
+    )
+    panel.save(tmp_path / "panel")
+    path = tmp_path / "panel" / "fields" / "y.npy"
+    np.save(path, np.load(path, allow_pickle=False)[:2], allow_pickle=False)
+    with pytest.raises(ValueError, match="observations"):
+        AssetPanel.load(tmp_path / "panel", mmap_mode="r")
+
+
+def test_panel_sklearn_indexing():
+    panel = _make_panel()
+    for source in [panel, panel[:10]]:
+        selected = _safe_indexing(source, [2, 0, 2])
+        np.testing.assert_array_equal(
+            selected.observations, source.observations[[2, 0, 2]]
+        )
+        np.testing.assert_array_equal(
+            source[1, ...].observations, source.observations[1:2]
+        )
+        for rows in [
+            None,
+            (None, ...),
+            (slice(None), slice(None)),
+            (..., [0]),
+            ([0], ..., ...),
+        ]:
+            with pytest.raises(TypeError):
+                source[rows]
+
+
+def test_unsigned_positional_indices_do_not_wrap():
+    panel = _make_panel()
+    for source in [panel, panel[:10]]:
+        selected = source[np.array([2, 0], dtype=np.uint64)]
+        np.testing.assert_array_equal(
+            selected.observations, source.observations[[2, 0]]
+        )
+        with pytest.raises(IndexError, match="out of bounds"):
+            source[np.array([np.iinfo(np.uint64).max], dtype=np.uint64)]
