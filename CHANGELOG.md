@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.12.7 (2026-11-06)
+
+### Bug Fixes
+
+- **optimization**: Correct hierarchical distance fitting and weight bounds
+  ([#488](https://github.com/skfolio/skfolio/pull/488),
+  [`5f1929c`](https://github.com/skfolio/skfolio/commit/5f1929ccb25ca5962119ca7dc8cbc9ca71c32d86))
+
+
 ## v1.12.6 (2026-11-06)
 
 ### Bug Fixes
