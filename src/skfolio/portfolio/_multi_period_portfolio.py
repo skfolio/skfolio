@@ -716,12 +716,22 @@ class MultiPeriodPortfolio(BasePortfolio):
 
     @property
     def weights_per_observation(self) -> pd.DataFrame:
-        """DataFrame of the Portfolio weights per observation."""
-        return (
-            pd.concat([p.weights_per_observation for p in self], axis=0)
-            .fillna(0)
-            .sort_index()
+        """DataFrame of the Portfolio weights per observation.
+
+        Assets absent from successful periods receive zero weight. Failed periods
+        retain NaN weights, including for assets present only in other periods.
+        """
+        frames = [p.weights_per_observation for p in self]
+        weights = pd.concat(frames, axis=0).fillna(0)
+        failed_rows = np.concatenate(
+            [
+                frame.isna().all(axis=1).to_numpy()
+                & (len(frame.columns) > 0 or isinstance(p, FailedPortfolio))
+                for p, frame in zip(self, frames, strict=True)
+            ]
         )
+        weights.loc[failed_rows] = np.nan
+        return weights.sort_index()
 
     @property
     def long_short_exposure(self) -> pd.DataFrame:
