@@ -6,9 +6,75 @@
 
 import json
 import shutil
+from datetime import timedelta
 from pathlib import Path
 
+import pandas as pd
+
+from skfolio.typing import AnyArray
+
 _METADATA_FILENAME = "_metadata.json"
+
+
+def _encode_observations(*, observations: AnyArray) -> tuple[AnyArray, str | None]:
+    """Convert normalized observations to values and an optional timezone for saving.
+
+    Dates with a timezone are stored as UTC values with a separate timezone string.
+    Named zones retain their public identifier. Fixed offsets use `+HH:MM` or `-HH:MM`.
+    Unsupported timezones raise `ValueError` before the save directory is modified.
+    """
+    if observations.dtype != object:
+        return observations, None
+
+    dates = pd.DatetimeIndex(observations)
+    if dates.tz is None:
+        return dates.to_numpy(), None
+
+    timezone = getattr(dates.tz, "key", None) or getattr(dates.tz, "zone", None)
+    if timezone is None:
+        offset = dates.tz.utcoffset(None)
+        if offset is None or offset % timedelta(minutes=1):
+            raise ValueError(
+                "Saving observations requires a named timezone or a fixed UTC offset "
+                "in whole minutes."
+            )
+        minutes = offset // timedelta(minutes=1)
+        hours, minutes_remainder = divmod(abs(minutes), 60)
+        timezone = (
+            "UTC"
+            if minutes == 0
+            else f"{'+' if minutes > 0 else '-'}{hours:02}:{minutes_remainder:02}"
+        )
+
+    # Loading must recognize the saved timezone identifier.
+    try:
+        pd.DatetimeIndex([], tz=timezone)
+    except (TypeError, ValueError, KeyError) as exc:
+        raise ValueError(
+            f"Cannot save observations with timezone {timezone!r}."
+        ) from exc
+    return dates.tz_convert("UTC").tz_localize(None).to_numpy(), timezone
+
+
+def _decode_observations(*, observations: AnyArray, timezone: str | None) -> AnyArray:
+    """Restore saved observations, converting UTC values to their saved timezone."""
+    if timezone is None:
+        return observations
+
+    if not isinstance(timezone, str) or observations.dtype.kind != "M":
+        raise ValueError(
+            "A saved observations timezone requires a string and datetime values."
+        )
+
+    try:
+        return (
+            pd.DatetimeIndex(observations)
+            .tz_localize("UTC")
+            .tz_convert(timezone)
+            .to_numpy()
+        )
+    except (TypeError, ValueError, KeyError) as exc:
+        raise ValueError(f"Invalid observations timezone {timezone!r}.") from exc
 
 
 def _validate_save_directory(path: Path, *, overwrite: bool, container: str) -> None:

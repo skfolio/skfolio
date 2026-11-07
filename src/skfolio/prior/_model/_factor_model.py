@@ -187,7 +187,7 @@ class FactorModel:
         where constrained families are full-rank.
     """
 
-    observations: StrArray  # (n_observations,)
+    observations: AnyArray  # (n_observations,)
     asset_names: StrArray  # (n_assets,)
     factor_names: StrArray  # (n_factors,)
     factor_families: StrArray | None  # (n_factors,)
@@ -3189,7 +3189,7 @@ class _GramDiagnostics(NamedTuple):
 class _RegressionData(NamedTuple):
     """Lag-aligned data used by cross-sectional regression diagnostics."""
 
-    observations: StrArray
+    observations: AnyArray
     exposures: FloatArray
     factor_returns: FloatArray
     idio_returns: FloatArray

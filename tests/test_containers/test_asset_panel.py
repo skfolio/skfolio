@@ -2880,7 +2880,7 @@ class TestEdgeCases:
         _make_panel().save(tmp_path / "panel")
         metadata_path = tmp_path / "panel" / "_metadata.json"
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        metadata["version"] += 1
+        metadata["version"] = 3
         metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
 
         with pytest.raises(
