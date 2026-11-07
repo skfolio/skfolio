@@ -6,10 +6,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-
 import numpy as np
-import pandas as pd
 
 from skfolio.containers._asset_panel._base import _BaseAssetPanel
 from skfolio.containers._asset_panel._fields import (
@@ -20,86 +17,42 @@ from skfolio.containers._asset_panel._fields import (
 from skfolio.containers._asset_panel._panel import AssetPanel
 from skfolio.typing import AnyArray, StrArray
 
-__all__ = ["concat"]
 
-
-def concat(
-    panels: Iterable[_BaseAssetPanel], *, verify_observations: bool = False
+def _concat_panels(
+    *, panels: list[_BaseAssetPanel], observations: AnyArray
 ) -> AssetPanel:
     """Concatenate panels along the observation axis.
 
-    This function performs strict vertical concatenation. All panels or panel views
-    must have identical assets, field names, field types, field dtypes, categorical
-    levels and 3D field metadata. Field arrays, observations, `active_mask` and
+    This function performs strict vertical concatenation. All panels or panel views must
+    have identical assets, field names, field types, field dtypes, `inactive_policy`
+    values, categorical levels and 3D field metadata. Field arrays, `active_mask` and
     `estimation_mask` are concatenated on axis 0.
 
     Parameters
     ----------
-    panels : iterable of AssetPanel or AssetPanelView
-        Panels or panel views to concatenate. The iterable must contain at least one
-        object.
+    panels : list of AssetPanel or AssetPanelView
+        Panels or panel views to concatenate. The list must contain at least one object.
 
-    verify_observations : bool, default=False
-        If `True`, raise an error when the concatenated observation labels contain
-        duplicates.
+    observations : AnyArray of shape (n_observations,)
+        Concatenated observation labels, in the same order as `panels`.
 
     Returns
     -------
     panel : AssetPanel
         Concatenated panel.
-
-    Examples
-    --------
-    >>> from skfolio.containers import AssetPanel, concat
-    >>>
-    >>> panel_1 = AssetPanel(
-    ...     fields={"returns": [[0.01, 0.02]]},
-    ...     observations=["2024-01-01"],
-    ...     asset_names=["A", "B"],
-    ... )
-    >>> panel_2 = AssetPanel(
-    ...     fields={"returns": [[0.03, 0.04]]},
-    ...     observations=["2024-01-02"],
-    ...     asset_names=["A", "B"],
-    ... )
-    >>> concat([panel_1, panel_2])
-    AssetPanel(n_observations=2, n_assets=2, n_fields=1)
     """
-    if isinstance(panels, _BaseAssetPanel):
-        raise TypeError(
-            "`panels` must be an iterable of AssetPanel or AssetPanelView instances, "
-            "not a single AssetPanel or AssetPanelView."
-        )
+    reference_panel = panels[0]
 
-    panel_list = list(panels)
-    if not panel_list:
-        raise ValueError(
-            "`panels` must contain at least one AssetPanel or AssetPanelView."
-        )
-
-    for position, panel in enumerate(panel_list):
-        if not isinstance(panel, _BaseAssetPanel):
-            raise TypeError(
-                "`panels` must contain only AssetPanel or AssetPanelView instances; "
-                f"item at position {position} has type {type(panel).__name__}."
-            )
-
-    reference_panel = panel_list[0]
-
-    for position, panel in enumerate(panel_list[1:], start=1):
+    for position, panel in enumerate(panels[1:], start=1):
         _validate_concat_schema(
             reference_panel=reference_panel,
             panel=panel,
             position=position,
         )
 
-    observations = np.concatenate([panel.observations for panel in panel_list], axis=0)
-    if verify_observations:
-        _validate_unique_observations(observations)
-
     fields = {
         name: reference_panel.fields[name].with_values(
-            np.concatenate([panel.fields[name].values for panel in panel_list], axis=0)
+            np.concatenate([panel.fields[name].values for panel in panels], axis=0)
         )
         for name in reference_panel.fields
     }
@@ -108,9 +61,9 @@ def concat(
         fields=fields,
         observations=observations,
         asset_names=reference_panel.asset_names.copy(),
-        active_mask=np.concatenate([panel.active_mask for panel in panel_list], axis=0),
+        active_mask=np.concatenate([panel.active_mask for panel in panels], axis=0),
         estimation_mask=np.concatenate(
-            [panel.estimation_mask for panel in panel_list],
+            [panel.estimation_mask for panel in panels],
             axis=0,
         ),
         _validate_on_init=False,
@@ -216,18 +169,4 @@ def _validate_optional_groups(
         raise ValueError(
             f"Field3D '{name}' has different third_axis_groups in panel at "
             f"position {position}."
-        )
-
-
-def _validate_unique_observations(observations: AnyArray) -> None:
-    """Validate that concatenated observations contain no duplicate labels."""
-    observation_index = pd.Index(observations)
-    duplicate_positions = np.flatnonzero(observation_index.duplicated())
-    if duplicate_positions.size:
-        first_duplicate_position = int(duplicate_positions[0])
-        first_duplicate = observations[first_duplicate_position]
-        raise ValueError(
-            "`observations` must be unique when verify_observations=True. "
-            f"Found duplicate label {first_duplicate!r} at position "
-            f"{first_duplicate_position}."
         )

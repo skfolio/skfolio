@@ -98,7 +98,18 @@ zero-copy views or expose a suboptimal API for this use case.
 For this reason, `skfolio` developed :class:`~skfolio.containers.AssetPanel`, a
 dedicated container for aligned cross-sectional asset data. It keeps the wide layout,
 stores field metadata, supports categorical and tensor fields, and keeps masks
-aligned with the data. See :class:`~skfolio.containers.AssetPanel` for details.
+aligned with the data. Asset names are unique strings. Numeric identifiers can be
+converted explicitly with `identifiers.astype(str)` when preparing the data.
+See :class:`~skfolio.containers.AssetPanel` for details.
+
+Relationships and Graphs
+========================
+
+Portfolio models can also use relationships, such as dependencies between companies
+and their suppliers. :class:`~skfolio.containers.Graph` represents these relationships,
+and :class:`~skfolio.containers.GraphSeries` aligns graphs with observations as the
+relationships change over time. See :ref:`graph_distances` for an example using shared
+dependencies to estimate distances between assets.
 
 .. _missing_data:
 
