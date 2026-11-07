@@ -43,6 +43,8 @@ from skfolio.containers._asset_panel._utils import (
 )
 from skfolio.containers._asset_panel._view import AssetPanelView
 from skfolio.containers._io import (
+    _decode_observations,
+    _encode_observations,
     _prepare_save_directory,
     _read_manifest,
     _validate_save_directory,
@@ -61,7 +63,7 @@ from skfolio.typing import AnyArray, ArrayLike, BoolArray, IntArray, StrArray
 __all__ = ["AssetPanel"]
 
 
-_SAVE_VERSION = 1
+_SAVE_VERSION = 2
 
 
 @dataclass(slots=True)
@@ -99,8 +101,9 @@ class AssetPanel(_BaseAssetPanel):
 
     observations : ndarray of shape (n_observations,)
         Unique observation labels for the sample axis. NumPy dtypes are preserved.
-        Object-dtype datetime-like labels are converted with NumPy, object-dtype string
-        labels are converted to strings and mixed object labels are rejected.
+        Dates with a timezone retain it and must share one timezone. Object-dtype
+        dates without a timezone are converted to NumPy datetimes. Mixed string and
+        non-string object labels are rejected.
 
     asset_names : ndarray of shape (n_assets,)
         Unique string asset names. Object arrays containing strings are accepted.
@@ -1018,8 +1021,8 @@ class AssetPanel(_BaseAssetPanel):
 
         The directory contains one `.npy` file per field, small metadata files for
         categorical and third-axis labels and a `_metadata.json` manifest.
-        Object-dtype axis labels and field metadata labels are converted to strings
-        so the panel is loaded with `allow_pickle=False`.
+        Timezone-aware observations retain their timezone when loaded. Object-dtype
+        field metadata labels are converted to strings. Files use `allow_pickle=False`.
         Field names must be unique ignoring case to keep saved files distinct on
         case-insensitive filesystems.
 
@@ -1036,7 +1039,8 @@ class AssetPanel(_BaseAssetPanel):
         ------
         ValueError
             If `path` is a file or an existing directory that is not a saved panel,
-            or a field name is invalid or conflicts with another name ignoring case.
+            a field name is invalid or conflicts with another name ignoring case,
+            or the observations' timezone cannot be saved.
         """
         path = Path(path)
         _validate_save_directory(path, overwrite=overwrite, container="AssetPanel")
@@ -1052,13 +1056,14 @@ class AssetPanel(_BaseAssetPanel):
                 )
             file_names[folded_name] = name
 
+        observations, timezone = _encode_observations(observations=self.observations)
         _prepare_save_directory(path)
         fields_dir = path / "fields"
         fields_dir.mkdir()
         levels_dir = path / "levels"
         third_axis_dir = path / "third_axis"
 
-        np.save(path / "observations.npy", _as_pickle_safe_array(self.observations))
+        np.save(path / "observations.npy", observations, allow_pickle=False)
         np.save(path / "assets.npy", self.asset_names)
 
         active_mask_storage = "all_true"
@@ -1103,12 +1108,13 @@ class AssetPanel(_BaseAssetPanel):
         _write_manifest(
             path,
             container="AssetPanel",
-            version=_SAVE_VERSION,
+            version=_SAVE_VERSION if timezone is not None else 1,
             n_observations=self.n_observations,
             n_assets=self.n_assets,
             active_mask=active_mask_storage,
             estimation_mask=estimation_mask_storage,
             fields=field_metadata,
+            **({"observations_timezone": timezone} if timezone is not None else {}),
         )
 
     @classmethod
@@ -1150,8 +1156,9 @@ class AssetPanel(_BaseAssetPanel):
 
         n_observations = metadata["n_observations"]
         n_assets = metadata["n_assets"]
-        observations = _as_observation_array(
-            np.load(path / "observations.npy", allow_pickle=False)
+        observations = _decode_observations(
+            observations=np.load(path / "observations.npy", allow_pickle=False),
+            timezone=metadata.get("observations_timezone"),
         )
         assets = np.load(path / "assets.npy", allow_pickle=False)
 

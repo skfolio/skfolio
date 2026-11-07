@@ -4,6 +4,7 @@
 # Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
+from datetime import datetime
 from typing import Any
 
 import numpy as np
@@ -54,7 +55,7 @@ def _as_string_labels(values: ArrayLike, *, name: str) -> StrArray:
 
 
 def _as_observation_array(values: ArrayLike) -> AnyArray:
-    """Return observation labels with pickle-safe and predictable semantics.
+    """Normalize observation labels while preserving timezone-aware timestamps.
 
     - NumPy dtypes without object storage are preserved as provided, including integer,
       fixed-width string and `datetime64` dtypes with their existing units.
@@ -62,21 +63,35 @@ def _as_observation_array(values: ArrayLike) -> AnyArray:
       unless NumPy can interpret all strings as datetime labels.
     - object arrays containing only integer-like labels are converted through NumPy
       asarray.
-    - other object arrays are converted with NumPy datetime parsing when they contain
-      no string labels, which supports Python `date`, `datetime` and compatible
-      timestamp objects.
+    - timezone-aware dates retain their timezone as an object array of pandas timestamps.
+      Dates with different timezones, or a mix of dates with and without a timezone,
+      are rejected.
+    - object-dtype dates without a timezone are converted with NumPy datetime parsing.
     - mixed string/non-string object arrays and custom object labels are rejected to
       avoid silently changing sample-axis semantics through string conversion.
 
-    The returned array can be saved with `allow_pickle=False`.
+    Empty and all-missing datetime inputs use a native datetime dtype with an explicit
+    unit. Timezone-aware arrays require the shared observation encoder when saving.
     """
+    if isinstance(getattr(values, "dtype", None), pd.DatetimeTZDtype):
+        dates = pd.DatetimeIndex(values)
+        if dates.isna().all():
+            return dates.tz_localize(None).to_numpy()
+        return dates.to_numpy()
+
     arr = np.asarray(values)
     if arr.dtype.hasobject:
         arr = np.asarray(arr, dtype=object)
     if arr.dtype != object:
-        return arr
+        return (
+            arr.astype("datetime64[ns]") if arr.dtype == np.dtype("datetime64") else arr
+        )
 
     flat = arr.ravel()
+    missing = pd.isna(arr)
+    if missing.all():
+        return np.full(arr.shape, np.datetime64("NaT", "ns"), dtype="datetime64[ns]")
+
     if _all_string_like(flat):
         try:
             return np.asarray(arr, dtype="datetime64")
@@ -87,8 +102,19 @@ def _as_observation_array(values: ArrayLike) -> AnyArray:
         return np.asarray(arr.tolist())
 
     if not any(_is_string_like(value) for value in flat):
+        dates = np.where(missing, None, arr)
+        if any(
+            isinstance(value, datetime) and value.tzinfo is not None for value in flat
+        ):
+            try:
+                return pd.DatetimeIndex(dates.ravel()).to_numpy().reshape(arr.shape)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    "`observations` must contain either timezone-naive datetimes or "
+                    "timezone-aware datetimes in a single timezone."
+                ) from exc
         try:
-            return np.asarray(arr, dtype="datetime64")
+            return np.asarray(dates, dtype="datetime64")
         except (TypeError, ValueError) as exc:
             raise ValueError(
                 "`observations` with object dtype must contain datetime-like, "

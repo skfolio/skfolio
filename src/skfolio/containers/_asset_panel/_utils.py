@@ -194,7 +194,7 @@ def _positions_from_unique_labels(labels: AnyArray, selected: Any) -> slice | In
     index = pd.Index(labels)
     if isinstance(selected, slice):
         return index.slice_indexer(selected.start, selected.stop, selected.step)
-    if isinstance(selected, (str, bytes)) or np.isscalar(selected):
+    if pd.api.types.is_scalar(selected):
         loc = index.get_loc(selected)
         # Exact lookups on unique asset labels return an integer position.
         return slice(int(loc), int(loc) + 1)  # ty: ignore[invalid-argument-type]
@@ -218,7 +218,7 @@ def _positions_from_labels(labels: AnyArray, selected: Any) -> slice | IntArray:
     index = pd.Index(labels)
     if isinstance(selected, slice):
         return index.slice_indexer(selected.start, selected.stop, selected.step)
-    if isinstance(selected, (str, bytes)) or np.isscalar(selected):
+    if pd.api.types.is_scalar(selected):
         loc = index.get_loc(selected)
         if isinstance(loc, slice):
             return loc
