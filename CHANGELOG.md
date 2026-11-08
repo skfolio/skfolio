@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v1.12.8 (2026-11-08)
+
+### Bug Fixes
+
+- **measures**: Compute evar and edar per column for 2D inputs
+  ([#471](https://github.com/skfolio/skfolio/pull/471),
+  [`3eded63`](https://github.com/skfolio/skfolio/commit/3eded6381c8b6b2aabb7d8bd88706c42d7391f44))
+
+### Documentation
+
+- Keep code and tables when stripping Plotly figures from llms Markdown
+  ([#494](https://github.com/skfolio/skfolio/pull/494),
+  [`08ad80c`](https://github.com/skfolio/skfolio/commit/08ad80c64c2f46c7e56d11ec8c9d1dae7fe3f2fc))
+
+- **readme**: Cite the published skfolio paper ([#493](https://github.com/skfolio/skfolio/pull/493),
+  [`aa14348`](https://github.com/skfolio/skfolio/commit/aa1434826a38f25231d30f8ab190a05e1596fb76))
+
+
 ## v1.12.7 (2026-11-06)
 
 ### Bug Fixes
