@@ -108,14 +108,12 @@ class HierarchicalRiskParity(_PortfolioRiskMixin, _BaseSeriatedOptimization):
         for spectral ordering with orientation carried across online updates.
 
     distance_from_prior : bool, default=True
-        If True, fit the distance estimator on the return scenarios produced by
-        the prior. With `CovarianceDistance(covariance_estimator="precomputed")`,
-        use the prior's covariance instead.
-
-        If False, use the `X` argument supplied to this optimizer's `fit(X)` or
-        `partial_fit(X)`, before the prior processes it. In a pipeline, `X` is
-        the output of the preceding steps. Precomputed covariance distances
-        require True.
+        If True, fit the distance estimator on the return scenarios produced by the
+        prior. With `CovarianceDistance(covariance_estimator="precomputed")`, use the
+        prior's covariance instead. Both inputs are restricted to investable assets. If
+        False, use the original `X` supplied to this optimizer's `fit(X)` or
+        `partial_fit(X)`. In a pipeline, `X` is the output of the preceding steps.
+        Precomputed covariance distances require True.
 
         During online learning, True refits the distance estimator on the prior's
         current scenarios or covariance at each update. False updates it from
@@ -124,13 +122,14 @@ class HierarchicalRiskParity(_PortfolioRiskMixin, _BaseSeriatedOptimization):
         See :ref:`asset_seriation`.
 
     min_weights : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
-        Minimum assets weights (weights lower bounds). The default is 0.0 (no short
-        selling). Negative weights are not allowed. If a float is provided, it is
-        applied to each asset. `None` is equivalent to the default `0.0`. If a
-        dictionary is provided, its (key/value) pair must be the (asset name/asset
-        minimum weight) and the input `X` of the `fit` methods must be a DataFrame with
-        the asset names in columns. When using a dictionary, assets values that are not
-        provided are assigned the default  minimum weight of `0.0`.
+        Minimum asset weights (lower bounds). The default is 0.0 (no short selling).
+        Negative weights are not allowed. Lower bounds apply only to investable assets
+        and excluded assets receive zero weight. If a float is provided, it is applied
+        to each asset. `None` is equivalent to the default `0.0`. If a dictionary is
+        provided, its (key/value) pair must be the (asset name/asset minimum weight) and
+        the input `X` of the `fit` methods must be a DataFrame with the asset names in
+        columns. When using a dictionary, assets values that are not provided are
+        assigned the default minimum weight of `0.0`.
 
         Example:
 
@@ -271,8 +270,9 @@ class HierarchicalRiskParity(_PortfolioRiskMixin, _BaseSeriatedOptimization):
         Weights of the assets.
 
     distance_estimator_ : BaseDistance or None
-        Fitted `distance_estimator`. None when `distance_from_prior=True` and
-        fewer than two assets are investable.
+        Fitted `distance_estimator`. Uses only investable assets when
+        `distance_from_prior=True`, and all assets in `X` otherwise. None when
+        `distance_from_prior=True` and fewer than two assets are investable.
 
     seriation_estimator_ : BaseSeriation
         Fitted ordering estimator. Its `ordering_` contains positions in the
@@ -400,8 +400,10 @@ class HierarchicalRiskParity(_PortfolioRiskMixin, _BaseSeriatedOptimization):
             to the distance estimator. Prior scenarios do not receive this target.
 
         **fit_params : dict
-            Metadata routed to the underlying estimators. Metadata supplied to
-            a distance fitted on prior scenarios must align with those scenarios.
+            Parameters passed to the underlying estimators. Requires
+            `enable_metadata_routing=True`. Panels must contain the same observations
+            as `X`. For distances fitted on prior return scenarios, sample weights come
+            from the prior and other arrays must match those scenarios.
 
         Returns
         -------
@@ -433,9 +435,13 @@ class HierarchicalRiskParity(_PortfolioRiskMixin, _BaseSeriatedOptimization):
             to the distance estimator.
 
         **fit_params : dict
-            Metadata routed to the underlying estimators. Requires metadata
-            routing to be enabled. Observation metadata is not forwarded to
-            distances fitted on the prior's return scenarios or covariance.
+            Parameters passed to the underlying estimators. Requires
+            `enable_metadata_routing=True`. Panels must contain the new observations
+            in `X`.
+            With `distance_from_prior=True`, the distance estimator accepts only sample
+            weights, `AssetPanel` and `AssetPanelView` metadata. Sample weights come
+            from the prior. Distances fitted on the prior's covariance do
+            not accept additional fitting parameters.
 
         Returns
         -------

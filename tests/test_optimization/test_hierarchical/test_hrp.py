@@ -6,6 +6,7 @@ from sklearn import clone, config_context
 
 from skfolio import ExtraRiskMeasure, RiskMeasure
 from skfolio.cluster import HierarchicalClustering, LinkageMethod
+from skfolio.exceptions import OptimizationError
 from skfolio.moments import EWCovariance, ImpliedCovariance
 from skfolio.optimization import (
     HierarchicalEqualRiskContribution,
@@ -548,7 +549,11 @@ def test_hrp_none_weight_bounds(small_X):
     "params,error,match",
     [
         (dict(min_weights=-0.1), ValueError, "`min_weights` must be strictly positive"),
-        (dict(min_weights=0.5), ValueError, "Invalid `min_weights`: sum is 1.5000"),
+        (
+            dict(min_weights=0.5),
+            OptimizationError,
+            "infeasible for the investable assets",
+        ),
         (
             dict(max_weights=1.5),
             ValueError,

@@ -2713,6 +2713,63 @@ def _mip_weight_constraints_threshold_short(
     return constraints
 
 
+def _solve_error_message(solver: str, status: str | None, params_string: str) -> str:
+    """Return the error message for a solve that produced no solution.
+
+    Parameters
+    ----------
+    solver : str
+        Name of the CVXPY solver that was used.
+
+    status : str | None
+        CVXPY problem status after the solve, or `None` if the solver raised.
+
+    params_string : str
+        Description of the CVXPY parameter values, or an empty string.
+
+    Returns
+    -------
+    message : str
+        A message describing the reported status, including reduced numerical
+        accuracy when applicable, or a generic solver failure message otherwise.
+    """
+    if status == cp.INFEASIBLE:
+        return (
+            f"Solver '{solver}' reports that the optimization problem is"
+            f" infeasible{params_string}: no solution satisfies all constraints."
+            " Review the constraints and input data"
+        )
+    if status == cp.UNBOUNDED:
+        return (
+            f"Solver '{solver}' reports that the optimization problem is"
+            f" unbounded{params_string}: the objective can improve without limit."
+            " Review the objective and constraints"
+        )
+    if status == cp.INFEASIBLE_INACCURATE:
+        return (
+            f"Solver '{solver}' reports infeasibility{params_string} at reduced"
+            " numerical accuracy. Check solver settings and problem scaling,"
+            " or try another solver"
+        )
+    if status == cp.UNBOUNDED_INACCURATE:
+        return (
+            f"Solver '{solver}' reports unboundedness{params_string} at reduced"
+            " numerical accuracy. Check solver settings and problem scaling,"
+            " or try another solver"
+        )
+    if status == cp.settings.INFEASIBLE_OR_UNBOUNDED:
+        return (
+            f"Solver '{solver}' reports that the optimization problem is"
+            f" infeasible or unbounded{params_string}, but cannot distinguish"
+            " between the two. Try another solver, or set"
+            " solver_params=dict(verbose=True) for diagnostic output"
+        )
+    return (
+        f"Solver '{solver}' failed{params_string}. Try another solver, or set"
+        " solver_params=dict(verbose=True) for diagnostic output"
+    )
+
+
 def _solve(
     w: cp.Variable,
     factor: skt.Factor,
@@ -2762,11 +2819,15 @@ def _solve(
     UserWarning
         If the solver returns a usable solution with a status other than `optimal`.
     """
+    # CVXPY may retain a previous solve's status if solve() raises so we only use the
+    # status after solve() returns normally.
+    status = None
     try:
         # We suppress cvxpy warning as it is redundant with our warning
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             problem.solve(solver=solver, **solver_params)
+        status = problem.status
 
         if w.value is None:
             raise cp.SolverError("No solution found")
@@ -2775,11 +2836,7 @@ def _solve(
         params_string = " ".join([f"{p.value:0g}" for p in problem.parameters()])
         if len(params_string) != 0:
             params_string = f" with parameters {params_string}"
-        error = (
-            f"Solver '{solver}' failed{params_string}. Try another"
-            " solver, or solve with solver_params=dict(verbose=True) for more"
-            " information"
-        )
+        error = _solve_error_message(solver, status, params_string)
         raise ConvexOptimizationError(error) from solver_error
 
     factor_value = factor.value

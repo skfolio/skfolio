@@ -115,7 +115,7 @@ class BaseBreakdown(ABC):
             # For rolling window, we build a MultiIndex DataFrame
             # Drop the names because will be in Multi Index
             names_col = df.columns[0]
-            df.drop(columns=df.columns[0], inplace=True)
+            df = df.drop(columns=df.columns[0])
             n_items = len(self.names)
             df.index = pd.MultiIndex.from_arrays(
                 [
@@ -141,10 +141,7 @@ class BaseBreakdown(ABC):
                 _format_contrib_with_ci_margin(m, s, z)
                 for m, s in zip(mu_vals, se_vals, strict=True)
             ]
-            df.drop(
-                columns=[mu_contrib_col, "Mean Return Uncertainty"],
-                inplace=True,
-            )
+            df = df.drop(columns=[mu_contrib_col, "Mean Return Uncertainty"])
 
         # Apply formatting if requested
         if formatted:
