@@ -23,6 +23,7 @@ WEIGHTED_RETURN_MEASURES = [
     skm.drawdown_at_risk,
     skm.average_drawdown,
     skm.cdar,
+    skm.edar,
     skm.ulcer_index,
     skm.third_central_moment,
     skm.skew,
@@ -31,6 +32,7 @@ WEIGHTED_RETURN_MEASURES = [
     skm.value_at_risk,
     skm.cvar,
     skm.entropic_risk_measure,
+    skm.evar,
 ]
 
 

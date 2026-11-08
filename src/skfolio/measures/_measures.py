@@ -777,9 +777,8 @@ def evar(
     is :math:`n (1-\beta) \le k`, where :math:`k` observations share the largest loss.
 
     NaN handling:
-    NaN returns and their matching weights are excluded from each column's
-    calculation. The remaining weights are normalized. The result is NaN if no
-    positive weight remains.
+    NaN returns and their matching weights are excluded. The remaining weights
+    are normalized. The result is NaN if no positive weight remains.
 
     References
     ----------
@@ -790,8 +789,8 @@ def evar(
     if returns.ndim == 2:
         return np.array(
             [
-                evar(returns[:, i], beta=beta, sample_weight=sample_weight)
-                for i in range(returns.shape[1])
+                evar(column, beta=beta, sample_weight=sample_weight)
+                for column in returns.T
             ]
         )
     valid = ~np.isnan(returns)
