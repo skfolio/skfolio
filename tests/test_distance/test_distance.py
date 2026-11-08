@@ -1,22 +1,68 @@
-"""Test Distance module."""
+"""Contracts shared by distance estimators."""
 
 from __future__ import annotations
 
 import numpy as np
 import pytest
-from sklearn import config_context
-from sklearn.exceptions import UnsetMetadataPassedError
 
 from skfolio.distance import (
     CovarianceDistance,
-    DistanceCorrelation,
     KendallDistance,
-    MutualInformation,
-    NBinsMethod,
     PearsonDistance,
     SpearmanDistance,
 )
-from skfolio.moments import GerberCovariance, ImpliedCovariance
+from skfolio.distance._utils import _corr_to_distance
+
+
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("power_type", [float, np.float64])
+@pytest.mark.parametrize(
+    "absolute,power,expected_codependence,expected_distance",
+    [
+        (False, 1, -0.5, np.sqrt(0.75)),
+        (True, 1, 0.5, np.sqrt(0.5)),
+        (False, 2, 0.25, np.sqrt(0.75)),
+        (False, 3, -0.125, 0.75),
+        (True, 0.5, np.sqrt(0.5), np.sqrt(1 - np.sqrt(0.5))),
+    ],
+)
+def test_distance_conversion_preserves_input(
+    dtype, power_type, absolute, power, expected_codependence, expected_distance
+):
+    power = power_type(power)
+    corr = np.array(
+        [[1, -0.5, np.nan], [-0.5, 1, np.nan], [np.nan, np.nan, np.nan]], dtype=dtype
+    )
+    original = corr.copy()
+    corr.flags.writeable = False
+    codependence, distance = _corr_to_distance(corr, absolute=absolute, power=power)
+
+    np.testing.assert_allclose(
+        codependence[:2, :2],
+        [[1, expected_codependence], [expected_codependence, 1]],
+        rtol=2e-7,
+    )
+    np.testing.assert_allclose(
+        distance[:2, :2], [[0, expected_distance], [expected_distance, 0]], rtol=2e-7
+    )
+    assert codependence.dtype == corr.dtype
+    # Match the existing NumPy promotion when the distance is scaled.
+    assert distance.dtype == (np.float64(1) * codependence).dtype
+    for result in [codependence, distance]:
+        assert np.isnan(result[2]).all()
+        assert np.isnan(result[:, 2]).all()
+        assert not np.shares_memory(result, corr)
+    assert not np.shares_memory(codependence, distance)
+    codependence[0, 0] = 0
+    np.testing.assert_array_equal(corr, original)
+
+
+@pytest.mark.parametrize("absolute,power", [(False, 1), (True, 1), (False, 2)])
+def test_distance_conversion_clips_roundoff(absolute, power):
+    corr = np.array([[1 + 1e-14, -1 - 1e-14], [-1 - 1e-14, 1 + 1e-14]])
+    _, distance = _corr_to_distance(corr, absolute=absolute, power=power)
+    expected = [[0, 1], [1, 0]] if not absolute and power == 1 else np.zeros((2, 2))
+    np.testing.assert_array_equal(distance, expected)
 
 
 @pytest.mark.parametrize(
@@ -39,207 +85,3 @@ def test_invalid_power(estimator, absolute, power):
     X = np.random.default_rng(0).normal(size=(20, 3))
     with pytest.raises(ValueError, match="power"):
         estimator(absolute=absolute, power=power).fit(X)
-
-
-class TestPearsonDistance:
-    def test_pearson_distance(self, X):
-        distance = PearsonDistance()
-        distance.fit(X)
-        assert distance.codependence_.shape == (20, 20)
-        assert distance.distance_.shape == (20, 20)
-        np.testing.assert_almost_equal(distance.codependence_, np.corrcoef(X.T))
-        np.testing.assert_almost_equal(
-            distance.distance_, np.sqrt(0.5 * (1 - np.corrcoef(X.T)))
-        )
-        assert np.all(distance.distance_ >= 0) and np.all(distance.distance_ <= 1)
-
-        distance = PearsonDistance(absolute=True)
-        distance.fit(X)
-        assert distance.codependence_.shape == (20, 20)
-        assert distance.distance_.shape == (20, 20)
-        np.testing.assert_almost_equal(distance.codependence_, np.abs(np.corrcoef(X.T)))
-        np.testing.assert_almost_equal(
-            distance.distance_, np.sqrt(1 - np.abs(np.corrcoef(X.T)))
-        )
-        assert np.all(distance.distance_ >= 0) and np.all(distance.distance_ <= 1)
-
-        distance = PearsonDistance(power=2)
-        distance.fit(X)
-        assert distance.codependence_.shape == (20, 20)
-        assert distance.distance_.shape == (20, 20)
-        np.testing.assert_almost_equal(distance.codependence_, np.corrcoef(X.T) ** 2)
-        np.testing.assert_almost_equal(
-            distance.distance_, np.sqrt(1 - np.corrcoef(X.T) ** 2)
-        )
-        assert np.all(distance.distance_ >= 0) and np.all(distance.distance_ <= 1)
-
-    #  PearsonDistance can be instantiated with default parameters
-    def test_instantiation_with_default_parameters(self):
-        pd = PearsonDistance()
-        assert pd.absolute is False
-        assert pd.power == 1
-
-    #  PearsonDistance raises an error when fitting an empty array
-    def test_fitting_empty_array(self):
-        pd = PearsonDistance()
-        with pytest.raises(ValueError, match="Expected 2D array, got 1D array"):
-            pd.fit([])
-
-    #  PearsonDistance raises an error when fitting an array with NaN values
-    def test_fitting_array_with_nan_values(self):
-        pd = PearsonDistance()
-        X = np.array([[1, 2, 3], [4, np.nan, 6], [7, 8, 9]])
-        with pytest.raises(ValueError, match="Input X contains NaN"):
-            pd.fit(X)
-
-
-class TestKendallDistance:
-    def test_kendall_distance(self, X):
-        distance = KendallDistance()
-        distance.fit(X)
-        assert distance.codependence_.shape == (20, 20)
-        assert distance.distance_.shape == (20, 20)
-        assert np.all(distance.distance_ >= 0) and np.all(distance.distance_ <= 1)
-
-    #  KendallDistance can be instantiated with default parameters
-    def test_instantiation_with_default_parameters(self):
-        kd = KendallDistance()
-        assert kd.absolute is False
-        assert kd.power == 1
-
-
-class TestSpearmanDistance:
-    def test_spearman_distance(self, X):
-        distance = SpearmanDistance()
-        distance.fit(X)
-        assert distance.codependence_.shape == (20, 20)
-        assert distance.distance_.shape == (20, 20)
-        assert np.all(distance.distance_ >= 0) and np.all(distance.distance_ <= 1)
-
-    #  SpearmanDistance can be initialized with default parameters.
-    def test_initialized_with_default_parameters(self):
-        distance = SpearmanDistance()
-        assert distance.absolute is False
-        assert distance.power == 1
-
-
-class TestCovarianceDistance:
-    def test_covariance_distance(self, X):
-        distance = CovarianceDistance()
-        distance.fit(X)
-        assert distance.codependence_.shape == (20, 20)
-        assert distance.distance_.shape == (20, 20)
-        assert np.all(distance.distance_ >= 0) and np.all(distance.distance_ <= 1)
-
-    #  fitting the estimator with default parameters
-    def test_fit_with_default_parameters(self, X):
-        distance = CovarianceDistance()
-        distance.fit(X)
-        assert isinstance(distance.covariance_estimator_, GerberCovariance)
-        assert isinstance(distance.codependence_, np.ndarray)
-        assert isinstance(distance.distance_, np.ndarray)
-        assert distance.absolute is False
-        assert distance.power == 1
-
-    def test_metadata_routing_errors(self, X, implied_vol):
-        distance = CovarianceDistance(covariance_estimator=ImpliedCovariance())
-
-        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
-            distance.fit(X)
-
-        with pytest.raises(
-            UnsetMetadataPassedError,
-            match="are passed but are not explicitly set as requested",
-        ):
-            distance.fit(X, implied_vol=implied_vol)
-
-        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
-            with config_context(enable_metadata_routing=True):
-                distance.fit(X)
-
-        with pytest.raises(
-            UnsetMetadataPassedError,
-            match="are passed but are not explicitly set as requested",
-        ):
-            with config_context(enable_metadata_routing=True):
-                distance.fit(X, implied_vol=implied_vol)
-
-    def test_metadata_routing(self, X, implied_vol):
-        with config_context(enable_metadata_routing=True):
-            distance = CovarianceDistance(
-                covariance_estimator=ImpliedCovariance().set_fit_request(
-                    implied_vol=True
-                )
-            )
-
-            with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
-                distance.fit(X)
-
-            distance.fit(X, implied_vol=implied_vol)
-
-        assert distance.covariance_estimator_.r2_scores_.shape == (20,)
-        assert distance.distance_.shape == (20, 20)
-
-
-class TestDistanceCorrelation:
-    def test_distance_correlation(self, X):
-        distance = DistanceCorrelation()
-        distance.fit(X.iloc[:500])
-        assert distance.codependence_.shape == (20, 20)
-        assert distance.distance_.shape == (20, 20)
-        assert np.all(distance.distance_ >= 0) and np.all(distance.distance_ <= 1)
-
-    #  Fit the estimator with valid input data.
-    def test_fit_valid_input_data(self):
-        X = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-        dc = DistanceCorrelation()
-        dc.fit(X)
-        assert np.array_equal(dc.codependence_, np.ones((3, 3)))
-        assert np.array_equal(dc.distance_, np.zeros((3, 3)))
-
-
-# Generated by CodiumAI
-
-
-class TestMutualInformation:
-    def test_mutual_information(self, X):
-        distance = MutualInformation()
-        distance.fit(X)
-        assert distance.codependence_.shape == (20, 20)
-        assert distance.distance_.shape == (20, 20)
-        assert np.all(distance.distance_ >= 0) and np.all(distance.distance_ <= 1)
-
-    #  fitting the estimator with default parameters
-    def test_default_parameters(self, X):
-        distance = MutualInformation()
-        assert distance.n_bins_method == NBinsMethod.FREEDMAN
-        assert distance.n_bins is None
-        assert distance.normalize is True
-
-    def test_knuth_n_bins_method(self):
-        rng = np.random.default_rng(0)
-        X = rng.standard_normal((60, 3))
-        distance = MutualInformation(n_bins_method=NBinsMethod.KNUTH)
-        distance.fit(X)
-        assert distance.codependence_.shape == (3, 3)
-        assert np.all(distance.distance_ >= 0) and np.all(distance.distance_ <= 1)
-        np.testing.assert_allclose(np.diag(distance.distance_), 0.0, atol=1e-12)
-
-    def test_invalid_n_bins_method(self):
-        rng = np.random.default_rng(0)
-        X = rng.standard_normal((60, 3))
-        distance = MutualInformation(n_bins_method="invalid")
-        with pytest.raises(ValueError, match="n_bins_method invalid is not valid"):
-            distance.fit(X)
-
-    def test_not_normalized(self):
-        rng = np.random.default_rng(0)
-        X = rng.standard_normal((60, 3))
-        distance = MutualInformation(n_bins=5, normalize=False)
-        distance.fit(X)
-        normalized = MutualInformation(n_bins=5, normalize=True).fit(X)
-        assert distance.codependence_.shape == (3, 3)
-        assert np.all(distance.distance_ >= 0)
-        # Un-normalized mutual information is the raw score, which is not bounded by 1
-        assert not np.allclose(distance.codependence_, normalized.codependence_)
-        assert np.all(distance.codependence_ >= 0)

@@ -19,17 +19,19 @@ consider opening an issue first: https://github.com/skfolio/skfolio/issues.
 A clear and concise description of what you have implemented.
 -->
 
-#### Does your contribution introduce a new dependency? If yes, which one?
-<!--
-Only relevant if you changed `pyproject.toml`.
-We try to minimize dependencies in the core dependency set.
--->
+#### AI use
 
-#### What should a reviewer concentrate their feedback on?
-<!--
-Point reviewers to the parts that are ready for feedback, especially in a draft
-pull request.
--->
+AI-assisted and fully AI-generated PRs are welcome, including submissions by AI
+agents. All PRs must follow our [contributing guidelines](https://github.com/skfolio/skfolio/blob/main/CONTRIBUTING.md#ai-contributions).
+
+If no AI was used to prepare this PR, write **None** and remove the fields below.
+Otherwise, complete them:
+
+- **Tools and models:** List the AI tools used, including model names or versions if known.
+- **What AI did:** Briefly describe its involvement—for example, editing wording, investigating a bug, writing tests, or generating the entire PR.
+- **Human review before submission:** All changes / Some changes / None / Unknown.
+
+See [how we review PRs](https://github.com/skfolio/skfolio/blob/main/CONTRIBUTING.md#how-we-review-prs).
 
 #### Any other comments?
 <!--
