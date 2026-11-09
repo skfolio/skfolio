@@ -249,12 +249,12 @@ class BlackLitterman(BasePrior):
             )
         else:
             # Idzorek's method using Jay Walters closed form solution
-            view_confidences = np.asarray(self.view_confidences)
+            view_confidences = np.asarray(self.view_confidences, dtype=float)
             if np.any(view_confidences < 0) or np.any(view_confidences > 1):
                 raise ValueError(
                     "all values of view_confidences must be between 0 and 1"
                 )
-            view_confidences[view_confidences == 0] = 1e-16
+            view_confidences = np.where(view_confidences == 0, 1e-16, view_confidences)
             alphas = 1 / view_confidences - 1
             omega = np.diag(
                 np.diag(
