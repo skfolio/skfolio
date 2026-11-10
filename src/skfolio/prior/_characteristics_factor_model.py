@@ -1249,7 +1249,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
 
         if ccy_exposures is not None:
             _validate_finite_currency_returns(currency_excess_returns)  # ty: ignore[invalid-argument-type]
-            ccy_factor_returns = currency_excess_returns.to_numpy(dtype=float)  # ty: ignore[unresolved-attribute]
+            ccy_factor_returns = currency_excess_returns.to_numpy(dtype=float)  # ty: ignore[missing-union-attribute]
             factor_returns_reduced_with_ccy = np.concatenate(
                 [factor_returns_reduced, ccy_factor_returns], axis=1
             )
@@ -1397,7 +1397,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             # @ factor_returns(t) + idio_returns(t) reproduces asset returns exactly.
             # Factor mu and covariance describe the next period (forcast) and use the
             # current loading matrix with the current (unlagged) ratios.
-            factor_returns = lagged_basis_with_ccy.expand_factor_returns(  # ty: ignore[unresolved-attribute]
+            factor_returns = lagged_basis_with_ccy.expand_factor_returns(  # ty: ignore[missing-union-attribute]
                 factor_returns_reduced_with_ccy
             )
             factor_mu = basis_with_ccy.expand_factor_mu(factor_mu_reduced_with_ccy)
@@ -1433,7 +1433,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         history = self._get_history()
 
         if self.constrained_families is not None:
-            accumulated_basis = self._family_constraint_basis.with_constraint_ratios(  # ty: ignore[unresolved-attribute]
+            accumulated_basis = self._family_constraint_basis.with_constraint_ratios(  # ty: ignore[missing-union-attribute]
                 history["family_constraint_ratios"]
             )
             if ccy_exposures is not None:
@@ -2100,7 +2100,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         if self._history is None:
             raise AttributeError("History has not been initialized.")
         if isinstance(next(iter(self._history.values())), _ArrayBuffer):
-            return {k: v.array for k, v in self._history.items()}  # ty: ignore[invalid-return-type, unresolved-attribute]
+            return {k: v.array for k, v in self._history.items()}  # ty: ignore[invalid-return-type, missing-union-attribute]
         return self._history  # ty: ignore[invalid-return-type]
 
     def _get_dependency_layers(self) -> list[list[str]]:
