@@ -667,6 +667,21 @@ def test_black_litterman_view_confidences(X):
     )
 
 
+@pytest.mark.parametrize("view_confidences", [[1, 0], np.array([1.0, 0.0])])
+def test_black_litterman_view_confidences_zero(X, view_confidences):
+    views = ["AAPL - BBY == 0.03", "MSFT == 0.06"]
+    ref = BlackLitterman(views=views, view_confidences=[1.0, 0.0]).fit(X)
+    model = BlackLitterman(views=views, view_confidences=view_confidences).fit(X)
+    # Integer confidences give the same posterior and the input is not modified
+    np.testing.assert_almost_equal(
+        model.return_distribution_.mu, ref.return_distribution_.mu
+    )
+    np.testing.assert_almost_equal(
+        model.return_distribution_.covariance, ref.return_distribution_.covariance
+    )
+    np.testing.assert_array_equal(model.view_confidences, [1.0, 0.0])
+
+
 @pytest.mark.parametrize("view_confidences", [[1.5, 0.5], [-0.1, 0.5]])
 def test_black_litterman_view_confidences_out_of_range(X, view_confidences):
     model = BlackLitterman(
