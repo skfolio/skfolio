@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v1.12.9 (2026-11-10)
+
+### Bug Fixes
+
+- **prior**: Allow negative correlation views in EntropyPooling
+  ([#496](https://github.com/skfolio/skfolio/pull/496),
+  [`b12794e`](https://github.com/skfolio/skfolio/commit/b12794eb3c1c68ea1f2f0b17e007ce0d8304e4c1))
+
+- **prior**: Cast BlackLitterman view_confidences to float without mutating them
+  ([#495](https://github.com/skfolio/skfolio/pull/495),
+  [`7c62a6b`](https://github.com/skfolio/skfolio/commit/7c62a6b4c87b378f989ca2793ee0180cc9c3bd64))
+
+### Continuous Integration
+
+- Update type-check rules for ty 0.0.100 ([#500](https://github.com/skfolio/skfolio/pull/500),
+  [`4eb2a82`](https://github.com/skfolio/skfolio/commit/4eb2a82ce2799118cf9ed4ad68fbe7922974227b))
+
+
 ## v1.12.8 (2026-11-08)
 
 ### Bug Fixes
