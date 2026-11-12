@@ -339,7 +339,7 @@ class FactorBreakdown(BaseBreakdown):
             data.update(
                 {
                     "Exposure Mean": self.exposure.ravel(),
-                    "Exposure Std": self.exposure_std.ravel(),  # ty: ignore[unresolved-attribute]
+                    "Exposure Std": self.exposure_std.ravel(),  # ty: ignore[missing-union-attribute]
                     "Standalone Mean Return": self.mu.ravel(),
                 }
             )
@@ -449,7 +449,7 @@ class FamilyBreakdown(BaseBreakdown):
             data.update(
                 {
                     "Exposure Mean": self.exposure.ravel(),
-                    "Exposure Std": self.exposure_std.ravel(),  # ty: ignore[unresolved-attribute]
+                    "Exposure Std": self.exposure_std.ravel(),  # ty: ignore[missing-union-attribute]
                 }
             )
         else:

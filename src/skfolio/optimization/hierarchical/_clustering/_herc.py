@@ -24,12 +24,16 @@ from skfolio.measures import ExtraRiskMeasure, RiskMeasure
 from skfolio.optimization._base import BaseOptimization, _check_finite_weights
 from skfolio.optimization.hierarchical._utils import (
     _PortfolioRiskMixin,
+    _check_investable_distances,
+    _check_investable_weight_bounds,
     _convert_weight_bounds,
+    _fit_distance_from_prior,
 )
 from skfolio.prior import BasePrior, EmpiricalPrior
 from skfolio.typing import ArrayLike
 from skfolio.utils.stats import minimize_relative_weight_deviation
 from skfolio.utils.tools import check_estimator
+from skfolio.utils.validation import _check_observation_counts
 
 
 class HierarchicalEqualRiskContribution(_PortfolioRiskMixin, BaseOptimization):
@@ -117,10 +121,11 @@ class HierarchicalEqualRiskContribution(_PortfolioRiskMixin, BaseOptimization):
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
     distance_estimator : BaseDistance, optional
-        :ref:`Distance estimator <distance>`.
-        The distance estimator is used to estimate the codependence and the distance
-        matrix needed for the computation of the linkage matrix.
-        The default (`None`) is to use :class:`~skfolio.distance.PearsonDistance`.
+        :ref:`Distance estimator <distance>`. The distance estimator is used to estimate
+        the codependence and the distance matrix needed for the computation of the
+        linkage matrix. It receives the prior's investable return scenarios, or
+        covariance when it requires covariance input. The default (`None`) is to use
+        :class:`~skfolio.distance.PearsonDistance`.
 
     hierarchical_clustering_estimator : HierarchicalClustering, optional
         :ref:`Hierarchical Clustering estimator <hierarchical_clustering>`.
@@ -130,13 +135,14 @@ class HierarchicalEqualRiskContribution(_PortfolioRiskMixin, BaseOptimization):
         :class:`~skfolio.cluster.HierarchicalClustering`.
 
     min_weights : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
-        Minimum assets weights (weights lower bounds). The default is 0.0 (no short
-        selling). Negative weights are not allowed. If a float is provided, it is
-        applied to each asset. `None` is equivalent to the default `0.0`. If a
-        dictionary is provided, its (key/value) pair must be the (asset name/asset
-        minimum weight) and the input `X` of the `fit` methods must be a DataFrame with
-        the asset names in columns. When using a dictionary, assets values that are not
-        provided are assigned the default  minimum weight of `0.0`.
+        Minimum asset weights (lower bounds). The default is 0.0 (no short selling).
+        Negative weights are not allowed. Lower bounds apply only to investable assets
+        and excluded assets receive zero weight. If a float is provided, it is applied
+        to each asset. `None` is equivalent to the default `0.0`. If a dictionary is
+        provided, its (key/value) pair must be the (asset name/asset minimum weight) and
+        the input `X` of the `fit` methods must be a DataFrame with the asset names in
+        columns. When using a dictionary, assets values that are not provided are
+        assigned the default minimum weight of `0.0`.
 
         Example:
 
@@ -285,11 +291,17 @@ class HierarchicalEqualRiskContribution(_PortfolioRiskMixin, BaseOptimization):
     weights_ : ndarray of shape (n_assets,)
         Weights of the assets.
 
-    distance_estimator_ : BaseDistance
-        Fitted `distance_estimator`.
+    distance_estimator_ : BaseDistance or None
+        Fitted `distance_estimator`, using only investable assets. None for a single
+        investable asset.
 
-    hierarchical_clustering_estimator_ : HierarchicalClustering
-        Fitted `hierarchical_clustering_estimator`.
+    hierarchical_clustering_estimator_ : HierarchicalClustering or None
+        Fitted `hierarchical_clustering_estimator`, or None for a single investable
+        asset.
+
+    investable_mask_ : ndarray of bool of shape (n_assets,) or None
+        Assets eligible for allocation according to the fitted prior. None when every
+        asset is investable. Excluded assets receive zero weights.
 
     n_features_in_ : int
         Number of assets seen during `fit`.
@@ -339,8 +351,8 @@ class HierarchicalEqualRiskContribution(_PortfolioRiskMixin, BaseOptimization):
     """
 
     prior_estimator_: BasePrior
-    distance_estimator_: BaseDistance
-    hierarchical_clustering_estimator_: HierarchicalClustering
+    distance_estimator_: BaseDistance | None
+    hierarchical_clustering_estimator_: HierarchicalClustering | None
 
     def __init__(
         self,
@@ -408,11 +420,13 @@ class HierarchicalEqualRiskContribution(_PortfolioRiskMixin, BaseOptimization):
             Not used, present for API consistency by convention.
 
         **fit_params : dict
-            Parameters to pass to the underlying estimators.
-            Only available if `enable_metadata_routing=True`, which can be
-            set by using `sklearn.set_config(enable_metadata_routing=True)`.
-            See :ref:`Metadata Routing User Guide <metadata_routing>` for
-            more details.
+            Parameters passed to the underlying estimators. Requires
+            `enable_metadata_routing=True`. Panels must contain the same observations
+            as `X`. For distances fitted on prior return scenarios, sample weights come
+            from the prior, replacing routed weights. If the prior provides no scenario
+            weights, the distance fit is unweighted. Other arrays must match the prior's
+            return scenarios. Distances fitted on the prior's covariance do not accept
+            additional fitting parameters. See :ref:`metadata_routing` for details.
 
         Returns
         -------
@@ -420,6 +434,7 @@ class HierarchicalEqualRiskContribution(_PortfolioRiskMixin, BaseOptimization):
             Fitted estimator.
         """
         routed_params = skm.process_routing(self, "fit", **fit_params)
+        _check_observation_counts(X=X, metadata=routed_params.distance_estimator.fit)
 
         # Validate
         if not isinstance(self.risk_measure, RiskMeasure | ExtraRiskMeasure):
@@ -449,33 +464,9 @@ class HierarchicalEqualRiskContribution(_PortfolioRiskMixin, BaseOptimization):
             check_type=HierarchicalClustering,
         )
 
-        # Fit the estimators
-        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
-        return_distribution = self.prior_estimator_.return_distribution_
-        returns = return_distribution.returns
-
-        # To keep the asset_names
-        if isinstance(X, pd.DataFrame):
-            returns = pd.DataFrame(returns, columns=X.columns)
-
-        self.distance_estimator_.fit(returns, y, **routed_params.distance_estimator.fit)
-        distance = self.distance_estimator_.distance_
-
-        # To keep the asset_names
-        if isinstance(X, pd.DataFrame):
-            distance = pd.DataFrame(distance, columns=X.columns)
-
-        self.hierarchical_clustering_estimator_.fit(
-            X=distance, y=None, **routed_params.hierarchical_clustering_estimator.fit
-        )
-
-        n_clusters = self.hierarchical_clustering_estimator_.n_clusters_
-        labels = self.hierarchical_clustering_estimator_.labels_
-        linkage_matrix = self.hierarchical_clustering_estimator_.linkage_matrix_
-
-        X = skv.validate_data(self, X)
-        n_assets = X.shape[1]
-
+        # Let the prior validate X.
+        skv.validate_data(self, X, skip_check_array=True)
+        n_assets = self.n_features_in_
         min_weights, max_weights = _convert_weight_bounds(
             min_weights=self._clean_input(
                 self.min_weights,
@@ -494,8 +485,55 @@ class HierarchicalEqualRiskContribution(_PortfolioRiskMixin, BaseOptimization):
             n_assets=n_assets,
         )
 
+        # Fit the prior
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
+
+        return_distribution = self._prepare_investable_distribution(
+            self.prior_estimator_.return_distribution_, slim=True
+        )
+
+        assets = slice(None) if self.investable_mask_ is None else self.investable_mask_
+        min_weights, max_weights = min_weights[assets], max_weights[assets]
+        _check_investable_weight_bounds(
+            min_weights=min_weights, max_weights=max_weights
+        )
+        n_investable_assets = return_distribution.n_assets
+
+        if n_investable_assets == 1:
+            self.distance_estimator_ = None
+            self.hierarchical_clustering_estimator_ = None
+            self.weights_ = self._expand_weights_to_full_universe(np.ones(1))
+            return self
+
+        asset_names = None
+        if isinstance(X, pd.DataFrame):
+            asset_names = X.columns.to_numpy()[assets]
+
+        distance = _fit_distance_from_prior(
+            estimator=self.distance_estimator_,
+            return_distribution=return_distribution,
+            asset_names=asset_names,
+            fit_params=routed_params.distance_estimator.fit,
+        )
+        _check_investable_distances(
+            distance,
+            n_assets=n_investable_assets,
+            asset_indices=np.arange(n_assets)[assets],
+            asset_names=asset_names,
+        )
+        if asset_names is not None:
+            distance = pd.DataFrame(distance, index=asset_names, columns=asset_names)
+
+        self.hierarchical_clustering_estimator_.fit(
+            X=distance, y=None, **routed_params.hierarchical_clustering_estimator.fit
+        )
+
+        n_clusters = self.hierarchical_clustering_estimator_.n_clusters_
+        labels = self.hierarchical_clustering_estimator_.labels_
+        linkage_matrix = self.hierarchical_clustering_estimator_.linkage_matrix_
+
         assets_risks = self._unitary_risks(return_distribution=return_distribution)
-        weights = np.ones(n_assets)
+        weights = np.ones(n_investable_assets)
         clusters_weights = np.ones(n_clusters)
 
         clusters = [np.argwhere(labels == i).flatten() for i in range(n_clusters)]
@@ -504,7 +542,7 @@ class HierarchicalEqualRiskContribution(_PortfolioRiskMixin, BaseOptimization):
         # Compute cluster total risk based on inverse-risk allocation
         cluster_risks = []
         for cluster_ids in clusters:
-            inv_risk_w = np.zeros(n_assets)
+            inv_risk_w = np.zeros(n_investable_assets)
             inv_risk_w[cluster_ids] = 1 / assets_risks[cluster_ids]
             inv_risk_w /= inv_risk_w.sum()
             cluster_risks.append(
@@ -574,6 +612,6 @@ class HierarchicalEqualRiskContribution(_PortfolioRiskMixin, BaseOptimization):
 
         if not np.isfinite(weights).all():
             raise ConvexOptimizationError("Allocation produced non-finite weights.")
-        self.weights_ = weights
+        self.weights_ = self._expand_weights_to_full_universe(weights)
 
         return self

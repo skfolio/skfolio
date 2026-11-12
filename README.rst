@@ -930,14 +930,16 @@ correspond to the same release.
 
 .. code-block:: bibtex
 
-        @article{nicolini2025skfolio,
-          title         = {skfolio: Portfolio Optimization in Python},
-          author        = {Nicolini, Carlo and Manzi, Matteo and Delatte, Hugo},
-          journal       = {arXiv preprint arXiv:2507.04176},
-          year          = {2025},
-          eprint        = {2507.04176},
-          archivePrefix = {arXiv},
-          url           = {https://arxiv.org/abs/2507.04176}
+        @inproceedings{nicolini2025skfolio,
+          title     = {{skfolio}: Portfolio Optimization in {Python}},
+          author    = {Nicolini, Carlo and Manzi, Matteo and Delatte, Hugo},
+          booktitle = {Proceedings of the International Research and Industry Symposium on {AI} ({IRIS-AI} 25)},
+          editor    = {Knorozova, Nadezda Alexandrovna and Ronca, Alessandro},
+          publisher = {Associazione Culturale IRIS-AI},
+          year      = {2025},
+          pages     = {35--41},
+          doi       = {10.65236/iris-ai/proceedings/2025/article/3},
+          url       = {https://iris-ai.org/proceedings/2025/article/3}
         }
 
 .. skfolio-shared-body-end
