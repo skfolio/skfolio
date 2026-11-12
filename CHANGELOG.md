@@ -2,6 +2,20 @@
 
 <!-- version list -->
 
+## v1.12.10 (2026-11-12)
+
+### Chores
+
+- Pin ty and align local and CI type checks ([#503](https://github.com/skfolio/skfolio/pull/503),
+  [`9ab9b6d`](https://github.com/skfolio/skfolio/commit/9ab9b6d11aa3ca5106c37995a70e2d7ba072ce89))
+
+### Performance Improvements
+
+- **uncertainty-set**: Avoid materializing bootstrap sample cubes
+  ([#461](https://github.com/skfolio/skfolio/pull/461),
+  [`6cfacc0`](https://github.com/skfolio/skfolio/commit/6cfacc002bb5c463a9ccd47eb98927febb832656))
+
+
 ## v1.12.9 (2026-11-10)
 
 ### Bug Fixes
