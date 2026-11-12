@@ -86,7 +86,7 @@ dev = [
     "pytest-xdist",
     "pytest-cov",
     "ruff",
-    "ty>=0.0.100",
+    "ty==0.0.101",
     "pre-commit>=4.4.0",
 ]
 docs = [
