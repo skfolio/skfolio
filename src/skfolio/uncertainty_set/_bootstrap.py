@@ -159,20 +159,15 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
         returns = self.prior_estimator_.return_distribution_.returns
         n_assets = returns.shape[1]
         radius = np.sqrt(st.chi2.ppf(q=self.confidence_level, df=n_assets))
-        x, indices = _stationary_bootstrap_indices(
+        indices = _stationary_bootstrap_indices(
             returns=returns,
             block_size=self.block_size,
             n_bootstrap_samples=self.n_bootstrap_samples,
             seed=self.seed,
         )
-        # Let NumPy choose the mean dtype, including for integral returns, without
-        # allocating the bootstrap cube. Only one indexed sample is reduced at a time.
-        mus = np.empty(
-            (self.n_bootstrap_samples, n_assets),
-            dtype=np.mean(x[:1], axis=0).dtype,
-        )
+        mus = np.empty((self.n_bootstrap_samples, n_assets))
         for i, index in enumerate(indices):
-            mus[i] = np.mean(x[index, :], axis=0)
+            mus[i] = np.mean(returns[index], axis=0)
         deviations = mus - mu
         if self.diagonal:
             geometry = np.diag(np.sqrt(np.var(deviations, axis=0, ddof=1)))
@@ -319,7 +314,7 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         n_assets = returns.shape[1]
         radius = np.sqrt(st.chi2.ppf(q=self.confidence_level, df=n_assets**2))
 
-        x, indices = _stationary_bootstrap_indices(
+        indices = _stationary_bootstrap_indices(
             returns=returns,
             block_size=self.block_size,
             n_bootstrap_samples=self.n_bootstrap_samples,
@@ -327,7 +322,7 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         )
         deviations = np.empty((self.n_bootstrap_samples, n_assets**2))
         for i, index in enumerate(indices):
-            deviations[i] = np.cov(x[index, :].T).ravel(order="F")
+            deviations[i] = np.cov(returns[index].T).ravel(order="F")
 
         if self.diagonal:
             geometry = np.diag(np.sqrt(np.var(deviations, axis=0, ddof=1)))
