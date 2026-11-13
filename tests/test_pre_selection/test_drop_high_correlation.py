@@ -71,3 +71,30 @@ def test_drop_high_correlation_invalid_threshold(threshold):
     X = np.random.default_rng(0).standard_normal((20, 4))
     with pytest.raises(ValueError, match="`threshold` must be between -1 and 1"):
         DropCorrelated(threshold=threshold).fit(X)
+
+
+@pytest.mark.parametrize("absolute", [False, True])
+@pytest.mark.parametrize("threshold", [-1.0, 0.5, 1.0])
+@pytest.mark.parametrize("constant", [False, True])
+def test_drop_high_correlation_single_asset(absolute, threshold, constant):
+    """A single asset has no correlated pair and must remain selected."""
+    X = np.ones((8, 1)) if constant else np.arange(8.0).reshape(-1, 1)
+    model = DropCorrelated(threshold=threshold, absolute=absolute)
+    np.testing.assert_array_equal(model.fit_transform(X), X)
+    np.testing.assert_array_equal(model.get_support(), [True])
+    assert model.n_features_in_ == 1
+
+
+def test_drop_high_correlation_after_selection():
+    """Keep feature names when an earlier selector leaves one asset."""
+    import pandas as pd
+    from sklearn.pipeline import make_pipeline
+
+    from skfolio.pre_selection import DropZeroVariance
+
+    X = pd.DataFrame({"constant": np.ones(8), "varying": np.arange(8.0)})
+    model = make_pipeline(DropZeroVariance(), DropCorrelated()).set_output(
+        transform="pandas"
+    )
+    pd.testing.assert_frame_equal(model.fit_transform(X), X[["varying"]])
+    assert model.get_feature_names_out().tolist() == ["varying"]
