@@ -59,8 +59,8 @@ Graph Dependencies
 ==================
 
 :class:`GraphDistance` measures similarity between assets based on their dependencies.
-This supports diversification across different underlying vulnerabilities, even when
-returns are correlated.
+This supports diversification across underlying vulnerabilities, including risks
+that have not materialized historically and are not captured by return correlations.
 
 For example:
 

@@ -4,8 +4,9 @@ Hierarchical Equal Risk Contribution with Graph Distance
 ========================================================
 
 :class:`~skfolio.distance.GraphDistance` measures similarity between assets based on
-their dependencies. This supports diversification across different underlying
-vulnerabilities, even when returns are correlated.
+their dependencies. This supports diversification across underlying vulnerabilities,
+including risks that have not materialized historically and are not captured by
+return correlations.
 
 This tutorial compares two
 :class:`~skfolio.optimization.HierarchicalEqualRiskContribution` (HERC) models for a

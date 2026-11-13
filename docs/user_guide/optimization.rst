@@ -855,8 +855,9 @@ Allocation with Graph Distances
 *******************************
 
 :class:`~skfolio.distance.GraphDistance` measures similarity between assets'
-dependencies. Using these distances for allocation supports diversification across
-different underlying vulnerabilities, even when returns are correlated.
+dependencies. This supports diversification across underlying vulnerabilities,
+including risks that have not materialized historically and are not captured by
+return correlations.
 
 Return-based distances reflect the dependence observed over the estimation period.
 A graph also describes exposures to events that may be rare or absent in that
