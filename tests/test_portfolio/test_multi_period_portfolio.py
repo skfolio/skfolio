@@ -21,7 +21,9 @@ from skfolio import (
     RatioMeasure,
     RiskMeasure,
 )
+from skfolio.containers import Graph, GraphSeries
 from skfolio.datasets import load_sp500_dataset
+from skfolio.portfolio import dependency_exposure
 from skfolio.preprocessing import prices_to_returns
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import rand_weights
@@ -1768,3 +1770,103 @@ class TestMultiPeriodPortfolioArithmetic:
             assert isinstance(op, MultiPeriodPortfolio)
             for p, w in zip(op, expected, strict=True):
                 np.testing.assert_array_almost_equal(p.weights, w)
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+def test_multi_period_dependency_exposure_history(weight_drift):
+    dates = pd.date_range("2025-01-01", periods=5)
+    first = Portfolio(
+        X=pd.DataFrame([[0, 1], [0, 0]], index=dates[:2], columns=["B", "A"]),
+        weights=[0.5, 0.5],
+        weight_drift=weight_drift,
+    )
+    failed = FailedPortfolio(
+        X=pd.DataFrame([[0, 0]], index=dates[2:3], columns=["B", "C"])
+    )
+    last = Portfolio(
+        X=pd.DataFrame([[0.1], [0]], index=dates[3:], columns=["C"]), weights=[1]
+    )
+    portfolio = MultiPeriodPortfolio([first, failed, last])
+    first_graph = Graph.from_edges(
+        [("A", "S", 1), ("B", "S", 1)], nodes=["A", "B", "S"]
+    )
+    last_graph = Graph.from_edges([("C", "T", 1)], nodes=["C", "T"])
+    graphs = GraphSeries(
+        [first_graph, first_graph, None, last_graph, last_graph], observations=dates
+    )
+    history = portfolio.dependency_exposure(graphs)
+    weights = np.array(
+        [
+            [0.5, 0.5, 0],
+            [1 / 3, 2 / 3, 0] if weight_drift else [0.5, 0.5, 0],
+            [np.nan, np.nan, np.nan],
+            [0, 0, 1],
+            [0, 0, 1],
+        ]
+    )
+    expected = dependency_exposure(graphs, asset_names=["B", "A", "C"], weights=weights)
+    pd.testing.assert_frame_equal(history, expected)
+    assert history.loc[dates[2]].isna().all().all()
+    assert history.loc[(dates[3], "S"), "total"] == 0
+    assert history.loc[(dates[3], "T"), "total"] == 1
+    snapshot = portfolio.dependency_exposure(last_graph)
+    assert snapshot.loc["C", "weight"] == 1
+    assert snapshot.loc["T", "direct"] == 1
+    selected = portfolio.dependency_exposure(graphs, nodes=["S", "T"])
+    pd.testing.assert_frame_equal(
+        selected, history[history.index.get_level_values("dependency").isin(["S", "T"])]
+    )
+
+
+def test_multi_period_dependency_exposure_failed_last_snapshot():
+    first = Portfolio(X=pd.DataFrame([[0]], index=[0], columns=["A"]), weights=[1])
+    last = FailedPortfolio(X=pd.DataFrame([[0]], index=[1], columns=["B"]))
+    portfolio = MultiPeriodPortfolio([first, last])
+    graph = Graph.from_edges([("A", "S", 1)], nodes=["A", "S"])
+    assert portfolio.dependency_exposure(graph).isna().all().all()
+    history = portfolio.dependency_exposure(GraphSeries([graph, graph]))
+    assert history.loc[0, "total"].notna().all()
+    assert history.loc[1].isna().all().all()
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+@pytest.mark.parametrize("failed_subclass", [False, True])
+def test_multi_period_dependency_exposure_missing_weights(
+    weight_drift, failed_subclass
+):
+    class CustomFailedPortfolio(FailedPortfolio):
+        pass
+
+    returns = pd.DataFrame([[0], [0]], index=[0, 1], columns=["A"])
+    missing = (
+        CustomFailedPortfolio(X=returns, weight_drift=weight_drift)
+        if failed_subclass
+        else Portfolio(X=returns, weights=None, weight_drift=weight_drift)
+    )
+    last = Portfolio(X=pd.DataFrame([[0]], index=[2], columns=["B"]), weights=[1])
+    portfolio = MultiPeriodPortfolio([missing, last])
+    graph = Graph.from_edges([("B", "S", 1)], nodes=["B", "S"])
+
+    history = portfolio.dependency_exposure(GraphSeries([graph] * 3))
+    assert history.loc[[0, 1]].isna().all().all()
+    pd.testing.assert_frame_equal(history.loc[2], last.dependency_exposure(graph))
+
+
+def test_multi_period_dependency_exposure_longer_history():
+    graph = Graph.from_edges([("A", "S", 1)], nodes=["A", "S"])
+    first = Portfolio(X=pd.DataFrame([[0]], index=[2], columns=["A"]), weights=[0.3])
+    second = Portfolio(X=pd.DataFrame([[0]], index=[1], columns=["A"]), weights=[0.7])
+    portfolio = MultiPeriodPortfolio([first, second])
+    graphs = GraphSeries([None, graph, graph, None])
+    result = portfolio.dependency_exposure(graphs, nodes=["S"])
+    assert result.index.tolist() == [(2, "S"), (1, "S")]
+    np.testing.assert_array_equal(result["total"], [0.3, 0.7])
+
+
+@pytest.mark.parametrize("history", [False, True])
+def test_empty_multi_period_dependency_exposure(history):
+    graph = Graph(np.zeros((1, 1)), nodes=["A"])
+    with pytest.raises(ValueError, match="empty MultiPeriodPortfolio"):
+        MultiPeriodPortfolio().dependency_exposure(
+            GraphSeries([graph]) if history else graph
+        )

@@ -18,14 +18,20 @@ import plotly.graph_objects as go
 
 import skfolio.typing as skt
 from skfolio.attribution import Attribution
+from skfolio.containers import Graph, GraphSeries
 from skfolio.portfolio._base import BasePortfolio
 from skfolio.portfolio._failed_portfolio import FailedPortfolio
 from skfolio.portfolio._portfolio import (
     Portfolio,
-    _align_weights,
     _select_realized_observation_window,
 )
-from skfolio.typing import FloatArray
+from skfolio.portfolio._utils import (
+    _align_weights,
+    _get_weights_per_observation,
+    _select_graph_observations,
+    dependency_exposure,
+)
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.tools import args_names, deduplicate_names
 
 if TYPE_CHECKING:
@@ -786,6 +792,74 @@ class MultiPeriodPortfolio(BasePortfolio):
         df.loc[:, mask] = df.loc[:, mask].fillna(0)
         return df
 
+    def dependency_exposure(
+        self,
+        graph: Graph | GraphSeries,
+        *,
+        max_hops: int | None = None,
+        nodes: ArrayLike | None = None,
+    ) -> pd.DataFrame:
+        """Compute portfolio exposure to direct and indirect dependencies.
+
+        With a `Graph`, exposure is computed from the last portfolio's initial weights.
+        With a `GraphSeries`, it is computed at each observation using the corresponding
+        graph and portfolio weights.
+
+        See :func:`~skfolio.portfolio.dependency_exposure` for the calculation.
+
+        Parameters
+        ----------
+        graph : Graph or GraphSeries
+            Dependency graph or graphs indexed by observation. For a `GraphSeries`,
+            graphs are matched to portfolio observations. The series must contain every
+            portfolio observation but can cover a longer period.
+
+        max_hops : int, optional
+            Maximum number of edges traversed when computing dependencies. Must be at
+            least 1. If None, all direct and indirect dependencies are included.
+
+        nodes : array-like of shape (n_nodes,), optional
+            Unique string node names for which exposure is returned. If None, all graph
+            nodes are included. Paths can pass through other nodes.
+
+        Returns
+        -------
+        exposure : DataFrame
+            Exposure with columns `weight`, `direct`, `indirect` and `total`. Rows are
+            indexed by `dependency` for a `Graph`, or by (`observation`, `dependency`)
+            for a `GraphSeries`. Missing graphs or portfolio weights give NaN exposure.
+
+        Raises
+        ------
+        ValueError
+            If the portfolio is empty, an asset with a nonzero weight is missing from
+            its graph, a requested node is missing from all graphs, or graph
+            observations cannot be matched to portfolio observations.
+        """
+        if not len(self):
+            raise ValueError(
+                "Cannot compute dependency exposure on an empty MultiPeriodPortfolio."
+            )
+        if not isinstance(graph, GraphSeries):
+            return self[-1].dependency_exposure(graph, max_hops=max_hops, nodes=nodes)
+
+        graph = _select_graph_observations(graphs=graph, observations=self.observations)
+        asset_names = pd.unique(
+            np.concatenate([portfolio.assets for portfolio in self])
+        )
+
+        weights = _get_weights_per_observation(
+            portfolios=self.portfolios, asset_names=asset_names
+        )
+
+        return dependency_exposure(
+            graph,
+            asset_names=asset_names,
+            weights=weights,
+            max_hops=max_hops,
+            nodes=nodes,
+        )
+
     def summary(self, formatted: bool = True) -> pd.Series:
         """Portfolio summary of all its measures.
 
@@ -990,7 +1064,10 @@ class MultiPeriodPortfolio(BasePortfolio):
                 "is a FailedPortfolio."
             )
         aligned_weights = _align_weights(
-            last_portfolio.weights, last_portfolio.assets, factor_model.asset_names
+            weights=last_portfolio.weights,
+            asset_names=last_portfolio.assets,
+            target_asset_names=factor_model.asset_names,
+            source="the factor model",
         )
         return factor_model.predicted_attribution(
             weights=aligned_weights,
@@ -1183,36 +1260,24 @@ def _prepare_multi_period_realized_attribution_inputs(
     if len(multi_period_portfolio) == 0:
         raise ValueError("Cannot compute attribution on an empty MultiPeriodPortfolio.")
 
-    observation_parts: list[np.ndarray] = []
-    return_parts: list[np.ndarray] = []
-    weight_parts: list[np.ndarray] = []
-
-    for portfolio in multi_period_portfolio:
-        if isinstance(portfolio, FailedPortfolio):
-            continue
-        if portfolio.weight_drift:
-            # Weights held during each observation, shape (n_observations, n_assets).
-            weights = portfolio._get_weights_path()
-        else:
-            weights = np.broadcast_to(
-                portfolio.weights, (portfolio.n_observations, portfolio.n_assets)
-            )
-        aligned_weights = _align_weights(
-            weights, portfolio.assets, factor_model.asset_names
-        )
-        weight_parts.append(aligned_weights)
-        observation_parts.append(portfolio.observations)
-        return_parts.append(portfolio.returns)
-
-    if not observation_parts:
+    portfolios = [
+        portfolio
+        for portfolio in multi_period_portfolio
+        if not isinstance(portfolio, FailedPortfolio)
+    ]
+    if not portfolios:
         raise ValueError(
             "All child portfolios are FailedPortfolio; cannot compute "
             "realized attribution."
         )
 
-    observations = np.concatenate(observation_parts)
-    portfolio_returns = np.concatenate(return_parts)
-    weights_per_observation = np.vstack(weight_parts)
+    observations = np.concatenate([portfolio.observations for portfolio in portfolios])
+    portfolio_returns = np.concatenate([portfolio.returns for portfolio in portfolios])
+    weights_per_observation = _get_weights_per_observation(
+        portfolios=portfolios,
+        asset_names=factor_model.asset_names,
+        source="the factor model",
+    )
 
     portfolio_indices, aligned_factor_model = _select_realized_observation_window(
         observations=observations,
