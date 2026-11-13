@@ -68,13 +68,15 @@ def prices_to_returns(
 
     drop_inceptions_nan : bool, default=True
         If set to True, observations at the beginning are dropped if any of
-        the asset values are missing, otherwise we keep the NaNs. This is useful when
-        you work with a large universe of assets with different inception dates coupled
-        with a pre-selection Transformer.
+        the asset values are missing, otherwise we keep the NaNs. Only the leading
+        observations, before the first observation with no missing values, are
+        dropped. This is useful when you work with a large universe of assets with
+        different inception dates coupled with a pre-selection Transformer.
 
     fill_nan : bool, default=True
         If set to True, missing prices (NaNs) are forward filled using the previous
-        price. Otherwise, NaNs are kept.
+        price. Otherwise, NaNs are kept and the returns of the periods ending on and
+        immediately after a missing price are NaN.
 
     Returns
     -------
@@ -122,8 +124,13 @@ def prices_to_returns(
     # Forward fill missing values
     if fill_nan:
         df.ffill(inplace=True)
-    # Drop rows according to drop_inceptions_nan
-    df = df.dropna(how="any" if drop_inceptions_nan else "all")
+    # Drop the leading observations that have a missing value, up to the first
+    # complete observation. Missing values after it are kept, so that a missing
+    # price yields NaN returns instead of a return spanning several observations.
+    if drop_inceptions_nan:
+        df = df.loc[df.notna().all(axis=1).cummax()]
+    # Drop observations where all values are missing
+    df = df.dropna(how="all")
 
     # returns
     all_returns = df.pct_change(fill_method=None).iloc[1:]
