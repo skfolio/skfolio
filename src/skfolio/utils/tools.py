@@ -1108,6 +1108,9 @@ def default_asset_names(n_assets: int) -> StrArray:
 def deduplicate_names(names: Iterable[str]) -> list[str]:
     """Rename duplicated names by appending "_{duplicate_nb}" at the end.
 
+    Preserve the first occurrence of each name. Suffixes start at 1 and skip
+    names present anywhere in the input or already generated for a duplicate.
+
     This function is inspired by the pandas function `_maybe_dedup_names`.
 
     Parameters
@@ -1118,14 +1121,18 @@ def deduplicate_names(names: Iterable[str]) -> list[str]:
     Returns
     -------
     names : list[str]
-        Deduplicate names.
+        Unique names in the original order.
     """
     names = list(names)
+    taken = set(names)
     counts = {}
     for i, col in enumerate(names):
         cur_count = counts.get(col, 0)
         if cur_count > 0:
+            while f"{col}_{cur_count}" in taken:
+                cur_count += 1
             names[i] = f"{col}_{cur_count}"
+            taken.add(names[i])
         counts[col] = cur_count + 1
     return names
 

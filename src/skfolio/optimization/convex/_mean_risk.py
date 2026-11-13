@@ -1471,13 +1471,30 @@ class MeanRisk(ConvexOptimization):
                 # risk <= limit * factor. The ratio objective needs 2-homogeneity in w,
                 # so use factor=1 for the objective only.
                 objective_args: dict[str, Any] = args
-                if risk_func == self._worst_case_variance_risk and isinstance(
-                    factor, cp.Variable
+                if (
+                    self.objective_function == ObjectiveFunction.MAXIMIZE_RATIO
+                    and risk_func == self._worst_case_variance_risk
                 ):
                     objective_args = {**args, "factor": cp.Constant(1)}
 
+                limit_func = risk_func
                 if risk_limit is not None:
-                    risk_i, constraints_i = risk_func(**args)
+                    risk_limit = np.asarray(risk_limit, dtype=float)
+                    # In ratio optimization, variance and semi-variance scale
+                    # quadratically with the weights. Expressing their limits through
+                    # standard deviation and semi-deviation makes both sides scale
+                    # linearly.
+                    if (
+                        self.objective_function == ObjectiveFunction.MAXIMIZE_RATIO
+                        and risk_func in (self._variance_risk, self._semi_variance_risk)
+                    ):
+                        limit_func = (
+                            self._standard_deviation_risk
+                            if risk_func == self._variance_risk
+                            else self._semi_deviation_risk
+                        )
+                        risk_limit = np.sqrt(risk_limit)
+                    risk_i, constraints_i = limit_func(**args)
                     constraints += constraints_i
                     parameter = cp.Parameter(nonneg=True)
                     constraints += [
@@ -1485,8 +1502,13 @@ class MeanRisk(ConvexOptimization):
                         <= parameter * factor * self._scale_constraints
                     ]
                     parameters_values.append((parameter, risk_limit))
+
                 if self.risk_measure == r_m:
-                    if risk_limit is not None and objective_args is args:
+                    if (
+                        risk_limit is not None
+                        and objective_args is args
+                        and limit_func == risk_func
+                    ):
                         risk = risk_i
                     else:
                         risk, constraints_i = risk_func(**objective_args)

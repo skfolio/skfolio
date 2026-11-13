@@ -299,10 +299,7 @@ class Attribution:
                 _format_contrib_with_ci_margin(m, s, z)
                 for m, s in zip(mu_vals, se_vals, strict=True)
             ]
-            df.drop(
-                columns=[mu_contrib_col, "Mean Return Uncertainty"],
-                inplace=True,
-            )
+            df = df.drop(columns=[mu_contrib_col, "Mean Return Uncertainty"])
 
         if formatted:
             pct_cols = [
@@ -1565,7 +1562,7 @@ def _plot_contribution_chart(
                     customdata = []
                 custom_data = np.column_stack([values[attr][:, i] for attr in attrs])
                 show_exposure = not np.all(np.isnan(custom_data[:, -1]))
-                customdata.append(custom_data)  # ty: ignore[unresolved-attribute]
+                customdata.append(custom_data)  # ty: ignore[missing-union-attribute]
                 hovertemplates.append(
                     _hover_template(name, contrib_names, show_exposure)
                 )

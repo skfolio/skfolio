@@ -560,9 +560,9 @@ class Portfolio(BasePortfolio):
         observations = None
         if hasattr(X, "columns"):
             assets = np.asarray(X.columns, dtype=object)
-            observations = np.asarray(X.index)  # ty: ignore[unresolved-attribute]
+            observations = np.asarray(X.index)  # ty: ignore[missing-union-attribute]
 
-        shape = rets.shape if weights_provided else np.shape(X)  # ty: ignore[unresolved-attribute]
+        shape = rets.shape if weights_provided else np.shape(X)  # ty: ignore[missing-union-attribute]
         if len(shape) != 2:
             raise ValueError("`X` must be a 2D array-like")
 
@@ -647,7 +647,7 @@ class Portfolio(BasePortfolio):
         if np.isscalar(management_fees) and management_fees == 0:
             total_fee = 0
         else:
-            total_fee = (management_fees * weights).sum()  # ty: ignore[unresolved-attribute]
+            total_fee = (management_fees * weights).sum()  # ty: ignore[missing-union-attribute]
 
         ending_weights = weights.copy()
         if weights_provided:
@@ -862,10 +862,11 @@ class Portfolio(BasePortfolio):
         filtered out. Use `weights_dict` to access all weights, including zeros.
         """
         weights = self.weights[self.nonzero_assets_index]
-        df = pd.DataFrame({"asset": self.nonzero_assets, "weight": weights})
-        df.sort_values(by="weight", ascending=False, inplace=True)
-        df.rename(columns={"weight": self.name}, inplace=True)
-        df.set_index("asset", inplace=True)
+        df = pd.DataFrame(
+            {"weight": weights}, index=pd.Index(self.nonzero_assets, name="asset")
+        )
+        df = df.sort_values(by="weight", ascending=False)
+        df.columns = [self.name]
         return df
 
     @property
@@ -1101,7 +1102,7 @@ class Portfolio(BasePortfolio):
         if not to_df:
             return np.array(contribution)
         df = pd.DataFrame(contribution, index=assets, columns=[self.name])
-        df.sort_values(by=self.name, ascending=False, inplace=True)
+        df = df.sort_values(by=self.name, ascending=False)
         return df
 
     def summary(self, formatted: bool = True) -> pd.Series:
