@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.12.11 (2026-11-13)
+
+### Bug Fixes
+
+- **utils**: Keep deduplicated names unique when a suffixed name already exists
+  ([#466](https://github.com/skfolio/skfolio/pull/466),
+  [`1e76be8`](https://github.com/skfolio/skfolio/commit/1e76be8d1da17ebbc8aa271c7e5bc57ecda14476))
+
+
 ## v1.12.10 (2026-11-12)
 
 ### Chores
