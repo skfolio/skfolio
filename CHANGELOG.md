@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.12.12 (2026-11-13)
+
+### Bug Fixes
+
+- **portfolio**: Preserve zero exposure for Portfolio with no invested assets
+  ([#473](https://github.com/skfolio/skfolio/pull/473),
+  [`e819b26`](https://github.com/skfolio/skfolio/commit/e819b26d12e4514e60077d6a1e94c622d0cd7a35))
+
+
 ## v1.12.11 (2026-11-13)
 
 ### Bug Fixes
