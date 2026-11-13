@@ -362,6 +362,12 @@ def test_deduplicate_names():
     names = ["blah", "blah2", "blah3", "blah", "blah"]
     names = deduplicate_names(names)
     assert names == ["blah", "blah2", "blah3", "blah_1", "blah_2"]
+    assert deduplicate_names(["a", "a", "a_1"]) == ["a", "a_2", "a_1"]
+
+
+def test_deduplicate_names_skips_reserved_suffixes():
+    names = ["a", "a", "a_1", "a_2", "a"]
+    assert deduplicate_names(names) == ["a", "a_3", "a_1", "a_2", "a_4"]
 
 
 # Test with valid integer inputs.
