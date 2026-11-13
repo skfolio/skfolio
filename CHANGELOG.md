@@ -2,6 +2,65 @@
 
 <!-- version list -->
 
+## v1.12.10 (2026-11-12)
+
+### Chores
+
+- Pin ty and align local and CI type checks ([#503](https://github.com/skfolio/skfolio/pull/503),
+  [`9ab9b6d`](https://github.com/skfolio/skfolio/commit/9ab9b6d11aa3ca5106c37995a70e2d7ba072ce89))
+
+### Performance Improvements
+
+- **uncertainty-set**: Avoid materializing bootstrap sample cubes
+  ([#461](https://github.com/skfolio/skfolio/pull/461),
+  [`6cfacc0`](https://github.com/skfolio/skfolio/commit/6cfacc002bb5c463a9ccd47eb98927febb832656))
+
+
+## v1.12.9 (2026-11-10)
+
+### Bug Fixes
+
+- **prior**: Allow negative correlation views in EntropyPooling
+  ([#496](https://github.com/skfolio/skfolio/pull/496),
+  [`b12794e`](https://github.com/skfolio/skfolio/commit/b12794eb3c1c68ea1f2f0b17e007ce0d8304e4c1))
+
+- **prior**: Cast BlackLitterman view_confidences to float without mutating them
+  ([#495](https://github.com/skfolio/skfolio/pull/495),
+  [`7c62a6b`](https://github.com/skfolio/skfolio/commit/7c62a6b4c87b378f989ca2793ee0180cc9c3bd64))
+
+### Continuous Integration
+
+- Update type-check rules for ty 0.0.100 ([#500](https://github.com/skfolio/skfolio/pull/500),
+  [`4eb2a82`](https://github.com/skfolio/skfolio/commit/4eb2a82ce2799118cf9ed4ad68fbe7922974227b))
+
+
+## v1.12.8 (2026-11-08)
+
+### Bug Fixes
+
+- **measures**: Compute evar and edar per column for 2D inputs
+  ([#471](https://github.com/skfolio/skfolio/pull/471),
+  [`3eded63`](https://github.com/skfolio/skfolio/commit/3eded6381c8b6b2aabb7d8bd88706c42d7391f44))
+
+### Documentation
+
+- Keep code and tables when stripping Plotly figures from llms Markdown
+  ([#494](https://github.com/skfolio/skfolio/pull/494),
+  [`08ad80c`](https://github.com/skfolio/skfolio/commit/08ad80c64c2f46c7e56d11ec8c9d1dae7fe3f2fc))
+
+- **readme**: Cite the published skfolio paper ([#493](https://github.com/skfolio/skfolio/pull/493),
+  [`aa14348`](https://github.com/skfolio/skfolio/commit/aa1434826a38f25231d30f8ab190a05e1596fb76))
+
+
+## v1.12.7 (2026-11-06)
+
+### Bug Fixes
+
+- **optimization**: Correct hierarchical distance fitting and weight bounds
+  ([#488](https://github.com/skfolio/skfolio/pull/488),
+  [`5f1929c`](https://github.com/skfolio/skfolio/commit/5f1929ccb25ca5962119ca7dc8cbc9ca71c32d86))
+
+
 ## v1.12.6 (2026-11-06)
 
 ### Bug Fixes

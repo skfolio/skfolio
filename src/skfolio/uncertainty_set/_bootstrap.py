@@ -24,7 +24,7 @@ from skfolio.uncertainty_set._base import (
     BaseMuUncertaintySet,
 )
 from skfolio.uncertainty_set._model import UncertaintySet
-from skfolio.utils.bootstrap import stationary_bootstrap
+from skfolio.utils.bootstrap import _stationary_bootstrap_indices
 from skfolio.utils.tools import check_estimator
 
 
@@ -159,13 +159,15 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
         returns = self.prior_estimator_.return_distribution_.returns
         n_assets = returns.shape[1]
         radius = np.sqrt(st.chi2.ppf(q=self.confidence_level, df=n_assets))
-        samples = stationary_bootstrap(
+        indices = _stationary_bootstrap_indices(
             returns=returns,
             block_size=self.block_size,
             n_bootstrap_samples=self.n_bootstrap_samples,
             seed=self.seed,
         )
-        mus = np.mean(samples, axis=1)
+        mus = np.empty((self.n_bootstrap_samples, n_assets))
+        for i, index in enumerate(indices):
+            mus[i] = np.mean(returns[index], axis=0)
         deviations = mus - mu
         if self.diagonal:
             geometry = np.diag(np.sqrt(np.var(deviations, axis=0, ddof=1)))
@@ -312,15 +314,15 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         n_assets = returns.shape[1]
         radius = np.sqrt(st.chi2.ppf(q=self.confidence_level, df=n_assets**2))
 
-        samples = stationary_bootstrap(
+        indices = _stationary_bootstrap_indices(
             returns=returns,
             block_size=self.block_size,
             n_bootstrap_samples=self.n_bootstrap_samples,
             seed=self.seed,
         )
         deviations = np.empty((self.n_bootstrap_samples, n_assets**2))
-        for i, sample in enumerate(samples):
-            deviations[i] = np.cov(sample.T).ravel(order="F")
+        for i, index in enumerate(indices):
+            deviations[i] = np.cov(returns[index].T).ravel(order="F")
 
         if self.diagonal:
             geometry = np.diag(np.sqrt(np.var(deviations, axis=0, ddof=1)))

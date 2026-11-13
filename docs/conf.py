@@ -2193,16 +2193,19 @@ def skip_strenum_public_str_methods(
 _PLOTLY_BLOCK_RES = [
     re.compile(
         r'<div class="output_subarea output_html rendered_html output_result">'
-        r".*?plotly-graph-div"
+        r"(?:(?!</div>\s*</div>).)*?plotly-graph-div"
         r".*?</div>\s*</div>",
         flags=re.DOTALL,
     ),
     re.compile(
-        r"<html>.*?plotly-graph-div.*?</html>",
+        r"<html>(?:(?!</html>).)*?plotly-graph-div.*?</html>",
         flags=re.DOTALL,
     ),
 ]
 _PLOTLY_PLACEHOLDER = "[plotly figure stripped from llms output]"
+_PLOTLY_STYLE_SCRIPT_RE = re.compile(
+    r"<style>[^<]*plotly-graph-div[^<]*</style>\s*<script>[^<]*</script>"
+)
 
 # Remove metadata comments (e.g. `<!-- !! processed by numpydoc !! -->`) from
 # sphinx-llm pages
@@ -2226,6 +2229,7 @@ def _sanitize_llm_markdown_text(text: str) -> tuple[str, int, int]:
     so files do not start with empty lines after comment removal.
     """
     n_plotly = 0
+    text = _PLOTLY_STYLE_SCRIPT_RE.sub("", text)
     for regex in _PLOTLY_BLOCK_RES:
         text, n = regex.subn(_PLOTLY_PLACEHOLDER, text)
         n_plotly += n

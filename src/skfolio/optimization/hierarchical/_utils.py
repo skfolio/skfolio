@@ -65,19 +65,19 @@ class _PortfolioRiskMixin:
             values for the assets in `return_distribution`.
         """
         n_assets = return_distribution.returns.shape[1]
-        transaction_costs = self._clean_input(  # ty: ignore[unresolved-attribute]
+        transaction_costs = self._clean_input(  # ty: ignore[missing-attribute]
             self.transaction_costs,
             n_assets=n_assets,
             fill_value=0,
             name=_TRANSACTION_COSTS,
         )
-        management_fees = self._clean_input(  # ty: ignore[unresolved-attribute]
+        management_fees = self._clean_input(  # ty: ignore[missing-attribute]
             self.management_fees,
             n_assets=n_assets,
             fill_value=0,
             name=_MANAGEMENT_FEES,
         )
-        previous_weights = self._clean_previous_weights(  # ty: ignore[unresolved-attribute]
+        previous_weights = self._clean_previous_weights(  # ty: ignore[missing-attribute]
             n_assets=n_assets
         )
         # Invalid inputs must raise before they can produce a non-finite risk.

@@ -1725,8 +1725,32 @@ def test_vine_conditioning_raise(small_model):
         small_model.sample(n_samples=5, conditioning={0: (0.1, 0.2, 0.3)})
     with pytest.raises(ValueError, match="lower bound must be lower than"):
         small_model.sample(n_samples=5, conditioning={0: (0.5, -0.5)})
+
+
+@pytest.mark.parametrize(
+    "bounds",
+    [
+        (1j, 0.8),
+        (0.2, 1j),
+        ("0.2", 0.8),
+        (0.2, "0.8"),
+        (False, 0.8),
+        (0.2, True),
+        (np.bool_(False), 0.8),
+        (0.2, np.bool_(True)),
+    ],
+)
+def test_vine_conditioning_rejects_invalid_bounds(small_model, bounds):
+    """Conditioning bounds reject strings, complex numbers and booleans."""
+    with pytest.raises(ValueError, match="bounds must be real numbers or None"):
+        small_model.sample(n_samples=5, conditioning={0: bounds})
+
+
+@pytest.mark.parametrize("value", ["abc", 1j, True, np.bool_(False)])
+def test_vine_conditioning_rejects_invalid_scalar(small_model, value):
+    """Scalar conditioning uses the same real-number check as bounds."""
     with pytest.raises(ValueError, match="Conditioning values should be numbers"):
-        small_model.sample(n_samples=5, conditioning={0: "abc"})
+        small_model.sample(n_samples=5, conditioning={0: value})
 
 
 def test_vine_conditioning_keys_not_in_X(small_model):

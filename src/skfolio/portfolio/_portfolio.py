@@ -560,9 +560,9 @@ class Portfolio(BasePortfolio):
         observations = None
         if hasattr(X, "columns"):
             assets = np.asarray(X.columns, dtype=object)
-            observations = np.asarray(X.index)  # ty: ignore[unresolved-attribute]
+            observations = np.asarray(X.index)  # ty: ignore[missing-union-attribute]
 
-        shape = rets.shape if weights_provided else np.shape(X)  # ty: ignore[unresolved-attribute]
+        shape = rets.shape if weights_provided else np.shape(X)  # ty: ignore[missing-union-attribute]
         if len(shape) != 2:
             raise ValueError("`X` must be a 2D array-like")
 
@@ -647,7 +647,7 @@ class Portfolio(BasePortfolio):
         if np.isscalar(management_fees) and management_fees == 0:
             total_fee = 0
         else:
-            total_fee = (management_fees * weights).sum()  # ty: ignore[unresolved-attribute]
+            total_fee = (management_fees * weights).sum()  # ty: ignore[missing-union-attribute]
 
         ending_weights = weights.copy()
         if weights_provided:

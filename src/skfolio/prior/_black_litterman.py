@@ -23,6 +23,11 @@ from skfolio.typing import ArrayLike, FloatArray, StrArray
 from skfolio.utils.equations import equations_to_matrix
 from skfolio.utils.tools import check_estimator, input_to_array
 
+# Zero confidence implies infinite view uncertainty: alpha = 1 / confidence - 1.
+# Approximating zero confidence with 1e-16 keeps the uncertainty finite
+# while giving the view negligible influence on the posterior.
+_ZERO_CONFIDENCE_EPSILON = 1e-16
+
 
 class BlackLitterman(BasePrior):
     """Black & Litterman estimator.
@@ -249,12 +254,14 @@ class BlackLitterman(BasePrior):
             )
         else:
             # Idzorek's method using Jay Walters closed form solution
-            view_confidences = np.asarray(self.view_confidences)
+            view_confidences = np.asarray(self.view_confidences, dtype=float)
             if np.any(view_confidences < 0) or np.any(view_confidences > 1):
                 raise ValueError(
                     "all values of view_confidences must be between 0 and 1"
                 )
-            view_confidences[view_confidences == 0] = 1e-16
+            view_confidences = np.where(
+                view_confidences == 0, _ZERO_CONFIDENCE_EPSILON, view_confidences
+            )
             alphas = 1 / view_confidences - 1
             omega = np.diag(
                 np.diag(
