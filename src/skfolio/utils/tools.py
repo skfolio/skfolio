@@ -200,12 +200,14 @@ def _check_method_params(
     params : dict
         Dictionary containing the parameters passed to the method.
 
-    indices : ndarray, slice,, optional
+    indices : ndarray, slice, optional
         Indices or slice to be selected if the parameter has the same size as `X`.
 
     axis : int, default=0
         The axis along which `X` will be sub-sampled. `axis=0` will select rows while
-        `axis=1` will select columns.
+        `axis=1` will select columns. With `axis=1`, one-dimensional metadata has one
+        value per observation and is returned unchanged, and metadata with more
+        dimensions must have one column per asset.
 
     Returns
     -------
@@ -217,14 +219,14 @@ def _check_method_params(
     for param_key, param_value in params.items():
         if param_value.shape[0] != n_observations:
             raise ValueError(
-                f"param_key has wrong number of observations, "
+                f"{param_key} has wrong number of observations, "
                 f"received={param_value.shape[0]}, "
                 f"expected={n_observations}"
             )
-        method_params_validated[param_key] = _make_indexable(param_value)
-        method_params_validated[param_key] = safe_indexing(
-            X=method_params_validated[param_key], indices=indices, axis=axis
-        )
+        param_value = _make_indexable(param_value)
+        if axis == 0 or param_value.ndim > 1:
+            param_value = safe_indexing(param_value, indices=indices, axis=axis)
+        method_params_validated[param_key] = param_value
     return method_params_validated
 
 

@@ -11,6 +11,7 @@ from sklearn.linear_model import LinearRegression
 
 from skfolio.utils.tools import (
     _call_estimator,
+    _check_method_params,
     _filter_supported_params,
     _get_liquidation_turnover_and_cost,
     _is_bool,
@@ -40,6 +41,31 @@ from skfolio.utils.tools import (
     safe_split,
     validate_input_list,
 )
+
+
+@pytest.mark.parametrize("as_pandas", [False, True])
+@pytest.mark.parametrize("columns", [np.array([3, 1]), slice(1, 3)])
+def test_check_method_params_slices_mixed_metadata(as_pandas, columns):
+    X = np.arange(24).reshape(6, 4)
+    weights = np.arange(6) + 1.0
+    asset_metadata = X + 0.5
+    params = {
+        "sample_weight": pd.Series(weights) if as_pandas else weights,
+        "asset_metadata": pd.DataFrame(asset_metadata) if as_pandas else asset_metadata,
+    }
+
+    selected = _check_method_params(X, params, indices=columns, axis=1)
+    np.testing.assert_array_equal(selected["sample_weight"], weights)
+    np.testing.assert_array_equal(
+        selected["asset_metadata"], asset_metadata[:, columns]
+    )
+
+    train = np.array([5, 2, 0])
+    fitted = _check_method_params(X, selected, indices=train)
+    np.testing.assert_array_equal(fitted["sample_weight"], weights[train])
+    np.testing.assert_array_equal(
+        fitted["asset_metadata"], asset_metadata[train][:, columns]
+    )
 
 
 @pytest.mark.parametrize("offset", [-1.002e-5, -1e-5, 0, 1e-5, 1.002e-5])

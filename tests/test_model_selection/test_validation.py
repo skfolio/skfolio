@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pickle
 import warnings
+from collections import UserList
 from itertools import pairwise
 
 import numpy as np
@@ -12,9 +13,12 @@ import pytest
 import sklearn.model_selection as sks
 import sklearn.utils as sku
 from sklearn import config_context
+from sklearn.exceptions import UnsetMetadataPassedError
 from sklearn.model_selection import KFold
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
+import skfolio.model_selection._validation as validation
 from skfolio import FailedPortfolio, MultiPeriodPortfolio, Population
 from skfolio.measures import PerfMeasure, RiskMeasure
 from skfolio.model_selection import (
@@ -259,14 +263,24 @@ def test_route_params_picklable_with_metadata(X):
     assert restored.splitter.split == {}
 
 
-def test_cross_val_predict_non_portfolio_estimator_raises(X):
-    model = ImpliedCovariance()
-
+@pytest.mark.parametrize(
+    "model", [ImpliedCovariance(), "abc", b"abc", bytearray(b"abc")]
+)
+def test_cross_val_predict_non_portfolio_estimator_raises(X, model):
     with pytest.raises(
         TypeError,
         match=(r"skfolio's `cross_val_predict` only supports"),
     ):
         cross_val_predict(model, X, cv=KFold())
+
+
+def test_cross_val_predict_default_cv_without_metadata_routing(X_small):
+    with config_context(enable_metadata_routing=False):
+        mpp = cross_val_predict(EqualWeighted(), X_small)
+
+    assert isinstance(mpp, MultiPeriodPortfolio)
+    assert len(mpp) == 5
+    np.testing.assert_allclose(mpp.returns, X_small.mean(axis=1))
 
 
 def test_cross_val_predict_rejects_empty_splits():
@@ -530,19 +544,43 @@ def test_cross_val_predict_rejects_unsorted_folds_without_shuffle_attribute(X_sm
         )
 
 
-def test_cross_val_predict_rejects_duplicated_test_indices(X_small):
+@pytest.mark.parametrize("collection", [False, True])
+def test_cross_val_predict_rejects_duplicated_test_indices(
+    X_small, monkeypatch, collection
+):
+    def unexpected_fit(*args, **kwargs):
+        pytest.fail("Overlapping test indices must be rejected before fitting.")
+
+    monkeypatch.setattr(validation, "fit_and_predict", unexpected_fit)
+    estimator = (
+        [("inv_vol", InverseVolatility()), ("equal", EqualWeighted())]
+        if collection
+        else InverseVolatility()
+    )
     with pytest.raises(ValueError, match="non-duplicated test indices"):
-        cross_val_predict(
-            InverseVolatility(), X_small, cv=_NoShuffleAttributeCV(duplicate=True)
-        )
+        cross_val_predict(estimator, X_small, cv=_NoShuffleAttributeCV(duplicate=True))
 
 
-def test_cross_val_predict_sequential_path_warns_when_n_jobs_set(X_small):
+@pytest.mark.parametrize("collection", [False, True])
+def test_cross_val_predict_sequential_path_warns_when_n_jobs_set(
+    X_small, monkeypatch, collection
+):
+    def unexpected_pool(*args, **kwargs):
+        pytest.fail("A single sequential path must run without a worker pool.")
+
+    monkeypatch.setattr(validation.skp, "Parallel", unexpected_pool)
+    estimator = PreviousWeightsAwareOptimization()
+    if collection:
+        estimator = [("sequential", estimator)]
     cv = WalkForward(test_size=50, train_size=100)
     with pytest.warns(UserWarning, match="Parallel processing has been disabled"):
-        pred = cross_val_predict(
-            PreviousWeightsAwareOptimization(), X_small, cv=cv, n_jobs=2
-        )
+        pred = cross_val_predict(estimator, X_small, cv=cv, n_jobs=2)
+    if collection:
+        assert isinstance(pred, Population)
+        assert len(pred) == 1
+        assert pred[0].tag == "sequential"
+        pred = pred[0]
+    assert isinstance(pred, MultiPeriodPortfolio)
     assert len(pred) == cv.get_n_splits(X_small)
 
 
@@ -1027,3 +1065,444 @@ def test_independent_fits_keep_holdings_across_failed_period(X, monkeypatch):
     assert isinstance(pred[1], FailedPortfolio)
     np.testing.assert_allclose(pred.turnover, [1.0, np.nan, 0.0], equal_nan=True)
     np.testing.assert_array_equal(pred[2].previous_weights, pred[0].ending_weights)
+
+
+class ScaledWeightsOptimization(BaseOptimization):
+    """Equal-weighted allocation scaled by the `scale` metadata passed to `fit`."""
+
+    def fit(self, X, y=None, scale=None):
+        # `scale` is per-observation metadata, sliced to the training window.
+        factor = 1.0 if scale is None else float(np.mean(scale))
+        self.n_features_in_ = X.shape[1]
+        if hasattr(X, "columns"):
+            self.feature_names_in_ = np.asarray(X.columns, dtype=object)
+        self.weights_ = np.full(X.shape[1], factor / X.shape[1])
+        return self
+
+
+def _assert_same_multi_period_portfolio(actual, expected):
+    assert isinstance(actual, MultiPeriodPortfolio)
+    assert len(actual) == len(expected)
+    np.testing.assert_allclose(actual.returns, expected.returns)
+    for actual_ptf, expected_ptf in zip(actual, expected, strict=True):
+        np.testing.assert_allclose(actual_ptf.weights, expected_ptf.weights)
+        if expected_ptf.previous_weights is None:
+            assert actual_ptf.previous_weights is None
+        else:
+            np.testing.assert_allclose(
+                actual_ptf.previous_weights, expected_ptf.previous_weights
+            )
+
+
+def _as_paths(prediction):
+    return list(prediction) if isinstance(prediction, Population) else [prediction]
+
+
+@pytest.mark.parametrize("n_jobs", [None, 2])
+@pytest.mark.parametrize(
+    "cv",
+    [
+        KFold(n_splits=3),
+        WalkForward(train_size=100, test_size=50),
+        sks.TimeSeriesSplit(n_splits=3),
+    ],
+)
+def test_collection_matches_individual_runs(X_small, cv, n_jobs):
+    estimators = [("min_var", MeanRisk()), ("inv_vol", InverseVolatility())]
+    population = cross_val_predict(estimators, X_small, cv=cv, n_jobs=n_jobs)
+
+    assert isinstance(population, Population)
+    assert [mpp.name for mpp in population] == ["min_var", "inv_vol"]
+    assert [mpp.tag for mpp in population] == ["min_var", "inv_vol"]
+    for (name, estimator), mpp in zip(estimators, population, strict=True):
+        filtered = population.filter(tags=name)
+        assert len(filtered) == 1
+        assert filtered[0] is mpp
+        _assert_same_multi_period_portfolio(
+            mpp, cross_val_predict(estimator, X_small, cv=cv)
+        )
+
+
+@pytest.mark.parametrize(
+    "cv",
+    [
+        CombinatorialPurgedCV(n_folds=4, n_test_folds=2),
+        MultipleRandomizedCV(
+            walk_forward=WalkForward(train_size=60, test_size=30),
+            n_subsamples=3,
+            asset_subset_size=5,
+            random_state=0,
+        ),
+    ],
+)
+def test_collection_multi_path_ordered_by_estimator_then_path(X_small, cv):
+    estimators = [("min_var", MeanRisk()), ("inv_vol", InverseVolatility())]
+    population = cross_val_predict(estimators, X_small, cv=cv)
+
+    individual = {
+        name: cross_val_predict(estimator, X_small, cv=cv)
+        for name, estimator in estimators
+    }
+    n_paths = len(individual["min_var"])
+    assert n_paths > 1
+    assert len(population) == len(estimators) * n_paths
+    assert [mpp.name for mpp in population] == [
+        f"{name}_{i}" for name, _ in estimators for i in range(n_paths)
+    ]
+    for name, _ in estimators:
+        paths = population.filter(tags=name)
+        assert len(paths) == n_paths
+        for mpp, expected in zip(paths, individual[name], strict=True):
+            _assert_same_multi_period_portfolio(mpp, expected)
+
+
+@pytest.mark.parametrize("n_jobs", [None, 2])
+@pytest.mark.parametrize(
+    "cv",
+    [
+        WalkForward(train_size=60, test_size=30),
+        MultipleRandomizedCV(
+            walk_forward=WalkForward(train_size=60, test_size=30),
+            n_subsamples=2,
+            asset_subset_size=3,
+            random_state=0,
+        ),
+    ],
+)
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_collection_mixes_sequential_and_independent_estimators(
+    X_small, cv, n_jobs, reverse_order
+):
+    # Library estimators are used because worker processes cannot unpickle classes
+    # defined in this test module. Transaction costs make the folds depend on the
+    # previous holdings.
+    estimators = [
+        ("sequential", MeanRisk(transaction_costs=0.001)),
+        ("independent", EqualWeighted()),
+    ]
+    assert estimators[0][1].needs_previous_weights
+    assert not estimators[1][1].needs_previous_weights
+    if reverse_order:
+        estimators.reverse()
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        population = cross_val_predict(estimators, X_small, cv=cv, n_jobs=n_jobs)
+    # Sequential paths of different estimators run in parallel, so parallel processing
+    # remains enabled for this collection.
+    assert not any(
+        "Parallel processing has been disabled" in str(w.message) for w in caught
+    )
+    assert [mpp.tag for mpp in population] == [
+        name
+        for name, _ in estimators
+        for _ in range(len(population) // len(estimators))
+    ]
+
+    for name, estimator in estimators:
+        expected_paths = _as_paths(cross_val_predict(estimator, X_small, cv=cv))
+        paths = population.filter(tags=name)
+        assert len(paths) == len(expected_paths)
+        for mpp, expected in zip(paths, expected_paths, strict=True):
+            _assert_same_multi_period_portfolio(mpp, expected)
+
+
+@pytest.mark.parametrize("sequence_type", [list, tuple, UserList])
+def test_collection_with_single_estimator_returns_population(X_small, sequence_type):
+    cv = WalkForward(train_size=100, test_size=50)
+    estimators = sequence_type([("min_var", MeanRisk())])
+    population = cross_val_predict(estimators, X_small, cv=cv)
+
+    assert isinstance(population, Population)
+    assert len(population) == 1
+    assert population[0].name == "min_var"
+    assert population[0].tag == "min_var"
+    _assert_same_multi_period_portfolio(
+        population[0], cross_val_predict(MeanRisk(), X_small, cv=cv)
+    )
+
+
+@pytest.mark.parametrize(
+    "estimators, error, match",
+    [
+        ([], ValueError, "empty collection of estimators"),
+        ((), ValueError, "empty collection of estimators"),
+        ([MeanRisk()], TypeError, r"`\(name, estimator\)` pair"),
+        ([("a", MeanRisk(), "extra")], TypeError, r"`\(name, estimator\)` pair"),
+        ([(1, MeanRisk())], TypeError, "names must be strings"),
+        ([("", MeanRisk())], ValueError, "non-empty strings"),
+        (
+            [("a", MeanRisk()), ("a", EqualWeighted())],
+            ValueError,
+            r"duplicated names: \['a'\]",
+        ),
+        ([("a", EmpiricalPrior())], TypeError, "estimator named 'a'"),
+    ],
+)
+def test_collection_invalid_estimators_raise(X_small, estimators, error, match):
+    with pytest.raises(error, match=match):
+        cross_val_predict(estimators, X_small, cv=KFold(n_splits=3))
+
+
+@pytest.mark.parametrize("param", ["name", "tag"])
+def test_collection_rejects_shared_name_and_tag(X_small, param):
+    with pytest.raises(
+        ValueError, match=rf"\['{param}'\] cannot be set in `portfolio_params`"
+    ):
+        cross_val_predict(
+            [("equal", EqualWeighted())],
+            X_small,
+            cv=KFold(n_splits=3),
+            portfolio_params={param: "label"},
+        )
+
+
+def test_collection_shared_portfolio_params_follow_precedence(X_small):
+    estimators = [
+        ("weekly", EqualWeighted(portfolio_params={"annualization_factor": 52})),
+        ("default", InverseVolatility()),
+    ]
+    weekly, default = cross_val_predict(
+        estimators,
+        X_small,
+        cv=KFold(n_splits=3),
+        portfolio_params={"compounded": True},
+    )
+
+    for mpp in (weekly, default):
+        assert mpp.compounded
+        assert all(ptf.compounded for ptf in mpp)
+    assert weekly.annualization_factor == 52
+    assert default.annualization_factor == 252
+
+
+@pytest.mark.parametrize("portfolio_params", [None, {"weight_drift": True}])
+def test_collection_does_not_modify_estimators(X_small, portfolio_params):
+    # Without `weight_drift`, the estimators are not copied while resolving the
+    # evaluation parameters, so this also checks that each fold fits a clone.
+    equal = EqualWeighted()
+    sequential = PreviousWeightsAwareOptimization()
+    cross_val_predict(
+        [("equal", equal), ("sequential", sequential)],
+        X_small,
+        cv=WalkForward(train_size=60, test_size=30),
+        portfolio_params=portfolio_params,
+    )
+
+    for estimator in (equal, sequential):
+        assert not hasattr(estimator, "weights_")
+        assert estimator.portfolio_params is None
+        assert estimator.previous_weights is None
+
+
+def test_collection_applies_entry_rebalancing_params_to_each_estimator(X_small):
+    cv = WalkForward(train_size=60, test_size=30)
+    entry_rebalancing_params = {"scale": 1.0}
+    estimators = [
+        ("small", PreviousWeightsAwareOptimization(scale=0.1)),
+        ("large", PreviousWeightsAwareOptimization(scale=0.2)),
+    ]
+    population = cross_val_predict(
+        estimators, X_small, cv=cv, entry_rebalancing_params=entry_rebalancing_params
+    )
+
+    for (_, estimator), mpp in zip(estimators, population, strict=True):
+        expected = cross_val_predict(
+            estimator, X_small, cv=cv, entry_rebalancing_params=entry_rebalancing_params
+        )
+        _assert_same_multi_period_portfolio(mpp, expected)
+
+
+def test_collection_entry_rebalancing_params_reject_non_sequential_cv(X_small):
+    with pytest.raises(ValueError, match="only supported with sequential CV"):
+        cross_val_predict(
+            [("equal", EqualWeighted())],
+            X_small,
+            cv=KFold(n_splits=3),
+            entry_rebalancing_params={},
+        )
+
+
+def test_collection_supports_pipelines(X_small):
+    pipeline = Pipeline(
+        [
+            ("pre_selection", SelectKExtremes(k=5)),
+            ("optim", InverseVolatility()),
+        ]
+    )
+    cv = WalkForward(train_size=100, test_size=50)
+    with config_context(transform_output="pandas"):
+        population = cross_val_predict(
+            [("pipeline", pipeline), ("equal", EqualWeighted())], X_small, cv=cv
+        )
+        expected = cross_val_predict(pipeline, X_small, cv=cv)
+
+    _assert_same_multi_period_portfolio(population.filter(tags="pipeline")[0], expected)
+
+
+@pytest.mark.parametrize(
+    "cv", [None, 3, KFold(n_splits=3), WalkForward(train_size=100, test_size=50)]
+)
+def test_collection_routes_metadata_to_requesting_estimators(X_small, cv):
+    scale = np.linspace(1.0, 3.0, len(X_small))
+    with config_context(enable_metadata_routing=True):
+        equal, scaled = cross_val_predict(
+            [
+                ("equal", EqualWeighted()),
+                (
+                    "scaled",
+                    ScaledWeightsOptimization(
+                        portfolio_params={"weight_drift": True}
+                    ).set_fit_request(scale=True),
+                ),
+            ],
+            X_small,
+            cv=cv,
+            params={"scale": scale},
+        )
+
+    n_assets = X_small.shape[1]
+    for ptf, (train, _) in zip(scaled, sks.check_cv(cv).split(X_small), strict=True):
+        np.testing.assert_allclose(ptf.weights, scale[train].mean() / n_assets)
+    for ptf in equal:
+        np.testing.assert_allclose(ptf.weights, 1.0 / n_assets)
+
+
+@pytest.mark.parametrize("collection", [False, True])
+@pytest.mark.parametrize("weight_drift", [False, True])
+@pytest.mark.parametrize("metadata_routing", [False, True])
+def test_randomized_cv_with_observation_metadata(
+    X_small, collection, weight_drift, metadata_routing
+):
+    cv = MultipleRandomizedCV(
+        walk_forward=WalkForward(train_size=100, test_size=50),
+        n_subsamples=2,
+        asset_subset_size=3,
+        window_size=200,
+        random_state=0,
+    )
+    sample_weight = np.linspace(1.0, 4.0, len(X_small))
+    with config_context(enable_metadata_routing=metadata_routing):
+        scaler = StandardScaler(with_std=False)
+        if metadata_routing:
+            scaler.set_fit_request(sample_weight=True)
+        estimator = Pipeline(
+            [
+                ("scaler", scaler),
+                (
+                    "optimization",
+                    EqualWeighted(portfolio_params={"weight_drift": weight_drift}),
+                ),
+            ]
+        ).set_output(transform="pandas")
+        param = "sample_weight" if metadata_routing else "scaler__sample_weight"
+        population = cross_val_predict(
+            [("scaled", estimator)] if collection else estimator,
+            X_small,
+            cv=cv,
+            params={param: sample_weight},
+            n_jobs=2,
+        )
+
+    portfolios = [ptf for mpp in population for ptf in mpp]
+    for ptf, (train, test, columns) in zip(portfolios, cv.split(X_small), strict=True):
+        mean = np.average(
+            X_small.iloc[train, columns], weights=sample_weight[train], axis=0
+        )
+        expected = X_small.iloc[test, columns] - mean
+        pd.testing.assert_frame_equal(ptf.X, expected)
+
+
+def test_collection_unrequested_metadata_raises(X_small):
+    with config_context(enable_metadata_routing=True):
+        with pytest.raises(
+            UnsetMetadataPassedError, match="cross_val_predict's estimators"
+        ) as exc_info:
+            cross_val_predict(
+                [("scaled", ScaledWeightsOptimization()), ("equal", EqualWeighted())],
+                X_small,
+                cv=KFold(n_splits=3),
+                params={"scale": np.full(len(X_small), 2.0)},
+            )
+
+    assert "set_fit_request" in str(exc_info.value)
+
+
+@pytest.mark.parametrize("collection", [False, True])
+def test_cross_val_predict_dispatches_paths_first_and_clones_lazily(
+    X_small, monkeypatch, collection
+):
+    clone = validation.sk.clone
+    fit_and_predict = validation.fit_and_predict
+    parallel = validation.skp.Parallel
+    clones = fits = pools = 0
+    fit_order = []
+
+    def counted_clone(estimator):
+        nonlocal clones
+        clones += 1
+        return clone(estimator)
+
+    def checked_fit(*args, **kwargs):
+        nonlocal fits
+        # With serial dispatch, the next clone is only needed after this fit.
+        assert clones == fits + 1
+        fits += 1
+        fit_order.append(args[0].needs_previous_weights)
+        return fit_and_predict(*args, **kwargs)
+
+    def counted_parallel(*args, **kwargs):
+        nonlocal pools
+        pools += 1
+        return parallel(*args, **kwargs)
+
+    monkeypatch.setattr(validation.sk, "clone", counted_clone)
+    monkeypatch.setattr(validation, "fit_and_predict", checked_fit)
+    monkeypatch.setattr(validation.skp, "Parallel", counted_parallel)
+    estimator = (
+        [
+            ("independent", EqualWeighted()),
+            ("sequential", PreviousWeightsAwareOptimization()),
+        ]
+        if collection
+        else EqualWeighted()
+    )
+    cross_val_predict(
+        estimator, X_small, cv=sks.TimeSeriesSplit(3), n_jobs=1, pre_dispatch=1
+    )
+    assert clones == fits == (6 if collection else 3)
+    assert pools == 1
+    assert fit_order == ([True] * 3 + [False] * 3 if collection else [False] * 3)
+
+
+def test_collection_shares_one_randomized_split(X_small, monkeypatch):
+    cv = MultipleRandomizedCV(
+        walk_forward=WalkForward(train_size=60, test_size=30),
+        n_subsamples=2,
+        asset_subset_size=3,
+        random_state=0,
+    )
+    split = cv.split
+    calls = 0
+
+    def split_once(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        assert calls == 1
+        return split(*args, **kwargs)
+
+    monkeypatch.setattr(cv, "split", split_once)
+    population = cross_val_predict(
+        [
+            ("independent", EqualWeighted()),
+            ("sequential", MeanRisk(transaction_costs=0.001)),
+        ],
+        X_small,
+        cv=cv,
+        n_jobs=2,
+    )
+    assert calls == 1
+    independent = population.filter(tags="independent")
+    sequential = population.filter(tags="sequential")
+    for first_path, second_path in zip(independent, sequential, strict=True):
+        for first, second in zip(first_path, second_path, strict=True):
+            pd.testing.assert_frame_equal(first.X, second.X)

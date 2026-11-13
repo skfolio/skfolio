@@ -171,6 +171,42 @@ such as `KFold`, drift is evaluated inside each test fold and is not propagated.
 
 
 
+To compare several portfolio optimization estimators on the same splits, you can pass
+a list of `(name, estimator)` pairs with unique names. The result is a
+:class:`~skfolio.population.Population` ordered by estimator and then by path. Each
+name sets the `name` and `tag` of the estimator's `MultiPeriodPortfolio` objects, with
+a path suffix in the name for multi-path cross-validation. The `n_jobs` parameter
+controls parallel evaluation of independent folds and paths across estimators.
+
+Using the returns `X` from the example above, we compare the measures side by side:
+
+.. code-block:: python
+
+    from skfolio.optimization import EqualWeighted, InverseVolatility
+
+    estimators = [
+        ("equal_weighted", EqualWeighted()),
+        ("inverse_volatility", InverseVolatility()),
+    ]
+    population = cross_val_predict(
+        estimators, X, cv=WalkForward(train_size=252, test_size=63), n_jobs=2
+    )
+    population.summary()
+
+With multi-path cross-validation, we compare the Sharpe ratio distributions by estimator:
+
+.. code-block:: python
+
+    from skfolio import RatioMeasure
+    from skfolio.model_selection import CombinatorialPurgedCV
+
+    population = cross_val_predict(estimators, X, cv=CombinatorialPurgedCV(), n_jobs=2)
+    population.boxplot_measure(
+        measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO,
+        tag_list=["equal_weighted", "inverse_volatility"],
+    )
+
+
 Walk-Forward Cross-Validation
 *****************************
 The :class:`WalkForward` splitter divides time series data using a walk‑forward approach.

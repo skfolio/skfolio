@@ -2,6 +2,145 @@
 
 <!-- version list -->
 
+## v1.12.10 (2026-11-12)
+
+### Chores
+
+- Pin ty and align local and CI type checks ([#503](https://github.com/skfolio/skfolio/pull/503),
+  [`9ab9b6d`](https://github.com/skfolio/skfolio/commit/9ab9b6d11aa3ca5106c37995a70e2d7ba072ce89))
+
+### Performance Improvements
+
+- **uncertainty-set**: Avoid materializing bootstrap sample cubes
+  ([#461](https://github.com/skfolio/skfolio/pull/461),
+  [`6cfacc0`](https://github.com/skfolio/skfolio/commit/6cfacc002bb5c463a9ccd47eb98927febb832656))
+
+
+## v1.12.9 (2026-11-10)
+
+### Bug Fixes
+
+- **prior**: Allow negative correlation views in EntropyPooling
+  ([#496](https://github.com/skfolio/skfolio/pull/496),
+  [`b12794e`](https://github.com/skfolio/skfolio/commit/b12794eb3c1c68ea1f2f0b17e007ce0d8304e4c1))
+
+- **prior**: Cast BlackLitterman view_confidences to float without mutating them
+  ([#495](https://github.com/skfolio/skfolio/pull/495),
+  [`7c62a6b`](https://github.com/skfolio/skfolio/commit/7c62a6b4c87b378f989ca2793ee0180cc9c3bd64))
+
+### Continuous Integration
+
+- Update type-check rules for ty 0.0.100 ([#500](https://github.com/skfolio/skfolio/pull/500),
+  [`4eb2a82`](https://github.com/skfolio/skfolio/commit/4eb2a82ce2799118cf9ed4ad68fbe7922974227b))
+
+
+## v1.12.8 (2026-11-08)
+
+### Bug Fixes
+
+- **measures**: Compute evar and edar per column for 2D inputs
+  ([#471](https://github.com/skfolio/skfolio/pull/471),
+  [`3eded63`](https://github.com/skfolio/skfolio/commit/3eded6381c8b6b2aabb7d8bd88706c42d7391f44))
+
+### Documentation
+
+- Keep code and tables when stripping Plotly figures from llms Markdown
+  ([#494](https://github.com/skfolio/skfolio/pull/494),
+  [`08ad80c`](https://github.com/skfolio/skfolio/commit/08ad80c64c2f46c7e56d11ec8c9d1dae7fe3f2fc))
+
+- **readme**: Cite the published skfolio paper ([#493](https://github.com/skfolio/skfolio/pull/493),
+  [`aa14348`](https://github.com/skfolio/skfolio/commit/aa1434826a38f25231d30f8ab190a05e1596fb76))
+
+
+## v1.12.7 (2026-11-06)
+
+### Bug Fixes
+
+- **optimization**: Correct hierarchical distance fitting and weight bounds
+  ([#488](https://github.com/skfolio/skfolio/pull/488),
+  [`5f1929c`](https://github.com/skfolio/skfolio/commit/5f1929ccb25ca5962119ca7dc8cbc9ca71c32d86))
+
+
+## v1.12.6 (2026-11-06)
+
+### Bug Fixes
+
+- **containers**: Validate panel inputs and support cross-validation slicing
+  ([#487](https://github.com/skfolio/skfolio/pull/487),
+  [`9c3d032`](https://github.com/skfolio/skfolio/commit/9c3d032f62ab7fd1c12ae8799d8a0ecba8e4ff1b))
+
+### Refactoring
+
+- **distance**: Split estimators into modules and reduce array copies
+  ([#486](https://github.com/skfolio/skfolio/pull/486),
+  [`153cd91`](https://github.com/skfolio/skfolio/commit/153cd9149511c1231e1783a23cb6cd4061512bd2))
+
+
+## v1.12.5 (2026-10-29)
+
+### Bug Fixes
+
+- **containers**: Preserve inactive values when filling fields
+  ([#478](https://github.com/skfolio/skfolio/pull/478),
+  [`91fb7bb`](https://github.com/skfolio/skfolio/commit/91fb7bb83112a9c345bc8f840fd1cb15eb5000a7))
+
+### Continuous Integration
+
+- Make release publishing retryable ([#481](https://github.com/skfolio/skfolio/pull/481),
+  [`75ca4c6`](https://github.com/skfolio/skfolio/commit/75ca4c689a717d9e5a345796761acbf5aa1473b8))
+
+
+## v1.12.4 (2026-10-29)
+
+### Bug Fixes
+
+- **optimization**: Enforce variance and semi-variance limits under MAXIMIZE_RATIO
+  ([#480](https://github.com/skfolio/skfolio/pull/480),
+  [`39a30ef`](https://github.com/skfolio/skfolio/commit/39a30ef612a0ce0ac981fb2252add6fc7362c2e5))
+
+
+## v1.12.3 (2026-10-29)
+
+### Bug Fixes
+
+- **optimization**: Report infeasible and unbounded problems explicitly
+  ([#475](https://github.com/skfolio/skfolio/pull/475),
+  [`eb84e41`](https://github.com/skfolio/skfolio/commit/eb84e41c8578d45333a2633861299ad31b466d9a))
+
+
+## v1.12.2 (2026-10-26)
+
+### Bug Fixes
+
+- Avoid pandas inplace keyword deprecated in pandas 3.1
+  ([#468](https://github.com/skfolio/skfolio/pull/468),
+  [`f4cd3a9`](https://github.com/skfolio/skfolio/commit/f4cd3a94362350a2732d6538d9bbd57fea144149))
+
+### Documentation
+
+- Clarify AI contributions and PR review guidelines
+  ([#470](https://github.com/skfolio/skfolio/pull/470),
+  [`cd76bbe`](https://github.com/skfolio/skfolio/commit/cd76bbeca74fc68dccdd6cd81166f85a4bd7f3df))
+
+
+## v1.12.1 (2026-10-25)
+
+### Bug Fixes
+
+- **utils**: Keep stationary bootstrap from changing NumPy's global RNG
+  ([#465](https://github.com/skfolio/skfolio/pull/465),
+  [`4d546b4`](https://github.com/skfolio/skfolio/commit/4d546b42f1bf1869d9fcf737828b020cdda5a89d))
+
+
+## v1.12.0 (2026-10-25)
+
+### Features
+
+- **model_selection**: Support named estimator collections in cross_val_predict
+  ([#403](https://github.com/skfolio/skfolio/pull/403),
+  [`3d6ec2c`](https://github.com/skfolio/skfolio/commit/3d6ec2cc3fd8c3a6fa45a08e35dc360b39bfbf04))
+
+
 ## v1.11.0 (2026-10-24)
 
 ### Features

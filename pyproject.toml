@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skfolio"
-version = "1.11.0"
+version = "1.12.10"
 maintainers = [
     { name = "Hugo Delatte", email = "hugo.delatte@skfoliolabs.com" },
     { name = "Matteo Manzi", email = "matteomanzi09@gmail.com" },
@@ -86,7 +86,7 @@ dev = [
     "pytest-xdist",
     "pytest-cov",
     "ruff",
-    "ty",
+    "ty==0.0.101",
     "pre-commit>=4.4.0",
 ]
 docs = [
@@ -222,14 +222,14 @@ include = ["src"]
 # Rules that ty reports as warnings by default also fail the check.
 error-on-warning = true
 
-# `invalid-method-override` requires an override to accept every call that the parent
+# `incompatible-method-override` requires an override to accept every call that the parent
 # method accepts. skfolio estimators declare only the `fit` inputs they use: `y` typed
 # as `None` or required, required keyword arguments such as `factors`, and no
 # `**fit_params` when no metadata is routed. `Population` restricts the `list` methods
 # to portfolios. Matching the parent signatures would add parameters that these
 # methods do not use, so the rule is disabled.
 [tool.ty.rules]
-invalid-method-override = "ignore"
+incompatible-method-override = "ignore"
 
 [tool.coverage.report]
 # Empty abstract bodies use ellipsis. Keep abstract methods with implementations
