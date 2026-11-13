@@ -729,19 +729,20 @@ class MultiPeriodPortfolio(BasePortfolio):
 
         The long exposure is the sum of positive weights. The short exposure is the
         sum of negative weights. Net exposure is the sum of all weights and gross
-        exposure is the sum of absolute weights. All-cash periods have zero exposure;
-        failed periods retain NaN exposure.
+        exposure is the sum of absolute weights.
+
+        For a Portfolio with no invested assets, all four exposures are zero.
+        For a FailedPortfolio, all four exposures are NaN.
         """
-        frames = [p.weights_per_observation for p in self]
-        # An all-cash period has no weight columns, not missing holdings.
+        weights_per_obs = [p.weights_per_observation for p in self]
         failed_rows = pd.concat(
             [
-                frame.isna().all(axis=1)
-                & (len(frame.columns) > 0 or isinstance(p, FailedPortfolio))
-                for p, frame in zip(self, frames, strict=True)
+                obs_weights.isna().all(axis=1)
+                & (len(obs_weights.columns) > 0 or isinstance(p, FailedPortfolio))
+                for p, obs_weights in zip(self, weights_per_obs, strict=True)
             ]
         )
-        weights = pd.concat(frames, axis=0).fillna(0)
+        weights = pd.concat(weights_per_obs, axis=0).fillna(0)
         return (
             pd.DataFrame(
                 {

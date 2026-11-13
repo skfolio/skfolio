@@ -844,14 +844,16 @@ def test_long_short_exposure():
 
 @pytest.mark.parametrize("weight_drift", [False, True])
 @pytest.mark.parametrize("include_other_periods", [False, True])
-def test_long_short_exposure_all_cash(weight_drift, include_other_periods):
+def test_long_short_exposure_zero_weights(weight_drift, include_other_periods):
     X = pd.DataFrame(
-        np.zeros((6, 2)),
+        [[0.1, -0.05]] * 6,
         index=pd.date_range("2024-01-01", periods=6),
         columns=["A", "B"],
     )
-    cash = Portfolio(X=X.iloc[:2], weights=[0.0, 0.0], weight_drift=weight_drift)
-    portfolios = [cash]
+    zero_weight_portfolio = Portfolio(
+        X=X.iloc[:2], weights=[0.0, 0.0], weight_drift=weight_drift
+    )
+    portfolios = [zero_weight_portfolio]
     expected = pd.DataFrame(
         0.0, index=X.index[:2], columns=["Long", "Short", "Net", "Gross"]
     )
@@ -866,12 +868,15 @@ def test_long_short_exposure_all_cash(weight_drift, include_other_periods):
             weight_drift=weight_drift,
         )
         # Different asset universes and nonchronological input must stay aligned.
-        portfolios = [invested, cash, failed]
+        portfolios = [invested, zero_weight_portfolio, failed]
         expected = expected.reindex(X.index)
         expected.iloc[4:] = [0.6, -0.4, 0.2, 1.0]
+        if weight_drift:
+            # After the first invested observation, portfolio wealth is 1.08.
+            expected.iloc[5] = np.array([0.66, -0.38, 0.28, 1.04]) / 1.08
 
     portfolio = MultiPeriodPortfolio(portfolios)
-    np.testing.assert_array_equal(cash.returns, [0.0, 0.0])
+    np.testing.assert_array_equal(zero_weight_portfolio.returns, [0.0, 0.0])
     pd.testing.assert_frame_equal(
         portfolio.long_short_exposure, expected, check_freq=False
     )
@@ -901,7 +906,38 @@ def test_long_short_exposure_duplicate_asset_names():
 def test_long_short_exposure_failed_empty_universe():
     X = pd.DataFrame(index=pd.date_range("2024-01-01", periods=2))
     portfolio = MultiPeriodPortfolio([FailedPortfolio(X)])
-    assert portfolio.long_short_exposure.isna().all().all()
+    expected = pd.DataFrame(
+        np.nan, index=X.index, columns=["Long", "Short", "Net", "Gross"]
+    )
+    pd.testing.assert_frame_equal(
+        portfolio.long_short_exposure, expected, check_freq=False
+    )
+
+
+def test_long_short_exposure_duplicate_dates():
+    X = pd.DataFrame(
+        0.0,
+        index=pd.to_datetime(["2024-01-02", "2024-01-01", "2024-01-02"]),
+        columns=["A", "B"],
+    )
+    portfolio = MultiPeriodPortfolio(
+        [
+            FailedPortfolio(X.iloc[:1]),
+            Portfolio(X.iloc[1:2], weights=[0.6, -0.4]),
+            Portfolio(X.iloc[2:], weights=[0.0, 0.0]),
+        ]
+    )
+    expected = pd.DataFrame(
+        [[np.nan] * 4, [0.6, -0.4, 0.2, 1.0], [0.0] * 4],
+        index=X.index,
+        columns=["Long", "Short", "Net", "Gross"],
+    )
+    exposure = portfolio.long_short_exposure
+    assert exposure.index.is_monotonic_increasing
+    # Rows sharing a date need not preserve their input order.
+    pd.testing.assert_frame_equal(
+        exposure.sort_values("Long"), expected.sort_values("Long")
+    )
 
 
 def test_mpp_with_failed_ptf_methods(portfolio_and_returns_with_failed_ptf, periods, X):
