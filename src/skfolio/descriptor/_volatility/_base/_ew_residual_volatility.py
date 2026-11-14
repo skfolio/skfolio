@@ -162,6 +162,7 @@ class _BaseEWResidualVolatility(BaseDescriptor):
             market_return_t = market_returns[t]
             active_assets = X.active_mask[t]
             valid_returns = active_assets & np.isfinite(returns_t)
+            self._n_market += 1
 
             newly_inactive = self._is_active & ~active_assets
             if np.any(newly_inactive):
@@ -196,8 +197,19 @@ class _BaseEWResidualVolatility(BaseDescriptor):
                 + (1 - self._beta_decay) * asset_deviations * market_deviation
             )
 
-            # Compute residuals using the current beta estimate
-            beta = self._cov_assets / (self._var_market + self.eps)
+            # Compute residuals using the current beta estimate. Both EWMA
+            # accumulators are divided by their own weight sums to remove the
+            # zero-initialization bias for late-listed assets: the market
+            # variance has been updated at every observation while each asset
+            # covariance has only been updated on its valid observations
+            # (including this one for currently valid assets).
+            n_valid_beta = self._n_valid_assets + valid_returns
+            beta = np.zeros(n_assets, dtype=float)
+            has_cov = n_valid_beta > 0
+            beta[has_cov] = (
+                self._cov_assets[has_cov]
+                / (1 - self._beta_decay ** n_valid_beta[has_cov])
+            ) / (self._var_market / (1 - self._beta_decay**self._n_market) + self.eps)
             residual = returns_t - beta * market_return_t
 
             if self._downside:
@@ -258,6 +270,7 @@ class _BaseEWResidualVolatility(BaseDescriptor):
         self._var_market = 0.0
         self._mu_assets = np.zeros(n_assets, dtype=float)
         self._cov_assets = np.zeros(n_assets, dtype=float)
+        self._n_market = 0
 
         self._var_residual = np.zeros(n_assets, dtype=float)
         self._n_valid_assets = np.zeros(n_assets, dtype=int)

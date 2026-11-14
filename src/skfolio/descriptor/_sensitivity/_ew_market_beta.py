@@ -120,6 +120,10 @@ class EWMarketBeta(BaseDescriptor):
     returns and finite `market_cap` at an observation, the market return is undefined
     and a `ValueError` is raised.
 
+    Both EWMA accumulators behind the beta are divided by their own weight sums
+    (:math:`1 - \\lambda^n`) to remove the zero-initialization bias, so a
+    late-listed asset is comparable with one observed since the start.
+
     References
     ----------
     .. [1] "Capital asset prices: A theory of market equilibrium under conditions of
@@ -393,12 +397,17 @@ class EWMarketBeta(BaseDescriptor):
             + (1 - self._decay) * asset_deviations * market_deviation
         )
 
-        # Beta
+        # Beta: divide each accumulator by its own weight sum to remove the
+        # zero-initialization bias. The market variance has been updated at
+        # every observation (`self._t` updates) while each asset covariance
+        # has only been updated on its valid observations, so without this a
+        # late-listed asset is scaled down by roughly `1 - decay**n_valid`.
         if self._t >= self._min_periods:
             asset_ready = valid & (self._n_valid_assets >= self._min_periods)
-            self._betas[asset_ready] = self._cov_assets[asset_ready] / (
-                self._var_market + self.eps
-            )
+            self._betas[asset_ready] = (
+                self._cov_assets[asset_ready]
+                / (1 - self._decay ** self._n_valid_assets[asset_ready])
+            ) / (self._var_market / (1 - self._decay**self._t) + self.eps)
 
     def _update_from_buffer(self) -> None:
         """Aggregate buffered returns and update EWMA statistics."""

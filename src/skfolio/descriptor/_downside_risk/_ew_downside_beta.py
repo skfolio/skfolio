@@ -92,9 +92,9 @@ class EWDownsideBeta(BaseDescriptor):
 
     Notes
     -----
-    The EWMA is initialized to zero (no bias correction). Since the initialization bias
-    is identical across all assets at each time step, cross-sectional rankings are
-    unaffected.
+    Both EWMA accumulators behind the beta are divided by their own weight sums
+    (:math:`1 - \\lambda^n`) to remove the zero-initialization bias, so a
+    late-listed asset is comparable with one observed since the start.
 
     The market downside variance is updated at every observation. Asset co-moments are
     updated only for assets with valid (non-NaN) returns and each asset's
@@ -240,9 +240,19 @@ class EWDownsideBeta(BaseDescriptor):
             self._n_valid_assets[valid] += 1
 
             if self._t >= self._min_periods:
-                beta = self._cov_down / (self._var_down_market + self.eps)
+                # Divide each accumulator by its own weight sum to remove the
+                # zero-initialization bias. The market downside variance has
+                # been updated at every observation (`self._t` updates) while
+                # each asset co-moment has only been updated on its valid
+                # observations, so without this a late-listed asset is scaled
+                # down by roughly `1 - decay**n_valid`.
                 asset_ready = self._n_valid_assets >= self._min_periods
-                down_beta[t] = np.where(asset_ready, beta, np.nan)
+                beta = np.full(n_assets, np.nan)
+                beta[asset_ready] = (
+                    self._cov_down[asset_ready]
+                    / (1 - self._decay ** self._n_valid_assets[asset_ready])
+                ) / (self._var_down_market / (1 - self._decay**self._t) + self.eps)
+                down_beta[t] = beta
             else:
                 down_beta[t] = np.nan
 

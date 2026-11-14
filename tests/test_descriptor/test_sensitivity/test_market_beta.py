@@ -369,6 +369,41 @@ class TestBetaValues:
         late_var = np.var(valid_betas[mid:])
         assert late_var < early_var * 3
 
+    def test_late_listed_beta_matches_full_history_twin(self):
+        """A late-listed asset gets a beta comparable to its full-history twin.
+
+        The EWMA accumulators start at zero and the market variance is updated
+        at every observation while each asset covariance is updated only on its
+        valid observations. Without bias correction the first beta of a
+        late-listed asset is about half of its true value.
+        """
+        rng = np.random.default_rng(0)
+        n_obs, n_assets = 400, 20
+        half_life = 60
+        listing = 200
+        market = rng.normal(0, 0.01, n_obs)
+        true_beta = np.ones(n_assets) * 1.5
+        returns = true_beta * market[:, None] + rng.normal(0, 0.01, (n_obs, n_assets))
+        active = np.ones((n_obs, n_assets), dtype=bool)
+        active[:listing, 0] = False
+        returns[~active] = np.nan
+        market_cap = np.ones((n_obs, n_assets))
+        market_cap[~active] = np.nan
+        panel = AssetPanel(
+            fields={"returns": returns, "market_cap": market_cap},
+            observations=np.arange(n_obs),
+            asset_names=np.array([f"A{i}" for i in range(n_assets)]),
+            active_mask=active,
+        )
+
+        result = EWMarketBeta(half_life=half_life).fit_transform(panel)
+
+        # After 60 valid observations the late-listed asset should be close to
+        # its full-history twins with the same true beta.
+        t = listing + half_life - 1
+        ratio = result[t, 0] / np.mean(result[t, 1:])
+        assert ratio > 0.8
+
 
 class TestParameterValidation:
     """Tests for parameter validation."""
@@ -527,7 +562,13 @@ class TestRegression:
             )
 
             if t + 1 >= min_periods:
-                expected[t] = cov_assets / (var_market + eps)
+                # Both accumulators are divided by their own weight sums to
+                # remove the zero-initialization bias. Every asset is valid at
+                # every step in this fixture, so both weight sums are
+                # `1 - decay**(t + 1)`.
+                expected[t] = (cov_assets / (1 - decay ** (t + 1))) / (
+                    var_market / (1 - decay ** (t + 1)) + eps
+                )
 
         np.testing.assert_allclose(result, expected, rtol=1e-12)
 
