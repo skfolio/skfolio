@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.12.16 (2026-11-14)
+
+### Bug Fixes
+
+- **containers**: Preserve fields on fill preparation errors
+  ([#482](https://github.com/skfolio/skfolio/pull/482),
+  [`869ed25`](https://github.com/skfolio/skfolio/commit/869ed25c7fcce10bf40f2c9db1d5d84114e46e1f))
+
+
 ## v1.12.15 (2026-11-14)
 
 ### Bug Fixes
