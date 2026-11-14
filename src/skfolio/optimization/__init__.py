@@ -20,6 +20,11 @@ from skfolio.optimization.hierarchical import (
     SchurComplementary,
 )
 from skfolio.optimization.naive import EqualWeighted, InverseVolatility, Random
+from skfolio.optimization.parametric import (
+    ParametricPortfolioPolicy,
+    PortfolioExecution,
+    SupervisedPortfolioPolicy,
+)
 
 if TYPE_CHECKING:
     from skfolio.optimization.cluster.hierarchical._base import (
@@ -40,10 +45,13 @@ __all__ = [
     "MeanRisk",
     "NestedClustersOptimization",
     "ObjectiveFunction",
+    "ParametricPortfolioPolicy",
+    "PortfolioExecution",
     "Random",
     "RiskBudgeting",
     "SchurComplementary",
     "StackingOptimization",
+    "SupervisedPortfolioPolicy",
 ]
 
 
