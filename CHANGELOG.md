@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.12.15 (2026-11-14)
+
+### Bug Fixes
+
+- **portfolio**: Preserve failed-period observation weights
+  ([#477](https://github.com/skfolio/skfolio/pull/477),
+  [`e933790`](https://github.com/skfolio/skfolio/commit/e933790a4bedebbfc0ea26ca66da5dc17ccf33d7))
+
+
 ## v1.12.14 (2026-11-14)
 
 ### Bug Fixes
