@@ -35,15 +35,19 @@ class DaysToCover(BaseDescriptor):
 
         \[
         \begin{aligned}
-        \text{EWMA\_volume}(t)
-            &= \lambda \cdot \text{EWMA\_volume}(t-1)
+        S(t)
+            &= \lambda \cdot S(t-1)
                + (1 - \lambda) \cdot \text{adj\_volume}(t) \\[0.75em]
+        \text{EWMA\_volume}(t)
+            &= \frac{S(t)}{1 - \lambda^{n(t)}} \\[0.75em]
         \text{days\_to\_cover}(t)
             &= \frac{\text{short\_interest}(t)}{\text{EWMA\_volume}(t)}
         \end{aligned}
         \]
 
-    where :math:`\lambda = \exp(-\ln(2) / \text{half\_life})` is the EWMA decay factor.
+    where :math:`\lambda = \exp(-\ln(2) / \text{half\_life})` is the EWMA decay factor,
+    :math:`S(0) = 0` and :math:`n(t)` is the asset's number of valid positive-volume
+    observations up to :math:`t`.
 
     Days to cover measures how many trading days it would take short sellers to buy back
     their positions at the current trading rate. High values indicate crowded short
@@ -66,8 +70,7 @@ class DaysToCover(BaseDescriptor):
     min_periods : int, optional
         Minimum number of valid positive-volume observations required for each asset.
         Until an asset reaches this count, its output is NaN. This warm-up period avoids
-        exposing early EWMA values before the volume estimate has sufficiently converged
-        from its zero initialization. If `None`, defaults to
+        exposing volume estimates based on too few observations. If `None`, defaults to
         :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
 
     Attributes
@@ -83,6 +86,12 @@ class DaysToCover(BaseDescriptor):
 
     Notes
     -----
+    The EWMA accumulator is initialized to zero and bias-corrected at output time
+    using each asset's valid-observation count :math:`n(t)`. Without this correction
+    the output is scaled by :math:`1 - \lambda^{n(t)}`, which is 0.5 after one
+    half-life, so assets with a short history (e.g. late listings) would not be
+    comparable with assets observed since the start.
+
     `short_interest` is the number of shares held short. Non-missing values must be
     finite and non-negative.
 
@@ -215,11 +224,14 @@ class DaysToCover(BaseDescriptor):
                     + (1 - self._decay) * adj_volume[t][valid_volume]
                 )
 
-            days_to_cover = safe_divide(
-                short_interest[t], self._ewma_volume, fill_value=np.nan
-            )
-            result[t] = np.where(
-                self._n_valid >= self._min_periods, days_to_cover, np.nan
+            ready = self._n_valid >= self._min_periods
+            result[t] = np.nan
+            # Bias correction for the zero initialization
+            weight_sum = 1.0 - self._decay ** self._n_valid[ready]
+            result[t, ready] = safe_divide(
+                short_interest[t, ready],
+                self._ewma_volume[ready] / weight_sum,
+                fill_value=np.nan,
             )
 
         # Mask for inactive assets

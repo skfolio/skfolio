@@ -37,14 +37,18 @@ class EWAmihudIlliquidity(BaseDescriptor):
         \text{ILLIQ\_raw}(t)
             &= \frac{|r(t)|}
                     {\text{adj\_close}(t) \times \text{adj\_volume}(t)} \\[0.75em]
+        S(t)
+            &= \lambda \cdot S(t-1)
+               + (1 - \lambda) \cdot \text{ILLIQ\_raw}(t) \\[0.75em]
         \text{ILLIQ}(t)
-            &= \lambda \cdot \text{ILLIQ}(t-1)
-               + (1 - \lambda) \cdot \text{ILLIQ\_raw}(t)
+            &= \frac{S(t)}{1 - \lambda^{n(t)}}
         \end{aligned}
         \]
 
-    where :math:`\lambda = \exp(-\ln(2) / \text{half\_life})` is the EWMA decay factor
-    and the denominator is the dollar trading volume (traded amount).
+    where :math:`\lambda = \exp(-\ln(2) / \text{half\_life})` is the EWMA decay factor,
+    :math:`S(0) = 0`, :math:`n(t)` is the asset's number of valid observations up to
+    :math:`t` and the denominator of the raw ratio is the dollar trading volume (traded
+    amount).
 
     The Amihud illiquidity ratio is a proxy for price impact, defined as the absolute
     return per unit of dollar volume traded. Higher values imply larger price moves for
@@ -69,8 +73,8 @@ class EWAmihudIlliquidity(BaseDescriptor):
     min_periods : int, optional
         Minimum number of valid illiquidity observations required for each asset. Until
         an asset reaches this count, its output is NaN. This warm-up period avoids
-        exposing early EWMA values before the illiquidity estimate has sufficiently
-        converged from its zero initialization. If `None`, defaults to
+        exposing illiquidity estimates based on too few observations. If `None`,
+        defaults to
         :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
 
     Attributes
@@ -86,6 +90,12 @@ class EWAmihudIlliquidity(BaseDescriptor):
 
     Notes
     -----
+    The EWMA accumulator is initialized to zero and bias-corrected at output time
+    using each asset's valid-observation count :math:`n(t)`. Without this correction
+    the output is scaled by :math:`1 - \lambda^{n(t)}`, which is 0.5 after one
+    half-life, so assets with a short history (e.g. late listings) would not be
+    comparable with assets observed since the start.
+
     Dollar trading volume (`traded_amount`) is computed internally as
     `adj_close * adj_volume`. Both fields must use the same split-adjustment basis.
 
@@ -219,7 +229,11 @@ class EWAmihudIlliquidity(BaseDescriptor):
                     + (1 - self._decay) * raw_illiquidity[t][valid]
                 )
 
-            result[t] = np.where(self._n_valid >= self._min_periods, self._ewma, np.nan)
+            ready = self._n_valid >= self._min_periods
+            result[t] = np.nan
+            # Bias correction for the zero initialization
+            weight_sum = 1.0 - self._decay ** self._n_valid[ready]
+            result[t, ready] = self._ewma[ready] / weight_sum
 
         # Mask for inactive assets
         result = np.where(X.active_mask, result, np.nan)

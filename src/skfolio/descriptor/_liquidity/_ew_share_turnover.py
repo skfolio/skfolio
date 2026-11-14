@@ -37,13 +37,17 @@ class EWShareTurnover(BaseDescriptor):
         \text{turnover\_raw}(t)
             &= \frac{\text{adj\_volume}(t)}
                     {\text{adj\_shares\_outstanding}(t)} \\[0.75em]
+        S(t)
+            &= \lambda \cdot S(t-1)
+               + (1 - \lambda) \cdot \text{turnover\_raw}(t) \\[0.75em]
         \text{turnover}(t)
-            &= \lambda \cdot \text{turnover}(t-1)
-               + (1 - \lambda) \cdot \text{turnover\_raw}(t)
+            &= \frac{S(t)}{1 - \lambda^{n(t)}}
         \end{aligned}
         \]
 
-    where :math:`\lambda = \exp(-\ln(2) / \text{half\_life})` is the EWMA decay factor.
+    where :math:`\lambda = \exp(-\ln(2) / \text{half\_life})` is the EWMA decay factor,
+    :math:`S(0) = 0` and :math:`n(t)` is the asset's number of valid observations up to
+    :math:`t`.
 
     Share turnover measures trading intensity as the fraction of shares outstanding that
     changes hands over each observation period. Lower turnover indicates weaker trading
@@ -68,8 +72,8 @@ class EWShareTurnover(BaseDescriptor):
     min_periods : int, optional
         Minimum number of valid turnover observations required for each asset. Until an
         asset reaches this count, its output is NaN. This warm-up period avoids
-        exposing early EWMA values before the turnover estimate has sufficiently
-        converged from its zero initialization. If `None`, defaults to
+        exposing turnover estimates based on too few observations. If `None`,
+        defaults to
         :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
 
     Attributes
@@ -85,6 +89,12 @@ class EWShareTurnover(BaseDescriptor):
 
     Notes
     -----
+    The EWMA accumulator is initialized to zero and bias-corrected at output time
+    using each asset's valid-observation count :math:`n(t)`. Without this correction
+    the output is scaled by :math:`1 - \lambda^{n(t)}`, which is 0.5 after one
+    half-life, so assets with a short history (e.g. late listings) would not be
+    comparable with assets observed since the start.
+
     `adj_shares_outstanding` is common shares outstanding. Both `adj_volume` and
     `adj_shares_outstanding` must use the same split-adjustment basis.
 
@@ -214,7 +224,11 @@ class EWShareTurnover(BaseDescriptor):
                     + (1 - self._decay) * raw_turnover[t][valid]
                 )
 
-            result[t] = np.where(self._n_valid >= self._min_periods, self._ewma, np.nan)
+            ready = self._n_valid >= self._min_periods
+            result[t] = np.nan
+            # Bias correction for the zero initialization
+            weight_sum = 1.0 - self._decay ** self._n_valid[ready]
+            result[t, ready] = self._ewma[ready] / weight_sum
 
         # Mask for inactive assets
         result = np.where(X.active_mask, result, np.nan)

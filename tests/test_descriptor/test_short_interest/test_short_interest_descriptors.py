@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from skfolio.containers import AssetPanel
 from skfolio.descriptor import DaysToCover, ShortInterest
 from skfolio.utils.tools import half_life_to_decay_factor
 
@@ -123,6 +124,8 @@ class TestDaysToCover:
         ewma_vol = 0.0
         for t in range(volume.shape[0]):
             ewma_vol = decay * ewma_vol + (1 - decay) * volume[t, 0]
+        # Bias correction for the zero initialization
+        ewma_vol /= 1 - decay ** volume.shape[0]
         expected_dtc = si[-1, 0] / ewma_vol
         np.testing.assert_almost_equal(result[-1, 0], expected_dtc)
 
@@ -260,3 +263,40 @@ class TestDaysToCover:
         r3 = DaysToCover(half_life=3, min_periods=1).fit_transform(simple_panel)
         r10 = DaysToCover(half_life=10, min_periods=1).fit_transform(simple_panel)
         assert not np.allclose(r3[-1], r10[-1])
+
+    def test_constant_volume_gives_constant_days_to_cover(self):
+        """With constant inputs, days to cover is short interest / volume."""
+        n_observations, n_assets = 40, 2
+        panel = AssetPanel(
+            fields={
+                "short_interest": np.full((n_observations, n_assets), 5e6),
+                "adj_volume": np.full((n_observations, n_assets), 1e6),
+            },
+            observations=np.arange(n_observations),
+            asset_names=np.array(["a", "b"]),
+        )
+        result = DaysToCover(half_life=10).fit_transform(panel)
+        assert np.all(np.isnan(result[:9]))
+        np.testing.assert_allclose(result[9:], 5.0, rtol=1e-12)
+
+    def test_late_listed_asset_matches_full_history_asset(self):
+        """A late-listed asset is comparable with an asset observed since the start."""
+        n_observations, n_assets, listing = 40, 2, 15
+        active_mask = np.ones((n_observations, n_assets), dtype=bool)
+        active_mask[:listing, 0] = False
+        short_interest = np.full((n_observations, n_assets), 5e6)
+        adj_volume = np.full((n_observations, n_assets), 1e6)
+        short_interest[~active_mask] = np.nan
+        adj_volume[~active_mask] = np.nan
+        panel = AssetPanel(
+            fields={"short_interest": short_interest, "adj_volume": adj_volume},
+            observations=np.arange(n_observations),
+            asset_names=np.array(["late", "full"]),
+            active_mask=active_mask,
+        )
+        result = DaysToCover(half_life=10).fit_transform(panel)
+        first_output = listing + 10 - 1
+        assert np.all(np.isnan(result[:first_output, 0]))
+        np.testing.assert_allclose(
+            result[first_output:, 0], result[first_output:, 1], rtol=1e-12
+        )
