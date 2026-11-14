@@ -21,7 +21,8 @@ from skfolio._constants import (
     _IDIO_VARIANCES,
     _REGRESSION_WEIGHTS,
 )
-from skfolio.distance import CovarianceDistance
+from skfolio.containers import Graph, GraphSeries
+from skfolio.distance import CovarianceDistance, GraphDistance
 from skfolio.exceptions import DuplicateGroupsError
 from skfolio.factor_exposure import BaseFactorExposure, DerivedFactor
 from skfolio.linear_model import CSLinearRegression
@@ -114,7 +115,8 @@ def test_panel_observation_counts_and_duplicate_targets():
         model.fit(X.iloc[:, [0, 0]], characteristics=panel)
 
 
-def test_panel_grid_search_routing():
+@pytest.mark.parametrize("graph_distance", [False, True])
+def test_panel_grid_search_routing(graph_distance):
     rng = np.random.default_rng(18)
     beta = np.broadcast_to(np.linspace(0.5, 1.5, 8), (120, 8)).copy()
     returns = beta * rng.normal(0, 0.01, (120, 1)) + rng.normal(0, 0.01, beta.shape)
@@ -127,12 +129,24 @@ def test_panel_grid_search_routing():
         factor_prior_estimator=EmpiricalPrior(),
         idio_variance_estimator=EWVariance(min_observations=10),
     )
+    distance = None
+    if graph_distance:
+        graph = Graph(np.eye(8), nodes=panel.asset_names)
+        graphs = GraphSeries([graph] * len(panel), observations=panel.observations)
+        distance = GraphDistance()
     with config_context(enable_metadata_routing=True):
-        model = HierarchicalRiskParity(prior_estimator=prior)
+        model = HierarchicalRiskParity(
+            prior_estimator=prior, distance_estimator=distance
+        )
         search = GridSearchCV(
             model, {}, cv=TimeSeriesSplit(2), refit=False, error_score="raise"
         )
-        search.fit(X, characteristics=panel)
+        metadata = {"characteristics": panel}
+        if graph_distance:
+            metadata["graphs"] = graphs
+            with pytest.raises(ValueError, match="same number of observations"):
+                model.fit(X, characteristics=panel, graphs=graphs[:20])
+        search.fit(X, **metadata)
     assert np.isfinite(search.cv_results_["mean_test_score"]).all()
 
 

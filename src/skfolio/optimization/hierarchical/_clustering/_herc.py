@@ -421,12 +421,13 @@ class HierarchicalEqualRiskContribution(_PortfolioRiskMixin, BaseOptimization):
 
         **fit_params : dict
             Parameters passed to the underlying estimators. Requires
-            `enable_metadata_routing=True`. Panels must contain the same observations
-            as `X`. For distances fitted on prior return scenarios, sample weights come
-            from the prior, replacing routed weights. If the prior provides no scenario
-            weights, the distance fit is unweighted. Other arrays must match the prior's
-            return scenarios. Distances fitted on the prior's covariance do not accept
-            additional fitting parameters. See :ref:`metadata_routing` for details.
+            `enable_metadata_routing=True`. Panels and graph series must contain the
+            same observations as `X`. For distances fitted on prior return scenarios,
+            sample weights come from the prior, replacing routed weights. If the prior
+            provides no scenario weights, the distance fit is unweighted. Other arrays
+            must match the prior's return scenarios. Distances fitted on the prior's
+            covariance do not accept additional fitting parameters. See
+            :ref:`metadata_routing` for details.
 
         Returns
         -------

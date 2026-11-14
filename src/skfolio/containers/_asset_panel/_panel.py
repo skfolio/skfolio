@@ -6,8 +6,6 @@
 
 from __future__ import annotations
 
-import json
-import shutil
 from collections.abc import Collection, Generator, Iterable, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -44,6 +42,12 @@ from skfolio.containers._asset_panel._utils import (
     _validate_field_shape,
 )
 from skfolio.containers._asset_panel._view import AssetPanelView
+from skfolio.containers._io import (
+    _prepare_save_directory,
+    _read_manifest,
+    _validate_save_directory,
+    _write_manifest,
+)
 from skfolio.containers._utils import (
     _as_observation_array,
     _as_pickle_safe_array,
@@ -57,7 +61,6 @@ from skfolio.typing import AnyArray, ArrayLike, BoolArray, IntArray, StrArray
 __all__ = ["AssetPanel"]
 
 
-_METADATA_FILENAME = "_metadata.json"
 _SAVE_VERSION = 1
 
 
@@ -1027,7 +1030,7 @@ class AssetPanel(_BaseAssetPanel):
 
         overwrite : bool, default=False
             If `True`, replace an existing saved panel at `path`. Existing directories
-            that do not contain `_metadata.json` are never overwritten.
+            that do not contain a saved AssetPanel are never overwritten.
 
         Raises
         ------
@@ -1036,21 +1039,7 @@ class AssetPanel(_BaseAssetPanel):
             or a field name is invalid or conflicts with another name ignoring case.
         """
         path = Path(path)
-        path_exists = path.exists()
-        if path_exists:
-            if path.is_file():
-                raise ValueError(f"Path '{path}' is a file, not a directory.")
-            if not (path / _METADATA_FILENAME).exists():
-                raise ValueError(
-                    f"Directory '{path}' exists but is not a saved AssetPanel "
-                    f"(missing {_METADATA_FILENAME})."
-                )
-            if not overwrite:
-                raise FileExistsError(
-                    f"Directory '{path}' already contains a saved AssetPanel. "
-                    "Use overwrite=True to replace it."
-                )
-
+        _validate_save_directory(path, overwrite=overwrite, container="AssetPanel")
         # Validate every field path before removing an existing saved panel.
         file_names: dict[str, str] = {}
         for name in self.fields:
@@ -1063,9 +1052,7 @@ class AssetPanel(_BaseAssetPanel):
                 )
             file_names[folded_name] = name
 
-        if path_exists:
-            shutil.rmtree(path)
-        path.mkdir(parents=True)
+        _prepare_save_directory(path)
         fields_dir = path / "fields"
         fields_dir.mkdir()
         levels_dir = path / "levels"
@@ -1113,16 +1100,16 @@ class AssetPanel(_BaseAssetPanel):
 
             field_metadata[name] = entry
 
-        metadata = {
-            "version": _SAVE_VERSION,
-            "n_observations": self.n_observations,
-            "n_assets": self.n_assets,
-            "active_mask": active_mask_storage,
-            "estimation_mask": estimation_mask_storage,
-            "fields": field_metadata,
-        }
-        with open(path / _METADATA_FILENAME, "w", encoding="utf-8") as f:
-            json.dump(metadata, f, indent=2)
+        _write_manifest(
+            path,
+            container="AssetPanel",
+            version=_SAVE_VERSION,
+            n_observations=self.n_observations,
+            n_assets=self.n_assets,
+            active_mask=active_mask_storage,
+            estimation_mask=estimation_mask_storage,
+            fields=field_metadata,
+        )
 
     @classmethod
     def load(
@@ -1157,19 +1144,9 @@ class AssetPanel(_BaseAssetPanel):
         version. The asset names must be converted to strings before saving again.
         """
         path = Path(path)
-        metadata_path = path / _METADATA_FILENAME
-        if not metadata_path.exists():
-            raise FileNotFoundError(
-                f"Not a saved AssetPanel: '{path}' (missing {_METADATA_FILENAME})."
-            )
-
-        with open(metadata_path, encoding="utf-8") as f:
-            metadata = json.load(f)
-
-        if metadata["version"] > _SAVE_VERSION:
-            raise ValueError(
-                f"Unsupported AssetPanel format version {metadata['version']}."
-            )
+        metadata = _read_manifest(
+            path, container="AssetPanel", max_version=_SAVE_VERSION
+        )
 
         n_observations = metadata["n_observations"]
         n_assets = metadata["n_assets"]

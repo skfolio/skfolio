@@ -168,6 +168,9 @@ EXAMPLE_DESCRIPTIONS = {
         "Interpolating between hierarchical risk parity and minimum variance "
         "with Schur allocation"
     ),
+    "auto_examples/clustering/plot_graph_distance": (
+        "Comparing return and graph distances with hierarchical equal risk contribution"
+    ),
     # Maximum Diversification
     "auto_examples/maximum_diversification/plot_1_maximum_diversification": (
         "Maximizing the diversification ratio in portfolio selection"
@@ -643,6 +646,7 @@ TUTORIAL_ORDER = {
         "plot_4_nco.py",
         "plot_5_nco_grid_search.py",
         "plot_6_schur.py",
+        "plot_graph_distance.py",
     ),
     "maximum_diversification": ("plot_1_maximum_diversification.py",),
     "distributionally_robust_cvar": ("plot_1_distributionally_robust_cvar.py",),
