@@ -124,12 +124,12 @@ def prices_to_returns(
     # Forward fill missing values
     if fill_nan:
         df.ffill(inplace=True)
-    # Drop the leading observations that have a missing value, up to the first
-    # complete observation. Missing values after it are kept, so that a missing
-    # price yields NaN returns instead of a return spanning several observations.
+
+    # Drop leading incomplete observations, preserving later gaps.
     if drop_inceptions_nan:
         df = df.loc[df.notna().all(axis=1).cummax()]
-    # Drop observations where all values are missing
+
+    # Drop observations where all prices are missing.
     df = df.dropna(how="all")
 
     # returns
