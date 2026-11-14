@@ -21,6 +21,7 @@ from skfolio.measures import ExtraRiskMeasure, RiskMeasure
 from skfolio.optimization._base import BaseOptimization
 from skfolio.optimization.hierarchical._utils import (
     _PortfolioRiskMixin,
+    _check_investable_weight_bounds,
     _convert_weight_bounds,
 )
 from skfolio.prior import BasePrior
@@ -318,7 +319,7 @@ class BaseHierarchicalOptimization(_PortfolioRiskMixin, BaseOptimization, ABC):
         max_weights : ndarray of shape (n_assets,)
             The weight upper bound 1D array.
         """
-        return _convert_weight_bounds(
+        min_weights, max_weights = _convert_weight_bounds(
             min_weights=self._clean_input(
                 self.min_weights,
                 n_assets=n_assets,
@@ -335,6 +336,10 @@ class BaseHierarchicalOptimization(_PortfolioRiskMixin, BaseOptimization, ABC):
             ),
             n_assets=n_assets,
         )
+        _check_investable_weight_bounds(
+            min_weights=min_weights, max_weights=max_weights
+        )
+        return min_weights, max_weights
 
     def get_metadata_routing(self) -> skm.MetadataRouter:
         """Get metadata routing for this estimator.

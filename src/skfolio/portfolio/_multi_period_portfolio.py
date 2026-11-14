@@ -740,22 +740,32 @@ class MultiPeriodPortfolio(BasePortfolio):
         The long exposure is the sum of positive weights. The short exposure is the
         sum of negative weights. Net exposure is the sum of all weights and gross
         exposure is the sum of absolute weights.
+
+        For a Portfolio with no invested assets, all four exposures are zero.
+        For a FailedPortfolio, all four exposures are NaN.
         """
-        weights = pd.concat(
-            [p.weights_per_observation for p in self],
-            axis=0,
-        ).sort_index()
-        failed_rows = weights.isna().all(axis=1)
-        weights = weights.fillna(0)
-        return pd.DataFrame(
-            {
-                "Long": weights.clip(lower=0).sum(axis=1),
-                "Short": weights.clip(upper=0).sum(axis=1),
-                "Net": weights.sum(axis=1),
-                "Gross": weights.abs().sum(axis=1),
-            },
-            index=weights.index,
-        ).mask(failed_rows)
+        weights_per_obs = [p.weights_per_observation for p in self]
+        failed_rows = pd.concat(
+            [
+                obs_weights.isna().all(axis=1)
+                & (len(obs_weights.columns) > 0 or isinstance(p, FailedPortfolio))
+                for p, obs_weights in zip(self, weights_per_obs, strict=True)
+            ]
+        )
+        weights = pd.concat(weights_per_obs, axis=0).fillna(0)
+        return (
+            pd.DataFrame(
+                {
+                    "Long": weights.clip(lower=0).sum(axis=1),
+                    "Short": weights.clip(upper=0).sum(axis=1),
+                    "Net": weights.sum(axis=1),
+                    "Gross": weights.abs().sum(axis=1),
+                },
+                index=weights.index,
+            )
+            .mask(failed_rows)
+            .sort_index()
+        )
 
     def contribution(
         self, measure: skt.Measure, spacing: float | None = None, to_df: bool = True

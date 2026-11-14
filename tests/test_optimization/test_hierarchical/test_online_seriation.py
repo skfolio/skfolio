@@ -413,7 +413,12 @@ def test_weight_bound_sum_tolerance(optimizer, returns, bound, excess):
     total = 1 + excess if bound == "min_weights" else 1 - excess
     model.set_params(**{bound: total / 4})
 
-    if excess > 1e-8:
+    if excess > 1e-8 and bound == "min_weights":
+        with pytest.raises(OptimizationError, match="infeasible"):
+            model.partial_fit(returns[20:30])
+        assert len(model.prior_estimator_.return_distribution_.returns) == 30
+        np.testing.assert_array_equal(model.weights_, weights)
+    elif excess > 1e-8:
         with pytest.raises(ValueError, match=f"Invalid `{bound}`"):
             model.partial_fit(returns[20:30])
         assert model.prior_estimator_.return_distribution_ is distribution
@@ -542,7 +547,13 @@ def test_nonfinite_allocation_uses_fallback(optimizer, returns, monkeypatch, met
         assert model.effective_gamma_ is None
 
 
-def test_strict_raw_distance_readiness(optimizer, returns):
+@pytest.mark.parametrize("labeled", [False, True])
+@pytest.mark.parametrize("exclude_first", [False, True])
+def test_strict_raw_distance_readiness(optimizer, returns, labeled, exclude_first):
+    batch = returns.iloc[:20].copy()
+    if exclude_first:
+        batch.iloc[:, 0] = np.nan
+    X = batch if labeled else batch.to_numpy()
     model = optimizer(
         prior_estimator=prior(),
         distance_from_prior=False,
@@ -551,8 +562,15 @@ def test_strict_raw_distance_readiness(optimizer, returns):
         ),
         raise_on_failure=False,
     )
-    with pytest.raises(ValueError, match="unavailable for prior-investable"):
-        model.partial_fit(returns[:20])
+    with pytest.raises(ValueError, match="unavailable for prior-investable") as error:
+        model.partial_fit(X)
+    if labeled:
+        expected = ["b", "c", "d"] if exclude_first else ["a", "b", "c", "d"]
+        assert str(expected) in str(error.value)
+    else:
+        expected = [1, 2, 3] if exclude_first else [0, 1, 2, 3]
+        assert f"at X column positions {expected}" in str(error.value)
+    assert "minimum-observation requirements" in str(error.value)
 
 
 @pytest.mark.parametrize("method", ["fit", "partial_fit"])
@@ -632,7 +650,9 @@ def test_online_scenario_metadata_is_rejected_before_learning(optimizer, returns
         )
         model.partial_fit(returns[:20])
         distribution = model.prior_estimator_.return_distribution_
-        with pytest.raises(ValueError, match="Observation metadata"):
+        with pytest.raises(
+            ValueError, match="During partial_fit with distance_from_prior=True"
+        ):
             model.partial_fit(returns[20:30], observation_ids=np.arange(10))
         assert model.prior_estimator_.return_distribution_ is distribution
 
@@ -768,7 +788,9 @@ def test_full_universe_inputs_after_asset_listing(optimizer, returns, method):
     assert model.weights_[2] >= 0.3 - 1e-8
 
 
-def test_precomputed_masks_prior_exclusions_without_mutation(optimizer, returns):
+def test_precomputed_selects_prior_investable_assets_without_mutation(
+    optimizer, returns
+):
     model = optimizer(
         prior_estimator=ExcludedCovariancePrior(**prior().get_params(deep=False)),
         distance_estimator=CovarianceDistance("precomputed"),
@@ -777,10 +799,14 @@ def test_precomputed_masks_prior_exclusions_without_mutation(optimizer, returns)
     model.partial_fit(returns[:20])
     assert model.weights_[2] == 0
     assert np.isinf(model.prior_estimator_.return_distribution_.covariance[2, 0])
-    assert np.isnan(model.distance_estimator_.distance_[2]).all()
+    distance = model.distance_estimator_
+    assert distance.distance_.shape == (3, 3)
+    assert np.isfinite(distance.distance_).all()
     np.testing.assert_array_equal(
-        model.distance_estimator_.feature_names_in_, returns.columns
+        distance.feature_names_in_, returns.columns[[0, 1, 3]]
     )
+    full_distance = model.seriation_estimator_.n_features_in_
+    assert full_distance == returns.shape[1]
 
 
 @pytest.mark.parametrize("weight_name", ["sample_weight", "observation_weights"])
@@ -1012,7 +1038,9 @@ def test_scenario_covariance_activity_request_requires_opt_out(optimizer, return
         distribution = model.prior_estimator_.return_distribution_
         active = np.ones((10, 4), dtype=bool)
         active[:, 1] = False
-        with pytest.raises(ValueError, match="Observation metadata"):
+        with pytest.raises(
+            ValueError, match="During partial_fit with distance_from_prior=True"
+        ):
             model.partial_fit(returns[20:30], active_mask=active)
         assert model.prior_estimator_.return_distribution_ is distribution
 
@@ -1040,3 +1068,31 @@ def test_online_updates_after_serialization(optimizer, returns):
     model.partial_fit(returns[20:30])
     restored.partial_fit(returns[20:30])
     np.testing.assert_allclose(restored.weights_, model.weights_)
+
+
+@pytest.mark.parametrize("fallback", [None, "previous_weights"])
+def test_lower_bounds_follow_listing_and_online_fallback(optimizer, returns, fallback):
+    with config_context(enable_metadata_routing=True):
+        model = optimizer(
+            prior_estimator=prior(),
+            distance_estimator=CovarianceDistance("precomputed"),
+            min_weights=0.4,
+            fallback=fallback,
+            previous_weights=[0.5, 0.5, 0, 0],
+        )
+        active = np.zeros((20, 4), dtype=bool)
+        active[:, :2] = True
+        model.partial_fit(returns[:20], active_mask=active)
+        assert np.all(model.weights_[:2] >= 0.4 - 1e-8)
+        np.testing.assert_array_equal(model.weights_[2:], 0)
+
+        active = np.zeros((10, 4), dtype=bool)
+        active[:, :3] = True
+        if fallback is None:
+            with pytest.raises(OptimizationError, match="infeasible"):
+                model.partial_fit(returns[20:30], active_mask=active)
+        else:
+            model.partial_fit(returns[20:30], active_mask=active)
+            np.testing.assert_array_equal(model.weights_, [0.5, 0.5, 0, 0])
+            assert model.fallback_ == "previous_weights"
+        assert len(model.prior_estimator_.return_distribution_.returns) == 30

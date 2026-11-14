@@ -22,6 +22,7 @@ from skfolio.containers._asset_panel._fields import (
     FieldCategorical,
     InactivePolicy,
 )
+from skfolio.containers._utils import _try_as_contiguous_slice
 from skfolio.typing import AnyArray, ArrayLike, BoolArray, IntArray, StrArray
 
 if TYPE_CHECKING:
@@ -112,6 +113,20 @@ def _slice_field_values(
     return field.values[observation_selector, :][:, asset_selector]
 
 
+def _validate_field_shape(
+    *,
+    name: str,
+    field: BaseField,
+    expected_shape: tuple[int, int],
+) -> None:
+    """Validate field axes without reading numerical buffers."""
+    if field.values.shape[:2] != expected_shape:
+        raise ValueError(
+            f"Field '{name}' has shape {field.values.shape}; expected observations and assets "
+            f"({expected_shape[0]}, {expected_shape[1]}, ...)."
+        )
+
+
 def _validate_field_against_axes(
     *,
     name: str,
@@ -120,11 +135,7 @@ def _validate_field_against_axes(
     active_mask: BoolArray,
 ) -> None:
     """Validate a field against panel axes and active-mask invariants."""
-    if field.values.shape[:2] != expected_shape:
-        raise ValueError(
-            f"Field '{name}' has shape {field.values.shape}; expected "
-            f"({expected_shape[0]}, {expected_shape[1]}, ...)."
-        )
+    _validate_field_shape(name=name, field=field, expected_shape=expected_shape)
     if field.inactive_policy == InactivePolicy.IGNORE:
         return
 
@@ -176,45 +187,6 @@ def _validate_field_against_axes(
             "is False. Fields with inactive_policy=InactivePolicy.MISSING must "
             "be missing outside the active universe."
         )
-
-
-def _normalize_positional_selector(
-    length: int, selector: slice | ArrayLike | None
-) -> slice | IntArray:
-    """Normalize a positional selector to a slice or integer positions."""
-    if selector is None:
-        return slice(None)
-    if isinstance(selector, slice):
-        return selector
-    if isinstance(selector, (int, np.integer)):
-        index = int(selector)
-        if index < 0:
-            index += length
-        if index < 0 or index >= length:
-            raise IndexError(
-                f"Positional index {selector} is out of bounds for axis with "
-                f"length {length}."
-            )
-        return slice(index, index + 1)
-
-    selector_arr = np.asarray(selector)
-    if selector_arr.ndim != 1:
-        raise ValueError("Selector must be 1D.")
-    if selector_arr.dtype == np.bool_:
-        if selector_arr.shape != (length,):
-            raise ValueError(f"Boolean selector must have shape ({length},).")
-        return np.flatnonzero(selector_arr)
-    if not np.issubdtype(selector_arr.dtype, np.integer):
-        raise TypeError("Positional selector must contain integers or booleans.")
-    selector_arr = selector_arr.astype(np.intp, copy=False)
-    selector_arr = np.where(selector_arr < 0, selector_arr + length, selector_arr)
-    if ((selector_arr < 0) | (selector_arr >= length)).any():
-        raise IndexError(
-            "Positional selector contains index out of bounds for axis with "
-            f"length {length}."
-        )
-    contiguous = _try_as_contiguous_slice(selector_arr)
-    return contiguous if contiguous is not None else selector_arr
 
 
 def _positions_from_unique_labels(labels: AnyArray, selected: Any) -> slice | IntArray:  # noqa: ANN401  # any label selector
@@ -271,20 +243,6 @@ def _positions_from_labels(labels: AnyArray, selected: Any) -> slice | IntArray:
     if missing:
         raise KeyError(f"Labels not found: {missing}")
     return np.asarray(positions, dtype=np.intp)
-
-
-def _try_as_contiguous_slice(indices: IntArray) -> slice | None:
-    """Return an equivalent slice when integer positions are contiguous."""
-    if indices.ndim != 1:
-        return None
-    if indices.size == 0:
-        return slice(0, 0)
-    if indices.size == 1:
-        start = int(indices[0])
-        return slice(start, start + 1)
-    if np.all(np.diff(indices) == 1):
-        return slice(int(indices[0]), int(indices[-1]) + 1)
-    return None
 
 
 def _materialize_selector(length: int, selector: slice | IntArray) -> IntArray:

@@ -13,8 +13,9 @@ from enum import auto
 
 import numpy as np
 
+from skfolio.containers._utils import _as_pickle_safe_array, _validate_unique_labels
 from skfolio.typing import AnyArray, ArrayLike, BoolArray, StrArray
-from skfolio.utils.tools import AutoEnum, _is_integer_number
+from skfolio.utils.tools import AutoEnum
 
 __all__ = [
     "MISSING_CATEGORY_CODE",
@@ -334,82 +335,3 @@ class Field3D(BaseField):
                 raise ValueError(
                     "third_axis_groups length must match third_axis_labels length."
                 )
-
-
-def _as_observation_array(values: ArrayLike) -> AnyArray:
-    """Return observation labels with pickle-safe and predictable semantics.
-
-    - non-object NumPy dtypes are preserved as provided, including integer, string and
-      `datetime64` dtypes with their existing units.
-    - object arrays containing only strings are converted to a NumPy string dtype,
-      unless NumPy can interpret all strings as datetime labels.
-    - object arrays containing only integer-like labels are converted through NumPy
-      asarray.
-    - other object arrays are converted with NumPy datetime parsing when they contain
-      no string labels, which supports Python `date`, `datetime` and compatible
-      timestamp objects.
-    - mixed string/non-string object arrays and custom object labels are rejected to
-      avoid silently changing sample-axis semantics through string conversion.
-
-    The returned array can be saved with `allow_pickle=False`.
-    """
-    arr = np.asarray(values)
-    if arr.dtype != object:
-        return arr
-
-    flat = arr.ravel()
-    if _all_string_like(flat):
-        try:
-            return np.asarray(arr, dtype="datetime64")
-        except (TypeError, ValueError):
-            return np.asarray(arr, dtype=str)
-
-    if _all_integer_like(flat):
-        return np.asarray(arr.tolist())
-
-    if not any(_is_string_like(value) for value in flat):
-        try:
-            return np.asarray(arr, dtype="datetime64")
-        except (TypeError, ValueError) as exc:
-            raise ValueError(
-                "`observations` with object dtype must contain datetime-like, "
-                "integer or string labels. Mixed or custom object labels are not "
-                "supported because observations define the sample axis."
-            ) from exc
-
-    raise ValueError(
-        "`observations` with object dtype must contain datetime-like, integer or "
-        "string labels. Mixed or custom object labels are not supported because "
-        "observations define the sample axis."
-    )
-
-
-def _as_pickle_safe_array(values: ArrayLike) -> AnyArray:
-    """Return an array that can be loaded without pickle, converting object dtype to
-    strings.
-    """
-    arr = np.asarray(values)
-    if arr.dtype == object:
-        return np.asarray(arr, dtype=str)
-    return arr
-
-
-def _all_string_like(values: AnyArray) -> bool:
-    """Return True when all values are string-like."""
-    return all(_is_string_like(value) for value in values)
-
-
-def _all_integer_like(values: AnyArray) -> bool:
-    """Return True when all values are integer-like and not booleans."""
-    return all(_is_integer_number(value) for value in values)
-
-
-def _is_string_like(value: object) -> bool:
-    """Return True when a value is string-like."""
-    return isinstance(value, (str, np.str_))
-
-
-def _validate_unique_labels(labels: AnyArray, *, name: str) -> None:
-    """Validate that a 1D label array contains no duplicates."""
-    if len(np.unique(labels)) != len(labels):
-        raise ValueError(f"{name} must be unique.")

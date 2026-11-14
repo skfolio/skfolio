@@ -111,6 +111,52 @@ def test_returns_drop_inceptions_nan(prices):
     assert X.shape[0] == prices.shape[0] - 1
 
 
+@pytest.mark.parametrize("log_returns", [False, True])
+def test_returns_keeps_mid_series_nan_without_fill(log_returns):
+    """Verify a missing price after inception is kept as NaN returns."""
+    index = pd.date_range("2024-01-01", periods=6)
+    prices = pd.DataFrame(
+        {
+            "A": [100.0, 101.0, 102.0, 103.0, 104.0, 105.0],
+            "B": [np.nan, 50.0, 51.0, np.nan, 53.0, 54.0],
+        },
+        index=index,
+    )
+
+    X = prices_to_returns(X=prices, log_returns=log_returns, fill_nan=False)
+
+    expected = pd.DataFrame(
+        {
+            "A": [102 / 101, 103 / 102, 104 / 103, 105 / 104],
+            "B": [51 / 50, np.nan, np.nan, 54 / 53],
+        },
+        index=index[2:],
+    )
+    expected = np.log(expected) if log_returns else expected - 1
+    pd.testing.assert_frame_equal(X, expected)
+
+
+@pytest.mark.parametrize("log_returns", [False, True])
+def test_returns_drops_leading_nan_without_fill(log_returns):
+    """Verify leading observations with a missing price are still dropped."""
+    index = pd.date_range("2024-01-01", periods=5)
+    prices = pd.DataFrame(
+        {
+            "A": [100.0, 101.0, 102.0, 103.0, 104.0],
+            "B": [np.nan, np.nan, 51.0, 52.0, 53.0],
+            "C": [np.nan, 20.0, 21.0, 22.0, 23.0],
+        },
+        index=index,
+    )
+
+    for fill_nan in [True, False]:
+        X = prices_to_returns(X=prices, log_returns=log_returns, fill_nan=fill_nan)
+        expected = prices.iloc[2:].pct_change().iloc[1:]
+        if log_returns:
+            expected = np.log1p(expected)
+        pd.testing.assert_frame_equal(X, expected)
+
+
 def test_returns_drops_all_nan_column():
     index = pd.date_range("2026-01-01", periods=5)
     prices = pd.DataFrame(
@@ -126,8 +172,8 @@ def test_returns_drops_all_nan_column():
     pd.testing.assert_frame_equal(X, prices_to_returns(X=prices[["A", "B"]]))
 
 
-@pytest.mark.parametrize("nan_threshold", [0.3, 1])
-def test_returns_drops_all_nan_column_with_nan_threshold(nan_threshold):
+@pytest.mark.parametrize("nan_threshold, n_observations", [(0.3, 3), (1, 4)])
+def test_returns_drops_all_nan_column_with_nan_threshold(nan_threshold, n_observations):
     index = pd.date_range("2026-01-01", periods=5)
     prices = pd.DataFrame(
         {
@@ -143,7 +189,7 @@ def test_returns_drops_all_nan_column_with_nan_threshold(nan_threshold):
         X=prices[["A", "B"]], nan_threshold=nan_threshold, fill_nan=False
     )
     pd.testing.assert_frame_equal(X, expected)
-    assert X.shape[0] == 3
+    assert X.shape[0] == n_observations
 
 
 def test_returns_drops_column_emptied_by_nan_threshold():
