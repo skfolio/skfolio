@@ -1381,7 +1381,7 @@ class AssetPanel(_BaseAssetPanel):
         for name in field_names:
             if name not in panel.fields:
                 raise KeyError(f"Field '{name}' not found.")
-            # Repeated names still fill sequentially, before any result is installed.
+            # If a field is listed again, use the values from its previous fill.
             field = replacements.get(name, panel.fields[name])
             if not isinstance(field, Field2D) or isinstance(field, FieldCategorical):
                 raise TypeError(f"{method} only supports numeric Field2D entries.")
