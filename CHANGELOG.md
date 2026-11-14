@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.12.14 (2026-11-14)
+
+### Bug Fixes
+
+- **pre_selection**: Preserve a single asset in DropCorrelated
+  ([#505](https://github.com/skfolio/skfolio/pull/505),
+  [`d778017`](https://github.com/skfolio/skfolio/commit/d778017f511745d9d6661ea7cc5a184f5f5b28e0))
+
+
 ## v1.12.13 (2026-11-14)
 
 ### Bug Fixes
