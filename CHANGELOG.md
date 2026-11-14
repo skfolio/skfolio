@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.12.13 (2026-11-14)
+
+### Bug Fixes
+
+- **preprocessing**: Keep mid-series NaN in prices_to_returns when fill_nan=False
+  ([#506](https://github.com/skfolio/skfolio/pull/506),
+  [`9d6720a`](https://github.com/skfolio/skfolio/commit/9d6720a255010fd4c908feac1cf44d1c852cba14))
+
+
 ## v1.12.12 (2026-11-13)
 
 ### Bug Fixes
