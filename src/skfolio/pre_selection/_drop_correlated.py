@@ -85,7 +85,7 @@ class DropCorrelated(skf.SelectorMixin, skb.BaseEstimator):
 
         n_assets = X.shape[1]
         if n_assets == 1:
-            self.to_keep_ = np.ones(1, dtype=bool)
+            self.to_keep_ = np.array([True])
             return self
 
         corr = np.corrcoef(X.T)
