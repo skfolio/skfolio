@@ -718,16 +718,15 @@ class MultiPeriodPortfolio(BasePortfolio):
     def weights_per_observation(self) -> pd.DataFrame:
         """DataFrame of the Portfolio weights per observation.
 
-        Assets absent from successful periods receive zero weight. Failed periods
-        retain NaN weights, including for assets present only in other periods.
+        Asset weights are NaN for every observation in a FailedPortfolio.
         """
-        frames = [p.weights_per_observation for p in self]
-        weights = pd.concat(frames, axis=0).fillna(0)
+        weights_per_obs = [p.weights_per_observation for p in self]
+        weights = pd.concat(weights_per_obs, axis=0).fillna(0)
         failed_rows = np.concatenate(
             [
-                frame.isna().all(axis=1).to_numpy()
-                & (len(frame.columns) > 0 or isinstance(p, FailedPortfolio))
-                for p, frame in zip(self, frames, strict=True)
+                obs_weights.isna().all(axis=1).to_numpy()
+                & (len(obs_weights.columns) > 0 or isinstance(p, FailedPortfolio))
+                for p, obs_weights in zip(self, weights_per_obs, strict=True)
             ]
         )
         weights.loc[failed_rows] = np.nan
@@ -741,8 +740,7 @@ class MultiPeriodPortfolio(BasePortfolio):
         sum of negative weights. Net exposure is the sum of all weights and gross
         exposure is the sum of absolute weights.
 
-        For a Portfolio with no invested assets, all four exposures are zero.
-        For a FailedPortfolio, all four exposures are NaN.
+        All four exposures are NaN for every observation in a FailedPortfolio.
         """
         weights_per_obs = [p.weights_per_observation for p in self]
         failed_rows = pd.concat(
