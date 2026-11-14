@@ -620,14 +620,15 @@ The distance estimator can use three different inputs:
   `fit` and `partial_fit`.
 
 * **Input returns.** Set `distance_from_prior=False` to fit the distance estimator
-  on the `X` argument supplied to the optimization estimator's `fit(X)` or
-  `partial_fit(X)`, before the prior processes it. In a pipeline, `X` is the output
-  of the earlier steps. For `fit`, the same distance estimators as in the prior
-  return scenarios option are supported. For `partial_fit`, the distance must
-  support incremental learning, as described below.
+  on the original `X` supplied to the optimization estimator's `fit(X)` or
+  `partial_fit(X)`. In a pipeline, `X` is the output of the earlier steps.
+  For `fit`, the same distance estimators as in the prior return scenarios option
+  are supported. For `partial_fit`, the distance must support incremental learning,
+  as described below.
 
 In all three cases, portfolio allocation uses the prior's moments and return
-scenarios.
+scenarios. Distances fitted from the prior use only investable assets. Excluded
+assets receive zero weight.
 
 For example, a factor-model prior can supply the allocation covariance while a
 separate covariance estimator measures dependence from input returns:
@@ -692,7 +693,10 @@ spectral estimator's history. See :ref:`seriation` for their respective behavior
 
 The prior needs enough warm-up observations to produce valid moments. A separate
 distance estimator must also provide the required distances for every investable
-asset.
+asset. With `distance_from_prior=True` and `CovarianceDistance("precomputed")`,
+distances use the prior's covariance and share its warm-up period.
+
+Weight bounds apply to investable assets.
 
 With the default `PearsonDistance`, update cost grows with the prior's stored history.
 For long runs, `CovarianceDistance("precomputed")` avoids repeated estimation, or the

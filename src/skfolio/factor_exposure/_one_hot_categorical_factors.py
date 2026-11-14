@@ -12,7 +12,7 @@ import numpy as np
 
 from skfolio.containers import MISSING_CATEGORY_CODE, AssetPanel
 from skfolio.factor_exposure._base import BaseFactorExposure
-from skfolio.typing import FloatArray, ObjArray
+from skfolio.typing import FloatArray, StrArray
 from skfolio.utils.validation import validate_asset_panel
 
 
@@ -60,7 +60,7 @@ class OneHotCategoricalFactors(BaseFactorExposure, stateless=True):
         Asset names seen during fitting.
     """
 
-    factor_names_: ObjArray
+    factor_names_: StrArray
 
     def __init__(self, category: str, *, family: str) -> None:
         super().__init__(family=family)
@@ -102,7 +102,7 @@ class OneHotCategoricalFactors(BaseFactorExposure, stateless=True):
             raise ValueError(f"Field '{self.category}' must be a CategoricalField.")
 
         codes = field.values
-        factor_names = field.levels  # ty: ignore[unresolved-attribute]
+        factor_names = field.levels  # ty: ignore[missing-attribute]
         n_factors = len(factor_names)
         n_observations, n_assets = codes.shape
 
