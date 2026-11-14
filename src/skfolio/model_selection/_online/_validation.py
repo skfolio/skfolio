@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import datetime as dt
 import numbers
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -19,6 +19,7 @@ import pandas as pd
 import sklearn as sk
 import sklearn.base as skb
 import sklearn.utils as sku
+import sklearn.utils.parallel as skp
 from sklearn.pipeline import Pipeline
 
 import skfolio.typing as skt
@@ -33,6 +34,7 @@ from skfolio.model_selection._validation import (
     _resolve_evaluation_portfolio_params,
     _route_params,
     _sync_measure_params_to_portfolios,
+    _validate_named_estimators,
 )
 from skfolio.model_selection._walk_forward import WalkForward
 from skfolio.population import Population
@@ -47,7 +49,7 @@ __all__ = ["online_predict", "online_score"]
 
 
 def online_predict(
-    estimator: BaseOptimization,
+    estimator: BaseOptimization | Sequence[tuple[str, BaseOptimization]],
     X: ArrayLike,
     y: ArrayLike | None = None,
     warmup_size: int = 252,
@@ -60,7 +62,11 @@ def online_predict(
     params: dict | None = None,
     portfolio_params: dict | None = None,
     entry_rebalancing_params: dict | None = None,
-) -> MultiPeriodPortfolio:
+    *,
+    n_jobs: int | None = None,
+    verbose: int = 0,
+    pre_dispatch: str = "2*n_jobs",
+) -> MultiPeriodPortfolio | Population:
     r"""Generate out-of-sample portfolios using online learning.
 
     Walks forward through the data, updating the estimator incrementally via
@@ -79,11 +85,16 @@ def online_predict(
     If the estimator declares `needs_previous_weights=True`, portfolio weights are
     automatically propagated from one step to the next.
 
+    When a list of `(name, estimator)` pairs is provided, all estimators are
+    evaluated on the same windows and their portfolios are returned together in a
+    :class:`~skfolio.population.Population`.
+
     Parameters
     ----------
-    estimator : BaseOptimization
+    estimator : BaseOptimization | sequence of (str, BaseOptimization)
         Portfolio optimization estimator. It must implement `partial_fit`.
-        Pipelines are not supported.
+        Pipelines are not supported. To evaluate several estimators, pass a sequence
+        of `(name, estimator)` pairs with unique string names.
 
     X : array-like of shape (n_observations, n_assets)
         Price returns of the assets. Must be a DataFrame with a `DatetimeIndex` when
@@ -156,6 +167,9 @@ def online_predict(
         `name`, `tag`, `sample_weight` and `check_observations_order` apply to the
         returned `MultiPeriodPortfolio` only.
 
+        For named estimators, these settings apply to every estimator. `name` and
+        `tag` are set from the estimator names and cannot be overridden here.
+
     entry_rebalancing_params : dict, optional
         Portfolio optimizer parameters applied only while constructing the first
         portfolio. This is useful when the strategy starts with no existing position,
@@ -164,13 +178,43 @@ def online_predict(
         or use lower `transaction_costs` to avoid a slow ramp from cash caused by
         recurring rebalancing constraints. The first portfolio is included in the
         result. The regular optimizer parameters are restored before the next online
-        update.
+        update. For named estimators, these settings apply to every estimator.
+
+    n_jobs : int, optional
+        The number of jobs to run in parallel.
+        `None` means 1 unless in a `joblib.parallel_backend` context. -1 means
+        using all processors. Named estimators are evaluated in parallel, while the
+        online updates of each estimator remain sequential. A single estimator always
+        runs sequentially.
+
+    verbose : int, default=0
+        The verbosity level.
+
+    pre_dispatch : int or str, default='2*n_jobs'
+        Controls the number of jobs that get dispatched during parallel
+        execution. Reducing this number can be useful to avoid an
+        explosion of memory consumption when more jobs get dispatched
+        than CPUs can process. This parameter can be:
+
+            * None, in which case all the jobs are immediately
+              created and spawned. Use this for lightweight and
+              fast-running jobs, to avoid delays due to on-demand
+              spawning of the jobs
+
+            * An int, giving the exact number of total jobs that are
+              spawned
+
+            * A str, giving an expression as a function of n_jobs,
+              as in '2*n_jobs'
 
     Returns
     -------
-    prediction : MultiPeriodPortfolio
+    prediction : MultiPeriodPortfolio | Population
         A :class:`~skfolio.portfolio.MultiPeriodPortfolio` containing one
         :class:`~skfolio.portfolio.Portfolio` per test window, ordered chronologically.
+        Named estimators always return a :class:`~skfolio.population.Population`, with
+        one `MultiPeriodPortfolio` per estimator in input order. Estimator names set
+        `name` and `tag`.
 
     Raises
     ------
@@ -215,33 +259,99 @@ def online_predict(
     ...     ),
     ... )
     >>> pred = online_predict(model, X, warmup_size=252, test_size=5)
+
+    To compare estimators on the same windows, pass a list of named estimators:
+
+    >>> estimators = [
+    ...     (
+    ...         f"half_life_{half_life}",
+    ...         MeanRisk(
+    ...             prior_estimator=EmpiricalPrior(
+    ...                 mu_estimator=EWMu(half_life=half_life),
+    ...                 covariance_estimator=EWCovariance(half_life=half_life),
+    ...             ),
+    ...         ),
+    ...     )
+    ...     for half_life in (20, 60)
+    ... ]
+    >>> population = online_predict(estimators, X, warmup_size=252, test_size=5)
+    >>> [mpp.name for mpp in population]
+    ['half_life_20', 'half_life_60']
     """
-    _validate_online_estimator(
-        estimator, caller="online_predict", require_portfolio=True
+    is_collection = isinstance(estimator, Sequence) and not isinstance(
+        estimator, str | bytes | bytearray
     )
+    named_estimators = (
+        _validate_named_estimators(estimator) if is_collection else [(None, estimator)]
+    )
+    if is_collection:
+        conflicting_params = sorted({"name", "tag"} & set(portfolio_params or {}))
+        if conflicting_params:
+            raise ValueError(
+                f"{conflicting_params} cannot be set in `portfolio_params` when "
+                "`online_predict` receives named estimators: their names determine "
+                "the portfolio names and tags."
+            )
+    for name, est in named_estimators:
+        _validate_online_estimator(
+            est,  # ty: ignore[invalid-argument-type]
+            caller="online_predict",
+            require_portfolio=True,
+            name=name,
+        )
     _validate_sizes(warmup_size, test_size)
 
-    estimator = sk.clone(estimator)
+    estimators = [sk.clone(est) for _, est in named_estimators]
     X, y = sku.indexable(X, y)
     routed_params = _route_params(
-        estimator, params, owner="online_predict", callee="partial_fit"
+        estimators if is_collection else estimators[0],
+        params,
+        owner="online_predict",
+        callee="partial_fit",
+    )
+    fit_params = (
+        routed_params.estimator_params
+        if is_collection
+        else [routed_params.estimator_params]
     )
 
-    return _online_predict(
-        estimator,
-        X,
-        y,
-        routed_params,
-        warmup_size=warmup_size,
-        test_size=test_size,
-        freq=freq,
-        freq_offset=freq_offset,
-        previous=previous,
-        purged_size=purged_size,
-        reduce_test=reduce_test,
-        portfolio_params=portfolio_params,
-        entry_rebalancing_params=entry_rebalancing_params,
-    )
+    def evaluate(
+        est: BaseOptimization, est_params: dict, name: str | None
+    ) -> MultiPeriodPortfolio:
+        """Run the online evaluation of one estimator."""
+        return _online_predict(
+            est,
+            X,
+            y,
+            sku.Bunch(estimator_params=est_params),
+            warmup_size=warmup_size,
+            test_size=test_size,
+            freq=freq,
+            freq_offset=freq_offset,
+            previous=previous,
+            purged_size=purged_size,
+            reduce_test=reduce_test,
+            portfolio_params=(
+                portfolio_params
+                if name is None
+                else {**(portfolio_params or {}), "name": name, "tag": name}
+            ),
+            entry_rebalancing_params=entry_rebalancing_params,
+        )
+
+    jobs = [
+        (est, est_params, name)
+        for est, est_params, (name, _) in zip(
+            estimators, fit_params, named_estimators, strict=True
+        )
+    ]
+    if len(jobs) == 1:
+        # Online updates are sequential, so a single estimator runs inline.
+        prediction = evaluate(*jobs[0])
+        return Population([prediction]) if is_collection else prediction
+
+    parallel = skp.Parallel(n_jobs=n_jobs, verbose=verbose, pre_dispatch=pre_dispatch)
+    return Population(parallel(skp.delayed(evaluate)(*job) for job in jobs))
 
 
 def online_score(
@@ -911,6 +1021,7 @@ def _validate_online_estimator(
     *,
     caller: str,
     require_portfolio: bool = False,
+    name: str | None = None,
 ) -> skb.BaseEstimator:
     """Validate that an estimator is compatible with online evaluation.
 
@@ -931,22 +1042,28 @@ def _validate_online_estimator(
         If `True`, require `estimator` to be a portfolio optimization estimator.
         If `False`, any non-pipeline estimator implementing `partial_fit` is accepted.
 
+    name : str, optional
+        Name of the estimator when it belongs to a collection of named estimators.
+        Used in error messages.
+
     Returns
     -------
     estimator : BaseEstimator
         The validated estimator.
     """
+    description = "" if name is None else f" (estimator named {name!r})"
     if isinstance(estimator, Pipeline):
-        raise TypeError(f"Pipeline is not supported for `{caller}`.")
+        raise TypeError(f"Pipeline is not supported for `{caller}`{description}.")
 
     if require_portfolio and not _is_portfolio_optimization_estimator(estimator):
         raise TypeError(
-            f"skfolio's `{caller}` only supports portfolio optimization estimators."
+            f"skfolio's `{caller}` only supports portfolio optimization "
+            f"estimators{description}."
         )
 
     if not hasattr(estimator, "partial_fit"):
         raise TypeError(
-            f"The estimator ({type(estimator).__name__}) does not "
+            f"The estimator ({type(estimator).__name__}){description} does not "
             "implement partial_fit. Use an estimator with incremental learning "
             "support (e.g., `EmpiricalPrior` using exponentially weighted moments)."
         )
