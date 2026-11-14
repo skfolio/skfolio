@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from skfolio.containers import AssetPanel
 from skfolio.descriptor import EWDownsideBeta
 from skfolio.utils.stats import _market_returns
 from skfolio.utils.tools import half_life_to_decay_factor
@@ -42,6 +43,41 @@ class TestEWDownsideBeta:
         assert np.all(np.isnan(result[:7, 0]))
         assert not np.isnan(result[7, 0])
 
+    def test_late_listed_beta_matches_full_history_twin(self):
+        """A late-listed asset gets a downside beta comparable to its twin.
+
+        The EWMA accumulators start at zero and the market downside variance is
+        updated at every observation while each asset co-moment is updated only
+        on its valid observations. Without bias correction the first downside
+        beta of a late-listed asset is about half of its true value.
+        """
+        rng = np.random.default_rng(0)
+        n_obs, n_assets = 400, 20
+        half_life = 60
+        listing = 200
+        market = rng.normal(0, 0.01, n_obs)
+        true_beta = np.ones(n_assets) * 1.5
+        returns = true_beta * market[:, None] + rng.normal(0, 0.01, (n_obs, n_assets))
+        active = np.ones((n_obs, n_assets), dtype=bool)
+        active[:listing, 0] = False
+        returns[~active] = np.nan
+        market_cap = np.ones((n_obs, n_assets))
+        market_cap[~active] = np.nan
+        panel = AssetPanel(
+            fields={"returns": returns, "market_cap": market_cap},
+            observations=np.arange(n_obs),
+            asset_names=np.array([f"A{i}" for i in range(n_assets)]),
+            active_mask=active,
+        )
+
+        result = EWDownsideBeta(half_life=half_life).fit_transform(panel)
+
+        # After 60 valid observations the late-listed asset should be close to
+        # its full-history twins with the same true beta.
+        t = listing + half_life - 1
+        ratio = result[t, 0] / np.mean(result[t, 1:])
+        assert ratio > 0.7
+
     def test_default_min_periods(self):
         """Default min_periods is None (resolved to half_life internally)."""
         d = EWDownsideBeta(half_life=10)
@@ -71,6 +107,7 @@ class TestEWDownsideBeta:
 
         var_down_market = 0.0
         cov_down = np.zeros(n_assets)
+        n_valid = np.zeros(n_assets, dtype=int)
 
         for t in range(n_obs):
             r_m = market_rets[t]
@@ -81,8 +118,13 @@ class TestEWDownsideBeta:
 
             var_down_market = decay * var_down_market + (1 - decay) * d_m * d_m
             cov_down = decay * cov_down + (1 - decay) * d_i * d_m
+            n_valid += np.isfinite(r_i)
 
-            expected = cov_down / (var_down_market + eps)
+            # Both accumulators are divided by their own weight sums to
+            # remove the zero-initialization bias.
+            expected = (cov_down / (1 - decay**n_valid)) / (
+                var_down_market / (1 - decay ** (t + 1)) + eps
+            )
             np.testing.assert_array_almost_equal(result[t], expected)
 
     def test_all_positive_returns_gives_zero_beta(self, simple_panel):

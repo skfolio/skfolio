@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from skfolio.containers import AssetPanel
 from skfolio.descriptor import (
     EWResidualDownsideVolatility,
     EWResidualVolatility,
@@ -76,7 +77,13 @@ def _manual_residual_volatility(
             + (1 - beta_decay) * asset_deviations * market_deviation
         )
 
-        beta = cov_assets / (var_market + eps)
+        n_market = t + 1
+        n_valid_beta = n_valid_assets + valid_returns
+        beta = np.zeros(n_assets, dtype=float)
+        has_cov = n_valid_beta > 0
+        beta[has_cov] = (
+            cov_assets[has_cov] / (1 - beta_decay ** n_valid_beta[has_cov])
+        ) / (var_market / (1 - beta_decay**n_market) + eps)
         residual = returns_t - beta * market_return_t
         if min_acceptable_return is None:
             contribution = residual
@@ -293,6 +300,43 @@ class TestEWResidualVolatility:
         assert np.isnan(result[5, 0])
         assert np.isnan(result[6, 0])
         assert not np.isnan(result[7, 0])
+
+    def test_late_listed_residual_vol_matches_full_history_twin(self):
+        """A late-listed asset gets a residual vol comparable to its twin.
+
+        The beta behind the residuals uses the same zero-initialized EWMA
+        accumulators, so without bias correction the beta of a late-listed
+        asset is understated and its residual volatility overstated.
+        """
+        rng = np.random.default_rng(0)
+        n_obs, n_assets = 400, 20
+        half_life = 40
+        beta_half_life = 60
+        listing = 200
+        market = rng.normal(0, 0.01, n_obs)
+        true_beta = np.ones(n_assets) * 1.5
+        returns = true_beta * market[:, None] + rng.normal(0, 0.01, (n_obs, n_assets))
+        active = np.ones((n_obs, n_assets), dtype=bool)
+        active[:listing, 0] = False
+        returns[~active] = np.nan
+        market_cap = np.ones((n_obs, n_assets))
+        market_cap[~active] = np.nan
+        panel = AssetPanel(
+            fields={"returns": returns, "market_cap": market_cap},
+            observations=np.arange(n_obs),
+            asset_names=np.array([f"A{i}" for i in range(n_assets)]),
+            active_mask=active,
+        )
+
+        result = EWResidualVolatility(
+            half_life=half_life, beta_half_life=beta_half_life
+        ).fit_transform(panel)
+
+        # After 60 valid observations the late-listed asset should be close to
+        # its full-history twins with the same true beta and noise.
+        t = listing + beta_half_life - 1
+        ratio = result[t, 0] / np.mean(result[t, 1:])
+        assert 0.8 < ratio < 1.25
 
     def test_inactive_gap_resets_warmup(self, simple_panel):
         """Inactive observations reset asset-specific state and valid counts."""
