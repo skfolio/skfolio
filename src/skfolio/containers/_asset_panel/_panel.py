@@ -865,7 +865,8 @@ class AssetPanel(_BaseAssetPanel):
         Parameters
         ----------
         fields : str or iterable of str
-            Numeric `Field2D` names to fill.
+            Names of fields to fill. Each field must be a `Field2D` with floating-point
+            values.
 
         limit : int or None, optional
             Maximum number of consecutive NaN values to fill. If `None`, all consecutive
@@ -880,12 +881,7 @@ class AssetPanel(_BaseAssetPanel):
         panel : AssetPanel
             Modified panel or copied panel.
         """
-        return self._fill(
-            fields,
-            method="ffill",
-            limit=limit,
-            inplace=inplace,
-        )
+        return self._fill(fields, method="ffill", limit=limit, inplace=inplace)
 
     def bfill(
         self,
@@ -903,7 +899,8 @@ class AssetPanel(_BaseAssetPanel):
         Parameters
         ----------
         fields : str or iterable of str
-            Numeric `Field2D` names to fill.
+            Names of fields to fill. Each field must be a `Field2D` with floating-point
+            values.
 
         limit : int or None, optional
             Maximum number of consecutive NaN values to fill. If `None`, all consecutive
@@ -918,12 +915,7 @@ class AssetPanel(_BaseAssetPanel):
         panel : AssetPanel
             Modified panel or copied panel.
         """
-        return self._fill(
-            fields,
-            method="bfill",
-            limit=limit,
-            inplace=inplace,
-        )
+        return self._fill(fields, method="bfill", limit=limit, inplace=inplace)
 
     def align_active_mask_to(self, fields: str | Iterable[str]) -> int:
         """Align active periods to valid field values.
@@ -1385,21 +1377,21 @@ class AssetPanel(_BaseAssetPanel):
         """Fill floating 2D fields along observations."""
         field_names = [fields] if isinstance(fields, str) else list(fields)
         panel = self if inplace else self.copy()
+        replacements = {}
         for name in field_names:
             if name not in panel.fields:
                 raise KeyError(f"Field '{name}' not found.")
-            field = panel.fields[name]
+            # If a field is listed again, use the values from its previous fill.
+            field = replacements.get(name, panel.fields[name])
             if not isinstance(field, Field2D) or isinstance(field, FieldCategorical):
                 raise TypeError(f"{method} only supports numeric Field2D entries.")
             if not np.issubdtype(field.values.dtype, np.floating):
                 raise TypeError(f"{method} only supports floating Field2D entries.")
             values = _fill_2d(
-                field.values,
-                method=method,
-                limit=limit,
-                mask=panel.active_mask,
+                field.values, method=method, limit=limit, mask=panel.active_mask
             )
-            panel.fields[name] = field.with_values(values)
+            replacements[name] = field.with_values(values)
+        panel.fields.update(replacements)
         return panel
 
 

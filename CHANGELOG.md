@@ -2,6 +2,42 @@
 
 <!-- version list -->
 
+## v1.12.16 (2026-11-14)
+
+### Bug Fixes
+
+- **containers**: Preserve fields on fill preparation errors
+  ([#482](https://github.com/skfolio/skfolio/pull/482),
+  [`869ed25`](https://github.com/skfolio/skfolio/commit/869ed25c7fcce10bf40f2c9db1d5d84114e46e1f))
+
+
+## v1.12.15 (2026-11-14)
+
+### Bug Fixes
+
+- **portfolio**: Preserve failed-period observation weights
+  ([#477](https://github.com/skfolio/skfolio/pull/477),
+  [`e933790`](https://github.com/skfolio/skfolio/commit/e933790a4bedebbfc0ea26ca66da5dc17ccf33d7))
+
+
+## v1.12.14 (2026-11-14)
+
+### Bug Fixes
+
+- **pre_selection**: Preserve a single asset in DropCorrelated
+  ([#505](https://github.com/skfolio/skfolio/pull/505),
+  [`d778017`](https://github.com/skfolio/skfolio/commit/d778017f511745d9d6661ea7cc5a184f5f5b28e0))
+
+
+## v1.12.13 (2026-11-14)
+
+### Bug Fixes
+
+- **preprocessing**: Keep mid-series NaN in prices_to_returns when fill_nan=False
+  ([#506](https://github.com/skfolio/skfolio/pull/506),
+  [`9d6720a`](https://github.com/skfolio/skfolio/commit/9d6720a255010fd4c908feac1cf44d1c852cba14))
+
+
 ## v1.12.12 (2026-11-13)
 
 ### Bug Fixes
