@@ -618,6 +618,8 @@ def rolling_realized_factor_attribution(
             inactive_mask=inactive_mask,
         )
 
+    # Date-local inactivity can turn static loadings into time-varying exposures.
+    exposure_is_static = exposures.ndim == 2
     n_observations, _ = factor_returns.shape
 
     if len(observations) != n_observations:
@@ -830,6 +832,9 @@ def _zero_inactive_entries(
         inactive_assets = nan_exposures.any(axis=1)
         inactive_mask = nan_idio | inactive_assets[np.newaxis, :]
         exposure_inactive = inactive_assets[:, np.newaxis]
+        if nan_idio.any():
+            exposures = exposures[np.newaxis, :, :]
+            exposure_inactive = inactive_mask[:, :, np.newaxis]
     else:
         inactive_mask = nan_idio | nan_exposures.any(axis=2)
         exposure_inactive = inactive_mask[:, :, np.newaxis]
