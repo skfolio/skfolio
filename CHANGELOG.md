@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v1.12.17 (2026-11-16)
+
+### Bug Fixes
+
+- **descriptor**: Correct EW betas, shrinkage, macro sensitivity and residual volatility for late
+  listings and missing returns ([#507](https://github.com/skfolio/skfolio/pull/507),
+  [`25d861b`](https://github.com/skfolio/skfolio/commit/25d861b9d1b7c5016a58cb3826571627b6399be3))
+
+### Additional Release Information
+
+- **descriptor**: The eps parameter in the affected EW descriptors is deprecated and ignored. It
+  will be removed in version 2.0.
+
+- The affected EW descriptors now reset their history when active_mask=False and return NaN when the
+  required sensitivity cannot be estimated. Residual volatility starts accumulating residuals from
+  the tenth observation used to estimate beta.
+
+
 ## v1.12.16 (2026-11-14)
 
 ### Bug Fixes
