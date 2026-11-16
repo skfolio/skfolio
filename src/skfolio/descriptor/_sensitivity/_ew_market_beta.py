@@ -6,13 +6,17 @@
 
 from __future__ import annotations
 
-import warnings
 from typing import Any
 
 import numpy as np
 
 from skfolio.containers import MISSING_CATEGORY_CODE, AssetPanel
 from skfolio.descriptor._base import BaseDescriptor
+from skfolio.descriptor._utils import (
+    _EWRegression,
+    _ReturnAverager,
+    _warn_deprecated_eps,
+)
 from skfolio.typing import FloatArray, IntArray
 from skfolio.utils.stats import _market_returns
 from skfolio.utils.tools import (
@@ -48,16 +52,14 @@ class EWMarketBeta(BaseDescriptor):
 
     aggregation_period : int, default=1
         Number of consecutive observations to aggregate before updating EWMA statistics.
-        Aggregation can reduce desynchronization effects. Returns are aggregated with
-        the mean of finite values. If an asset has no finite returns in an aggregation
-        window, its state is unchanged.
+        Aggregation can reduce desynchronization effects. Asset and market returns are
+        averaged over the same observations, as described in Notes.
 
     min_periods : int, optional
-        Minimum number of market observations and valid asset returns required before
-        computing market betas. Until both counts reach this value, the asset's output
-        is NaN. This warm-up period avoids exposing early EWMA values before the beta
-        estimate has sufficiently converged from its zero initialization. If `None`,
-        defaults to :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
+        Minimum number of observations required before computing each asset's market
+        beta. With aggregation enabled, each average counts as one observation. Until
+        this count is reached, the asset's output is NaN. If `None`, defaults to
+        :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
 
     shrinkage_group : str, optional
         Name of a categorical field containing group labels (e.g., `"industry"`) for
@@ -73,8 +75,8 @@ class EWMarketBeta(BaseDescriptor):
         cap-weighted group mean, :math:`\tau_g^2` is the prior variance (cross-sectional
         variance minus noise) and :math:`\sigma_i^2` is the estimation error variance.
 
-        Missing category codes are excluded from shrinkage. If `None` (default), no
-        shrinkage is applied.
+        Assets with missing category codes or non-positive market capitalization are
+        excluded from shrinkage. If `None` (default), no shrinkage is applied.
 
     min_group_size : int, default=5
         Minimum number of assets in a group to compute group-specific statistics.
@@ -91,9 +93,9 @@ class EWMarketBeta(BaseDescriptor):
         least 10% weight on the group mean. Only used when `shrinkage_group` is
         provided.
 
-    eps : float, default=1e-12
-        Small constant for numerical stability in
-        :math:`1 / \text{Var}(\text{market})`.
+    eps : float, optional
+        Deprecated and ignored. It will be removed in version 2.0.
+        Supplying a positive value emits a `FutureWarning`.
 
     Attributes
     ----------
@@ -109,20 +111,19 @@ class EWMarketBeta(BaseDescriptor):
     Notes
     -----
     NaNs are allowed as missing observations. Non-missing `returns` values must be
-    finite. The market variance is updated at every observation. Asset covariances are
-    updated only for assets with valid returns and each asset's valid-observation count
-    controls when its output starts. This avoids emitting initialized values for
-    late-listed or sparsely observed assets. The `active_mask` property of
-    :class:`~skfolio.containers.AssetPanel` distinguishes holidays from delistings.
+    finite. Covariance and market variance use the same observations for each asset,
+    with `X.active_mask=True` and non-missing returns. This is equivalent to regression
+    with an intercept. Missing returns do not reset estimates. Setting
+    `X.active_mask=False` resets estimates and sets output to NaN. Too little variation
+    in market returns also produces NaN.
 
-    Market returns are computed from the estimation universe (`estimation_mask` of
-    :class:`~skfolio.containers.AssetPanel`). If no estimable asset has both finite
-    returns and finite `market_cap` at an observation, the market return is undefined
-    and a `ValueError` is raised.
+    Shrinkage assumes independent errors with constant variance. It requires at least
+    three observations and an estimable beta variance. Otherwise, assets subject to
+    shrinkage return NaN.
 
-    Both EWMA accumulators behind the beta are divided by their own weight sums
-    (:math:`1 - \\lambda^n`) to remove the zero-initialization bias, so a
-    late-listed asset is comparable with one observed since the start.
+    Market returns are the `X["market_cap"]`-weighted average of `X["returns"]` where
+    `X.estimation_mask=True` and both fields are finite. A `ValueError` is raised if
+    these assets have no positive total market capitalization at any observation.
 
     References
     ----------
@@ -140,7 +141,7 @@ class EWMarketBeta(BaseDescriptor):
         shrinkage_group: str | None = None,
         min_group_size: int = 5,
         shrinkage_bounds: tuple[float, float] = (0.0, 1.0),
-        eps: float = 1e-12,
+        eps: float | None = None,
     ) -> None:
         self.half_life = half_life
         self.aggregation_period = aggregation_period
@@ -242,46 +243,29 @@ class EWMarketBeta(BaseDescriptor):
                 )
             group_labels = group_field.values
 
-        if self._aggregation_period == 1:
-            for i in range(n_observations):
-                self._update_ewma(ret_assets=asset_rets[i], ret_market=market_rets[i])
-                if self._shrinkage_enabled and self._t >= self._min_periods:
-                    # Shrinkage applied every observation since betas update every time
-                    self._shrunk_betas = self._apply_shrinkage(
+        for t in range(n_observations):
+            active_mask = X.active_mask[t]
+
+            # Clear history where X.active_mask is False, restarting warm-up.
+            self._regression.reset(~active_mask)
+            self._betas[~active_mask] = np.nan
+
+            returns = np.vstack((np.full(n_assets, market_rets[t]), asset_rets[t]))
+            aggregated = self._averager.update(returns=returns, active_mask=active_mask)
+            if aggregated is not None:
+                averaged_returns, valid_mask = aggregated
+                self._regression.update(returns=averaged_returns, valid_mask=valid_mask)
+                self._betas = self._regression.beta(min_periods=self._min_periods)
+
+                # Apply shrinkage when the regression processes averaged returns.
+                if self._shrinkage_enabled:
+                    self._betas = self._apply_shrinkage(
                         self._betas,
-                        group_labels[i],  # ty: ignore[not-subscriptable]
-                        market_caps[i],
+                        group_labels[t],  # ty: ignore[not-subscriptable]
+                        market_caps[t],
                     )
-                    betas[i] = self._shrunk_betas
-                else:
-                    betas[i] = self._betas
-        else:
-            # Aggregation path: buffer returns until window is complete
-            for i in range(n_observations):
-                self._buffer_assets[self._buffer_idx] = asset_rets[i]
-                self._buffer_market[self._buffer_idx] = market_rets[i]
-                self._buffer_idx += 1
 
-                if self._buffer_idx >= self._aggregation_period:
-                    self._update_from_buffer()
-                    # Apply shrinkage only on flush (when betas update)
-                    if self._shrinkage_enabled and self._t >= self._min_periods:
-                        self._shrunk_betas = self._apply_shrinkage(
-                            self._betas,
-                            group_labels[i],  # ty: ignore[not-subscriptable]
-                            market_caps[i],
-                        )
-
-                # Output: shrunk betas if available, else raw betas
-                if self._shrinkage_enabled and self._t >= self._min_periods:
-                    betas[i] = self._shrunk_betas
-                else:
-                    betas[i] = self._betas
-
-        # Mask output for out-of-universe assets (delisted / not yet listed).
-        # Internal EWMA state is preserved (frozen) so that if an asset
-        # re-enters the universe, estimation resumes from its last state.
-        betas = np.where(X.active_mask, betas, np.nan)
+            betas[t] = self._betas
 
         # Store only the last row for fitted checks and state access
         self.market_beta_ = betas[-1].copy() if n_observations > 1 else betas[-1]
@@ -310,120 +294,28 @@ class EWMarketBeta(BaseDescriptor):
                 f"shrinkage_bounds must be (w_min, w_max) with "
                 f"0 <= w_min <= w_max <= 1, got {self.shrinkage_bounds}"
             )
-        _validate_positive_real(self.eps, "eps")
+        _warn_deprecated_eps(self.eps)
 
     def _initialize(self) -> None:
-        """Initialize EWMA state and aggregation buffers."""
-        # Minimum valid aggregated observations before output
-        if self.min_periods is None:
-            self._min_periods = max(1, int(np.ceil(self.half_life)))
-        else:
-            self._min_periods = int(self.min_periods)
-
-        # Count of aggregated periods processed
-        self._t = 0
-        self._decay = half_life_to_decay_factor(self.half_life)
-        self._mu_market = 0.0
-        self._var_market = 0.0
-
-        n_assets = self.n_assets_
-        self._mu_assets = np.zeros(n_assets)
-        self._cov_assets = np.zeros(n_assets)
-
-        # Last computed betas (for holding during incomplete windows)
-        self._betas = np.full(n_assets, np.nan, dtype=float)
-        self._n_valid_assets = np.zeros(n_assets, dtype=int)
-
-        # Residual variance tracking for shrinkage (EWMA of residual^2)
+        """Initialize regression statistics and return averaging."""
+        self._min_periods = (
+            max(1, int(np.ceil(self.half_life)))
+            if self.min_periods is None
+            else int(self.min_periods)
+        )
         self._shrinkage_enabled = self.shrinkage_group is not None
-        if self._shrinkage_enabled:
-            self._var_residual = np.zeros(n_assets)
-            # Cache shrunk betas (updated only when raw betas update)
-            self._shrunk_betas = np.full(n_assets, np.nan, dtype=float)
-
-        # Aggregation buffers (pre-allocated for performance)
-        self._aggregation_period = int(self.aggregation_period)
-        if self._aggregation_period > 1:
-            self._buffer_assets = np.empty(
-                (self._aggregation_period, n_assets), dtype=float
-            )
-            self._buffer_market = np.empty(self._aggregation_period, dtype=float)
-            self._buffer_idx = 0
-
-    def _update_ewma(self, ret_assets: FloatArray, ret_market: float) -> None:
-        """Update EWMA statistics with a single observation or aggregated values.
-
-        Uses centered EWMA with lagged-mean deviations: deviations are computed from the
-        previous step's means, then means are updated. This is the EWMA analogue of
-        Welford's online algorithm and avoids the systematic downward bias of the naive
-        approach (which computes deviations from the already-updated mean).
-
-        The EWMA update formula for any statistic S is:
-            S_t = decay * S_{t-1} + (1 - decay) * x_t
-
-        where decay = exp(-ln(2) / half_life), so half the weight is on the  most recent
-        `half_life` observations.
-        """
-        # Track residuals BEFORE updating beta (uses previous period's beta).
-        # This gives E[epsilon^2] for standard error estimation.
-        if self._shrinkage_enabled and self._t >= self._min_periods:
-            valid_for_residual = np.isfinite(ret_assets) & np.isfinite(self._betas)
-            residuals = ret_assets - self._betas * ret_market
-            self._var_residual[valid_for_residual] = (
-                self._decay * self._var_residual[valid_for_residual]
-                + (1 - self._decay) * residuals[valid_for_residual] ** 2
-            )
-
-        self._t += 1
-
-        # Deviations from lagged means
-        market_deviation = ret_market - self._mu_market
-        valid = np.isfinite(ret_assets)
-        self._n_valid_assets[valid] += 1
-        asset_deviations = ret_assets[valid] - self._mu_assets[valid]
-
-        # Update EWMA means
-        self._mu_market = self._decay * self._mu_market + (1 - self._decay) * ret_market
-        self._mu_assets[valid] = (
-            self._decay * self._mu_assets[valid] + (1 - self._decay) * ret_assets[valid]
+        self._regression = _EWRegression(
+            n_assets=self.n_assets_,
+            decay=half_life_to_decay_factor(self.half_life),
+            estimate_beta_variance=self._shrinkage_enabled,
         )
-
-        # Update EWMA variance and covariance
-        self._var_market = self._decay * self._var_market + (1 - self._decay) * (
-            market_deviation * market_deviation
+        # Reuse the last betas while collecting returns for the next average.
+        self._betas = np.full(self.n_assets_, np.nan)
+        self._averager = _ReturnAverager(
+            n_assets=self.n_assets_,
+            n_variables=2,
+            aggregation_period=int(self.aggregation_period),
         )
-        self._cov_assets[valid] = (
-            self._decay * self._cov_assets[valid]
-            + (1 - self._decay) * asset_deviations * market_deviation
-        )
-
-        # Beta: divide each accumulator by its own weight sum to remove the
-        # zero-initialization bias. The market variance has been updated at
-        # every observation (`self._t` updates) while each asset covariance
-        # has only been updated on its valid observations, so without this a
-        # late-listed asset is scaled down by roughly `1 - decay**n_valid`.
-        if self._t >= self._min_periods:
-            asset_ready = valid & (self._n_valid_assets >= self._min_periods)
-            self._betas[asset_ready] = (
-                self._cov_assets[asset_ready]
-                / (1 - self._decay ** self._n_valid_assets[asset_ready])
-            ) / (self._var_market / (1 - self._decay**self._t) + self.eps)
-
-    def _update_from_buffer(self) -> None:
-        """Aggregate buffered returns and update EWMA statistics."""
-        # Compute aggregated asset returns, skipping missing values per asset
-        with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore", message="Mean of empty slice", category=RuntimeWarning
-            )
-            agg_assets = np.nanmean(self._buffer_assets, axis=0)
-        agg_market = np.mean(self._buffer_market)
-
-        # Reset buffer index
-        self._buffer_idx = 0
-
-        # Update EWMA with aggregated values
-        self._update_ewma(agg_assets, agg_market)
 
     def _apply_shrinkage(
         self, raw_betas: FloatArray, group_labels: IntArray, market_cap: FloatArray
@@ -436,7 +328,7 @@ class EWMarketBeta(BaseDescriptor):
 
         Parameters
         ----------
-        raw_betas : darray of shape (n_assets,)
+        raw_betas : ndarray of shape (n_assets,)
             Raw EWMA betas.
 
         group_labels : ndarray of shape (n_assets,)
@@ -452,18 +344,15 @@ class EWMarketBeta(BaseDescriptor):
         """
         shrunk_betas = raw_betas.copy()
 
-        # Estimation error variance: SE(beta)^2 = Var(residual) / (effective_n * Var(market))
-        # For EWMA: effective_n ~ 2 * half_life (effective sample size)
-        effective_n = 2 * self.half_life
-        beta_error_variance = self._var_residual / (
-            effective_n * (self._var_market + self.eps)
-        )
-
-        # Identify valid assets (have valid beta, group, and market cap)
-        valid_beta = ~np.isnan(raw_betas)
+        # Estimate each raw beta's sampling variance from the same observations.
+        beta_error_variance = self._regression.beta_variance(raw_betas)
+        valid_beta = np.isfinite(raw_betas)
         valid_group = group_labels != MISSING_CATEGORY_CODE
         valid_mcap = np.isfinite(market_cap) & (market_cap > 0)
-        valid = valid_beta & valid_group & valid_mcap
+        shrinkable = valid_beta & valid_group & valid_mcap
+        valid = shrinkable & np.isfinite(beta_error_variance)
+        # Shrinkage requires an available uncertainty estimate.
+        shrunk_betas[shrinkable & ~valid] = np.nan
 
         if not valid.any():
             return shrunk_betas
@@ -504,10 +393,13 @@ class EWMarketBeta(BaseDescriptor):
                     group_observed_variance - mean_error_variance, 0.0
                 )
 
-            # Higher weight keeps more of the raw beta; lower weight shrinks more
+            # Higher weight keeps more of the raw beta. Lower weight shrinks more
             # toward the group mean
-            raw_beta_weight = group_prior_variance / (
-                group_prior_variance + beta_error_variance[group_mask] + self.eps
+            raw_beta_weight = (
+                group_prior_variance
+                / (group_prior_variance + beta_error_variance[group_mask])
+                if group_prior_variance > 0
+                else np.zeros(group_size)
             )
 
             # Clip to bounds for robustness

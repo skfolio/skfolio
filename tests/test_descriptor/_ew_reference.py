@@ -41,7 +41,7 @@ def weighted_regression(history, half_life):
 def regression_path(
     panel, half_life, min_periods, aggregation_period=1, reference=None
 ):
-    """Reconstruct each asset's eligible history and refit it at every boundary."""
+    """Refit each asset's regression after every `aggregation_period` observations."""
     market = _market_returns(
         panel["returns"], panel["market_cap"], panel.estimation_mask
     )

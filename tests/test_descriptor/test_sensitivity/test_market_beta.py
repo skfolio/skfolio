@@ -496,7 +496,7 @@ class TestRegression:
         )
         result_fit = ms_fit.fit_transform(deterministic_data)
 
-        # Aggregated chunks deliberately do not align with window boundaries.
+        # Check that averaging continues correctly across partial_fit_transform calls.
         ms_pf = EWMarketBeta(
             half_life=half_life,
             aggregation_period=aggregation_period,

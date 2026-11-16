@@ -91,8 +91,8 @@ def test_lifecycle_matches_batch_and_chunks(reference, aggregation, half_life):
     np.testing.assert_allclose(result, expected, atol=2e-10, rtol=2e-10, equal_nan=True)
     online = cls(**params)
     chunks = []
-    boundaries = [0, 1, 17, 24, 47, 48, 63, 74, 101, 103]
-    for start, stop in pairwise(boundaries):
+    split_indices = [0, 1, 17, 24, 47, 48, 63, 74, 101, 103]
+    for start, stop in pairwise(split_indices):
         kwargs = dict(reference_returns=factor[start:stop]) if reference else {}
         chunks.append(online.partial_fit_transform(panel[start:stop], **kwargs))
     np.testing.assert_array_equal(np.vstack(chunks), result)

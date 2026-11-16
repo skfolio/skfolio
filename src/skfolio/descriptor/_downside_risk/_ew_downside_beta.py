@@ -12,6 +12,7 @@ import numpy as np
 
 from skfolio.containers import AssetPanel
 from skfolio.descriptor._base import BaseDescriptor
+from skfolio.descriptor._utils import _warn_deprecated_eps
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import _market_returns
 from skfolio.utils.tools import (
@@ -52,10 +53,10 @@ class EWDownsideBeta(BaseDescriptor):
     where :math:`\text{mar}` is the minimum acceptable return threshold and the EWMA
     uses decay :math:`\lambda = \exp(-\ln(2) / \text{half\_life})`.
 
-    The EWMA is updated at every observation. Returns above `mar` add zero downside
-    co-moment for that observation, while previous downside co-moments still decay.
-    This avoids freezing the estimator during calm periods, unlike a conditional
-    estimator that updates only on down-market days.
+    The EWMA is updated where `X.active_mask=True` and asset and market returns are
+    finite. Returns above `mar` add zero downside co-moment for that observation, while
+    previous downside co-moments still decay. This avoids freezing the estimator during
+    calm periods.
 
     Parameters
     ----------
@@ -69,15 +70,13 @@ class EWDownsideBeta(BaseDescriptor):
         defines downside as negative returns (losses).
 
     min_periods : int, optional
-        Minimum number of market observations and valid asset returns required before
-        computing downside betas. Until both counts reach this value, the asset's output
-        is NaN. This warm-up period avoids exposing early EWMA values before the
-        downside beta estimate has sufficiently converged from its zero initialization.
-        If `None`, defaults to :math:`\lceil\text{half\_life}\rceil`, with a minimum
-        of 1.
+        Minimum number of observations required before computing each asset's downside
+        beta. Until this count is reached, the asset's output is NaN. If `None`,
+        defaults to :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
 
-    eps : float, default=1e-12
-        Small constant for numerical stability in :math:`1 / \text{EWMA}(D_m^2)`.
+    eps : float, optional
+        Deprecated and ignored. It will be removed in version 2.0.
+        Supplying a positive value emits a `FutureWarning`.
 
     Attributes
     ----------
@@ -92,21 +91,16 @@ class EWDownsideBeta(BaseDescriptor):
 
     Notes
     -----
-    Both EWMA accumulators behind the beta are divided by their own weight sums
-    (:math:`1 - \\lambda^n`) to remove the zero-initialization bias, so a
-    late-listed asset is comparable with one observed since the start.
+    NaNs are allowed as missing observations. Non-missing `returns` values must be
+    finite. Both EWMA accumulators use the same observations for each asset, with
+    `X.active_mask=True` and non-missing returns. A missing return leaves the previous
+    estimate unchanged. Setting `X.active_mask=False` resets estimates and sets output
+    to NaN. Output is also NaN if the market has no returns below
+    `min_acceptable_return` among those observations.
 
-    The market downside variance is updated at every observation. Asset co-moments are
-    updated only for assets with valid (non-NaN) returns and each asset's
-    valid-observation count controls when its output starts. This avoids emitting
-    initialized values for late-listed or sparsely observed assets. The `active_mask`
-    property of :class:`~skfolio.containers.AssetPanel` distinguishes holidays from
-    delistings.
-
-    Market returns are computed from the estimation universe (`estimation_mask` of
-    :class:`~skfolio.containers.AssetPanel`). If no estimable asset has both finite
-    returns and finite `market_cap` at an observation, the market return is undefined
-    and a `ValueError` is raised.
+    Market returns are the `X["market_cap"]`-weighted average of `X["returns"]` where
+    `X.estimation_mask=True` and both fields are finite. A `ValueError` is raised if
+    these assets have no positive total market capitalization at any observation.
 
     References
     ----------
@@ -139,7 +133,7 @@ class EWDownsideBeta(BaseDescriptor):
         half_life: float = 60.0,
         min_acceptable_return: float = 0.0,
         min_periods: int | None = None,
-        eps: float = 1e-12,
+        eps: float | None = None,
     ) -> None:
         self.half_life = half_life
         self.min_acceptable_return = min_acceptable_return
@@ -200,6 +194,7 @@ class EWDownsideBeta(BaseDescriptor):
             self,
             X,
             required_fields=["returns", "market_cap"],
+            finite_or_nan=["returns"],
             finite_when_active=["market_cap"],
             reset=first_call,
         )
@@ -216,48 +211,52 @@ class EWDownsideBeta(BaseDescriptor):
             estimation_mask=X.estimation_mask,
         )
 
-        down_beta = np.empty((n_observations, n_assets), dtype=float)
+        down_beta = np.full((n_observations, n_assets), np.nan)
+
         for t in range(n_observations):
-            valid = ~np.isnan(asset_rets[t])
+            active = X.active_mask[t]
+            inactive = ~active
+            self._var_down_market[inactive] = 0
+            self._cov_down[inactive] = 0
+            self._n_valid_assets[inactive] = 0
 
-            self._t += 1
+            valid = active & np.isfinite(asset_rets[t])
 
-            # Downside deviations
+            # Update the EWMA even when returns are above min_acceptable_return.
             down_market = min(market_rets[t] - self.min_acceptable_return, 0.0)
-            down_assets = np.minimum(asset_rets[t] - self.min_acceptable_return, 0.0)
-
-            # Update EWMA of market downside variance
-            self._var_down_market = (
-                self._decay * self._var_down_market
-                + (1 - self._decay) * down_market * down_market
+            down_assets = np.minimum(
+                asset_rets[t, valid] - self.min_acceptable_return, 0.0
             )
 
-            # Update EWMA of co-moment, valid assets only
+            # Both sums use the same dates, so their observation weights cancel.
+            self._var_down_market[valid] = (
+                self._decay * self._var_down_market[valid]
+                + (1 - self._decay) * down_market**2
+            )
             self._cov_down[valid] = (
                 self._decay * self._cov_down[valid]
-                + (1 - self._decay) * down_assets[valid] * down_market
+                + (1 - self._decay) * down_assets * down_market
             )
             self._n_valid_assets[valid] += 1
 
-            if self._t >= self._min_periods:
-                # Divide each accumulator by its own weight sum to remove the
-                # zero-initialization bias. The market downside variance has
-                # been updated at every observation (`self._t` updates) while
-                # each asset co-moment has only been updated on its valid
-                # observations, so without this a late-listed asset is scaled
-                # down by roughly `1 - decay**n_valid`.
-                asset_ready = self._n_valid_assets >= self._min_periods
-                beta = np.full(n_assets, np.nan)
-                beta[asset_ready] = (
-                    self._cov_down[asset_ready]
-                    / (1 - self._decay ** self._n_valid_assets[asset_ready])
-                ) / (self._var_down_market / (1 - self._decay**self._t) + self.eps)
-                down_beta[t] = beta
-            else:
-                down_beta[t] = np.nan
+            # Products of finite returns can overflow and invalidate later updates.
+            if not (
+                np.isfinite(self._var_down_market).all()
+                and np.isfinite(self._cov_down).all()
+            ):
+                raise ValueError(
+                    "Non-finite EW downside moments. Rescale the input returns."
+                )
 
-        # Mask for inactive assets
-        down_beta = np.where(X.active_mask, down_beta, np.nan)
+            ready = (self._n_valid_assets >= self._min_periods) & (
+                self._var_down_market > 0
+            )
+            np.divide(
+                self._cov_down, self._var_down_market, out=down_beta[t], where=ready
+            )
+
+            # Finite moments can still produce an infinite ratio for a tiny denominator.
+            down_beta[t, ~np.isfinite(down_beta[t])] = np.nan
 
         self.downside_beta_ = (
             down_beta[-1].copy() if n_observations > 1 else down_beta[-1]
@@ -274,7 +273,7 @@ class EWDownsideBeta(BaseDescriptor):
         _validate_positive_real(self.half_life, "half_life")
         if self.min_periods is not None:
             _validate_positive_integer(self.min_periods, "min_periods")
-        _validate_positive_real(self.eps, "eps")
+        _warn_deprecated_eps(self.eps)
 
     def _initialize(self) -> None:
         """Initialize EWMA state."""
@@ -288,9 +287,6 @@ class EWDownsideBeta(BaseDescriptor):
             self._min_periods = int(self.min_periods)
 
         # EWMA state for LPM co-moments
-        self._var_down_market = 0.0
+        self._var_down_market = np.zeros(self.n_assets_, dtype=float)
         self._cov_down = np.zeros(self.n_assets_, dtype=float)
         self._n_valid_assets = np.zeros(self.n_assets_, dtype=int)
-
-        # Observation counter
-        self._t = 0

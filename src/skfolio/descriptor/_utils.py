@@ -138,9 +138,11 @@ class _EWRegression:
                 | (moments.n_observations == 0)
                 | (returns[0] == moments.last_returns[0])
             )
-        moments.update(returns, valid_mask)
+        moments.update(returns=returns, valid_mask=valid_mask)
         if self.estimate_beta_variance:
-            self._squared_weight_moments.update(returns[:1], valid_mask)
+            self._squared_weight_moments.update(
+                returns=returns[:1], valid_mask=valid_mask
+            )
 
         # Finite inputs can overflow during moment updates and invalidate later fits.
         if not np.isfinite(moments.covariance_numerator).all():
