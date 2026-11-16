@@ -21,9 +21,14 @@ from skfolio._constants import (
     _IDIO_VARIANCES,
     _REGRESSION_WEIGHTS,
 )
+from skfolio.descriptor import EWMarketBeta
 from skfolio.distance import CovarianceDistance
 from skfolio.exceptions import DuplicateGroupsError
-from skfolio.factor_exposure import BaseFactorExposure, DerivedFactor
+from skfolio.factor_exposure import (
+    BaseFactorExposure,
+    DerivedFactor,
+    FixedWeightedFactor,
+)
 from skfolio.linear_model import CSLinearRegression
 from skfolio.moments import EWCovariance
 from skfolio.moments.variance import BaseVariance, EWVariance
@@ -37,6 +42,31 @@ from skfolio.prior._characteristics_factor_model import (
 from skfolio.utils._factor_tools import _resolve_factor_name
 
 from .conftest import make_panel, passthrough_factor
+
+
+@pytest.mark.parametrize("initially_identifiable", [False, True])
+def test_unidentifiable_beta_factor_diagnostics(initially_identifiable):
+    returns = np.full((120, 5), 0.01)
+    if initially_identifiable:
+        returns[:20] = np.random.default_rng(18).normal(0, 0.01, (20, 5))
+    panel, X = make_panel(returns)
+    factor = FixedWeightedFactor(
+        descriptors=[("beta", EWMarketBeta(half_life=0.5, min_periods=3))],
+        outlier_transformer="passthrough",
+        scoring_transformer="passthrough",
+    )
+    model = CharacteristicsFactorModel(
+        factors=[("market_beta", factor)], min_regression_assets=3
+    )
+    with pytest.raises(ValueError) as error:
+        model.fit(X, characteristics=panel)
+    message = str(error.value)
+    assert "market_beta" in message
+    if initially_identifiable:
+        assert "after warmup have fewer than" in message
+        assert "top NaN-exposure factors" in message
+    else:
+        assert "Factors with no finite exposures" in message
 
 
 @pytest.mark.parametrize(
