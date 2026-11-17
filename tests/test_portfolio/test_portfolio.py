@@ -1593,6 +1593,30 @@ class TestPortfolioFactorAttribution:
         result = ptf.realized_attribution(fm)
         assert isinstance(result, Attribution)
 
+    @pytest.mark.parametrize("position", [0, 20, -1])
+    def test_realized_window_does_not_match_nat(
+        self, factor_model_and_portfolio, position
+    ):
+        from dataclasses import replace
+
+        from skfolio.portfolio._portfolio import _select_realized_observation_window
+
+        fm, _ = factor_model_and_portfolio
+        dates = (
+            pd.DatetimeIndex(fm.observations).tz_localize("America/New_York").to_numpy()
+        )
+        dates[position] = pd.NaT
+        fm = replace(fm, observations=dates)
+        if position == 20:
+            with pytest.raises(ValueError, match="inside the overlapping"):
+                _select_realized_observation_window(observations=dates, factor_model=fm)
+        else:
+            positions, selected = _select_realized_observation_window(
+                observations=dates, factor_model=fm
+            )
+            assert len(positions) == len(dates) - 1
+            assert not pd.isna(selected.observations).any()
+
     def test_realized_attribution_auto_aligns(self, factor_model_and_portfolio):
         """Factor model covers 60 obs, portfolio only first 30."""
         fm, ptf = factor_model_and_portfolio
@@ -2084,6 +2108,36 @@ def test_portfolio_dependency_exposure_snapshot_and_history(weight_drift):
     assert "outside_window" not in history.index.get_level_values("dependency")
     selected = portfolio.dependency_exposure(graphs, nodes=["S"])
     pd.testing.assert_frame_equal(selected, history.loc[(slice(None), ["S"]), :])
+
+
+@pytest.mark.parametrize("zone", ["America/New_York", "Asia/Tokyo"])
+@pytest.mark.parametrize("multi_period", [False, True])
+def test_timezone_aware_dependency_exposure(tmp_path, zone, multi_period):
+    dates = pd.date_range("2024-03-09", periods=5, tz=zone)
+    returns = pd.DataFrame(0.0, index=dates[1:-1], columns=["A", "B"])
+    if multi_period:
+        portfolio = MultiPeriodPortfolio(
+            [
+                Portfolio(X=returns.iloc[:1], weights=[0.4, 0.6]),
+                Portfolio(X=returns.iloc[1:], weights=[0.4, 0.6]),
+            ]
+        )
+    else:
+        portfolio = Portfolio(X=returns, weights=[0.4, 0.6])
+    graph = Graph.from_edges([("A", "S", 1)], nodes=["A", "B", "S"])
+    graphs = GraphSeries([graph] * len(dates), observations=dates)
+    graphs.save(tmp_path / "graphs")
+    history = portfolio.dependency_exposure(GraphSeries.load(tmp_path / "graphs"))
+    supplier = history.xs("S", level="dependency")
+    assert supplier.index.equals(returns.index)
+    np.testing.assert_allclose(supplier["total"], 0.4)
+    utc_graphs = GraphSeries([graph] * len(dates), observations=dates.tz_convert("UTC"))
+    np.testing.assert_array_equal(portfolio.dependency_exposure(utc_graphs), history)
+    naive_graphs = GraphSeries(
+        [graph] * len(dates), observations=dates.tz_localize(None)
+    )
+    with pytest.raises(ValueError, match="absent from GraphSeries"):
+        portfolio.dependency_exposure(naive_graphs)
 
 
 def test_portfolio_dependency_exposure_includes_small_positions():

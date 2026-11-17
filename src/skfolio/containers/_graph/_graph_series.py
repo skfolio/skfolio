@@ -19,6 +19,8 @@ import scipy.sparse as sps
 
 from skfolio.containers._graph._graph import Graph
 from skfolio.containers._io import (
+    _decode_observations,
+    _encode_observations,
     _prepare_save_directory,
     _read_manifest,
     _validate_save_directory,
@@ -38,7 +40,7 @@ if TYPE_CHECKING:
 
 __all__ = ["GraphSeries"]
 
-_SAVE_VERSION = 1
+_SAVE_VERSION = 2
 
 
 class GraphSeries:
@@ -54,7 +56,8 @@ class GraphSeries:
 
     observations : array-like of shape (n_observations,), optional
         Observation labels in the same order as `graphs`. If None, use integer labels
-        from 0 to `n_observations - 1`.
+        from 0 to `n_observations - 1`. Timezone-aware dates retain their timezone and
+        must share one timezone.
 
     Attributes
     ----------
@@ -288,15 +291,21 @@ class GraphSeries:
         overwrite : bool, default=False
             If True, replace an existing saved `GraphSeries` at `path`. Other
             directories cannot be overwritten.
+
+        Raises
+        ------
+        ValueError
+            If the destination is invalid or the observations' timezone cannot be saved.
         """
         path = Path(path)
         _validate_save_directory(path, overwrite=overwrite, container="GraphSeries")
 
         # Save only graphs used by the selected observations.
         series = self.copy()
+        observations, timezone = _encode_observations(observations=series.observations)
         _prepare_save_directory(path)
 
-        np.save(path / "observations.npy", series.observations, allow_pickle=False)
+        np.save(path / "observations.npy", observations, allow_pickle=False)
         np.save(path / "references.npy", series._references, allow_pickle=False)
 
         graphs_path = path / "graphs"
@@ -321,9 +330,10 @@ class GraphSeries:
         _write_manifest(
             path,
             container="GraphSeries",
-            version=_SAVE_VERSION,
+            version=_SAVE_VERSION if timezone is not None else 1,
             n_observations=len(series),
             n_graphs=len(series._graphs),
+            **({"observations_timezone": timezone} if timezone is not None else {}),
         )
 
     @classmethod
@@ -354,7 +364,10 @@ class GraphSeries:
         ):
             raise ValueError("Invalid GraphSeries observation references.")
 
-        observations = np.load(path / "observations.npy", allow_pickle=False)
+        observations = _decode_observations(
+            observations=np.load(path / "observations.npy", allow_pickle=False),
+            timezone=metadata.get("observations_timezone"),
+        )
 
         graphs = []
         for graph_position in range(metadata["n_graphs"]):

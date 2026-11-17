@@ -1669,7 +1669,13 @@ def _select_realized_observation_window(
     alignment error.
     """
     factor_model_observations = factor_model.observations
-    portfolio_observation_mask = np.isin(observations, factor_model_observations)
+    # Pandas avoids the slow pairwise comparisons of np.isin on object timestamps.
+    portfolio_index = pd.Index(observations)
+    factor_model_index = pd.Index(factor_model_observations)
+    # Missing dates remain unmatched, as with NumPy membership.
+    portfolio_observation_mask = portfolio_index.notna() & portfolio_index.isin(
+        factor_model_index
+    )
     portfolio_indices = np.flatnonzero(portfolio_observation_mask).astype(
         np.intp, copy=False
     )
@@ -1693,7 +1699,9 @@ def _select_realized_observation_window(
         )
 
     selected_observations = observations[portfolio_indices]
-    model_observation_mask = np.isin(factor_model_observations, selected_observations)
+    model_observation_mask = factor_model_index.notna() & factor_model_index.isin(
+        portfolio_index[portfolio_indices]
+    )
     factor_model_indices = np.flatnonzero(model_observation_mask).astype(
         np.intp, copy=False
     )
