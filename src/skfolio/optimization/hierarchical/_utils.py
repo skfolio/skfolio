@@ -199,7 +199,7 @@ def _apply_weight_constraints_to_split_factor(
     Parameters
     ----------
     alpha : float
-        The split factor alpha of the Hierarchical Tree Clustering algorithm.
+        The split factor alpha of the recursive allocation algorithm.
 
     min_weights : ndarray of shape (n_assets,)
         The weight lower bound 1D array.
