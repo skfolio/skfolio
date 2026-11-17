@@ -949,7 +949,7 @@ class BasePortfolio:
 
         is_ratio = measure.is_ratio
         base_measure = (
-            non_annualized_measure.linked_risk_measure  # ty: ignore[unresolved-attribute]
+            non_annualized_measure.linked_risk_measure  # ty: ignore[missing-union-attribute]
             if is_ratio
             else non_annualized_measure
         )
@@ -1047,7 +1047,7 @@ class BasePortfolio:
             e: skt.Measure
             try:
                 if e.is_ratio:
-                    base_measure = e.linked_risk_measure  # ty: ignore[unresolved-attribute]
+                    base_measure = e.linked_risk_measure  # ty: ignore[missing-union-attribute]
                 else:
                     base_measure = e
                 beta = getattr(self, f"{base_measure.value}_beta")
@@ -1328,7 +1328,7 @@ class BasePortfolio:
         plot : Figure
             The plotly Figure of assets contribution to the measure.
         """
-        df = self.contribution(measure=measure, spacing=spacing, to_df=True).T  # ty: ignore[unresolved-attribute]
+        df = self.contribution(measure=measure, spacing=spacing, to_df=True).T  # ty: ignore[missing-union-attribute]
         fig = px.bar(df, x=df.index, y=df.columns)
         yaxis = {
             "title": "Contribution",

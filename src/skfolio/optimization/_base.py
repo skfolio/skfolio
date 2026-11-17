@@ -181,7 +181,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
                 del self._fit_in_progress
             return self
 
-        _wrapped_fit._fallback_wrapped = True  # ty: ignore[unresolved-attribute]
+        _wrapped_fit._fallback_wrapped = True  # ty: ignore[missing-attribute]
         cls.fit = _wrapped_fit  # ty: ignore[invalid-assignment]
 
     @contextmanager

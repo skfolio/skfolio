@@ -327,7 +327,7 @@ class EmpiricalPrior(BasePrior):
         missing = np.isnan(returns) & investable
         if missing.any():
             self._warn_zero_fill(missing)
-            returns = returns.copy()  # ty: ignore[unresolved-attribute]
+            returns = returns.copy()  # ty: ignore[missing-union-attribute]
             returns[missing] = 0.0
 
         self.return_distribution_ = ReturnDistribution(

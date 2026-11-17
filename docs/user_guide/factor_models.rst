@@ -633,6 +633,11 @@ panel's `active_mask`. `False` marks an asset outside the universe at that date
 for an active asset (e.g. holiday, missing quote). The `estimation_mask` is enforced
 as a subset of `active_mask`.
 
+For example, :class:`~skfolio.descriptor.EWMarketBeta` keeps an asset's history
+when `returns` is NaN and `active_mask=True`. Setting `active_mask=False` clears
+that history and produces NaN, so the asset must repeat its warmup if it re-enters
+the universe.
+
 The estimation universe must be broad enough to represent the investment opportunity
 set, liquid enough to avoid spurious return relationships and stable enough for factor
 exposures to behave consistently through time. For a US equity model, a typical
@@ -1852,7 +1857,7 @@ additional plots:
 :class:`~skfolio.model_selection.CovarianceForecastComparison` runs the same
 evaluation over several models and aggregates the results for side-by-side
 comparison. Missing data follows the panel conventions: only finite observations
-contribute and inactive assets are excluded.
+contribute, and assets with `active_mask=False` are excluded.
 
 The comparison below contrasts two
 :class:`~skfolio.moments.RegimeAdjustedEWCovariance` regime half-lives for the
@@ -2743,6 +2748,10 @@ and the idiosyncratic variance estimator. These warmup periods are cumulative.
 For example, with one year of descriptor warmup and one year of covariance warmup, 
 the first usable forecast arrives after about two years of data. The walk-forward
 examples in this guide use `warmup_size = 2 * 252 + 21` for this reason.
+
+For :class:`~skfolio.descriptor.EWResidualVolatility` and its downside variant,
+residuals count toward `min_periods` from the tenth observation with
+`active_mask=True` and finite asset and market returns, provided beta can be computed.
 
 Alpha estimators also have warmup periods from their own descriptors, but these
 run concurrently with the model's warmup rather than after it. The model passes
