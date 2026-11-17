@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v1.13.0 (2026-11-17)
+
+### Bug Fixes
+
+- **containers**: Preserve timezones in observation dates
+  ([#492](https://github.com/skfolio/skfolio/pull/492),
+  [`8c76976`](https://github.com/skfolio/skfolio/commit/8c769762e5db6acb81057fc747e961ba539f919e))
+
+### Features
+
+- **distance**: Add graph distances and point-in-time graph containers
+  ([#489](https://github.com/skfolio/skfolio/pull/489),
+  [`28b8efc`](https://github.com/skfolio/skfolio/commit/28b8efcab125f8fab35d9166e45e238b82f502cf))
+
+- **portfolio**: Add graph dependency exposure ([#490](https://github.com/skfolio/skfolio/pull/490),
+  [`ac9720c`](https://github.com/skfolio/skfolio/commit/ac9720c17d9de675760f48b1917f44ad4376b83f))
+
+
 ## v1.12.17 (2026-11-16)
 
 ### Bug Fixes
