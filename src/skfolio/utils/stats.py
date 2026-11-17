@@ -1373,7 +1373,7 @@ def cs_pearson_correlation(
     b = np.broadcast_to(b, shape)
     if axis < -a.ndim or axis >= a.ndim:
         # AxisError moved under np.exceptions in NumPy 2.
-        raise getattr(np, "exceptions", np).AxisError(axis, a.ndim)  # ty: ignore[unresolved-attribute]
+        raise getattr(np, "exceptions", np).AxisError(axis, a.ndim)  # ty: ignore[missing-union-attribute]
     axis = axis % a.ndim
 
     valid = np.isfinite(a) & np.isfinite(b)

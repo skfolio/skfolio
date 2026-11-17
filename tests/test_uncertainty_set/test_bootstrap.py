@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import tracemalloc
+
 import numpy as np
 import pytest
+import scipy.linalg as sla
 from sklearn import config_context
 
 from skfolio.moments import ImpliedCovariance
@@ -10,6 +13,7 @@ from skfolio.uncertainty_set import (
     BootstrapCovarianceUncertaintySet,
     BootstrapMuUncertaintySet,
 )
+from skfolio.utils import bootstrap
 
 
 class TestBootstrapMuUncertaintySet:
@@ -126,3 +130,95 @@ def test_bootstrap_covariance_full_geometry(X_small):
     assert geometry.shape == (16, 16)
     assert np.all(np.isfinite(geometry))
     np.testing.assert_allclose(geometry, geometry.T, atol=1e-12)
+
+
+@pytest.mark.parametrize(
+    "estimator", [BootstrapMuUncertaintySet, BootstrapCovarianceUncertaintySet]
+)
+@pytest.mark.parametrize("diagonal", [True, False])
+@pytest.mark.parametrize("dtype", [np.float16, np.float32, np.float64, np.int32])
+def test_fit_matches_dense_bootstrap(estimator, diagonal, dtype):
+    """Uncertainty fits match dense-sample statistics and preserve caller ownership."""
+    returns = np.random.default_rng(7).normal(size=(32, 3)).astype(dtype)
+    before = returns.copy()
+    prior = EmpiricalPrior().fit(returns)
+    samples = bootstrap.stationary_bootstrap(
+        prior.return_distribution_.returns, 20, block_size=3, seed=42
+    )
+    expected_state = np.random.get_state()
+    if estimator is BootstrapMuUncertaintySet:
+        mus = np.mean(samples, axis=1).astype(float)
+        deviations = mus - prior.return_distribution_.mu
+    else:
+        deviations = np.array([np.cov(sample.T).ravel(order="F") for sample in samples])
+    expected = (
+        np.diag(np.sqrt(np.var(deviations, axis=0, ddof=1)))
+        if diagonal
+        else sla.sqrtm(np.cov(deviations, rowvar=False)).real
+    )
+    model = estimator(
+        prior_estimator=prior,
+        n_bootstrap_samples=20,
+        block_size=3,
+        diagonal=diagonal,
+        seed=42,
+    ).fit(returns)
+
+    # Exact equality also checks that mean accumulation precision is unchanged.
+    np.testing.assert_array_equal(model.uncertainty_set_.geometry, expected)
+    assert model.uncertainty_set_.norm == 2
+    actual_state = np.random.get_state()
+    np.testing.assert_array_equal(actual_state[1], expected_state[1])
+    assert actual_state[0] == expected_state[0]
+    assert actual_state[2:] == expected_state[2:]
+    np.testing.assert_array_equal(returns, before)
+    assert model.prior_estimator_ is not prior
+
+
+@pytest.mark.parametrize(
+    "estimator", [BootstrapMuUncertaintySet, BootstrapCovarianceUncertaintySet]
+)
+def test_fit_avoids_bootstrap_cube_allocation(estimator):
+    """Fitting does not allocate all bootstrap samples at once."""
+    returns = np.random.default_rng(7).normal(size=(256, 10))
+    n_bootstrap_samples = 1000
+    model = estimator(n_bootstrap_samples=n_bootstrap_samples, block_size=3, seed=42)
+
+    already_tracing = tracemalloc.is_tracing()
+    if not already_tracing:
+        tracemalloc.start()
+    baseline, _ = tracemalloc.get_traced_memory()
+    tracemalloc.reset_peak()
+    try:
+        model.fit(returns)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        if not already_tracing:
+            tracemalloc.stop()
+
+    # Peak allocations must stay below half the size of all resampled returns.
+    assert peak - baseline < n_bootstrap_samples * returns.nbytes // 2
+
+
+@pytest.mark.parametrize(
+    "estimator", [BootstrapMuUncertaintySet, BootstrapCovarianceUncertaintySet]
+)
+@pytest.mark.parametrize("seed", [42, None])
+def test_fit_preserves_global_random_state(estimator, seed):
+    """Fitting does not change NumPy's global random state."""
+    returns = np.random.default_rng(7).normal(size=(32, 3))
+    previous_state = np.random.get_state()
+    try:
+        # An unrelated initial seed prevents consecutive identical fits from
+        # hiding a reseed followed by the same bootstrap draw sequence.
+        np.random.seed(7)
+        expected_state = np.random.get_state()
+
+        estimator(n_bootstrap_samples=20, block_size=3, seed=seed).fit(returns)
+
+        actual_state = np.random.get_state()
+        np.testing.assert_array_equal(actual_state[1], expected_state[1])
+        assert actual_state[0] == expected_state[0]
+        assert actual_state[2:] == expected_state[2:]
+    finally:
+        np.random.set_state(previous_state)

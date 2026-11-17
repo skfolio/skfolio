@@ -737,7 +737,7 @@ def entropic_risk_measure(
 
 def evar(
     returns: ArrayLike, beta: float = 0.95, sample_weight: FloatArray | None = None
-) -> float:
+) -> float | FloatArray:
     r"""Compute the EVaR (entropic value at risk).
 
     The EVaR is a coherent risk measure which is an upper bound for the VaR and the
@@ -746,8 +746,8 @@ def evar(
 
     Parameters
     ----------
-    returns : ndarray of shape (n_observations,)
-        Vector of returns.
+    returns : ndarray of shape (n_observations,) or (n_observations, n_assets)
+        Array of return values.
 
     beta : float, default=0.95
         The EVaR confidence level. Must be between 0 and 1.
@@ -758,8 +758,10 @@ def evar(
 
     Returns
     -------
-    value : float
+    value : float or ndarray of shape (n_assets,)
         EVaR.
+        If `returns` is a 1D-array, the result is a float.
+        If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
 
     Notes
     -----
@@ -784,6 +786,13 @@ def evar(
         Journal of Optimization Theory and Applications, Ahmadi-Javid (2012)
     """
     returns = np.asarray(returns, dtype=float)
+    if returns.ndim == 2:
+        return np.array(
+            [
+                evar(column, beta=beta, sample_weight=sample_weight)
+                for column in returns.T
+            ]
+        )
     valid = ~np.isnan(returns)
     log_probabilities = None
     if sample_weight is not None:
@@ -1048,7 +1057,7 @@ def cdar(
 
 def edar(
     drawdowns: FloatArray, beta: float = 0.95, sample_weight: FloatArray | None = None
-) -> float:
+) -> float | FloatArray:
     """Compute the EDaR (entropic drawdown at risk).
 
     The EDaR is a coherent risk measure which is an upper bound for the DaR and the
@@ -1057,7 +1066,7 @@ def edar(
 
     Parameters
     ----------
-    drawdowns : ndarray of shape (n_observations,)
+    drawdowns : ndarray of shape (n_observations,) or (n_observations, n_assets)
         Nonpositive drawdowns computed from the full return path, including
         dates with zero sample weight.
 
@@ -1072,8 +1081,10 @@ def edar(
 
     Returns
     -------
-    value : float
+    value : float or ndarray of shape (n_assets,)
         EDaR.
+        If `drawdowns` is a 1D-array, the result is a float.
+        If `drawdowns` is a 2D-array, the result is a ndarray of shape (n_assets,).
     """
     return evar(returns=drawdowns, beta=beta, sample_weight=sample_weight)
 

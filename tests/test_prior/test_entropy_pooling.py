@@ -522,6 +522,28 @@ def test_correlation_views_prior(X, solver):
     np.testing.assert_almost_equal(corr[18, 19], corr_prior[18, 19] * 0.3, 5)
 
 
+def test_negative_correlation_views(X, solver):
+    model = EntropyPooling(solver=solver, correlation_views=["(RRC, WMT) == -0.1"])
+    model.fit(X)
+
+    sw = model.return_distribution_.sample_weight
+    corr = sm.correlation(np.array(X), sw)
+    np.testing.assert_almost_equal(corr[16, 18], -0.1, 5)
+
+
+def test_negative_correlation_views_prior(X, solver):
+    model = EntropyPooling(
+        solver=solver, correlation_views=["(AAPL, AMD) == -0.5 * prior(AAPL, AMD)"]
+    )
+    model.fit(X)
+
+    sw = model.return_distribution_.sample_weight
+    x = np.array(X)
+    corr_prior = np.corrcoef(x.T)
+    corr = sm.correlation(x, sw)
+    np.testing.assert_almost_equal(corr[0, 1], -0.5 * corr_prior[0, 1], 5)
+
+
 def test_correlation_views_prior_estimator(X, solver):
     model = EntropyPooling(
         solver=solver,
@@ -1187,9 +1209,12 @@ def test_value_at_risk_view_error(X, solver):
         model.fit(X)
 
 
-def test_correlation_view_error(X, solver):
-    model = EntropyPooling(solver=solver, correlation_views=["(AAPL,AMD) == 1.5"])
-    with pytest.raises(ValueError, match=r"Correlation views must be between 0 and 1."):
+@pytest.mark.parametrize("view", ["(AAPL,AMD) == 1.5", "(AAPL,AMD) == -1.5"])
+def test_correlation_view_error(X, solver, view):
+    model = EntropyPooling(solver=solver, correlation_views=[view])
+    with pytest.raises(
+        ValueError, match=r"Correlation views must be between -1 and 1."
+    ):
         model.fit(X)
 
 

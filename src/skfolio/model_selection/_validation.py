@@ -734,7 +734,7 @@ def _resolve_evaluation_portfolio_params(
 
     last_step = _get_last_step(estimator)
     estimator_portfolio_params = _normalize_annualization_factor_alias(
-        {} if last_step.portfolio_params is None else last_step.portfolio_params,  # ty: ignore[unresolved-attribute]
+        {} if last_step.portfolio_params is None else last_step.portfolio_params,  # ty: ignore[missing-attribute]
         stacklevel=5,
     )
     for param in _PORTFOLIO_MEASURE_PARAMS:
@@ -759,7 +759,7 @@ def _resolve_evaluation_portfolio_params(
         estimator = sk.clone(estimator)
     last_step = _get_last_step(estimator)
     individual_portfolio_params = (
-        {} if last_step.portfolio_params is None else last_step.portfolio_params.copy()  # ty: ignore[unresolved-attribute]
+        {} if last_step.portfolio_params is None else last_step.portfolio_params.copy()  # ty: ignore[missing-attribute]
     )
     individual_portfolio_params["weight_drift"] = weight_drift
     last_step.set_params(portfolio_params=individual_portfolio_params)
@@ -921,7 +921,7 @@ def _run_path(
         Portfolios predicted for each test fold in the path, in order.
     """
     predictions = []
-    prev_weights = _get_last_step(estimator).previous_weights  # ty: ignore[unresolved-attribute]
+    prev_weights = _get_last_step(estimator).previous_weights  # ty: ignore[missing-attribute]
     for i, (train, test, *column_indices) in enumerate(path_splits):
         est = sk.clone(estimator)
         last_step = _get_last_step(est)

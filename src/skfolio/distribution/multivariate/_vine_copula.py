@@ -28,7 +28,6 @@
 from __future__ import annotations
 
 import contextlib
-import numbers
 import warnings
 from collections import deque
 from collections.abc import Generator
@@ -69,7 +68,12 @@ from skfolio.distribution.univariate import (
 )
 from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, StrArray
 from skfolio.utils.figure import kde_trace
-from skfolio.utils.tools import default_asset_names, input_to_array, validate_input_list
+from skfolio.utils.tools import (
+    _is_real_number,
+    default_asset_names,
+    input_to_array,
+    validate_input_list,
+)
 
 _UNIFORM_SAMPLE_EPSILON = 1e-14
 
@@ -799,6 +803,12 @@ class VineCopula(BaseMultivariateDist):
                 if max_value is None:
                     max_value = np.inf
 
+                if not _is_real_number(min_value) or not _is_real_number(max_value):
+                    raise ValueError(
+                        "Conditioning bounds must be real numbers or None."
+                    )
+                min_value, max_value = float(min_value), float(max_value)
+
                 if min_value >= max_value:
                     raise ValueError(
                         "The conditioning tuple lower bound must be lower than "
@@ -824,7 +834,7 @@ class VineCopula(BaseMultivariateDist):
                 samples = rng.uniform(low=u_min, high=u_max, size=n_samples)
 
             elif np.isscalar(value):
-                if not isinstance(value, numbers.Real):
+                if not _is_real_number(value):
                     raise ValueError(
                         f"Conditioning values should be numbers, got {value}"
                     )
