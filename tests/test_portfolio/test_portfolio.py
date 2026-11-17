@@ -23,8 +23,10 @@ from skfolio import (
     RatioMeasure,
     RiskMeasure,
 )
+from skfolio.containers import Graph, GraphSeries
 from skfolio.datasets import load_sp500_dataset
 from skfolio.optimization import MeanRisk
+from skfolio.portfolio import dependency_exposure
 from skfolio.portfolio._base import _MEASURES
 from skfolio.pre_selection import SelectKExtremes
 from skfolio.preprocessing import prices_to_returns
@@ -1028,6 +1030,16 @@ def test_weights_per_observation(portfolio):
     np.testing.assert_array_equal(
         df.values[0], portfolio.weights[portfolio.nonzero_assets_index]
     )
+
+
+@pytest.mark.parametrize("dtype", [np.int64, np.float32, np.float64])
+def test_weights_per_observation_float_dtype(dtype):
+    portfolio = Portfolio(
+        X=pd.DataFrame([[0, 0], [0, 0]], columns=["A", "B"]),
+        weights=np.array([1, 0], dtype=dtype),
+    )
+    expected = pd.DataFrame({"A": [1.0, 1.0]})
+    pd.testing.assert_frame_equal(portfolio.weights_per_observation, expected)
 
 
 def test_sample_weight(portfolio, sample_weight):
@@ -2039,3 +2051,88 @@ def test_failed_portfolio_floor_and_trunc_are_copies(X):
     for result in (math.floor(failed), math.trunc(failed)):
         assert isinstance(result, FailedPortfolio)
         assert result is not failed
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+def test_portfolio_dependency_exposure_snapshot_and_history(weight_drift):
+    returns = pd.DataFrame(
+        [[1.0, 0], [0, 0], [0, 0]],
+        columns=["A", "B"],
+        index=pd.date_range("2025-01-02", periods=3),
+    )
+    portfolio = Portfolio(X=returns, weights=[0.5, 0.5], weight_drift=weight_drift)
+    graph = Graph.from_edges([("A", "S", 1), ("B", "T", 1)], nodes=["A", "B", "S", "T"])
+    unrelated_graph = Graph(np.zeros((1, 1)), nodes=["outside_window"])
+    dates = pd.date_range("2025-01-01", periods=5)
+    graphs = GraphSeries(
+        [unrelated_graph, graph, graph, graph, unrelated_graph], observations=dates
+    )
+    snapshot = portfolio.dependency_exposure(graph)
+    assert snapshot.loc["S", "total"] == 0.5
+    history = portfolio.dependency_exposure(graphs)
+    held_weights = (
+        np.array([[0.5, 0.5], [2 / 3, 1 / 3], [2 / 3, 1 / 3]])
+        if weight_drift
+        else np.full((3, 2), 0.5)
+    )
+    expected = dependency_exposure(
+        GraphSeries([graph] * 3, observations=returns.index),
+        asset_names=["A", "B"],
+        weights=held_weights,
+    )
+    pd.testing.assert_frame_equal(history, expected)
+    assert "outside_window" not in history.index.get_level_values("dependency")
+    selected = portfolio.dependency_exposure(graphs, nodes=["S"])
+    pd.testing.assert_frame_equal(selected, history.loc[(slice(None), ["S"]), :])
+
+
+def test_portfolio_dependency_exposure_includes_small_positions():
+    portfolio = Portfolio(
+        X=pd.DataFrame([[0, 0], [0, 0]], columns=["A", "B"]), weights=[1 - 1e-8, 1e-8]
+    )
+    graph = Graph.from_edges([("B", "S", 1)], nodes=["A", "B", "S"])
+    assert portfolio.dependency_exposure(graph).loc["S", "total"] == 1e-8
+    history = portfolio.dependency_exposure(GraphSeries([graph, graph]))
+    np.testing.assert_array_equal(
+        history.xs("S", level="dependency")["total"], [1e-8, 1e-8]
+    )
+    missing_graph = Graph(np.zeros((1, 1)), nodes=["A"])
+    with pytest.raises(ValueError, match="B"):
+        portfolio.dependency_exposure(missing_graph)
+
+
+def test_portfolio_dependency_exposure_observation_alignment():
+    graph = Graph.from_edges([("A", "S", 1)], nodes=["A", "S"])
+    other = Graph.from_edges([("A", "T", 1)], nodes=["A", "T"])
+    portfolio = Portfolio(
+        X=pd.DataFrame([[0], [0]], index=[2, 2], columns=["A"]), weights=[1]
+    )
+    repeated = portfolio.dependency_exposure(
+        GraphSeries([graph, other], observations=[2, 2])
+    )
+    np.testing.assert_array_equal(repeated["total"], [1, 1, 0, 1, 0, 1])
+    unique = portfolio.dependency_exposure(
+        GraphSeries([other, graph], observations=[3, 2])
+    )
+    np.testing.assert_array_equal(unique["total"], [1, 1, 1, 1])
+    with pytest.raises(ValueError, match="must be unique"):
+        portfolio.dependency_exposure(GraphSeries([graph] * 3, observations=[1, 2, 2]))
+    with pytest.raises(ValueError, match="absent from GraphSeries"):
+        portfolio.dependency_exposure(GraphSeries([graph, graph], observations=[1, 3]))
+
+
+def test_failed_portfolio_dependency_exposure():
+    failed = FailedPortfolio(X=pd.DataFrame([[0], [0]], columns=["A"]))
+    graph = Graph.from_edges([("A", "S", 1)], nodes=["A", "S"])
+    assert failed.dependency_exposure(graph).isna().all().all()
+    assert failed.dependency_exposure(GraphSeries([graph, graph])).isna().all().all()
+
+
+def test_dependency_exposure_truncates_missing_observations():
+    portfolio = Portfolio(
+        X=pd.DataFrame(0, index=range(100), columns=["A"]), weights=[1]
+    )
+    graph = Graph(np.zeros((1, 1)), nodes=["A"])
+    graphs = GraphSeries([graph], observations=[100])
+    with pytest.raises(ValueError, match=r"\(100\): \[0, 1, 2, 3, 4\]\.\.\."):
+        portfolio.dependency_exposure(graphs)

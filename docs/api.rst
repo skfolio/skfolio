@@ -124,6 +124,16 @@ Classes
     portfolio.FailedPortfolio
     portfolio.MultiPeriodPortfolio
 
+Functions
+---------
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: function.rst
+
+    portfolio.dependency_exposure
+
 
 .. _population_ref:
 

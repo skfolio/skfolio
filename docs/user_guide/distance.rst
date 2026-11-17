@@ -127,7 +127,7 @@ fold uses its final training graph. Any graph construction or weighting learned
 from observations must be fitted within the training fold.
 
 See :ref:`sphx_glr_auto_examples_clustering_plot_graph_distance.py` for a comparison
-of return and graph distances in HERC, including clustering and portfolio weights.
+of return and graph distances in HERC, including clustering and dependency exposure.
 
 Online updates through HRP or Schur use `model.partial_fit(X_batch, graphs=graphs_batch)`.
 The graph series describes the new observations, and distances use its final graph.

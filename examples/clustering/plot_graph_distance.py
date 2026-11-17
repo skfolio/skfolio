@@ -188,6 +188,26 @@ fig.update_layout(title="HERC with Graph Distances")
 # common lithium producer. Stock4, Stock5 and Stock6 form separate clusters, each with
 # a different combination of lithium and chip suppliers.
 #
+# Dependency Exposure
+# ===================
+# Let's compare supplier exposures for both portfolios using
+# :meth:`~skfolio.portfolio.Portfolio.dependency_exposure`. A supplier's exposure is
+# the combined initial weight of manufacturers that depend on it, directly or
+# indirectly. Each stock is counted once per supplier, regardless of edge weights.
+#
+# For the model using return distances:
+default_portfolio = default_model.predict(X_test)
+default_portfolio.dependency_exposure(graph)
+
+# %%
+# For the model using graph distances:
+graph_portfolio = graph_model.predict(X_test)
+graph_portfolio.dependency_exposure(graph)
+
+# %%
+# LithiumA exposure falls from 79.0% to 52.9%, and ChipA exposure from 78.7% to 52.2%.
+# Both lithium producers and both chip suppliers now have exposures close to 50%.
+#
 # The graph shows that companies with different battery suppliers can still depend
 # on the same lithium producer. Using these dependencies in HERC reduces the
 # portfolio's concentration in companies exposed to the same supplier disruption,

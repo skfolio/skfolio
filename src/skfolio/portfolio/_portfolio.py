@@ -25,8 +25,14 @@ from skfolio._constants import (
     _TRANSACTION_COSTS,
 )
 from skfolio.attribution import Attribution
+from skfolio.containers import Graph, GraphSeries
 from skfolio.measures import effective_number_assets, standard_deviation
 from skfolio.portfolio._base import _ZERO_THRESHOLD, BasePortfolio
+from skfolio.portfolio._utils import (
+    _align_weights,
+    _select_graph_observations,
+    dependency_exposure,
+)
 from skfolio.typing import AnyArray, ArrayLike, FloatArray, IntArray, StrArray
 from skfolio.utils.tools import (
     _get_liquidation_turnover_and_cost,
@@ -946,6 +952,19 @@ class Portfolio(BasePortfolio):
         self._weights_path = path
         return path
 
+    def _get_weights_per_observation(self) -> FloatArray:
+        """Asset weights at the start of each observation.
+
+        Returns
+        -------
+        weights : FloatArray of shape (n_observations, n_assets)
+            Weights for all assets, including small and zero positions, following
+            `weight_drift`. Missing allocations remain NaN.
+        """
+        if self.weight_drift:
+            return self._get_weights_path()
+        return np.broadcast_to(self.weights, (self.n_observations, self.n_assets))
+
     @property
     def weights_per_observation(self) -> pd.DataFrame:
         """DataFrame of asset weights at the start of each observation.
@@ -957,11 +976,8 @@ class Portfolio(BasePortfolio):
         """
         idx = self.nonzero_assets_index
         assets = self.assets[idx]
-        if self.weight_drift:
-            weights = self._get_weights_path()[:, idx]
-        else:
-            weights = np.ones((len(self.observations), len(assets))) * self.weights[idx]
-        df = pd.DataFrame(weights, index=self.observations, columns=assets)
+        weights = self._get_weights_per_observation()[:, idx]
+        df = pd.DataFrame(weights, index=self.observations, columns=assets, dtype=float)
         return df
 
     @property
@@ -1104,6 +1120,66 @@ class Portfolio(BasePortfolio):
         df = pd.DataFrame(contribution, index=assets, columns=[self.name])
         df = df.sort_values(by=self.name, ascending=False)
         return df
+
+    def dependency_exposure(
+        self,
+        graph: Graph | GraphSeries,
+        *,
+        max_hops: int | None = None,
+        nodes: ArrayLike | None = None,
+    ) -> pd.DataFrame:
+        """Compute portfolio exposure to direct and indirect dependencies.
+
+        With a `Graph`, exposure is computed from the portfolio's initial weights.
+        With a `GraphSeries`, it is computed at each observation using the corresponding
+        graph and portfolio weights.
+
+        See :func:`~skfolio.portfolio.dependency_exposure` for the calculation.
+
+        Parameters
+        ----------
+        graph : Graph or GraphSeries
+            Dependency graph or graphs indexed by observation. For a `GraphSeries`,
+            graphs are matched to portfolio observations. The series must contain every
+            portfolio observation but can cover a longer period.
+
+        max_hops : int, optional
+            Maximum number of edges traversed when computing dependencies. Must be at
+            least 1. If None, all direct and indirect dependencies are included.
+
+        nodes : array-like of shape (n_nodes,), optional
+            Unique string node names for which exposure is returned. If None, all graph
+            nodes are included. Paths can pass through other nodes.
+
+        Returns
+        -------
+        exposure : DataFrame
+            Exposure with columns `weight`, `direct`, `indirect` and `total`. Rows are
+            indexed by `dependency` for a `Graph`, or by (`observation`, `dependency`)
+            for a `GraphSeries`. Missing graphs or portfolio weights give NaN exposure.
+
+        Raises
+        ------
+        ValueError
+            If an asset with a nonzero weight is missing from its graph, a requested
+            node is missing from all graphs, or graph observations cannot be matched
+            to portfolio observations.
+        """
+        weights = self.weights
+
+        if isinstance(graph, GraphSeries):
+            graph = _select_graph_observations(
+                graphs=graph, observations=self.observations
+            )
+            weights = self._get_weights_per_observation()
+
+        return dependency_exposure(
+            graph,
+            asset_names=self.assets,
+            weights=weights,
+            max_hops=max_hops,
+            nodes=nodes,
+        )
 
     def summary(self, formatted: bool = True) -> pd.Series:
         """Portfolio summary of all its measures.
@@ -1294,7 +1370,10 @@ class Portfolio(BasePortfolio):
         if self._is_failed_portfolio:
             raise ValueError("Cannot compute factor attribution on a failed portfolio.")
         aligned_weights = _align_weights(
-            self.weights, self.assets, factor_model.asset_names
+            weights=self.weights,
+            asset_names=self.assets,
+            target_asset_names=factor_model.asset_names,
+            source="the factor model",
         )
         return factor_model.predicted_attribution(
             weights=aligned_weights,
@@ -1531,53 +1610,6 @@ def _position_values_and_wealth(
     return position_values, wealth
 
 
-def _align_weights(
-    weights: FloatArray,
-    portfolio_assets: StrArray,
-    model_assets: StrArray,
-) -> FloatArray:
-    """Map portfolio weights into the factor model's asset ordering.
-
-    Parameters
-    ----------
-    weights : ndarray of shape (..., n_portfolio_assets)
-        Portfolio weights. The last axis corresponds to `portfolio_assets`.
-
-    portfolio_assets : ndarray of shape (n_portfolio_assets,)
-        Asset names of the portfolio.
-
-    model_assets : ndarray of shape (n_model_assets,)
-        Asset names of the factor model (the target ordering).
-
-    Returns
-    -------
-    aligned : ndarray of shape (..., n_model_assets)
-        Weights aligned to `model_assets`. Assets present in the portfolio keep their
-        weight; assets only in the model receive zero.
-
-    Raises
-    ------
-    ValueError
-        If any asset in `portfolio_assets` is not found in `model_assets`.
-    """
-    if np.array_equal(portfolio_assets, model_assets):
-        return weights
-
-    model_indices = pd.Index(model_assets).get_indexer(portfolio_assets)
-    missing_mask = model_indices < 0
-    if np.any(missing_mask):
-        missing = portfolio_assets[missing_mask]
-        raise ValueError(
-            f"Portfolio contains {len(missing)} asset(s) not in the factor "
-            f"model: {missing[:5].tolist()}{'...' if len(missing) > 5 else ''}."
-        )
-    aligned_weights = np.zeros(
-        (*weights.shape[:-1], len(model_assets)), dtype=weights.dtype
-    )
-    aligned_weights[..., model_indices] = weights
-    return aligned_weights
-
-
 def _prepare_realized_attribution_inputs(
     portfolio: Portfolio,
     factor_model: FactorModel,
@@ -1618,7 +1650,10 @@ def _prepare_realized_attribution_inputs(
         else portfolio.weights
     )
     aligned_weights = _align_weights(
-        weights, portfolio.assets, factor_model.asset_names
+        weights=weights,
+        asset_names=portfolio.assets,
+        target_asset_names=factor_model.asset_names,
+        source="the factor model",
     )
     return aligned_weights, portfolio.returns[portfolio_indices], aligned_factor_model
 
