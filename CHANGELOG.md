@@ -2,6 +2,78 @@
 
 <!-- version list -->
 
+## v1.12.17 (2026-11-16)
+
+### Bug Fixes
+
+- **descriptor**: Correct EW betas, shrinkage, macro sensitivity and residual volatility for late
+  listings and missing returns ([#507](https://github.com/skfolio/skfolio/pull/507),
+  [`25d861b`](https://github.com/skfolio/skfolio/commit/25d861b9d1b7c5016a58cb3826571627b6399be3))
+
+### Additional Release Information
+
+- **descriptor**: The eps parameter in the affected EW descriptors is deprecated and ignored. It
+  will be removed in version 2.0.
+
+- The affected EW descriptors now reset their history when active_mask=False and return NaN when the
+  required sensitivity cannot be estimated. Residual volatility starts accumulating residuals from
+  the tenth observation used to estimate beta.
+
+
+## v1.12.16 (2026-11-14)
+
+### Bug Fixes
+
+- **containers**: Preserve fields on fill preparation errors
+  ([#482](https://github.com/skfolio/skfolio/pull/482),
+  [`869ed25`](https://github.com/skfolio/skfolio/commit/869ed25c7fcce10bf40f2c9db1d5d84114e46e1f))
+
+
+## v1.12.15 (2026-11-14)
+
+### Bug Fixes
+
+- **portfolio**: Preserve failed-period observation weights
+  ([#477](https://github.com/skfolio/skfolio/pull/477),
+  [`e933790`](https://github.com/skfolio/skfolio/commit/e933790a4bedebbfc0ea26ca66da5dc17ccf33d7))
+
+
+## v1.12.14 (2026-11-14)
+
+### Bug Fixes
+
+- **pre_selection**: Preserve a single asset in DropCorrelated
+  ([#505](https://github.com/skfolio/skfolio/pull/505),
+  [`d778017`](https://github.com/skfolio/skfolio/commit/d778017f511745d9d6661ea7cc5a184f5f5b28e0))
+
+
+## v1.12.13 (2026-11-14)
+
+### Bug Fixes
+
+- **preprocessing**: Keep mid-series NaN in prices_to_returns when fill_nan=False
+  ([#506](https://github.com/skfolio/skfolio/pull/506),
+  [`9d6720a`](https://github.com/skfolio/skfolio/commit/9d6720a255010fd4c908feac1cf44d1c852cba14))
+
+
+## v1.12.12 (2026-11-13)
+
+### Bug Fixes
+
+- **portfolio**: Preserve zero exposure for Portfolio with no invested assets
+  ([#473](https://github.com/skfolio/skfolio/pull/473),
+  [`e819b26`](https://github.com/skfolio/skfolio/commit/e819b26d12e4514e60077d6a1e94c622d0cd7a35))
+
+
+## v1.12.11 (2026-11-13)
+
+### Bug Fixes
+
+- **utils**: Keep deduplicated names unique when a suffixed name already exists
+  ([#466](https://github.com/skfolio/skfolio/pull/466),
+  [`1e76be8`](https://github.com/skfolio/skfolio/commit/1e76be8d1da17ebbc8aa271c7e5bc57ecda14476))
+
+
 ## v1.12.10 (2026-11-12)
 
 ### Chores

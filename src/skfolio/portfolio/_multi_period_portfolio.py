@@ -716,12 +716,21 @@ class MultiPeriodPortfolio(BasePortfolio):
 
     @property
     def weights_per_observation(self) -> pd.DataFrame:
-        """DataFrame of the Portfolio weights per observation."""
-        return (
-            pd.concat([p.weights_per_observation for p in self], axis=0)
-            .fillna(0)
-            .sort_index()
+        """DataFrame of the Portfolio weights per observation.
+
+        Asset weights are NaN for every observation in a FailedPortfolio.
+        """
+        weights_per_obs = [p.weights_per_observation for p in self]
+        weights = pd.concat(weights_per_obs, axis=0).fillna(0)
+        failed_rows = np.concatenate(
+            [
+                obs_weights.isna().all(axis=1).to_numpy()
+                & (len(obs_weights.columns) > 0 or isinstance(p, FailedPortfolio))
+                for p, obs_weights in zip(self, weights_per_obs, strict=True)
+            ]
         )
+        weights.loc[failed_rows] = np.nan
+        return weights.sort_index()
 
     @property
     def long_short_exposure(self) -> pd.DataFrame:
@@ -730,22 +739,31 @@ class MultiPeriodPortfolio(BasePortfolio):
         The long exposure is the sum of positive weights. The short exposure is the
         sum of negative weights. Net exposure is the sum of all weights and gross
         exposure is the sum of absolute weights.
+
+        All four exposures are NaN for every observation in a FailedPortfolio.
         """
-        weights = pd.concat(
-            [p.weights_per_observation for p in self],
-            axis=0,
-        ).sort_index()
-        failed_rows = weights.isna().all(axis=1)
-        weights = weights.fillna(0)
-        return pd.DataFrame(
-            {
-                "Long": weights.clip(lower=0).sum(axis=1),
-                "Short": weights.clip(upper=0).sum(axis=1),
-                "Net": weights.sum(axis=1),
-                "Gross": weights.abs().sum(axis=1),
-            },
-            index=weights.index,
-        ).mask(failed_rows)
+        weights_per_obs = [p.weights_per_observation for p in self]
+        failed_rows = pd.concat(
+            [
+                obs_weights.isna().all(axis=1)
+                & (len(obs_weights.columns) > 0 or isinstance(p, FailedPortfolio))
+                for p, obs_weights in zip(self, weights_per_obs, strict=True)
+            ]
+        )
+        weights = pd.concat(weights_per_obs, axis=0).fillna(0)
+        return (
+            pd.DataFrame(
+                {
+                    "Long": weights.clip(lower=0).sum(axis=1),
+                    "Short": weights.clip(upper=0).sum(axis=1),
+                    "Net": weights.sum(axis=1),
+                    "Gross": weights.abs().sum(axis=1),
+                },
+                index=weights.index,
+            )
+            .mask(failed_rows)
+            .sort_index()
+        )
 
     def contribution(
         self, measure: skt.Measure, spacing: float | None = None, to_df: bool = True

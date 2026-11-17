@@ -5,6 +5,7 @@ import pytest
 
 from skfolio.containers import AssetPanel
 from skfolio.descriptor import EWMacroSensitivity
+from tests.test_descriptor._ew_reference import regression_path
 
 
 def _partial_fit_in_chunks(estimator, X, reference_returns, chunk_size):
@@ -162,22 +163,17 @@ class TestAggregation:
         first = ms.partial_fit_transform(
             clean_panel_data[:3], reference_returns=ref_returns[:3]
         )
-        assert ms._buffer_idx == 3
-        assert ms._t == 0
+        assert np.isnan(first).all()
 
         second = ms.partial_fit_transform(
             clean_panel_data[3:7], reference_returns=ref_returns[3:7]
         )
-        assert ms._buffer_idx == 2
-        assert ms._t == 1
+        assert np.isnan(second).all()
 
         rest = ms.partial_fit_transform(
             clean_panel_data[7:], reference_returns=ref_returns[7:]
         )
         result = np.vstack([first, second, rest])
-        assert ms._t == clean_panel_data.n_observations // 5
-        assert ms._buffer_idx == clean_panel_data.n_observations % 5
-
         np.testing.assert_array_equal(result, expected)
 
 
@@ -232,16 +228,6 @@ class TestPartialFit:
 
         np.testing.assert_array_equal(result_pf, result_fit)
 
-        assert ms_pf._t == ms_fit._t == clean_panel_data.n_observations // 5
-        assert (
-            ms_pf._buffer_idx
-            == ms_fit._buffer_idx
-            == clean_panel_data.n_observations % 5
-        )
-        np.testing.assert_array_equal(
-            ms_pf.macro_sensitivity_, ms_fit.macro_sensitivity_
-        )
-
 
 # ---------------------------------------------------------------------------
 # Beta correctness
@@ -271,126 +257,20 @@ class TestBetaValues:
         assert final[1] < 0, "Asset B ref beta should be negative"
         assert final[2] > 0, "Asset C ref beta should be positive"
 
-    def test_zero_reference_gives_zero_beta(self, clean_panel_data):
-        """A flat reference series should yield zero ref betas."""
-        n_obs = clean_panel_data.n_observations
-        zero_ref = np.zeros(n_obs)
-
-        ms = EWMacroSensitivity(half_life=10, aggregation_period=1, min_periods=5)
-        result = ms.fit_transform(clean_panel_data, reference_returns=zero_ref)
-
-        valid = result[~np.isnan(result)]
-        np.testing.assert_allclose(valid, 0.0, atol=1e-6)
-
-    def test_ref_betas_match_frisch_waugh_formula(self, deterministic_panel):
-        """Reference betas match the closed-form Frisch-Waugh decomposition."""
-        panel, ref_factor = deterministic_panel
-
-        half_life = 8
-        min_periods = 5
-        eps = 1e-12
-        batch = EWMacroSensitivity(
-            half_life=half_life, aggregation_period=1, min_periods=min_periods, eps=eps
+    def test_zero_reference_is_unidentifiable(self, clean_panel_data):
+        result = EWMacroSensitivity(half_life=5, min_periods=3).fit_transform(
+            clean_panel_data,
+            reference_returns=np.zeros(clean_panel_data.n_observations),
         )
-        batch_result = batch.fit_transform(panel, reference_returns=ref_factor)
+        assert np.isnan(result).all()
 
-        online = EWMacroSensitivity(
-            half_life=half_life, aggregation_period=1, min_periods=min_periods, eps=eps
+    def test_ref_betas_match_batch_regression(self, deterministic_panel):
+        panel, reference = deterministic_panel
+        result = EWMacroSensitivity(half_life=5, min_periods=3).fit_transform(
+            panel, reference_returns=reference
         )
-        online_chunks = []
-        for start in range(0, panel.n_observations, 7):
-            end = min(start + 7, panel.n_observations)
-            online_chunks.append(
-                online.partial_fit_transform(
-                    panel[start:end], reference_returns=ref_factor[start:end]
-                )
-            )
-        online_result = np.vstack(online_chunks)
-
-        returns = panel["returns"]
-        market_returns = np.mean(returns, axis=1)
-        decay = np.exp(-np.log(2) / half_life)
-
-        mu_market = 0.0
-        mu_ref = 0.0
-        mu_assets = np.zeros(panel.n_assets)
-        var_market = 0.0
-        var_ref = 0.0
-        cov_market_ref = 0.0
-        cov_assets_market = np.zeros(panel.n_assets)
-        cov_assets_ref = np.zeros(panel.n_assets)
-        n_valid_assets = np.zeros(panel.n_assets, dtype=int)
-
-        for t in range(panel.n_observations):
-            market_deviation = market_returns[t] - mu_market
-            ref_deviation = ref_factor[t] - mu_ref
-
-            mu_market = decay * mu_market + (1 - decay) * market_returns[t]
-            mu_ref = decay * mu_ref + (1 - decay) * ref_factor[t]
-
-            var_market = decay * var_market + (1 - decay) * (
-                market_deviation * market_deviation
-            )
-            var_ref = decay * var_ref + (1 - decay) * (ref_deviation * ref_deviation)
-            cov_market_ref = decay * cov_market_ref + (1 - decay) * (
-                market_deviation * ref_deviation
-            )
-
-            valid = np.isfinite(returns[t])
-            n_valid_assets[valid] += 1
-            asset_deviations = returns[t, valid] - mu_assets[valid]
-            mu_assets[valid] = (
-                decay * mu_assets[valid] + (1 - decay) * returns[t, valid]
-            )
-            cov_assets_market[valid] = (
-                decay * cov_assets_market[valid]
-                + (1 - decay) * asset_deviations * market_deviation
-            )
-            cov_assets_ref[valid] = (
-                decay * cov_assets_ref[valid]
-                + (1 - decay) * asset_deviations * ref_deviation
-            )
-
-        market_variance = var_market + eps
-        reference_residual_variance = (
-            var_ref - cov_market_ref**2 / market_variance + eps
-        )
-        expected = (
-            cov_assets_ref - cov_assets_market * cov_market_ref / market_variance
-        ) / reference_residual_variance
-
-        ready = n_valid_assets >= min_periods
-        expected = np.where(ready, expected, np.nan)
-
-        np.testing.assert_allclose(batch_result[-1], expected, equal_nan=True)
-        np.testing.assert_allclose(online_result[-1], expected, equal_nan=True)
-        np.testing.assert_allclose(batch.macro_sensitivity_, expected, equal_nan=True)
-        np.testing.assert_allclose(online.macro_sensitivity_, expected, equal_nan=True)
-        np.testing.assert_allclose(batch_result, online_result, equal_nan=True)
-
-        # Check the moments themselves, not only ratios that may hide errors.
-        expected_state = {
-            "_mu_market": mu_market,
-            "_mu_ref": mu_ref,
-            "_mu_assets": mu_assets,
-            "_var_market": var_market,
-            "_var_ref": var_ref,
-            "_cov_market_ref": cov_market_ref,
-            "_cov_assets_market": cov_assets_market,
-            "_cov_assets_ref": cov_assets_ref,
-            "_market_betas": (cov_assets_market - expected * cov_market_ref)
-            / market_variance,
-        }
-        assert batch._t == online._t == panel.n_observations
-        np.testing.assert_array_equal(batch._n_valid_assets, n_valid_assets)
-        np.testing.assert_array_equal(online._n_valid_assets, n_valid_assets)
-        for attr, expected_value in expected_state.items():
-            np.testing.assert_allclose(
-                getattr(batch, attr), expected_value, rtol=1e-12, err_msg=attr
-            )
-            np.testing.assert_array_equal(
-                getattr(online, attr), getattr(batch, attr), err_msg=attr
-            )
+        expected = regression_path(panel, 5, 3, reference=reference)
+        np.testing.assert_allclose(result, expected, rtol=1e-11, atol=1e-14)
 
 
 # ---------------------------------------------------------------------------
@@ -435,20 +315,19 @@ class TestNaNHandling:
         with pytest.raises(ValueError, match="Market return is undefined"):
             ms.fit_transform(X, reference_returns=ref_returns)
 
-    def test_nan_reference_date_freezes_state(self, clean_panel_data, ref_returns):
+    @pytest.mark.parametrize("min_periods", [3, 11])
+    def test_nan_reference_date_freezes_state(
+        self, clean_panel_data, ref_returns, min_periods
+    ):
         """A non-finite reference value should freeze state and keep last beta."""
         ref = ref_returns.copy()
         ref[10] = np.nan
 
-        ms = EWMacroSensitivity(half_life=5, aggregation_period=1, min_periods=3)
+        ms = EWMacroSensitivity(
+            half_life=5, aggregation_period=1, min_periods=min_periods
+        )
         result = ms.fit_transform(clean_panel_data, reference_returns=ref)
 
-        # A skipped observation must not advance any observation counter.
-        assert ms._t == clean_panel_data.n_observations - 1
-        np.testing.assert_array_equal(
-            ms._n_valid_assets,
-            np.full(clean_panel_data.n_assets, clean_panel_data.n_observations - 1),
-        )
         np.testing.assert_array_equal(
             result[10, :],
             result[9, :],
@@ -459,7 +338,7 @@ class TestNaNHandling:
         # fit on the data without it.
         keep = np.arange(clean_panel_data.n_observations) != 10
         without = EWMacroSensitivity(
-            half_life=5, aggregation_period=1, min_periods=3
+            half_life=5, aggregation_period=1, min_periods=min_periods
         ).fit_transform(clean_panel_data[keep], reference_returns=ref[keep])
         np.testing.assert_array_equal(result[keep], without)
 
@@ -565,13 +444,15 @@ class TestEdgeCases:
         second = ms.fit_transform(clean_panel_data, reference_returns=ref_returns)
         np.testing.assert_array_equal(first, second)
 
-    def test_eps_prevents_inf(self, clean_panel_data, ref_returns):
-        ms = EWMacroSensitivity(
-            half_life=10, aggregation_period=1, min_periods=5, eps=1e-12
+    def test_eps_is_ignored_with_warning(self, clean_panel_data, ref_returns):
+        expected = EWMacroSensitivity(half_life=5, min_periods=3).fit_transform(
+            clean_panel_data, reference_returns=ref_returns
         )
-        result = ms.fit_transform(clean_panel_data, reference_returns=ref_returns)
-        valid = result[~np.isnan(result)]
-        assert not np.any(np.isinf(valid))
+        with pytest.warns(FutureWarning, match="eps is deprecated"):
+            result = EWMacroSensitivity(
+                half_life=5, min_periods=3, eps=0.1
+            ).fit_transform(clean_panel_data, reference_returns=ref_returns)
+        np.testing.assert_array_equal(result, expected)
 
 
 # ---------------------------------------------------------------------------
@@ -582,32 +463,22 @@ class TestEdgeCases:
 class TestRegression:
     """Regression tests with exact expected values."""
 
-    def test_partial_fit_exact_state_match(self, deterministic_panel):
+    def test_partial_fit_exact_output_match(self, deterministic_panel):
         panel, ref_factor = deterministic_panel
 
         ms_fit = EWMacroSensitivity(half_life=5, aggregation_period=1, min_periods=5)
-        result_fit = ms_fit.fit_transform(panel, reference_returns=ref_factor)
+        result_fit = ms_fit.fit_transform(panel[:-5], reference_returns=ref_factor[:-5])
 
         ms_pf = EWMacroSensitivity(half_life=5, aggregation_period=1, min_periods=5)
-        result_pf = _partial_fit_in_chunks(ms_pf, panel, ref_factor, chunk_size=7)
+        result_pf = _partial_fit_in_chunks(
+            ms_pf, panel[:-5], ref_factor[:-5], chunk_size=7
+        )
 
         np.testing.assert_array_equal(result_pf, result_fit)
         np.testing.assert_array_equal(
             ms_pf.macro_sensitivity_, ms_fit.macro_sensitivity_
         )
-        assert ms_pf._t == ms_fit._t == panel.n_observations
-        for attr in (
-            "_mu_market",
-            "_var_market",
-            "_mu_ref",
-            "_var_ref",
-            "_mu_assets",
-            "_cov_market_ref",
-            "_cov_assets_market",
-            "_cov_assets_ref",
-            "_n_valid_assets",
-            "_market_betas",
-        ):
-            np.testing.assert_array_equal(
-                getattr(ms_pf, attr), getattr(ms_fit, attr), err_msg=attr
-            )
+        np.testing.assert_array_equal(
+            ms_pf.partial_fit_transform(panel[-5:], reference_returns=ref_factor[-5:]),
+            ms_fit.partial_fit_transform(panel[-5:], reference_returns=ref_factor[-5:]),
+        )

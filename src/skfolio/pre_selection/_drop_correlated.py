@@ -84,6 +84,10 @@ class DropCorrelated(skf.SelectorMixin, skb.BaseEstimator):
         _validate_bool(self.absolute, "absolute")
 
         n_assets = X.shape[1]
+        if n_assets == 1:
+            self.to_keep_ = np.array([True])
+            return self
+
         corr = np.corrcoef(X.T)
         # Keep pair ranking and mean-correlation decisions on the same scale.
         if self.absolute:
