@@ -50,7 +50,7 @@ class HierarchicalEqualRiskContribution(_PortfolioRiskMixin, BaseOptimization):
     assets weights are updated using a naive risk parity within clusters.
 
     It differs from the Hierarchical Risk Parity by exploiting the dendrogram shape
-    during the top-down recursive division instead of bisecting it.
+    during the top-down recursive division instead of bisecting the ordered asset list.
 
     .. note ::
 

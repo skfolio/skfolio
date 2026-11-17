@@ -148,7 +148,7 @@ EXAMPLE_DESCRIPTIONS = {
     "auto_examples/ensemble/plot_1_stacking": (
         "Combining multiple portfolio strategies through stacking optimization"
     ),
-    # Hierarchical Clustering & NCO
+    # Hierarchical Allocation
     "auto_examples/clustering/plot_1_hrp_cvar": (
         "Allocating by CVaR-based hierarchical risk parity"
     ),
@@ -159,7 +159,7 @@ EXAMPLE_DESCRIPTIONS = {
         "Comparing HRP and HERC hierarchical portfolios"
     ),
     "auto_examples/clustering/plot_4_nco": (
-        "Nested cluster optimization for hierarchical groups"
+        "Nested clusters optimization"
     ),
     "auto_examples/clustering/plot_5_nco_grid_search": (
         "Merging NCO with combinatorial purged CV cross-validation"
@@ -338,7 +338,7 @@ EXAMPLE_DATE_MODIFIED = {
     "auto_examples/entropy_pooling/plot_2_opinion_pooling": "2025-06-09",
     # Ensemble Optimizations
     "auto_examples/ensemble/plot_1_stacking": "2023-12-18",
-    # Hierarchical Clustering & NCO
+    # Hierarchical Allocation
     "auto_examples/clustering/plot_1_hrp_cvar": "2023-12-18",
     "auto_examples/clustering/plot_2_herc_cdar": "2023-12-18",
     "auto_examples/clustering/plot_3_hrp_vs_herc": "2023-12-18",

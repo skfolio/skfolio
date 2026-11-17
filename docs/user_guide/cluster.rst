@@ -14,6 +14,11 @@ clusters from a distance matrix. It is used in the following portfolio optimizat
     * :class:`~skfolio.optimization.HierarchicalRiskParity`
     * :class:`~skfolio.optimization.HierarchicalEqualRiskContribution`
     * :class:`~skfolio.optimization.NestedClustersOptimization`
+    * :class:`~skfolio.optimization.SchurComplementary`
+
+HRP and Schur use it through the default
+:class:`~skfolio.seriation.HierarchicalSeriation` estimator, while NCO uses it as its
+default clustering estimator.
 
 
 **Example:**

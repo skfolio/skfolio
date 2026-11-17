@@ -134,7 +134,7 @@ MVO out-of-sample (DeMiguel, 2007).
 Numerous approaches have been developed to alleviate these shortcomings (shrinkage,
 additional constraints, regularization, uncertainty set, higher moments, Bayesian
 approaches, coherent risk measures, left-tail risk optimization, distributionally robust
-optimization, factor model, risk-parity, hierarchical clustering, ensemble methods,
+optimization, factor model, risk-parity, hierarchical allocation, ensemble methods,
 pre-selection, etc.).
 
 Given the large number of methods, and the fact that they can be combined, there is a
@@ -158,7 +158,7 @@ Available models
         * Maximum Diversification
         * Distributionally Robust CVaR
         * Benchmark Tracker
-    * Clustering:
+    * Hierarchical Allocation:
         * Hierarchical Risk Parity
         * Hierarchical Equal Risk Contribution
         * Schur Complementary Allocation

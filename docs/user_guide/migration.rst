@@ -71,7 +71,8 @@ After:
 The old parameter warns during `fit` or the first `partial_fit` of a learning
 run. Supplying both estimators raises an error. The default ordering is unchanged.
 
-After fitting, access the clustering estimator through
+After fitting with :class:`~skfolio.seriation.HierarchicalSeriation`, access the
+clustering estimator through
 `model.seriation_estimator_.hierarchical_clustering_estimator_`. The old
 `model.hierarchical_clustering_estimator_` attribute raises a `FutureWarning`.
 This alias is only available when the fitted seriator is hierarchical.

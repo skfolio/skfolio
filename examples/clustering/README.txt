@@ -1,6 +1,6 @@
 .. _cluster_examples:
 
-Hierarchical Clustering and NCO
--------------------------------
+Hierarchical Allocation
+-----------------------
 
-Examples concerning hierarchical clustering based optimizations.
+Examples concerning hierarchical allocation.
