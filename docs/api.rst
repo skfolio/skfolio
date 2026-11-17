@@ -166,6 +166,8 @@ Classes
 
     containers.AssetPanel
     containers.AssetPanelView
+    containers.Graph
+    containers.GraphSeries
 
 Field Base Class
 ----------------
@@ -748,6 +750,7 @@ Classes
     distance.SpearmanDistance
     distance.CovarianceDistance
     distance.DistanceCorrelation
+    distance.GraphDistance
     distance.MutualInformation
 
 .. _seriation_ref:

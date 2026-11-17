@@ -401,9 +401,10 @@ class HierarchicalRiskParity(_PortfolioRiskMixin, _BaseSeriatedOptimization):
 
         **fit_params : dict
             Parameters passed to the underlying estimators. Requires
-            `enable_metadata_routing=True`. Panels must contain the same observations
-            as `X`. For distances fitted on prior return scenarios, sample weights come
-            from the prior and other arrays must match those scenarios.
+            `enable_metadata_routing=True`. Panels and graph series must contain the
+            same observations as `X`. For distances fitted on prior return scenarios,
+            sample weights come from the prior and other arrays must match those
+            scenarios.
 
         Returns
         -------
@@ -436,11 +437,11 @@ class HierarchicalRiskParity(_PortfolioRiskMixin, _BaseSeriatedOptimization):
 
         **fit_params : dict
             Parameters passed to the underlying estimators. Requires
-            `enable_metadata_routing=True`. Panels must contain the new observations
-            in `X`.
+            `enable_metadata_routing=True`. Panels and graph series must contain the
+            new observations in `X`.
             With `distance_from_prior=True`, the distance estimator accepts only sample
-            weights, `AssetPanel` and `AssetPanelView` metadata. Sample weights come
-            from the prior. Distances fitted on the prior's covariance do
+            weights, `AssetPanel`, `AssetPanelView` and `GraphSeries` metadata. Sample
+            weights come from the prior. Distances fitted on the prior's covariance do
             not accept additional fitting parameters.
 
         Returns

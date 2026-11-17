@@ -202,3 +202,17 @@ def _try_as_contiguous_slice(indices: IntArray) -> slice | None:
     if np.all(np.diff(indices) == 1):
         return slice(int(indices[0]), int(indices[-1]) + 1)
     return None
+
+
+def _validate_unique_observations(observations: AnyArray) -> None:
+    """Validate that concatenated observations contain no duplicate labels."""
+    observation_index = pd.Index(observations)
+    duplicate_positions = np.flatnonzero(observation_index.duplicated())
+    if duplicate_positions.size:
+        first_duplicate_position = int(duplicate_positions[0])
+        first_duplicate = observations[first_duplicate_position]
+        raise ValueError(
+            "`observations` must be unique when verify_observations=True. "
+            f"Found duplicate label {first_duplicate!r} at position "
+            f"{first_duplicate_position}."
+        )

@@ -561,6 +561,7 @@ matrix:
     * :class:`~skfolio.distance.CovarianceDistance`
     * :class:`~skfolio.distance.DistanceCorrelation`
     * :class:`~skfolio.distance.MutualInformation`
+    * :class:`~skfolio.distance.GraphDistance`
 
 **Example:**
 
@@ -742,6 +743,7 @@ matrix:
     * :class:`~skfolio.distance.CovarianceDistance`
     * :class:`~skfolio.distance.DistanceCorrelation`
     * :class:`~skfolio.distance.MutualInformation`
+    * :class:`~skfolio.distance.GraphDistance`
 
 **Example:**
 
@@ -846,6 +848,39 @@ The `cv` parameter can also be a combinatorial cross-validation, such as
 out-of-sample outputs are a collection of multiple paths instead of one single path.
 The selected out-of-sample path among this collection of paths is chosen according to
 the `quantile` and `quantile_measure` parameters.
+
+.. _graph_based_allocation:
+
+Allocation with Graph Distances
+*******************************
+
+:class:`~skfolio.distance.GraphDistance` measures similarity between assets'
+dependencies. This supports diversification across underlying vulnerabilities,
+including risks that have not materialized historically and are not captured by
+return correlations.
+
+Return-based distances reflect the dependence observed over the estimation period.
+A graph also describes exposures to events that may be rare or absent in that
+history, such as a prolonged supplier outage.
+
+For example, suppose three car manufacturers source batteries from Supplier A and two
+from Supplier B. Their returns may be correlated because they respond to the same
+automotive demand. A production outage at Supplier A disrupts the first three
+manufacturers. Graph-based clustering groups the manufacturers by supplier, allowing
+allocation across groups to diversify exposure to supply disruptions.
+
+**HRP** uses graph distance to order the manufacturers by dependency similarity. It
+then splits that order into halves and allocates between the resulting groups
+according to risks estimated from their returns. With Supplier A's customers first,
+the initial split places two of them in one group and the remaining three
+manufacturers in the other. **HERC** preserves the selected supplier-based groups and
+allocates between them according to their risks. **NCO** builds a portfolio for each
+group, then allocates between those portfolios. Equal allocation at this stage gives
+each group 50%, regardless of its number of manufacturers. **Schur** uses HRP's
+grouping approach and also accounts for covariance between groups.
+
+See :ref:`graph_distances` for graph construction and an HRP example.
+
 
 Stacking Optimization
 *********************
