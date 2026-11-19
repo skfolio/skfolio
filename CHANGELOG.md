@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.14.1 (2026-11-19)
+
+### Bug Fixes
+
+- **model-selection**: Train online search through trailing observations
+  ([#509](https://github.com/skfolio/skfolio/pull/509),
+  [`ab9d191`](https://github.com/skfolio/skfolio/commit/ab9d1913c7ca53d3d8d6f350ce576097c9d283d5))
+
+
 ## v1.14.0 (2026-11-19)
 
 ### Documentation
