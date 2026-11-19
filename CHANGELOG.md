@@ -2,6 +2,20 @@
 
 <!-- version list -->
 
+## v1.14.0 (2026-11-19)
+
+### Documentation
+
+- Clarify hierarchical allocation terminology ([#511](https://github.com/skfolio/skfolio/pull/511),
+  [`ba8e394`](https://github.com/skfolio/skfolio/commit/ba8e39401040afdb70fa3f4e20f73d184ae1ef49))
+
+### Features
+
+- **model_selection**: Support named estimator collections in online_predict
+  ([#467](https://github.com/skfolio/skfolio/pull/467),
+  [`9366d48`](https://github.com/skfolio/skfolio/commit/9366d4832429ed13c41936eda316a6ae1bee5b8a))
+
+
 ## v1.13.0 (2026-11-17)
 
 ### Bug Fixes
