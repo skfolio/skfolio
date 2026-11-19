@@ -2,17 +2,19 @@
 
 from __future__ import annotations
 
+from collections import UserList
 from functools import partial
 from itertools import pairwise
 
 import numpy as np
 import pytest
 import sklearn as sk
+from joblib import parallel_config
 from sklearn import config_context
 from sklearn.exceptions import UnsetMetadataPassedError
 from sklearn.pipeline import make_pipeline
 
-from skfolio import FailedPortfolio, MultiPeriodPortfolio
+from skfolio import FailedPortfolio, MultiPeriodPortfolio, Population
 from skfolio.measures import RatioMeasure
 from skfolio.metrics import (
     diagonal_calibration_ratio,
@@ -550,13 +552,16 @@ class TestOnlinePredict:
         with pytest.raises(TypeError, match="partial_fit"):
             online_predict(model, X, warmup_size=400, test_size=100)
 
-    def test_non_portfolio_estimator_raises(self, X):
-        """Raises TypeError when the estimator is not a portfolio optimizer."""
+    @pytest.mark.parametrize(
+        "estimator", [EWCovariance(half_life=30), "abc", b"abc", bytearray(b"abc")]
+    )
+    def test_non_portfolio_estimator_raises(self, X, estimator):
+        """Reject non-optimization estimators, including string-like inputs."""
         with pytest.raises(
             TypeError,
             match="online_predict` only supports portfolio optimization estimators",
         ):
-            online_predict(EWCovariance(half_life=30), X, warmup_size=400, test_size=50)
+            online_predict(estimator, X, warmup_size=400, test_size=50)
 
     def test_pipeline_raises(self, X):
         """Pipelines are rejected explicitly for online evaluation."""
@@ -1158,3 +1163,288 @@ def test_online_empty_prediction_keeps_previous_holdings(X, monkeypatch, weight_
     np.testing.assert_allclose(
         pred[2].weights, pred[0].ending_weights + np.array([0.1, 0.0])
     )
+
+
+class TestOnlinePredictNamedEstimators:
+    """Test `online_predict` with a collection of named estimators."""
+
+    @pytest.mark.parametrize(
+        "backend, n_jobs, pre_dispatch",
+        [
+            ("loky", None, "2*n_jobs"),
+            ("loky", 2, 1),
+            ("loky", 2, "all"),
+            ("threading", 2, "2*n_jobs"),
+            ("multiprocessing", 2, "2*n_jobs"),
+        ],
+    )
+    def test_matches_individual_runs(self, X, backend, n_jobs, pre_dispatch):
+        """Each named estimator matches its own single-estimator evaluation."""
+        estimators = [
+            (
+                "ew",
+                _make_online_estimator(
+                    portfolio_params={
+                        "annualization_factor": 52,
+                        "compounded": False,
+                        "tag": "inner",
+                    }
+                ),
+            ),
+            ("regime", _make_regime_online_estimator()),
+            (
+                "costs",
+                _make_online_estimator(
+                    objective_function=ObjectiveFunction.MAXIMIZE_UTILITY,
+                    transaction_costs=0.001,
+                ),
+            ),
+        ]
+        with parallel_config(backend=backend):
+            population = online_predict(
+                estimators,
+                X,
+                warmup_size=400,
+                test_size=100,
+                portfolio_params={"weight_drift": True, "compounded": True},
+                n_jobs=n_jobs,
+                pre_dispatch=pre_dispatch,
+            )
+
+        assert isinstance(population, Population)
+        assert [mpp.name for mpp in population] == ["ew", "regime", "costs"]
+        assert [mpp.tag for mpp in population] == ["ew", "regime", "costs"]
+        assert [mpp.annualization_factor for mpp in population] == [52, 252, 252]
+        for mpp, (name, estimator) in zip(population, estimators, strict=True):
+            assert not hasattr(estimator, "weights_")
+            filtered = population.filter(tags=name)
+            assert len(filtered) == 1
+            assert filtered[0] is mpp
+            expected = online_predict(
+                estimator,
+                X,
+                warmup_size=400,
+                test_size=100,
+                portfolio_params={"weight_drift": True, "compounded": True},
+            )
+            assert mpp.compounded
+            assert all(p.weight_drift for p in mpp.portfolios)
+            np.testing.assert_array_equal(mpp.observations, expected.observations)
+            np.testing.assert_allclose(mpp.returns, expected.returns)
+            for p, p_expected in zip(mpp.portfolios, expected.portfolios, strict=True):
+                np.testing.assert_allclose(p.weights, p_expected.weights)
+                np.testing.assert_allclose(
+                    p.previous_weights, p_expected.previous_weights
+                )
+                assert p.tag == p_expected.tag
+        assert estimators[0][1].portfolio_params == {
+            "annualization_factor": 52,
+            "compounded": False,
+            "tag": "inner",
+        }
+
+    @pytest.mark.parametrize("sequence_type", [list, tuple, UserList])
+    def test_single_named_estimator_returns_population(self, X, sequence_type):
+        """A collection with one estimator still returns a Population."""
+        population = online_predict(
+            sequence_type([["only", _make_online_estimator()]]),
+            X,
+            warmup_size=400,
+            test_size=300,
+            n_jobs=2,
+        )
+        assert isinstance(population, Population)
+        assert len(population) == 1
+        assert population[0].name == "only"
+        assert population[0].tag == "only"
+
+    def test_entry_rebalancing_params_apply_to_every_estimator(self, X):
+        """Shared entry rebalancing params apply to each estimator's first portfolio."""
+        population = online_predict(
+            [
+                ("a", PreviousWeightsAwareOptimization()),
+                ("b", PreviousWeightsAwareOptimization(scale=3.0)),
+            ],
+            X,
+            warmup_size=400,
+            test_size=300,
+            reduce_test=True,
+            entry_rebalancing_params={"scale": 2.0},
+        )
+        for mpp, scale in zip(population, (1.0, 3.0), strict=True):
+            first_expected = np.zeros(X.shape[1])
+            first_expected[0] = 2.0
+            second_expected = first_expected.copy()
+            second_expected[1] = scale
+            np.testing.assert_array_equal(mpp[0].weights, first_expected)
+            np.testing.assert_array_equal(mpp[1].weights, second_expected)
+
+    def test_invalid_entry_params_raise_before_any_update(self, X, monkeypatch):
+        """Validate shared entry parameters for every estimator before evaluation."""
+
+        def unexpected_partial_fit(*args, **kwargs):
+            pytest.fail(
+                "An estimator was updated before entry parameters were validated."
+            )
+
+        monkeypatch.setattr(
+            PreviousWeightsAwareOptimization, "partial_fit", unexpected_partial_fit
+        )
+        with pytest.raises(ValueError, match=r"MeanRisk.*scale"):
+            online_predict(
+                [
+                    ("valid", PreviousWeightsAwareOptimization()),
+                    ("invalid", _make_online_estimator()),
+                ],
+                X,
+                warmup_size=400,
+                test_size=300,
+                entry_rebalancing_params={"scale": 2.0},
+            )
+
+    def test_single_estimator_ignores_n_jobs(self, X):
+        """A single estimator returns a MultiPeriodPortfolio regardless of n_jobs."""
+        pred = online_predict(
+            _make_online_estimator(), X, warmup_size=400, test_size=300, n_jobs=2
+        )
+        assert isinstance(pred, MultiPeriodPortfolio)
+
+    @pytest.mark.parametrize("n_jobs", [None, 2])
+    def test_metadata_routing(self, X, n_jobs):
+        """Metadata is routed according to each estimator's partial_fit request."""
+        estimation_mask = _make_estimation_mask(X, start=420, stop=480)
+
+        with config_context(enable_metadata_routing=True):
+            routed = _make_regime_online_estimator()
+            routed.prior_estimator.covariance_estimator.set_partial_fit_request(
+                estimation_mask=True
+            )
+            unrouted = _make_regime_online_estimator()
+            unrouted.prior_estimator.covariance_estimator.set_partial_fit_request(
+                estimation_mask=False
+            )
+            population = online_predict(
+                [("routed", routed), ("unrouted", unrouted)],
+                X,
+                warmup_size=400,
+                test_size=50,
+                reduce_test=True,
+                params={"estimation_mask": estimation_mask},
+                n_jobs=n_jobs,
+            )
+            expected_routed = online_predict(
+                routed,
+                X,
+                warmup_size=400,
+                test_size=50,
+                reduce_test=True,
+                params={"estimation_mask": estimation_mask},
+            )
+            expected_unrouted = online_predict(
+                _make_regime_online_estimator(),
+                X,
+                warmup_size=400,
+                test_size=50,
+                reduce_test=True,
+            )
+
+        for mpp, expected in zip(
+            population, (expected_routed, expected_unrouted), strict=True
+        ):
+            for p, p_expected in zip(mpp.portfolios, expected.portfolios, strict=True):
+                np.testing.assert_allclose(p.weights, p_expected.weights)
+
+    @pytest.mark.parametrize(
+        "collection, n_jobs", [(False, None), (True, None), (True, 2)]
+    )
+    def test_annualized_factor_warns_at_caller(self, X, collection, n_jobs):
+        """A shared deprecated parameter warns once at the caller, before dispatch."""
+        model = _make_online_estimator(portfolio_params={"annualization_factor": 12})
+        estimator = [("a", model), ("b", model)] if collection else model
+        portfolio_params = {"annualized_factor": 52}
+
+        with pytest.warns(FutureWarning, match="annualized_factor") as record:
+            prediction = online_predict(
+                estimator,
+                X.iloc[:80, :3],
+                warmup_size=40,
+                test_size=20,
+                portfolio_params=portfolio_params,
+                n_jobs=n_jobs,
+            )
+
+        assert len(record) == 1
+        assert record[0].filename == __file__
+        predictions = prediction if isinstance(prediction, Population) else [prediction]
+        for mpp in predictions:
+            assert mpp.annualization_factor == 52
+            assert all(p.annualization_factor == 52 for p in mpp)
+        assert portfolio_params == {"annualized_factor": 52}
+        assert model.portfolio_params == {"annualization_factor": 12}
+
+    def test_metadata_routing_requires_request(self, X):
+        """Unrequested metadata raises for named estimators."""
+        estimation_mask = _make_estimation_mask(X, start=420, stop=480)
+        with config_context(enable_metadata_routing=True):
+            with pytest.raises(UnsetMetadataPassedError, match="partial_fit"):
+                online_predict(
+                    [
+                        ("a", _make_regime_online_estimator()),
+                        ("b", _make_regime_online_estimator()),
+                    ],
+                    X,
+                    warmup_size=400,
+                    test_size=50,
+                    params={"estimation_mask": estimation_mask},
+                )
+
+    @pytest.mark.parametrize("param", ["name", "tag"])
+    def test_name_and_tag_rejected_in_portfolio_params(self, X, param):
+        """`name` and `tag` conflict with the estimator names."""
+        with pytest.raises(ValueError, match=param):
+            online_predict(
+                [("a", _make_online_estimator())],
+                X,
+                warmup_size=400,
+                test_size=300,
+                portfolio_params={param: "x"},
+            )
+
+    @pytest.mark.parametrize(
+        "estimators, error, match",
+        [
+            ([], ValueError, "empty collection"),
+            ([_make_online_estimator()], TypeError, "pair"),
+            ([("a", _make_online_estimator(), 1)], TypeError, "pair"),
+            ([(1, _make_online_estimator())], TypeError, "must be strings"),
+            ([("", _make_online_estimator())], ValueError, "non-empty"),
+            (
+                [("a", _make_online_estimator()), ("a", _make_online_estimator())],
+                ValueError,
+                "unique",
+            ),
+        ],
+    )
+    def test_invalid_collection_raises(self, X, estimators, error, match):
+        """Invalid collections of named estimators raise clear errors."""
+        with pytest.raises(error, match=match):
+            online_predict(estimators, X, warmup_size=400, test_size=300)
+
+    @pytest.mark.parametrize(
+        "estimator, match",
+        [
+            (EWCovariance(), "only supports portfolio optimization estimators"),
+            (make_pipeline(_make_online_estimator()), "Pipeline is not supported"),
+            (InverseVolatility(), "does not implement partial_fit"),
+        ],
+    )
+    def test_invalid_estimator_names_offender(self, X, estimator, match):
+        """Errors for invalid estimators name the offending entry."""
+        with pytest.raises(TypeError, match=match) as excinfo:
+            online_predict(
+                [("good", _make_online_estimator()), ("bad", estimator)],
+                X,
+                warmup_size=400,
+                test_size=300,
+            )
+        assert "'bad'" in str(excinfo.value)
