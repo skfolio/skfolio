@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.14.2 (2026-11-19)
+
+### Bug Fixes
+
+- **descriptor**: Bias-correct the EWMA of liquidity and short-interest descriptors
+  ([#508](https://github.com/skfolio/skfolio/pull/508),
+  [`9e2c29d`](https://github.com/skfolio/skfolio/commit/9e2c29db3b56442756722ed8de2df17ca0c014fe))
+
+
 ## v1.14.1 (2026-11-19)
 
 ### Bug Fixes
