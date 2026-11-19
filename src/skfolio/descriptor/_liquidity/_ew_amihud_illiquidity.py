@@ -12,6 +12,7 @@ import numpy as np
 
 from skfolio.containers import AssetPanel
 from skfolio.descriptor._base import BaseDescriptor
+from skfolio.descriptor._utils import _EWMean
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import safe_divide
 from skfolio.utils.tools import (
@@ -37,14 +38,18 @@ class EWAmihudIlliquidity(BaseDescriptor):
         \text{ILLIQ\_raw}(t)
             &= \frac{|r(t)|}
                     {\text{adj\_close}(t) \times \text{adj\_volume}(t)} \\[0.75em]
+        S(t)
+            &= \lambda \cdot S(t-1)
+               + (1 - \lambda) \cdot \text{ILLIQ\_raw}(t) \\[0.75em]
         \text{ILLIQ}(t)
-            &= \lambda \cdot \text{ILLIQ}(t-1)
-               + (1 - \lambda) \cdot \text{ILLIQ\_raw}(t)
+            &= \frac{S(t)}{1 - \lambda^{n(t)}}
         \end{aligned}
         \]
 
-    where :math:`\lambda = \exp(-\ln(2) / \text{half\_life})` is the EWMA decay factor
-    and the denominator is the dollar trading volume (traded amount).
+    where :math:`\lambda = \exp(-\ln(2) / \text{half\_life})` is the EWMA decay factor,
+    :math:`S(0) = 0` and :math:`n(t)` is the asset's number of valid observations since
+    fitting started or the asset became active again. The denominator of the raw ratio
+    is the dollar trading volume (traded amount).
 
     The Amihud illiquidity ratio is a proxy for price impact, defined as the absolute
     return per unit of dollar volume traded. Higher values imply larger price moves for
@@ -69,9 +74,8 @@ class EWAmihudIlliquidity(BaseDescriptor):
     min_periods : int, optional
         Minimum number of valid illiquidity observations required for each asset. Until
         an asset reaches this count, its output is NaN. This warm-up period avoids
-        exposing early EWMA values before the illiquidity estimate has sufficiently
-        converged from its zero initialization. If `None`, defaults to
-        :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
+        exposing illiquidity estimates based on too few observations. If `None`,
+        defaults to :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
 
     Attributes
     ----------
@@ -86,6 +90,9 @@ class EWAmihudIlliquidity(BaseDescriptor):
 
     Notes
     -----
+    Observation weights are normalized for each asset so that starting the EWMA at zero
+    does not understate illiquidity for assets with short histories.
+
     Dollar trading volume (`traded_amount`) is computed internally as
     `adj_close * adj_volume`. Both fields must use the same split-adjustment basis.
 
@@ -93,13 +100,11 @@ class EWAmihudIlliquidity(BaseDescriptor):
     finite. Non-missing `adj_close` values must be finite and strictly positive.
     Non-missing `adj_volume` values must be finite and non-negative.
 
-    The EWMA state is updated only for valid observations. Zero `adj_volume` means the
-    stock did not trade, so the per-observation ratio is undefined: the EWMA state is
-    held and the valid-observation count is not incremented. NaN in `returns`,
-    `adj_close` or `adj_volume` is handled the same way.
-
-    The `active_mask` property of the :class:`~skfolio.containers.AssetPanel`
-    distinguishes holidays from delistings.
+    Zero `adj_volume` means the stock did not trade, so the per-observation ratio is
+    undefined. With `X.active_mask=True`, zero volume or NaN in `returns`, `adj_close`
+    or `adj_volume` leaves the estimate unchanged without decay and does not count
+    toward `min_periods`. Setting `X.active_mask=False` clears the asset's history and
+    sets output to NaN. Estimation restarts when the asset becomes active again.
 
     References
     ----------
@@ -210,19 +215,13 @@ class EWAmihudIlliquidity(BaseDescriptor):
         result = np.empty((n_observations, n_assets), dtype=float)
 
         for t in range(n_observations):
-            valid = np.isfinite(raw_illiquidity[t])
-
-            if np.any(valid):
-                self._n_valid[valid] += 1
-                self._ewma[valid] = (
-                    self._decay * self._ewma[valid]
-                    + (1 - self._decay) * raw_illiquidity[t][valid]
-                )
-
-            result[t] = np.where(self._n_valid >= self._min_periods, self._ewma, np.nan)
-
-        # Mask for inactive assets
-        result = np.where(X.active_mask, result, np.nan)
+            active_mask = X.active_mask[t]
+            self._mean.reset(inactive_mask=~active_mask)
+            self._mean.update(
+                values=raw_illiquidity[t],
+                valid_mask=active_mask & np.isfinite(raw_illiquidity[t]),
+            )
+            result[t] = self._mean.mean(min_periods=self._min_periods)
 
         self.illiquidity_ = result[-1].copy() if n_observations > 1 else result[-1]
 
@@ -241,14 +240,11 @@ class EWAmihudIlliquidity(BaseDescriptor):
 
     def _initialize(self) -> None:
         """Initialize states."""
-        n_assets = self.n_assets_
-
-        self._decay = half_life_to_decay_factor(self.half_life)
-
         if self.min_periods is None:
             self._min_periods = max(1, int(np.ceil(self.half_life)))
         else:
             self._min_periods = int(self.min_periods)
 
-        self._ewma = np.zeros(n_assets, dtype=float)
-        self._n_valid = np.zeros(n_assets, dtype=int)
+        self._mean = _EWMean(
+            n_assets=self.n_assets_, decay=half_life_to_decay_factor(self.half_life)
+        )

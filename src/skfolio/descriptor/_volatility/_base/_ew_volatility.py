@@ -12,6 +12,7 @@ import numpy as np
 
 from skfolio.containers import AssetPanel
 from skfolio.descriptor._base import BaseDescriptor
+from skfolio.descriptor._utils import _EWMean
 from skfolio.typing import FloatArray
 from skfolio.utils.tools import (
     _validate_positive_integer,
@@ -131,36 +132,23 @@ class _BaseEWVolatility(BaseDescriptor):
 
         returns = X["returns"]
 
-        result = np.full((n_observations, n_assets), np.nan, dtype=float)
+        result = np.empty((n_observations, n_assets), dtype=float)
 
         for t in range(n_observations):
             returns_t = returns[t]
-            active_assets = X.active_mask[t]
-            valid_returns = active_assets & np.isfinite(returns_t)
+            active_mask = X.active_mask[t]
+            self._variance.reset(inactive_mask=~active_mask)
 
-            newly_inactive = self._is_active & ~active_assets
-            if np.any(newly_inactive):
-                self._var[newly_inactive] = 0.0
-                self._n_valid_assets[newly_inactive] = 0
-            self._is_active[:] = active_assets
-
-            if self._downside:
+            if self.min_acceptable_return is not None:
                 contribution = np.minimum(returns_t - self.min_acceptable_return, 0.0)
             else:
                 contribution = returns_t
 
-            self._n_valid_assets[valid_returns] += 1
-            self._var[valid_returns] = (
-                self._decay * self._var[valid_returns]
-                + (1 - self._decay) * contribution[valid_returns] ** 2
+            self._variance.update(
+                values=contribution**2,
+                valid_mask=active_mask & np.isfinite(returns_t),
             )
-
-            ready = self._n_valid_assets >= self._min_periods
-            result_t = result[t]
-
-            if np.any(ready):
-                weight_sum = 1.0 - self._decay ** self._n_valid_assets[ready]
-                result_t[ready] = np.sqrt(self._var[ready] / weight_sum)
+            result[t] = np.sqrt(self._variance.mean(min_periods=self._min_periods))
 
         self.volatility_ = result[-1].copy() if n_observations > 1 else result[-1]
 
@@ -179,16 +167,11 @@ class _BaseEWVolatility(BaseDescriptor):
 
     def _initialize(self) -> None:
         """Initialize states."""
-        n_assets = self.n_assets_
-
-        self._decay = half_life_to_decay_factor(self.half_life)
-        self._downside = self.min_acceptable_return is not None
-
         if self.min_periods is None:
             self._min_periods = max(1, int(np.ceil(self.half_life)))
         else:
             self._min_periods = int(self.min_periods)
 
-        self._var = np.zeros(n_assets, dtype=float)
-        self._n_valid_assets = np.zeros(n_assets, dtype=int)
-        self._is_active = np.ones(n_assets, dtype=bool)
+        self._variance = _EWMean(
+            n_assets=self.n_assets_, decay=half_life_to_decay_factor(self.half_life)
+        )

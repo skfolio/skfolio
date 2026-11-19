@@ -13,6 +13,7 @@ import numpy as np
 from skfolio.containers import AssetPanel
 from skfolio.descriptor._base import BaseDescriptor
 from skfolio.descriptor._utils import (
+    _EWMean,
     _EWRegression,
     _warn_deprecated_eps,
 )
@@ -163,14 +164,13 @@ class _BaseEWResidualVolatility(BaseDescriptor):
             estimation_mask=X.estimation_mask,
         )
 
-        result = np.full((n_observations, n_assets), np.nan, dtype=float)
+        result = np.empty((n_observations, n_assets), dtype=float)
 
         for t in range(n_observations):
             active_mask = X.active_mask[t]
             inactive_mask = ~active_mask
-            self._regression.reset(inactive_mask)
-            self._var_residual[inactive_mask] = 0
-            self._n_residuals[inactive_mask] = 0
+            self._regression.reset(inactive_mask=inactive_mask)
+            self._variance.reset(inactive_mask=inactive_mask)
 
             valid_mask = active_mask & np.isfinite(asset_returns[t])
             returns = np.vstack(
@@ -179,34 +179,23 @@ class _BaseEWResidualVolatility(BaseDescriptor):
             self._regression.update(returns=returns, valid_mask=valid_mask)
             beta = self._regression.beta(min_periods=_MIN_BETA_OBSERVATIONS)
             has_beta = np.isfinite(beta)
-            valid_residuals = valid_mask & has_beta
 
             # Use the updated beta and retain the intercept in the residual.
-            residual = (
-                asset_returns[t, valid_residuals]
-                - beta[valid_residuals] * market_returns[t]
-            )
+            residual = asset_returns[t] - beta * market_returns[t]
             if self.min_acceptable_return is not None:
                 residual = np.minimum(residual - self.min_acceptable_return, 0.0)
 
-            self._var_residual[valid_residuals] = (
-                self._vol_decay * self._var_residual[valid_residuals]
-                + (1 - self._vol_decay) * residual**2
-            )
-            self._n_residuals[valid_residuals] += 1
+            self._variance.update(values=residual**2, valid_mask=valid_mask & has_beta)
 
             # Squaring finite residuals can overflow and invalidate later volatility.
-            if not np.isfinite(self._var_residual).all():
+            if not np.isfinite(self._variance.weighted_sum).all():
                 raise ValueError(
                     "Non-finite EW residual moments. Rescale the input returns."
                 )
 
             # An unresolved beta suppresses output but preserves residual history.
-            ready = has_beta & (self._n_residuals >= self._min_periods)
-            result[t, ready] = np.sqrt(
-                self._var_residual[ready]
-                / (1 - self._vol_decay ** self._n_residuals[ready])
-            )
+            result[t] = np.sqrt(self._variance.mean(min_periods=self._min_periods))
+            result[t, ~has_beta] = np.nan
 
         self.residual_volatility_ = (
             result[-1].copy() if n_observations > 1 else result[-1]
@@ -231,11 +220,6 @@ class _BaseEWResidualVolatility(BaseDescriptor):
         """Initialize states."""
         n_assets = self.n_assets_
 
-        # Separate decay factors for beta and volatility
-        beta_decay = half_life_to_decay_factor(self.beta_half_life)
-        self._vol_decay = half_life_to_decay_factor(self.half_life)
-        self._regression = _EWRegression(n_assets=n_assets, decay=beta_decay)
-
         if self.min_periods is None:
             self._min_periods = max(
                 1, int(np.ceil(max(self.half_life, self.beta_half_life)))
@@ -243,5 +227,10 @@ class _BaseEWResidualVolatility(BaseDescriptor):
         else:
             self._min_periods = int(self.min_periods)
 
-        self._var_residual = np.zeros(n_assets)
-        self._n_residuals = np.zeros(n_assets, dtype=int)
+        # Separate decay factors for beta and volatility
+        self._regression = _EWRegression(
+            n_assets=n_assets, decay=half_life_to_decay_factor(self.beta_half_life)
+        )
+        self._variance = _EWMean(
+            n_assets=n_assets, decay=half_life_to_decay_factor(self.half_life)
+        )
