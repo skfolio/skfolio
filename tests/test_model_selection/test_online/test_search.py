@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 import pytest
 from sklearn import config_context
 from sklearn.exceptions import NotFittedError, UnsetMetadataPassedError
@@ -40,6 +41,220 @@ def _make_online_estimator(**kwargs):
 
 WARMUP = 400
 TEST_SIZE = 200
+
+
+def _single_candidate_search(search_cls, estimator, **kwargs):
+    """Use the same candidate for both online search implementations."""
+    search_params = (
+        {"param_grid": {}}
+        if search_cls is OnlineGridSearch
+        else {"param_distributions": {}, "n_iter": 1, "random_state": 0}
+    )
+    return search_cls(estimator, **search_params, error_score="raise", **kwargs)
+
+
+def _mean_squared_error(estimator, rows):
+    """Score a mean estimate before its next online update."""
+    return -float(np.mean((rows - estimator.mu_) ** 2))
+
+
+@pytest.mark.parametrize("search_cls", [OnlineGridSearch, OnlineRandomizedSearch])
+@pytest.mark.parametrize(
+    (
+        "n_observations",
+        "warmup_size",
+        "test_size",
+        "purged_size",
+        "reduce_test",
+        "freq",
+    ),
+    [
+        (25, 8, 5, 0, False, None),
+        (27, 8, 5, 2, False, None),
+        (23, 8, 5, 0, False, None),
+        (25, 8, 1, 0, False, None),
+        (25, 8, 5, 0, True, None),
+        (54, 2, 2, 0, False, "W-MON"),
+    ],
+    ids=["trailing", "purged-trailing", "aligned", "one-period", "reduced", "weekly"],
+)
+def test_online_search_final_state(
+    search_cls, n_observations, warmup_size, test_size, purged_size, reduce_test, freq
+):
+    """Final training includes unscored rows without changing evaluation policy."""
+    X = np.column_stack(
+        [
+            np.linspace(-0.02, 0.03, n_observations),
+            np.linspace(0.01, -0.01, n_observations),
+        ]
+    )
+    X[-2:] += [0.15, -0.08]
+    if freq is not None:
+        # Start on a calendar boundary so no initial observations are excluded.
+        X = pd.DataFrame(X, index=pd.bdate_range("2024-01-01", periods=n_observations))
+    kwargs = dict(
+        warmup_size=warmup_size,
+        test_size=test_size,
+        purged_size=purged_size,
+        reduce_test=reduce_test,
+        freq=freq,
+        scoring=_mean_squared_error,
+    )
+    search = _single_candidate_search(
+        search_cls, EWMu(half_life=4, min_observations=2), **kwargs
+    ).fit(X)
+
+    # Bias-corrected EW means are normalized scalar geometric sums, independent
+    # of both the estimator recurrence and the walk-forward split construction.
+    decay = 0.5**0.25
+    weights = [decay ** (n_observations - 1 - i) for i in range(n_observations)]
+    expected = [
+        sum(w * float(row[j]) for w, row in zip(weights, np.asarray(X), strict=True))
+        / sum(weights)
+        for j in range(2)
+    ]
+    np.testing.assert_allclose(
+        search.best_estimator_.mu_, expected, rtol=1e-12, atol=1e-15
+    )
+
+    no_refit = _single_candidate_search(
+        search_cls, EWMu(half_life=4, min_observations=2), refit=False, **kwargs
+    ).fit(X)
+    assert not hasattr(no_refit, "best_estimator_")
+    np.testing.assert_array_equal(
+        no_refit.cv_results_["mean_score"], search.cv_results_["mean_score"]
+    )
+
+
+@pytest.mark.parametrize("search_cls", [OnlineGridSearch, OnlineRandomizedSearch])
+def test_online_search_trailing_metadata(search_cls):
+    """The final update slices aliased observation metadata with labeled returns."""
+    X = pd.DataFrame(
+        {"A": np.linspace(-0.02, 0.03, 25), "B": np.linspace(0.01, -0.01, 25)},
+        index=pd.bdate_range("2024-01-01", periods=25),
+    )
+    active = pd.DataFrame(True, index=X.index, columns=X.columns)
+    active.iloc[-1, 0] = False
+    original_X, original_active = X.copy(deep=True), active.copy(deep=True)
+    with config_context(enable_metadata_routing=True):
+        estimator = EWMu(half_life=4, min_observations=2).set_partial_fit_request(
+            active_mask="activity"
+        )
+        search = _single_candidate_search(
+            search_cls,
+            estimator,
+            warmup_size=8,
+            test_size=5,
+            scoring=_mean_squared_error,
+        ).fit(X, activity=active)
+
+    assert np.isnan(search.best_estimator_.mu_[0])
+    weights = [0.5 ** ((24 - i) / 4) for i in range(25)]
+    expected_b = sum(w * value for w, value in zip(weights, X["B"], strict=True)) / sum(
+        weights
+    )
+    np.testing.assert_allclose(
+        search.best_estimator_.mu_[1], expected_b, rtol=1e-12, atol=1e-15
+    )
+    np.testing.assert_array_equal(search.best_estimator_.feature_names_in_, ["A", "B"])
+    pd.testing.assert_frame_equal(X, original_X)
+    pd.testing.assert_frame_equal(active, original_active)
+
+
+@pytest.mark.parametrize("search_cls", [OnlineGridSearch, OnlineRandomizedSearch])
+@pytest.mark.parametrize("weight_drift", [False, True])
+def test_online_search_trailing_returns_and_predictions(search_cls, weight_drift):
+    """Tail data changes the next allocation, preserving the scored backtest."""
+    t = np.arange(32)
+    calm = pd.DataFrame(
+        {"A": 0.01 * np.sin(t * 1.3), "B": 0.012 * np.cos(t * 0.7)},
+        index=pd.bdate_range("2024-01-01", periods=32),
+    )
+    X = calm.copy()
+    X.iloc[-4:] = [[0.15, 0.01], [-0.12, -0.01], [0.18, 0.005], [-0.1, -0.005]]
+    model = MeanRisk(
+        prior_estimator=EmpiricalPrior(
+            mu_estimator=EWMu(half_life=4, min_observations=2),
+            covariance_estimator=EWCovariance(
+                half_life=4, min_observations=2, assume_centered=True, nearest=False
+            ),
+        )
+    )
+    kwargs = dict(
+        warmup_size=8,
+        test_size=5,
+        scoring=PerfMeasure.MEAN,
+        return_predictions=True,
+        portfolio_params={"weight_drift": weight_drift, "compounded": True},
+    )
+    baseline = _single_candidate_search(search_cls, model, **kwargs).fit(calm)
+    search = _single_candidate_search(search_cls, model, **kwargs).fit(X)
+
+    # Independent centered EW second moments and the closed-form fully invested,
+    # long-only two-asset minimum-variance allocation.
+    weights = [0.5 ** ((31 - i) / 4) for i in range(32)]
+    values = X.to_numpy()
+    covariance = np.array(
+        [
+            [
+                sum(
+                    w * float(row[j]) * float(row[k])
+                    for w, row in zip(weights, values, strict=True)
+                )
+                / sum(weights)
+                for k in range(2)
+            ]
+            for j in range(2)
+        ]
+    )
+    weight_a = np.clip(
+        (covariance[1, 1] - covariance[0, 1])
+        / (covariance[0, 0] + covariance[1, 1] - 2 * covariance[0, 1]),
+        0,
+        1,
+    )
+    expected_weights = np.array([weight_a, 1 - weight_a])
+    fitted = search.best_estimator_
+    np.testing.assert_allclose(
+        fitted.prior_estimator_.return_distribution_.covariance,
+        covariance,
+        rtol=1e-12,
+        atol=1e-15,
+    )
+    np.testing.assert_allclose(fitted.weights_, expected_weights, rtol=0, atol=2e-5)
+    assert not np.allclose(
+        baseline.best_estimator_.weights_, fitted.weights_, atol=2e-5
+    )
+    for key in ["mean_score", "rank"]:
+        np.testing.assert_array_equal(
+            search.cv_results_[key], baseline.cv_results_[key]
+        )
+    prediction = search.cv_results_["predictions"][0]
+    original_prediction = baseline.cv_results_["predictions"][0]
+    assert prediction.n_observations == 20
+    np.testing.assert_array_equal(prediction.returns, original_prediction.returns)
+    np.testing.assert_array_equal(prediction.observations, X.index[8:28])
+    for portfolio, original in zip(prediction, original_prediction, strict=True):
+        np.testing.assert_array_equal(portfolio.weights, original.weights)
+
+    if weight_drift:
+        # The last scored portfolio supplies holdings; consuming the suffix does
+        # not add an unscored rebalance or replace its independently drifted state.
+        expected_holdings = prediction[-1].weights * np.prod(1 + values[23:28], axis=0)
+        expected_holdings /= expected_holdings.sum()
+        np.testing.assert_allclose(
+            [fitted.previous_weights[name] for name in X.columns],
+            expected_holdings,
+            rtol=1e-12,
+            atol=1e-15,
+        )
+    else:
+        assert fitted.previous_weights is None
+
+    future = pd.DataFrame([[0.03, -0.01], [-0.02, 0.02]], columns=X.columns)
+    np.testing.assert_allclose(
+        search.predict(future).returns, future.to_numpy() @ expected_weights, atol=1e-6
+    )
 
 
 def _make_inactive_block(X, start: int, stop: int, assets: tuple[int, ...] = (0, 1)):

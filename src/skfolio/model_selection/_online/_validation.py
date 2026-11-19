@@ -649,9 +649,10 @@ def _online_walk_forward(
         Whether to keep the final partial test window.
 
     refit_last : bool, default=False
-        If `True`, perform a final `partial_fit` on the last test window
-        after yielding it. Used by :class:`OnlineGridSearch` so that the
-        best estimator is fully trained on all available data.
+        If `True`, perform a final `partial_fit` through the end of the input
+        after yielding the last test window, including any unscored trailing
+        observations. Used by the online searches to train the best estimator
+        on all available data.
 
     Yields
     ------
@@ -718,7 +719,7 @@ def _online_walk_forward(
                 X,
                 y,
                 fit_params=routed_params.estimator_params,
-                indices=slice(last_train_end, last_test_slice.stop),
+                indices=slice(last_train_end, None),
                 method="partial_fit",
             )
 
