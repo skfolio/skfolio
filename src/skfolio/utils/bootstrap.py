@@ -3,14 +3,14 @@
 # Copyright (c) 2023-2026
 # Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
-# Implementation derived from:
+# Some implementations derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 
 from __future__ import annotations
 
 import numpy as np
 
-from skfolio.typing import FloatArray
+from skfolio.typing import ArrayLike, FloatArray, IntArray
 
 __all__ = ["stationary_bootstrap"]
 
@@ -70,7 +70,7 @@ def optimal_block_size(x: FloatArray) -> float:
 
 
 def stationary_bootstrap(
-    returns: FloatArray,
+    returns: ArrayLike,
     n_bootstrap_samples: int,
     block_size: float | None = None,
     seed: int | None = None,
@@ -80,7 +80,7 @@ def stationary_bootstrap(
 
     Parameters
     ----------
-    returns: ndarray of shape (n_observations, n_assets)
+    returns: array-like of shape (n_observations, n_assets)
         The returns array.
 
     n_bootstrap_samples: int
@@ -96,25 +96,70 @@ def stationary_bootstrap(
 
     Returns
     -------
-    value: ndarray
-           The sample returns of shape (reps, nb observations, nb assets)
+    samples : ndarray of shape (n_bootstrap_samples, n_observations, n_assets)
+        The resampled returns.
 
+    Notes
+    -----
+    All samples are allocated in memory. The output contains
+    `n_bootstrap_samples * n_observations * n_assets` values.
+    """
+    returns = np.asarray(returns)
+    indices = _stationary_bootstrap_indices(
+        returns, n_bootstrap_samples, block_size, seed
+    )
+    return returns[indices]
+
+
+def _stationary_bootstrap_indices(
+    returns: FloatArray,
+    n_bootstrap_samples: int,
+    block_size: float | None,
+    seed: int | None,
+) -> IntArray:
+    """Generate stationary bootstrap indices into the original returns array.
+
+    Parameters
+    ----------
+    returns : ndarray of shape (n_observations, n_assets)
+        Asset returns. Used to determine the number of observations and, when
+        `block_size` is None, to estimate the block size.
+
+    n_bootstrap_samples : int
+        Number of bootstrap samples to generate. Each sample contains `n_observations`
+        observations.
+
+    block_size : float or None
+        Expected number of consecutive observations in a block. If None, use the median
+        of the optimal block sizes estimated for each asset with the Politis & White
+        algorithm.
+
+    seed : int or None
+        Seed for the local pseudo-random number generator. If None, initialize the
+        generator without a fixed seed.
+
+    Returns
+    -------
+    indices : ndarray of shape (n_bootstrap_samples, n_observations)
+        Integer row indices in the range `[0, n_observations)`. Each row defines one
+        bootstrap sample, with the same observation indices used for all assets. The
+        corresponding sample is `returns[indices[i]]`.
     """
     rng = np.random.RandomState(seed=seed)
     n_observations, n_assets = returns.shape
-    x = np.vstack((returns, returns))
-    # Loop over reps bootstraps
     if block_size is None:
         block_size = np.median(
             [optimal_block_size(returns[:, i]) for i in range(n_assets)]
         )
 
     indices = rng.randint(n_observations, size=(n_bootstrap_samples, n_observations))
-    cond = rng.rand(n_bootstrap_samples, n_observations) >= 1.0 / block_size
-    # TODO: don't use loop
-    for i in range(n_bootstrap_samples):
-        for j in range(1, n_observations):
-            if cond[i, j]:
-                indices[i, j] = indices[i, j - 1] + 1
-    indices[indices > 2 * n_observations] = 0
-    return x[indices, :]
+    continue_block = rng.rand(n_bootstrap_samples, n_observations) >= 1.0 / block_size
+    # Continue the block at the next observation, or restart at a random one.
+    for observation in range(1, n_observations):
+        indices[:, observation] = np.where(
+            continue_block[:, observation],
+            indices[:, observation - 1] + 1,
+            indices[:, observation],
+        )
+    indices %= n_observations
+    return indices

@@ -724,7 +724,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             Result of calling the custom function.
         """
         try:
-            func_code = func.__code__  # ty: ignore[unresolved-attribute]
+            func_code = func.__code__  # ty: ignore[missing-attribute]
         except AttributeError as err:
             raise ValueError("Custom functions is invalid") from err
 

@@ -824,7 +824,7 @@ class EntropyPooling(BasePrior):
                     / np.sqrt(self._covariance[i, i] * self._covariance[j, j])
                     * expression["multiplier"]
                 )
-                corr_view = np.clip(corr_view, 0 + 1e-8, 1 - 1e-8)
+                corr_view = np.clip(corr_view, -1 + 1e-8, 1 - 1e-8)
             views.append(
                 (
                     (asset_to_index[a] for a in res["assets"]),
@@ -835,8 +835,8 @@ class EntropyPooling(BasePrior):
 
         fix = np.zeros(n_assets, dtype=bool)
         for (i, j), op, corr_view in views:
-            if not 0 <= corr_view <= 1:
-                raise ValueError("Correlation views must be between 0 and 1.")
+            if not -1 <= corr_view <= 1:
+                raise ValueError("Correlation views must be between -1 and 1.")
             ai = self._returns[:, i] * self._returns[:, j]
             bi = mean[i] * mean[j] + corr_view * np.sqrt(variance[i] * variance[j])
             sign = 1 if op in [operator.eq, operator.lt, operator.le] else -1

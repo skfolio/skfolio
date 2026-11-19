@@ -2,6 +2,146 @@
 
 <!-- version list -->
 
+## v1.13.0 (2026-11-17)
+
+### Bug Fixes
+
+- **containers**: Preserve timezones in observation dates
+  ([#492](https://github.com/skfolio/skfolio/pull/492),
+  [`8c76976`](https://github.com/skfolio/skfolio/commit/8c769762e5db6acb81057fc747e961ba539f919e))
+
+### Features
+
+- **distance**: Add graph distances and point-in-time graph containers
+  ([#489](https://github.com/skfolio/skfolio/pull/489),
+  [`28b8efc`](https://github.com/skfolio/skfolio/commit/28b8efcab125f8fab35d9166e45e238b82f502cf))
+
+- **portfolio**: Add graph dependency exposure ([#490](https://github.com/skfolio/skfolio/pull/490),
+  [`ac9720c`](https://github.com/skfolio/skfolio/commit/ac9720c17d9de675760f48b1917f44ad4376b83f))
+
+
+## v1.12.17 (2026-11-16)
+
+### Bug Fixes
+
+- **descriptor**: Correct EW betas, shrinkage, macro sensitivity and residual volatility for late
+  listings and missing returns ([#507](https://github.com/skfolio/skfolio/pull/507),
+  [`25d861b`](https://github.com/skfolio/skfolio/commit/25d861b9d1b7c5016a58cb3826571627b6399be3))
+
+### Additional Release Information
+
+- **descriptor**: The eps parameter in the affected EW descriptors is deprecated and ignored. It
+  will be removed in version 2.0.
+
+- The affected EW descriptors now reset their history when active_mask=False and return NaN when the
+  required sensitivity cannot be estimated. Residual volatility starts accumulating residuals from
+  the tenth observation used to estimate beta.
+
+
+## v1.12.16 (2026-11-14)
+
+### Bug Fixes
+
+- **containers**: Preserve fields on fill preparation errors
+  ([#482](https://github.com/skfolio/skfolio/pull/482),
+  [`869ed25`](https://github.com/skfolio/skfolio/commit/869ed25c7fcce10bf40f2c9db1d5d84114e46e1f))
+
+
+## v1.12.15 (2026-11-14)
+
+### Bug Fixes
+
+- **portfolio**: Preserve failed-period observation weights
+  ([#477](https://github.com/skfolio/skfolio/pull/477),
+  [`e933790`](https://github.com/skfolio/skfolio/commit/e933790a4bedebbfc0ea26ca66da5dc17ccf33d7))
+
+
+## v1.12.14 (2026-11-14)
+
+### Bug Fixes
+
+- **pre_selection**: Preserve a single asset in DropCorrelated
+  ([#505](https://github.com/skfolio/skfolio/pull/505),
+  [`d778017`](https://github.com/skfolio/skfolio/commit/d778017f511745d9d6661ea7cc5a184f5f5b28e0))
+
+
+## v1.12.13 (2026-11-14)
+
+### Bug Fixes
+
+- **preprocessing**: Keep mid-series NaN in prices_to_returns when fill_nan=False
+  ([#506](https://github.com/skfolio/skfolio/pull/506),
+  [`9d6720a`](https://github.com/skfolio/skfolio/commit/9d6720a255010fd4c908feac1cf44d1c852cba14))
+
+
+## v1.12.12 (2026-11-13)
+
+### Bug Fixes
+
+- **portfolio**: Preserve zero exposure for Portfolio with no invested assets
+  ([#473](https://github.com/skfolio/skfolio/pull/473),
+  [`e819b26`](https://github.com/skfolio/skfolio/commit/e819b26d12e4514e60077d6a1e94c622d0cd7a35))
+
+
+## v1.12.11 (2026-11-13)
+
+### Bug Fixes
+
+- **utils**: Keep deduplicated names unique when a suffixed name already exists
+  ([#466](https://github.com/skfolio/skfolio/pull/466),
+  [`1e76be8`](https://github.com/skfolio/skfolio/commit/1e76be8d1da17ebbc8aa271c7e5bc57ecda14476))
+
+
+## v1.12.10 (2026-11-12)
+
+### Chores
+
+- Pin ty and align local and CI type checks ([#503](https://github.com/skfolio/skfolio/pull/503),
+  [`9ab9b6d`](https://github.com/skfolio/skfolio/commit/9ab9b6d11aa3ca5106c37995a70e2d7ba072ce89))
+
+### Performance Improvements
+
+- **uncertainty-set**: Avoid materializing bootstrap sample cubes
+  ([#461](https://github.com/skfolio/skfolio/pull/461),
+  [`6cfacc0`](https://github.com/skfolio/skfolio/commit/6cfacc002bb5c463a9ccd47eb98927febb832656))
+
+
+## v1.12.9 (2026-11-10)
+
+### Bug Fixes
+
+- **prior**: Allow negative correlation views in EntropyPooling
+  ([#496](https://github.com/skfolio/skfolio/pull/496),
+  [`b12794e`](https://github.com/skfolio/skfolio/commit/b12794eb3c1c68ea1f2f0b17e007ce0d8304e4c1))
+
+- **prior**: Cast BlackLitterman view_confidences to float without mutating them
+  ([#495](https://github.com/skfolio/skfolio/pull/495),
+  [`7c62a6b`](https://github.com/skfolio/skfolio/commit/7c62a6b4c87b378f989ca2793ee0180cc9c3bd64))
+
+### Continuous Integration
+
+- Update type-check rules for ty 0.0.100 ([#500](https://github.com/skfolio/skfolio/pull/500),
+  [`4eb2a82`](https://github.com/skfolio/skfolio/commit/4eb2a82ce2799118cf9ed4ad68fbe7922974227b))
+
+
+## v1.12.8 (2026-11-08)
+
+### Bug Fixes
+
+- **measures**: Compute evar and edar per column for 2D inputs
+  ([#471](https://github.com/skfolio/skfolio/pull/471),
+  [`3eded63`](https://github.com/skfolio/skfolio/commit/3eded6381c8b6b2aabb7d8bd88706c42d7391f44))
+
+### Documentation
+
+- Keep code and tables when stripping Plotly figures from llms Markdown
+  ([#494](https://github.com/skfolio/skfolio/pull/494),
+  [`08ad80c`](https://github.com/skfolio/skfolio/commit/08ad80c64c2f46c7e56d11ec8c9d1dae7fe3f2fc))
+
+- **readme**: Cite the published skfolio paper ([#493](https://github.com/skfolio/skfolio/pull/493),
+  [`aa14348`](https://github.com/skfolio/skfolio/commit/aa1434826a38f25231d30f8ab190a05e1596fb76))
+
+
 ## v1.12.7 (2026-11-06)
 
 ### Bug Fixes

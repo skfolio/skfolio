@@ -73,7 +73,7 @@ class NestedClustersOptimization(BaseOptimization):
     distance_estimator : BaseDistance, optional
         :ref:`Distance estimator <distance>`.
         The distance estimator is used to estimate the codependence and the distance
-        matrix needed for the computation of the linkage matrix.
+        matrix used by the clustering estimator.
         The default (`None`) is to use :class:`~skfolio.distance.PearsonDistance`.
 
     clustering_estimator : BaseEstimator, optional

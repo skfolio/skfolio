@@ -6,8 +6,7 @@ import numpy as np
 import pytest
 
 from skfolio.descriptor import EWDownsideBeta
-from skfolio.utils.stats import _market_returns
-from skfolio.utils.tools import half_life_to_decay_factor
+from tests.test_descriptor._ew_reference import downside_path
 
 
 class TestEWDownsideBeta:
@@ -48,56 +47,14 @@ class TestEWDownsideBeta:
         assert d.min_periods is None
 
     def test_lpm_formula(self, simple_panel):
-        """LPM co-moment beta matches manual computation."""
-        half_life = 5
-        decay = half_life_to_decay_factor(half_life)
-        eps = 1e-12
-        mar = 0.0
+        result = EWDownsideBeta(half_life=5, min_periods=1).fit_transform(simple_panel)
+        expected = downside_path(simple_panel, 5, 1)
+        np.testing.assert_allclose(result, expected, rtol=1e-13, equal_nan=True)
 
-        result = EWDownsideBeta(
-            half_life=half_life,
-            min_acceptable_return=mar,
-            min_periods=1,
-            eps=eps,
-        ).fit_transform(simple_panel)
-
-        returns = simple_panel["returns"]
-        market_rets = _market_returns(
-            asset_returns=returns,
-            weights=simple_panel["market_cap"],
-            estimation_mask=simple_panel.estimation_mask,
-        )
-        n_obs, n_assets = returns.shape
-
-        var_down_market = 0.0
-        cov_down = np.zeros(n_assets)
-
-        for t in range(n_obs):
-            r_m = market_rets[t]
-            r_i = returns[t]
-
-            d_m = min(r_m - mar, 0.0)
-            d_i = np.minimum(r_i - mar, 0.0)
-
-            var_down_market = decay * var_down_market + (1 - decay) * d_m * d_m
-            cov_down = decay * cov_down + (1 - decay) * d_i * d_m
-
-            expected = cov_down / (var_down_market + eps)
-            np.testing.assert_array_almost_equal(result[t], expected)
-
-    def test_all_positive_returns_gives_zero_beta(self, simple_panel):
-        """When all returns are above threshold, downside beta is ~0."""
-        # Make all returns positive
+    def test_all_positive_returns_is_unidentifiable(self, simple_panel):
         simple_panel["returns"][:] = np.abs(simple_panel["returns"]) + 0.01
-
-        result = EWDownsideBeta(
-            half_life=5, min_acceptable_return=0.0, min_periods=1
-        ).fit_transform(simple_panel)
-
-        # All D_i and D_m are zero → cov_down and var_down_market are zero
-        # beta = 0 / (0 + eps) ≈ 0
-        valid = ~np.isnan(result)
-        np.testing.assert_array_almost_equal(result[valid], 0.0)
+        result = EWDownsideBeta(half_life=5, min_periods=1).fit_transform(simple_panel)
+        assert np.isnan(result).all()
 
     def test_downside_beta_geq_zero(self, simple_panel):
         """Downside beta is non-negative (D_i and D_m have same sign)."""
@@ -114,7 +71,7 @@ class TestEWDownsideBeta:
             simple_panel
         )
         result_neg = EWDownsideBeta(
-            min_acceptable_return=-0.05, **kwargs
+            min_acceptable_return=-0.005, **kwargs
         ).fit_transform(simple_panel)
 
         # With a more negative threshold, fewer observations trigger downside,
@@ -197,24 +154,8 @@ class TestEWDownsideBeta:
 
         result = EWDownsideBeta(half_life=5, min_periods=1).fit_transform(simple_panel)
 
-        returns = simple_panel["returns"]
-        market_rets = _market_returns(
-            asset_returns=returns,
-            weights=simple_panel["market_cap"],
-            estimation_mask=mask,
-        )
-        decay = half_life_to_decay_factor(5)
-        var_down_market = 0.0
-        cov_down = np.zeros(returns.shape[1])
-
-        for t in range(returns.shape[0]):
-            d_m = min(market_rets[t], 0.0)
-            d_i = np.minimum(returns[t], 0.0)
-            var_down_market = decay * var_down_market + (1 - decay) * d_m * d_m
-            cov_down = decay * cov_down + (1 - decay) * d_i * d_m
-
-            expected = cov_down / (var_down_market + 1e-12)
-            np.testing.assert_array_almost_equal(result[t], expected)
+        expected = downside_path(simple_panel, 5, 1)
+        np.testing.assert_allclose(result, expected, rtol=1e-13, equal_nan=True)
 
     def test_raises_on_undefined_market_return(self, simple_panel):
         """Raises when no estimable asset can define the market return."""
@@ -240,7 +181,9 @@ class TestEWDownsideBeta:
     def test_fractional_half_life_default_min_periods_at_least_one(self, simple_panel):
         """Default min_periods is at least one for fractional half-lives."""
         result = EWDownsideBeta(half_life=0.5).fit_transform(simple_panel)
-        assert not np.any(np.isnan(result[0]))
+        np.testing.assert_allclose(
+            result, downside_path(simple_panel, 0.5, 1), equal_nan=True
+        )
 
     def test_higher_half_life_smoother(self, simple_panel):
         """Higher half_life produces smoother output."""

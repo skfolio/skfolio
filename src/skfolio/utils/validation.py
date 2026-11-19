@@ -492,16 +492,16 @@ def _is_observation_container(value: object) -> bool:
     Returns
     -------
     bool
-        True for AssetPanel and AssetPanelView instances.
+        True for AssetPanel, AssetPanelView and GraphSeries instances.
     """
     # Keep this import local: `skfolio.containers` imports `skfolio.utils.tools`.
-    from skfolio.containers import AssetPanel, AssetPanelView
+    from skfolio.containers import AssetPanel, AssetPanelView, GraphSeries
 
-    return isinstance(value, (AssetPanel, AssetPanelView))
+    return isinstance(value, (AssetPanel, AssetPanelView, GraphSeries))
 
 
 def _check_observation_counts(X: ArrayLike, metadata: Mapping[str, object]) -> None:
-    """Check observation counts of panels in metadata.
+    """Check observation counts of panels and graph series in metadata.
 
     Parameters
     ----------
@@ -510,19 +510,21 @@ def _check_observation_counts(X: ArrayLike, metadata: Mapping[str, object]) -> N
         used.
 
     metadata : mapping of str to object
-        Fit metadata keyed by argument name. AssetPanel and AssetPanelView values must
-        have the same number of observations as `X`. Other values are ignored.
+        Fit metadata keyed by argument name. AssetPanel, AssetPanelView and GraphSeries
+        values must have the same number of observations as `X`. Other values are
+        ignored.
 
     Returns
     -------
     None
-        Returns normally when all panels match the number of observations in `X`.
+        Returns normally when all panels and graph series match the number of
+        observations in `X`.
 
     Raises
     ------
     ValueError
-        If a panel has a different number of observations from `X`. The error message
-        identifies the metadata argument.
+        If a panel or graph series has a different number of observations from `X`. The
+        error message identifies the metadata argument.
     """
     for name, value in metadata.items():
         if _is_observation_container(value):

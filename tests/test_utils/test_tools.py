@@ -362,6 +362,12 @@ def test_deduplicate_names():
     names = ["blah", "blah2", "blah3", "blah", "blah"]
     names = deduplicate_names(names)
     assert names == ["blah", "blah2", "blah3", "blah_1", "blah_2"]
+    assert deduplicate_names(["a", "a", "a_1"]) == ["a", "a_2", "a_1"]
+
+
+def test_deduplicate_names_skips_reserved_suffixes():
+    names = ["a", "a", "a_1", "a_2", "a"]
+    assert deduplicate_names(names) == ["a", "a_3", "a_1", "a_2", "a_4"]
 
 
 # Test with valid integer inputs.
@@ -557,15 +563,20 @@ class TestHalfLifeToDecayFactor:
         result = half_life_to_decay_factor(0.1)
         assert 0.0 < result < 0.1
 
-    def test_raises_error_zero_half_life(self):
-        """Test that ValueError is raised when half_life is zero."""
-        with pytest.raises(ValueError, match="must be positive"):
-            half_life_to_decay_factor(0)
+    @pytest.mark.parametrize("half_life", [0, -10, np.nan, np.inf, -np.inf, True])
+    def test_invalid_half_life(self, half_life):
+        with pytest.raises(ValueError, match="half_life must be a positive number"):
+            half_life_to_decay_factor(half_life)
 
-    def test_raises_error_negative_half_life(self):
-        """Test that ValueError is raised when half_life is negative."""
-        with pytest.raises(ValueError, match="must be positive"):
-            half_life_to_decay_factor(-10)
+    @pytest.mark.parametrize("half_life", [1e17, 1e30])
+    def test_unrepresentable_new_weight(self, half_life):
+        with pytest.raises(ValueError, match="new observation weight rounds to zero"):
+            half_life_to_decay_factor(half_life)
+
+    @pytest.mark.parametrize("half_life", [1e-10, 1e15])
+    def test_representable_new_weight(self, half_life):
+        decay = half_life_to_decay_factor(half_life)
+        assert 0 <= decay < 1
 
     def test_inverse_relationship(self):
         """Test that decay_factor from half_life can be inverted back."""

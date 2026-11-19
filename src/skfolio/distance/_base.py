@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 import sklearn.base as skb
 import sklearn.utils as sku
 
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 
 
 class BaseDistance(skb.BaseEstimator, ABC):
@@ -34,6 +34,8 @@ class BaseDistance(skb.BaseEstimator, ABC):
 
     codependence_: FloatArray
     distance_: FloatArray
+    n_features_in_: int
+    feature_names_in_: StrArray
 
     @abstractmethod
     def __init__(self) -> None: ...
@@ -46,7 +48,8 @@ class BaseDistance(skb.BaseEstimator, ABC):
         ----------
         X : array-like of shape (n_observations, n_assets) or (n_assets, n_assets)
             Price returns of the assets, or a covariance matrix when
-            `requires_covariance_input` is `True`.
+            `requires_covariance_input` is `True`. Estimators may obtain their data from
+            fit metadata and use X only to identify the assets.
 
         y : Ignored
             Not used, present for API consistency by convention.

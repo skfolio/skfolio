@@ -143,8 +143,7 @@ Unused ignore comments also fail the check.
 skfolio is a library that supports the dependency versions allowed by
 `pyproject.toml`, so `uv.lock` is not committed. CI tests this range, from the
 minimum supported versions to the latest releases, lints with the latest Ruff
-release and type checks with the latest ty release. ty is in beta, so a new ty
-release can report diagnostics on code that has not changed.
+release and type checks with the ty version pinned in the `dev` dependency group.
 
 `uv sync` keeps the versions recorded in your local `uv.lock`. If CI reports a
 failure that you cannot reproduce locally, update your environment to the latest

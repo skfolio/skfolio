@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import warnings
 from typing import Any
 
 import numpy as np
@@ -14,6 +13,11 @@ import sklearn.utils.metadata_routing as skm
 
 from skfolio.containers import AssetPanel
 from skfolio.descriptor._base import BaseDescriptor
+from skfolio.descriptor._utils import (
+    _EWRegression,
+    _ReturnAverager,
+    _warn_deprecated_eps,
+)
 from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.stats import _market_returns
 from skfolio.utils.tools import (
@@ -66,19 +70,19 @@ class EWMacroSensitivity(BaseDescriptor):
         EWMA half-life in units of aggregated periods.
 
     aggregation_period : int, default=1
-        Number of consecutive observations to aggregate before updating
-        EWMA statistics.
+        Number of consecutive observations to aggregate before updating EWMA statistics.
+        Asset, market and `reference_returns` are averaged over the same observations,
+        as described in Notes.
 
     min_periods : int, optional
-        Minimum number of market/reference observations and valid asset returns
-        required before computing macro sensitivities. Until both counts reach this
-        value, the asset's output is NaN. This warm-up period avoids exposing early
-        EWMA values before the sensitivity estimate has sufficiently converged from its
-        zero initialization. If `None`, defaults to
+        Minimum number of observations required before computing each asset's macro
+        sensitivity. With aggregation enabled, each average counts as one observation.
+        Until this count is reached, the asset's output is NaN. If `None`, defaults to
         :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
 
-    eps : float, default=1e-12
-        Small constant for numerical stability in denominators.
+    eps : float, optional
+        Deprecated and ignored. It will be removed in version 2.0.
+        Supplying a positive value emits a `FutureWarning`.
 
     Attributes
     ----------
@@ -94,15 +98,18 @@ class EWMacroSensitivity(BaseDescriptor):
     Notes
     -----
     NaNs are allowed as missing observations. Non-missing `returns` and
-    `reference_returns` values must be finite. A missing reference return freezes the
-    full EWMA state for that observation or aggregated window. Asset covariances are
-    updated only for assets with valid returns, and each asset's valid-observation count
-    controls when its output starts.
+    `reference_returns` values must be finite. Each asset's regression uses the same
+    observations for asset, market and reference returns, with `X.active_mask=True` and
+    no missing returns. Missing returns do not reset the regression. Setting
+    `X.active_mask=False` resets the regression and sets output to NaN.
 
-    Market returns are computed from the estimation universe (`estimation_mask` of
-    :class:`~skfolio.containers.AssetPanel`). If no estimable asset has both finite
-    returns and finite `market_cap` at an observation, the market return is undefined
-    and a `ValueError` is raised.
+    Too little variation in market returns or `reference_returns`, or almost perfect
+    correlation between them, produces NaN. An exactly constant market is handled by
+    regressing asset returns on `reference_returns` alone with an intercept.
+
+    Market returns are the `X["market_cap"]`-weighted average of `X["returns"]` where
+    `X.estimation_mask=True` and both fields are finite. A `ValueError` is raised if
+    these assets have no positive total market capitalization at any observation.
 
     See Also
     --------
@@ -129,7 +136,7 @@ class EWMacroSensitivity(BaseDescriptor):
         half_life: float = 60.0,
         aggregation_period: int = 1,
         min_periods: int | None = None,
-        eps: float = 1e-12,
+        eps: float | None = None,
     ) -> None:
         self.half_life = half_life
         self.aggregation_period = aggregation_period
@@ -237,8 +244,8 @@ class EWMacroSensitivity(BaseDescriptor):
 
         if reference_returns.ndim != 1:
             raise ValueError(
-                "reference_returns must be a 1D array aligned with X observations; "
-                f"got shape {reference_returns.shape}."
+                "reference_returns must be a 1D array aligned with X observations. "
+                f"Got shape {reference_returns.shape}."
             )
         if reference_returns.shape[0] != n_observations:
             raise ValueError(
@@ -262,28 +269,26 @@ class EWMacroSensitivity(BaseDescriptor):
 
         result = np.empty((n_observations, n_assets), dtype=float)
 
-        if self._aggregation_period == 1:
-            for t in range(n_observations):
-                self._update_ewma(
-                    ret_assets=asset_rets[t],
-                    ret_market=market_rets[t],
-                    ret_ref=reference_returns[t],
+        for t in range(n_observations):
+            active_mask = X.active_mask[t]
+            # Reset assets with active_mask=False even if reference_returns is NaN.
+            self._regression.reset(~active_mask)
+            self._ref_betas[~active_mask] = np.nan
+
+            returns = np.vstack(
+                (
+                    np.full(n_assets, market_rets[t]),
+                    np.full(n_assets, reference_returns[t]),
+                    asset_rets[t],
                 )
-                result[t] = self._ref_betas
-        else:
-            for i in range(n_observations):
-                self._buffer_assets[self._buffer_idx] = asset_rets[i]
-                self._buffer_market[self._buffer_idx] = market_rets[i]
-                self._buffer_ref[self._buffer_idx] = reference_returns[i]
-                self._buffer_idx += 1
+            )
+            aggregated = self._averager.update(returns=returns, active_mask=active_mask)
+            if aggregated is not None:
+                averaged_returns, valid_mask = aggregated
+                self._regression.update(returns=averaged_returns, valid_mask=valid_mask)
+                self._ref_betas = self._regression.beta(min_periods=self._min_periods)
 
-                if self._buffer_idx >= self._aggregation_period:
-                    self._update_from_buffer()
-
-                result[i] = self._ref_betas
-
-        # Mask output for inactive assets
-        result = np.where(X.active_mask, result, np.nan)
+            result[t] = self._ref_betas
 
         self.macro_sensitivity_ = (
             result[-1].copy() if n_observations > 1 else result[-1]
@@ -302,144 +307,24 @@ class EWMacroSensitivity(BaseDescriptor):
         _validate_positive_integer(self.aggregation_period, "aggregation_period")
         if self.min_periods is not None:
             _validate_positive_integer(self.min_periods, "min_periods")
-        _validate_positive_real(self.eps, "eps")
+        _warn_deprecated_eps(self.eps)
 
     def _initialize(self) -> None:
-        """Initialize EWMA state and aggregation buffers."""
-        n_assets = self.n_assets_
-        self._decay = half_life_to_decay_factor(self.half_life)
-
-        if self.min_periods is None:
-            self._min_periods = max(1, int(np.ceil(self.half_life)))
-        else:
-            self._min_periods = int(self.min_periods)
-
-        # EWMA means
-        self._mu_market = 0.0
-        self._mu_ref = 0.0
-        self._mu_assets = np.zeros(n_assets, dtype=float)
-
-        # EWMA variances and covariances
-        self._var_market = 0.0
-        self._var_ref = 0.0
-        self._cov_market_ref = 0.0
-        self._cov_assets_market = np.zeros(n_assets, dtype=float)
-        self._cov_assets_ref = np.zeros(n_assets, dtype=float)
-
-        # Count of aggregated periods processed
-        self._t = 0
-
-        # Current betas, held during incomplete aggregation windows
-        self._ref_betas = np.full(n_assets, np.nan, dtype=float)
-        self._market_betas = np.full(n_assets, np.nan, dtype=float)
-        self._n_valid_assets = np.zeros(n_assets, dtype=int)
-
-        # Aggregation buffers
-        self._aggregation_period = int(self.aggregation_period)
-        if self._aggregation_period > 1:
-            self._buffer_assets = np.empty(
-                (self._aggregation_period, n_assets), dtype=float
-            )
-            self._buffer_market = np.empty(self._aggregation_period, dtype=float)
-            self._buffer_ref = np.empty(self._aggregation_period, dtype=float)
-            self._buffer_idx = 0
-
-    def _update_ewma(
-        self, ret_assets: FloatArray, ret_market: float, ret_ref: float
-    ) -> None:
-        r"""Update EWMA statistics and compute partial betas.
-
-        Uses centered EWMA with **lagged-mean deviations**: deviations
-        are computed from the *previous* step's means, then means are
-        updated. This is the EWMA analogue of Welford's online algorithm
-        and avoids the systematic downward bias of the naive approach
-        (which computes deviations from the already-updated mean).
-
-        The partial beta to the reference series uses the Frisch-Waugh
-        closed form (no matrix inversion):
-
-        .. math::
-
-            \beta^{\text{ref}}_i =
-            \frac{C_{yf,i} - C_{ym,i} \cdot C_{mf} / V_m}
-                 {V_f - C_{mf}^2 / V_m}
-
-        If `ret_ref` is non-finite, the full EWMA state is frozen and
-        this call is skipped.
-        """
-        if not np.isfinite(ret_ref):
-            return
-
-        decay = self._decay
-        self._t += 1
-
-        # Deviations from lagged means
-        market_deviation = ret_market - self._mu_market
-        ref_deviation = ret_ref - self._mu_ref
-
-        # Update EWMA means
-        self._mu_market = decay * self._mu_market + (1 - decay) * ret_market
-        self._mu_ref = decay * self._mu_ref + (1 - decay) * ret_ref
-
-        # Update scalar variances and covariance
-        self._var_market = decay * self._var_market + (1 - decay) * (
-            market_deviation * market_deviation
+        """Initialize regression statistics and return averaging."""
+        self._min_periods = (
+            max(1, int(np.ceil(self.half_life)))
+            if self.min_periods is None
+            else int(self.min_periods)
         )
-        self._var_ref = decay * self._var_ref + (1 - decay) * (
-            ref_deviation * ref_deviation
+        self._regression = _EWRegression(
+            n_assets=self.n_assets_,
+            decay=half_life_to_decay_factor(self.half_life),
+            include_macro_returns=True,
         )
-        self._cov_market_ref = decay * self._cov_market_ref + (1 - decay) * (
-            market_deviation * ref_deviation
+        # Reuse the last sensitivities while collecting returns for the next average.
+        self._ref_betas = np.full(self.n_assets_, np.nan)
+        self._averager = _ReturnAverager(
+            n_assets=self.n_assets_,
+            n_variables=3,
+            aggregation_period=int(self.aggregation_period),
         )
-
-        # Update per-asset covariances for valid returns
-        valid = np.isfinite(ret_assets)
-        self._n_valid_assets[valid] += 1
-        asset_deviations = ret_assets[valid] - self._mu_assets[valid]
-
-        self._mu_assets[valid] = (
-            decay * self._mu_assets[valid] + (1 - decay) * ret_assets[valid]
-        )
-
-        self._cov_assets_market[valid] = (
-            decay * self._cov_assets_market[valid]
-            + (1 - decay) * asset_deviations * market_deviation
-        )
-        self._cov_assets_ref[valid] = (
-            decay * self._cov_assets_ref[valid]
-            + (1 - decay) * asset_deviations * ref_deviation
-        )
-
-        # Compute partial betas with Frisch-Waugh closed form
-        if self._t >= self._min_periods:
-            market_variance = self._var_market + self.eps
-            reference_residual_variance = (
-                self._var_ref - self._cov_market_ref**2 / market_variance + self.eps
-            )
-            asset_ready = valid & (self._n_valid_assets >= self._min_periods)
-
-            self._ref_betas[asset_ready] = (
-                self._cov_assets_ref[asset_ready]
-                - self._cov_assets_market[asset_ready]
-                * self._cov_market_ref
-                / market_variance
-            ) / reference_residual_variance
-
-            # Market beta from the same bivariate regression
-            self._market_betas[asset_ready] = (
-                self._cov_assets_market[asset_ready]
-                - self._ref_betas[asset_ready] * self._cov_market_ref
-            ) / market_variance
-
-    def _update_from_buffer(self) -> None:
-        """Aggregate buffered returns and update EWMA statistics."""
-        with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore", message="Mean of empty slice", category=RuntimeWarning
-            )
-            agg_ref = np.nanmean(self._buffer_ref)
-            agg_assets = np.nanmean(self._buffer_assets, axis=0)
-        agg_market = np.mean(self._buffer_market)
-
-        self._buffer_idx = 0
-        self._update_ewma(agg_assets, agg_market, agg_ref)

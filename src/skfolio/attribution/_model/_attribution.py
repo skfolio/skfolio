@@ -1562,7 +1562,7 @@ def _plot_contribution_chart(
                     customdata = []
                 custom_data = np.column_stack([values[attr][:, i] for attr in attrs])
                 show_exposure = not np.all(np.isnan(custom_data[:, -1]))
-                customdata.append(custom_data)  # ty: ignore[unresolved-attribute]
+                customdata.append(custom_data)  # ty: ignore[missing-union-attribute]
                 hovertemplates.append(
                     _hover_template(name, contrib_names, show_exposure)
                 )

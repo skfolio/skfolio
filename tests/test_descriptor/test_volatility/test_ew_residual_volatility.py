@@ -5,96 +5,13 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from skfolio.containers import AssetPanel
 from skfolio.descriptor import (
     EWResidualDownsideVolatility,
     EWResidualVolatility,
     EWVolatility,
 )
-from skfolio.utils.stats import _market_returns
-from skfolio.utils.tools import half_life_to_decay_factor
-
-
-def _manual_residual_volatility(
-    panel,
-    half_life,
-    beta_half_life,
-    min_periods,
-    eps=1e-12,
-    min_acceptable_return=None,
-):
-    """Reference EWMA residual volatility calculation."""
-    asset_returns = panel["returns"]
-    market_caps = panel["market_cap"]
-    market_returns = _market_returns(
-        asset_returns=asset_returns,
-        weights=market_caps,
-        estimation_mask=panel.estimation_mask,
-    )
-    n_observations, n_assets = asset_returns.shape
-
-    vol_decay = half_life_to_decay_factor(half_life)
-    beta_decay = half_life_to_decay_factor(beta_half_life)
-
-    mu_market = 0.0
-    var_market = 0.0
-    mu_assets = np.zeros(n_assets)
-    cov_assets = np.zeros(n_assets)
-    var_residual = np.zeros(n_assets)
-    n_valid_assets = np.zeros(n_assets, dtype=int)
-    is_active = np.ones(n_assets, dtype=bool)
-    result = np.full((n_observations, n_assets), np.nan)
-
-    for t in range(n_observations):
-        returns_t = asset_returns[t]
-        market_return_t = market_returns[t]
-        active_assets = panel.active_mask[t]
-        valid_returns = active_assets & np.isfinite(returns_t)
-
-        newly_inactive = is_active & ~active_assets
-        if np.any(newly_inactive):
-            mu_assets[newly_inactive] = 0.0
-            cov_assets[newly_inactive] = 0.0
-            var_residual[newly_inactive] = 0.0
-            n_valid_assets[newly_inactive] = 0
-        is_active[:] = active_assets
-
-        market_deviation = market_return_t - mu_market
-        asset_deviations = returns_t[valid_returns] - mu_assets[valid_returns]
-
-        mu_market = beta_decay * mu_market + (1 - beta_decay) * market_return_t
-        mu_assets[valid_returns] = (
-            beta_decay * mu_assets[valid_returns]
-            + (1 - beta_decay) * returns_t[valid_returns]
-        )
-
-        var_market = (
-            beta_decay * var_market
-            + (1 - beta_decay) * market_deviation * market_deviation
-        )
-        cov_assets[valid_returns] = (
-            beta_decay * cov_assets[valid_returns]
-            + (1 - beta_decay) * asset_deviations * market_deviation
-        )
-
-        beta = cov_assets / (var_market + eps)
-        residual = returns_t - beta * market_return_t
-        if min_acceptable_return is None:
-            contribution = residual
-        else:
-            contribution = np.minimum(residual - min_acceptable_return, 0.0)
-
-        n_valid_assets[valid_returns] += 1
-        var_residual[valid_returns] = (
-            vol_decay * var_residual[valid_returns]
-            + (1 - vol_decay) * contribution[valid_returns] ** 2
-        )
-
-        ready = n_valid_assets >= min_periods
-        if np.any(ready):
-            weight_sum = 1.0 - vol_decay ** n_valid_assets[ready]
-            result[t, ready] = np.sqrt(var_residual[ready] / weight_sum)
-
-    return result
+from tests.test_descriptor._ew_reference import residual_path
 
 
 class TestEWResidualVolatility:
@@ -113,16 +30,17 @@ class TestEWResidualVolatility:
         result = EWResidualVolatility(
             half_life=5, beta_half_life=5, min_periods=min_periods
         ).fit_transform(simple_panel)
-        assert np.all(np.isnan(result[: min_periods - 1]))
-        assert not np.all(np.isnan(result[min_periods - 1]))
+        assert np.isnan(result[:16]).all()
+        assert np.isfinite(result[16]).all()
 
     def test_default_min_periods_uses_slower_half_life(self, simple_panel):
         """Default min_periods resolves to ceil of the slower half-life."""
         d = EWResidualVolatility(half_life=8.2, beta_half_life=5)
         assert d.min_periods is None
         result = d.fit_transform(simple_panel)
-        assert np.all(np.isnan(result[:8]))
-        assert not np.all(np.isnan(result[8]))
+        assert d._min_periods == 9
+        assert np.isnan(result[:17]).all()
+        assert np.isfinite(result[17:]).all()
 
     def test_output_is_non_negative(self, simple_panel):
         """Volatility output is always non-negative."""
@@ -136,22 +54,19 @@ class TestEWResidualVolatility:
         """EWMA residual vol matches manual computation with separate decays."""
         half_life = 5
         beta_half_life = 8
-        eps = 1e-12
         min_periods = 1
 
         result = EWResidualVolatility(
             half_life=half_life,
             beta_half_life=beta_half_life,
             min_periods=min_periods,
-            eps=eps,
         ).fit_transform(simple_panel)
 
-        expected = _manual_residual_volatility(
+        expected = residual_path(
             simple_panel,
             half_life=half_life,
             beta_half_life=beta_half_life,
             min_periods=min_periods,
-            eps=eps,
         )
         np.testing.assert_allclose(result, expected, equal_nan=True)
 
@@ -162,7 +77,7 @@ class TestEWResidualVolatility:
             half_life=hl, beta_half_life=hl, min_periods=1
         ).fit_transform(simple_panel)
 
-        expected = _manual_residual_volatility(
+        expected = residual_path(
             simple_panel,
             half_life=hl,
             beta_half_life=hl,
@@ -183,8 +98,8 @@ class TestEWResidualVolatility:
             half_life=half_life, min_periods=min_periods
         ).fit_transform(simple_panel)
 
-        late = result[10:]
-        late_total = total_vol_series[10:]
+        late = result[12:]
+        late_total = total_vol_series[12:]
         frac = np.mean(late <= late_total + 1e-10)
         assert frac > 0.7
 
@@ -263,11 +178,12 @@ class TestEWResidualVolatility:
 
     def test_nan_return_holds_state(self, simple_panel):
         """NaN return holds EWMA state for that asset."""
-        simple_panel["returns"][5, 0] = np.nan
+        simple_panel["returns"][15, 0] = np.nan
         result = EWResidualVolatility(
             half_life=5, beta_half_life=5, min_periods=1
         ).fit_transform(simple_panel)
-        np.testing.assert_almost_equal(result[5, 0], result[4, 0])
+        assert np.isfinite(result[14, 0])
+        np.testing.assert_equal(result[15, 0], result[14, 0])
 
     def test_nan_return_does_not_increment_asset_min_periods(self, simple_panel):
         """Missing asset returns do not count toward per-asset readiness."""
@@ -275,9 +191,8 @@ class TestEWResidualVolatility:
         result = EWResidualVolatility(
             half_life=5, beta_half_life=5, min_periods=3
         ).fit_transform(simple_panel)
-        assert np.isnan(result[2, 0])
-        assert np.isnan(result[3, 0])
-        assert not np.isnan(result[4, 0])
+        assert np.isnan(result[:13, 0]).all()
+        assert np.isfinite(result[13, 0])
 
     def test_late_listing_needs_asset_min_periods(self, simple_panel):
         """Late-listed assets need min_periods valid returns before output."""
@@ -290,9 +205,39 @@ class TestEWResidualVolatility:
             half_life=5, beta_half_life=5, min_periods=3
         ).fit_transform(simple_panel)
 
-        assert np.isnan(result[5, 0])
-        assert np.isnan(result[6, 0])
-        assert not np.isnan(result[7, 0])
+        assert np.isnan(result[:16, 0]).all()
+        assert np.isfinite(result[16, 0])
+
+    def test_late_listed_residual_vol_matches_batch_reference(self):
+        """Late listings use their own matched market and residual histories."""
+        rng = np.random.default_rng(0)
+        n_obs, n_assets = 400, 20
+        half_life = 40
+        beta_half_life = 60
+        listing = 200
+        market = rng.normal(0, 0.01, n_obs)
+        true_beta = np.ones(n_assets) * 1.5
+        returns = true_beta * market[:, None] + rng.normal(0, 0.01, (n_obs, n_assets))
+        active = np.ones((n_obs, n_assets), dtype=bool)
+        active[:listing, 0] = False
+        returns[~active] = np.nan
+        market_cap = np.ones((n_obs, n_assets))
+        market_cap[~active] = np.nan
+        panel = AssetPanel(
+            fields={"returns": returns, "market_cap": market_cap},
+            observations=np.arange(n_obs),
+            asset_names=np.array([f"A{i}" for i in range(n_assets)]),
+            active_mask=active,
+        )
+
+        result = EWResidualVolatility(
+            half_life=half_life, beta_half_life=beta_half_life
+        ).fit_transform(panel)
+
+        expected = residual_path(panel, half_life, beta_half_life, 60)
+        np.testing.assert_allclose(result, expected, rtol=1e-12, equal_nan=True)
+        assert np.isnan(result[listing : listing + 68, 0]).all()
+        assert np.isfinite(result[listing + 68, 0])
 
     def test_inactive_gap_resets_warmup(self, simple_panel):
         """Inactive observations reset asset-specific state and valid counts."""
@@ -309,7 +254,8 @@ class TestEWResidualVolatility:
         assert np.isnan(result[6, 0])
         assert np.isnan(result[7, 0])
         assert np.isnan(result[8, 0])
-        assert not np.isnan(result[9, 0])
+        expected = residual_path(simple_panel, 5, 5, 3)
+        np.testing.assert_allclose(result, expected, rtol=1e-12, equal_nan=True)
 
     def test_raises_on_invalid_half_life(self, simple_panel):
         """Raises ValueError when half_life <= 0."""
@@ -374,7 +320,6 @@ class TestEWResidualDownsideVolatility:
         """Downside residual vol matches manual computation."""
         half_life = 5
         beta_half_life = 8
-        eps = 1e-12
         mar = 0.0
 
         result = EWResidualDownsideVolatility(
@@ -382,15 +327,13 @@ class TestEWResidualDownsideVolatility:
             beta_half_life=beta_half_life,
             min_acceptable_return=mar,
             min_periods=1,
-            eps=eps,
         ).fit_transform(simple_panel)
 
-        expected = _manual_residual_volatility(
+        expected = residual_path(
             simple_panel,
             half_life=half_life,
             beta_half_life=beta_half_life,
             min_periods=1,
-            eps=eps,
             min_acceptable_return=mar,
         )
         np.testing.assert_allclose(result, expected, equal_nan=True)

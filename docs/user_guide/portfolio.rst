@@ -237,7 +237,8 @@ It also provides methods for analyzing portfolio weights:
         groups={"Asset A": ["Equity", "US"], "Asset B": ["Bond", "US"]}
     )
 
-
+The :ref:`graph tutorial <sphx_glr_auto_examples_clustering_plot_graph_distance.py>`
+illustrates :meth:`Portfolio.dependency_exposure` for analyzing shared dependencies.
 
 Observation Weights
 *******************

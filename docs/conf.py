@@ -148,7 +148,7 @@ EXAMPLE_DESCRIPTIONS = {
     "auto_examples/ensemble/plot_1_stacking": (
         "Combining multiple portfolio strategies through stacking optimization"
     ),
-    # Hierarchical Clustering & NCO
+    # Hierarchical Allocation
     "auto_examples/clustering/plot_1_hrp_cvar": (
         "Allocating by CVaR-based hierarchical risk parity"
     ),
@@ -159,7 +159,7 @@ EXAMPLE_DESCRIPTIONS = {
         "Comparing HRP and HERC hierarchical portfolios"
     ),
     "auto_examples/clustering/plot_4_nco": (
-        "Nested cluster optimization for hierarchical groups"
+        "Nested clusters optimization"
     ),
     "auto_examples/clustering/plot_5_nco_grid_search": (
         "Merging NCO with combinatorial purged CV cross-validation"
@@ -167,6 +167,9 @@ EXAMPLE_DESCRIPTIONS = {
     "auto_examples/clustering/plot_6_schur": (
         "Interpolating between hierarchical risk parity and minimum variance "
         "with Schur allocation"
+    ),
+    "auto_examples/clustering/plot_graph_distance": (
+        "Comparing return and graph distances with hierarchical equal risk contribution"
     ),
     # Maximum Diversification
     "auto_examples/maximum_diversification/plot_1_maximum_diversification": (
@@ -335,7 +338,7 @@ EXAMPLE_DATE_MODIFIED = {
     "auto_examples/entropy_pooling/plot_2_opinion_pooling": "2025-06-09",
     # Ensemble Optimizations
     "auto_examples/ensemble/plot_1_stacking": "2023-12-18",
-    # Hierarchical Clustering & NCO
+    # Hierarchical Allocation
     "auto_examples/clustering/plot_1_hrp_cvar": "2023-12-18",
     "auto_examples/clustering/plot_2_herc_cdar": "2023-12-18",
     "auto_examples/clustering/plot_3_hrp_vs_herc": "2023-12-18",
@@ -643,6 +646,7 @@ TUTORIAL_ORDER = {
         "plot_4_nco.py",
         "plot_5_nco_grid_search.py",
         "plot_6_schur.py",
+        "plot_graph_distance.py",
     ),
     "maximum_diversification": ("plot_1_maximum_diversification.py",),
     "distributionally_robust_cvar": ("plot_1_distributionally_robust_cvar.py",),
@@ -2189,16 +2193,19 @@ def skip_strenum_public_str_methods(
 _PLOTLY_BLOCK_RES = [
     re.compile(
         r'<div class="output_subarea output_html rendered_html output_result">'
-        r".*?plotly-graph-div"
+        r"(?:(?!</div>\s*</div>).)*?plotly-graph-div"
         r".*?</div>\s*</div>",
         flags=re.DOTALL,
     ),
     re.compile(
-        r"<html>.*?plotly-graph-div.*?</html>",
+        r"<html>(?:(?!</html>).)*?plotly-graph-div.*?</html>",
         flags=re.DOTALL,
     ),
 ]
 _PLOTLY_PLACEHOLDER = "[plotly figure stripped from llms output]"
+_PLOTLY_STYLE_SCRIPT_RE = re.compile(
+    r"<style>[^<]*plotly-graph-div[^<]*</style>\s*<script>[^<]*</script>"
+)
 
 # Remove metadata comments (e.g. `<!-- !! processed by numpydoc !! -->`) from
 # sphinx-llm pages
@@ -2222,6 +2229,7 @@ def _sanitize_llm_markdown_text(text: str) -> tuple[str, int, int]:
     so files do not start with empty lines after comment removal.
     """
     n_plotly = 0
+    text = _PLOTLY_STYLE_SCRIPT_RE.sub("", text)
     for regex in _PLOTLY_BLOCK_RES:
         text, n = regex.subn(_PLOTLY_PLACEHOLDER, text)
         n_plotly += n

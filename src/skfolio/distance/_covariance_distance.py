@@ -241,7 +241,7 @@ class CovarianceDistance(BaseDistance):
                 y,
                 routed_params=routed.covariance_estimator,
             )
-            covariance = self.covariance_estimator_.covariance_  # ty: ignore[unresolved-attribute]
+            covariance = self.covariance_estimator_.covariance_  # ty: ignore[missing-union-attribute]
         self.codependence_, self.distance_ = _cov_to_distance(
             covariance, absolute=self.absolute, power=self.power
         )

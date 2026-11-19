@@ -21,7 +21,9 @@ from skfolio import (
     RatioMeasure,
     RiskMeasure,
 )
+from skfolio.containers import Graph, GraphSeries
 from skfolio.datasets import load_sp500_dataset
+from skfolio.portfolio import dependency_exposure
 from skfolio.preprocessing import prices_to_returns
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import rand_weights
@@ -808,6 +810,148 @@ def test_weights_per_observation(portfolio):
     assert portfolio.plot_weights_per_observation()
 
 
+@pytest.mark.parametrize("weight_drift", [False, True])
+def test_weights_per_observation_preserves_failed_observations(weight_drift):
+    X = pd.DataFrame(
+        [[0.01, -0.02], [0.03, 0.04]],
+        index=pd.date_range("2024-01-01", periods=2),
+        columns=["A", "B"],
+    )
+    failed = FailedPortfolio(X, weight_drift=weight_drift)
+    before = failed.weights_per_observation.copy(deep=True)
+    portfolio = MultiPeriodPortfolio([failed])
+
+    pd.testing.assert_frame_equal(portfolio.weights_per_observation, before)
+    for trace in portfolio.plot_weights_per_observation().data:
+        np.testing.assert_array_equal(trace.y, before[trace.name])
+    pd.testing.assert_frame_equal(failed.weights_per_observation, before)
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+@pytest.mark.parametrize("failed_assets", [["A", "B"], ["C", "D"], []])
+def test_weights_per_observation_mixed_failed_observations(weight_drift, failed_assets):
+    X = pd.DataFrame(
+        np.tile([[0.01, -0.02], [-0.03, 0.04]], (4, 1)),
+        index=pd.date_range("2024-01-01", periods=8),
+        columns=["A", "B"],
+    )
+    invested = Portfolio(X.iloc[:2], weights=[0.6, -0.2], weight_drift=weight_drift)
+    zero_weight_portfolio = Portfolio(
+        X.iloc[2:4], weights=[0.0, 0.0], weight_drift=weight_drift
+    )
+    failed = FailedPortfolio(
+        pd.DataFrame(0.0, index=X.index[4:6], columns=failed_assets),
+        weight_drift=weight_drift,
+    )
+    disjoint = Portfolio(
+        X.iloc[6:].set_axis(["E", "F"], axis=1),
+        weights=[0.25, 0.75],
+        weight_drift=weight_drift,
+    )
+    children = [failed, zero_weight_portfolio, disjoint, invested]
+    before = [p.weights_per_observation.copy(deep=True) for p in children]
+    returns_before = [p.returns.copy() for p in children]
+    portfolio = MultiPeriodPortfolio(children)
+
+    result = portfolio.weights_per_observation
+
+    assert result.index.is_monotonic_increasing
+    assert len(result) == len(X)
+    assert result.loc[failed.observations].isna().all().all()
+    for child in (invested, zero_weight_portfolio, disjoint):
+        expected = child.weights_per_observation.reindex(
+            columns=result.columns, fill_value=0.0
+        )
+        pd.testing.assert_frame_equal(result.loc[child.observations], expected)
+    for trace in portfolio.plot_weights_per_observation().data:
+        np.testing.assert_array_equal(trace.x, result.index)
+        np.testing.assert_array_equal(trace.y, result[trace.name])
+    for child, weights, returns in zip(children, before, returns_before, strict=True):
+        pd.testing.assert_frame_equal(child.weights_per_observation, weights)
+        np.testing.assert_array_equal(child.returns, returns)
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+@pytest.mark.parametrize("failed", [False, True])
+def test_weights_per_observation_empty_columns(weight_drift, failed):
+    X = pd.DataFrame(index=pd.date_range("2024-01-01", periods=2))
+    child = (
+        FailedPortfolio(X, weight_drift=weight_drift)
+        if failed
+        else Portfolio(X, weights=[], weight_drift=weight_drift)
+    )
+    expected = child.weights_per_observation
+    pd.testing.assert_frame_equal(
+        MultiPeriodPortfolio([child]).weights_per_observation, expected
+    )
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+@pytest.mark.parametrize("duplicate_assets", [False, True])
+def test_weights_per_observation_duplicate_labels(weight_drift, duplicate_assets):
+    X = pd.DataFrame(
+        [[0.01, -0.02], [0.03, 0.04], [-0.01, 0.02]],
+        index=pd.Index([2, 1, 1], name="observation"),
+        columns=["A", "A" if duplicate_assets else "B"],
+    )
+    invested = Portfolio(X, weights=[0.6, -0.2], weight_drift=weight_drift)
+    failed = FailedPortfolio(X, weight_drift=weight_drift)
+    portfolio = MultiPeriodPortfolio([failed, invested])
+    expected = pd.concat(
+        [failed.weights_per_observation, invested.weights_per_observation]
+    ).sort_index()
+
+    pd.testing.assert_frame_equal(portfolio.weights_per_observation, expected)
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+def test_weights_per_observation_zero_weights(weight_drift):
+    X = pd.DataFrame(
+        [[0.01, -0.02], [0.03, 0.04], [-0.01, 0.02], [0.04, -0.03]],
+        index=pd.date_range("2024-01-01", periods=4),
+        columns=["A", "B"],
+    )
+    invested = Portfolio(X.iloc[:2], weights=[0.6, 0.4], weight_drift=weight_drift)
+    zero_weight_portfolio = Portfolio(
+        X.iloc[2:], weights=[0.0, 0.0], weight_drift=weight_drift
+    )
+    expected = (
+        pd.concat(
+            [
+                zero_weight_portfolio.weights_per_observation,
+                invested.weights_per_observation,
+            ]
+        )
+        .fillna(0.0)
+        .sort_index()
+    )
+
+    pd.testing.assert_frame_equal(
+        MultiPeriodPortfolio([zero_weight_portfolio, invested]).weights_per_observation,
+        expected,
+    )
+
+
+def test_weights_per_observation_no_portfolios():
+    with pytest.raises(ValueError, match="No objects to concatenate"):
+        _ = MultiPeriodPortfolio().weights_per_observation
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+@pytest.mark.parametrize("failed", [False, True])
+def test_weights_per_observation_no_observations(weight_drift, failed):
+    X = pd.DataFrame(columns=["A", "B"], dtype=float)
+    child = (
+        FailedPortfolio(X, weight_drift=weight_drift)
+        if failed
+        else Portfolio(X, weights=[0.6, 0.4], weight_drift=weight_drift)
+    )
+    pd.testing.assert_frame_equal(
+        MultiPeriodPortfolio([child]).weights_per_observation,
+        child.weights_per_observation,
+    )
+
+
 def test_long_short_exposure():
     X = pd.DataFrame(
         np.zeros((6, 3)),
@@ -840,6 +984,104 @@ def test_long_short_exposure():
     fig = portfolio.plot_long_short_exposure()
     assert len(fig.data) == 4
     assert [trace.name for trace in fig.data] == ["Long", "Short", "Net", "Gross"]
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+@pytest.mark.parametrize("include_other_periods", [False, True])
+def test_long_short_exposure_zero_weights(weight_drift, include_other_periods):
+    X = pd.DataFrame(
+        [[0.1, -0.05]] * 6,
+        index=pd.date_range("2024-01-01", periods=6),
+        columns=["A", "B"],
+    )
+    zero_weight_portfolio = Portfolio(
+        X=X.iloc[:2], weights=[0.0, 0.0], weight_drift=weight_drift
+    )
+    portfolios = [zero_weight_portfolio]
+    expected = pd.DataFrame(
+        0.0, index=X.index[:2], columns=["Long", "Short", "Net", "Gross"]
+    )
+    if include_other_periods:
+        invested = Portfolio(
+            X=X.iloc[4:].rename(columns={"A": "C", "B": "D"}),
+            weights=[0.6, -0.4],
+            weight_drift=weight_drift,
+        )
+        failed = FailedPortfolio(
+            X=X.iloc[2:4].rename(columns={"A": "E", "B": "F"}),
+            weight_drift=weight_drift,
+        )
+        # Different asset universes and nonchronological input must stay aligned.
+        portfolios = [invested, zero_weight_portfolio, failed]
+        expected = expected.reindex(X.index)
+        expected.iloc[4:] = [0.6, -0.4, 0.2, 1.0]
+        if weight_drift:
+            # After the first invested observation, portfolio wealth is 1.08.
+            expected.iloc[5] = np.array([0.66, -0.38, 0.28, 1.04]) / 1.08
+
+    portfolio = MultiPeriodPortfolio(portfolios)
+    np.testing.assert_array_equal(zero_weight_portfolio.returns, [0.0, 0.0])
+    pd.testing.assert_frame_equal(
+        portfolio.long_short_exposure, expected, check_freq=False
+    )
+    fig = portfolio.plot_long_short_exposure()
+    for trace in fig.data:
+        np.testing.assert_array_equal(trace.x, expected.index.to_numpy())
+        np.testing.assert_allclose(trace.y, expected[trace.name], equal_nan=True)
+
+
+def test_long_short_exposure_duplicate_asset_names():
+    X = pd.DataFrame(
+        0.0,
+        index=pd.date_range("2024-01-01", periods=2),
+        columns=["A", "A", "B"],
+    )
+    portfolio = MultiPeriodPortfolio([Portfolio(X, weights=[0.2, 0.3, 0.0])])
+    expected = pd.DataFrame(
+        [[0.5, 0.0, 0.5, 0.5]] * 2,
+        index=X.index,
+        columns=["Long", "Short", "Net", "Gross"],
+    )
+    pd.testing.assert_frame_equal(
+        portfolio.long_short_exposure, expected, check_freq=False
+    )
+
+
+def test_long_short_exposure_failed_empty_universe():
+    X = pd.DataFrame(index=pd.date_range("2024-01-01", periods=2))
+    portfolio = MultiPeriodPortfolio([FailedPortfolio(X)])
+    expected = pd.DataFrame(
+        np.nan, index=X.index, columns=["Long", "Short", "Net", "Gross"]
+    )
+    pd.testing.assert_frame_equal(
+        portfolio.long_short_exposure, expected, check_freq=False
+    )
+
+
+def test_long_short_exposure_duplicate_dates():
+    X = pd.DataFrame(
+        0.0,
+        index=pd.to_datetime(["2024-01-02", "2024-01-01", "2024-01-02"]),
+        columns=["A", "B"],
+    )
+    portfolio = MultiPeriodPortfolio(
+        [
+            FailedPortfolio(X.iloc[:1]),
+            Portfolio(X.iloc[1:2], weights=[0.6, -0.4]),
+            Portfolio(X.iloc[2:], weights=[0.0, 0.0]),
+        ]
+    )
+    expected = pd.DataFrame(
+        [[np.nan] * 4, [0.6, -0.4, 0.2, 1.0], [0.0] * 4],
+        index=X.index,
+        columns=["Long", "Short", "Net", "Gross"],
+    )
+    exposure = portfolio.long_short_exposure
+    assert exposure.index.is_monotonic_increasing
+    # Rows sharing a date need not preserve their input order.
+    pd.testing.assert_frame_equal(
+        exposure.sort_values("Long"), expected.sort_values("Long")
+    )
 
 
 def test_mpp_with_failed_ptf_methods(portfolio_and_returns_with_failed_ptf, periods, X):
@@ -1768,3 +2010,103 @@ class TestMultiPeriodPortfolioArithmetic:
             assert isinstance(op, MultiPeriodPortfolio)
             for p, w in zip(op, expected, strict=True):
                 np.testing.assert_array_almost_equal(p.weights, w)
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+def test_multi_period_dependency_exposure_history(weight_drift):
+    dates = pd.date_range("2025-01-01", periods=5)
+    first = Portfolio(
+        X=pd.DataFrame([[0, 1], [0, 0]], index=dates[:2], columns=["B", "A"]),
+        weights=[0.5, 0.5],
+        weight_drift=weight_drift,
+    )
+    failed = FailedPortfolio(
+        X=pd.DataFrame([[0, 0]], index=dates[2:3], columns=["B", "C"])
+    )
+    last = Portfolio(
+        X=pd.DataFrame([[0.1], [0]], index=dates[3:], columns=["C"]), weights=[1]
+    )
+    portfolio = MultiPeriodPortfolio([first, failed, last])
+    first_graph = Graph.from_edges(
+        [("A", "S", 1), ("B", "S", 1)], nodes=["A", "B", "S"]
+    )
+    last_graph = Graph.from_edges([("C", "T", 1)], nodes=["C", "T"])
+    graphs = GraphSeries(
+        [first_graph, first_graph, None, last_graph, last_graph], observations=dates
+    )
+    history = portfolio.dependency_exposure(graphs)
+    weights = np.array(
+        [
+            [0.5, 0.5, 0],
+            [1 / 3, 2 / 3, 0] if weight_drift else [0.5, 0.5, 0],
+            [np.nan, np.nan, np.nan],
+            [0, 0, 1],
+            [0, 0, 1],
+        ]
+    )
+    expected = dependency_exposure(graphs, asset_names=["B", "A", "C"], weights=weights)
+    pd.testing.assert_frame_equal(history, expected)
+    assert history.loc[dates[2]].isna().all().all()
+    assert history.loc[(dates[3], "S"), "total"] == 0
+    assert history.loc[(dates[3], "T"), "total"] == 1
+    snapshot = portfolio.dependency_exposure(last_graph)
+    assert snapshot.loc["C", "weight"] == 1
+    assert snapshot.loc["T", "direct"] == 1
+    selected = portfolio.dependency_exposure(graphs, nodes=["S", "T"])
+    pd.testing.assert_frame_equal(
+        selected, history[history.index.get_level_values("dependency").isin(["S", "T"])]
+    )
+
+
+def test_multi_period_dependency_exposure_failed_last_snapshot():
+    first = Portfolio(X=pd.DataFrame([[0]], index=[0], columns=["A"]), weights=[1])
+    last = FailedPortfolio(X=pd.DataFrame([[0]], index=[1], columns=["B"]))
+    portfolio = MultiPeriodPortfolio([first, last])
+    graph = Graph.from_edges([("A", "S", 1)], nodes=["A", "S"])
+    assert portfolio.dependency_exposure(graph).isna().all().all()
+    history = portfolio.dependency_exposure(GraphSeries([graph, graph]))
+    assert history.loc[0, "total"].notna().all()
+    assert history.loc[1].isna().all().all()
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+@pytest.mark.parametrize("failed_subclass", [False, True])
+def test_multi_period_dependency_exposure_missing_weights(
+    weight_drift, failed_subclass
+):
+    class CustomFailedPortfolio(FailedPortfolio):
+        pass
+
+    returns = pd.DataFrame([[0], [0]], index=[0, 1], columns=["A"])
+    missing = (
+        CustomFailedPortfolio(X=returns, weight_drift=weight_drift)
+        if failed_subclass
+        else Portfolio(X=returns, weights=None, weight_drift=weight_drift)
+    )
+    last = Portfolio(X=pd.DataFrame([[0]], index=[2], columns=["B"]), weights=[1])
+    portfolio = MultiPeriodPortfolio([missing, last])
+    graph = Graph.from_edges([("B", "S", 1)], nodes=["B", "S"])
+
+    history = portfolio.dependency_exposure(GraphSeries([graph] * 3))
+    assert history.loc[[0, 1]].isna().all().all()
+    pd.testing.assert_frame_equal(history.loc[2], last.dependency_exposure(graph))
+
+
+def test_multi_period_dependency_exposure_longer_history():
+    graph = Graph.from_edges([("A", "S", 1)], nodes=["A", "S"])
+    first = Portfolio(X=pd.DataFrame([[0]], index=[2], columns=["A"]), weights=[0.3])
+    second = Portfolio(X=pd.DataFrame([[0]], index=[1], columns=["A"]), weights=[0.7])
+    portfolio = MultiPeriodPortfolio([first, second])
+    graphs = GraphSeries([None, graph, graph, None])
+    result = portfolio.dependency_exposure(graphs, nodes=["S"])
+    assert result.index.tolist() == [(2, "S"), (1, "S")]
+    np.testing.assert_array_equal(result["total"], [0.3, 0.7])
+
+
+@pytest.mark.parametrize("history", [False, True])
+def test_empty_multi_period_dependency_exposure(history):
+    graph = Graph(np.zeros((1, 1)), nodes=["A"])
+    with pytest.raises(ValueError, match="empty MultiPeriodPortfolio"):
+        MultiPeriodPortfolio().dependency_exposure(
+            GraphSeries([graph]) if history else graph
+        )

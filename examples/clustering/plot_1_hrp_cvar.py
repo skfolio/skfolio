@@ -9,20 +9,22 @@ optimization.
 Hierarchical Risk Parity (HRP) is a portfolio optimization method developed by Marcos
 Lopez de Prado.
 
-This algorithm uses a distance matrix to compute hierarchical clusters using the
-Hierarchical Tree Clustering algorithm. It then employs seriation to rearrange the
-assets in the dendrogram, minimizing the distance between leaves.
+By default, this algorithm uses a distance matrix to compute hierarchical clusters
+using the Hierarchical Tree Clustering algorithm. It then employs seriation to
+rearrange the assets in the dendrogram, minimizing the distance between adjacent
+leaves. It also supports :class:`~skfolio.seriation.SpectralSeriation`, which orders
+assets directly from the distance matrix without building a clustering tree.
 
-The final step is the recursive bisection where each cluster is split between two
-sub-clusters by starting with the topmost cluster and traversing in a top-down
-manner. For each sub-cluster, we compute the total cluster risk of an inverse-risk
-allocation. A weighting factor is then computed from these two sub-cluster risks,
-which is used to update the cluster weight.
+The final step is the recursive bisection of the ordered asset list, where each
+cluster is split into two sub-clusters in a top-down manner. For each sub-cluster,
+we compute the total cluster risk of an inverse-risk allocation. A weighting factor
+is then computed from these two sub-cluster risks, which is used to update the
+cluster weight.
 
 .. note ::
     The original paper uses the variance as the risk measure and the single-linkage
     method for the Hierarchical Tree Clustering algorithm. Here we generalize it to
-    multiple risk measures and linkage methods.
+    multiple risk measures, linkage methods and seriation methods.
     The default linkage method is set to the Ward
     variance minimization algorithm, which is more stable and has better properties
     than the single-linkage method.
