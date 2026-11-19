@@ -10,5 +10,12 @@ from skfolio.portfolio._base import BasePortfolio
 from skfolio.portfolio._failed_portfolio import FailedPortfolio
 from skfolio.portfolio._multi_period_portfolio import MultiPeriodPortfolio
 from skfolio.portfolio._portfolio import Portfolio
+from skfolio.portfolio._utils import dependency_exposure
 
-__all__ = ["BasePortfolio", "FailedPortfolio", "MultiPeriodPortfolio", "Portfolio"]
+__all__ = [
+    "BasePortfolio",
+    "FailedPortfolio",
+    "MultiPeriodPortfolio",
+    "Portfolio",
+    "dependency_exposure",
+]

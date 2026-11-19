@@ -1213,22 +1213,33 @@ def half_life_to_decay_factor(half_life: float) -> float:
     ----------
     half_life : float
         Half-life in number of observations. This is the number of observations
-        for the weight to decay to 50%. Must be positive.
+        for the weight to decay to 50%. Must be finite and positive.
 
     Returns
     -------
     decay_factor : float
         The exponential decay factor (:math:`\lambda`), satisfying
-        :math:`0 < \lambda < 1`.
+        :math:`0 \leq \lambda < 1`. Very small half-lives can round to zero,
+        assigning all weight to the latest observation.
+
+    Raises
+    ------
+    ValueError
+        If `half_life` is not finite and positive, or is so large that the decay
+        rounds to one and new observations receive zero weight.
 
     Examples
     --------
     >>> half_life_to_decay_factor(40)
     0.9828...
     """
-    if half_life <= 0:
-        raise ValueError(f"half_life must be positive, got {half_life}")
-    return 2.0 ** (-1.0 / half_life)
+    _validate_positive_real(half_life, "half_life")
+    decay = 2.0 ** (-1.0 / half_life)
+    if decay == 1:
+        raise ValueError(
+            "half_life is too large: its new observation weight rounds to zero."
+        )
+    return decay
 
 
 def apply_window_size(X: AnyArray, window_size: int | None) -> AnyArray:

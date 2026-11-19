@@ -358,8 +358,8 @@ class _BaseSeriatedOptimization(BaseOptimization):
 
         **fit_params : dict
             Parameters passed to the prior, distance and seriation estimators. Requires
-            `enable_metadata_routing=True`. Panels must contain the same observations
-            as `X`.
+            `enable_metadata_routing=True`. Panels and graph series must contain the
+            same observations as `X`.
             With `distance_from_prior=True`, sample weights for the distance estimator
             come from the prior. Other arrays must match the prior's return scenarios
             and are accepted only by `fit`. Distances fitted on the prior's covariance
@@ -440,8 +440,8 @@ class _BaseSeriatedOptimization(BaseOptimization):
             ):
                 raise ValueError(
                     "During partial_fit with distance_from_prior=True, the distance "
-                    "estimator accepts only sample weights, AssetPanel and "
-                    "AssetPanelView metadata. Other metadata may not match the prior's "
+                    "estimator accepts only sample weights, AssetPanel, AssetPanelView "
+                    "and GraphSeries metadata. Other metadata may not match the prior's "
                     "return scenarios."
                 )
 

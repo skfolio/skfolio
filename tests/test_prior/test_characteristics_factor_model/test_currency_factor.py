@@ -7,8 +7,10 @@ import pandas as pd
 import pytest
 
 from skfolio._constants import _CURRENCY
+from skfolio.containers import AssetPanel
 from skfolio.factor_exposure import BaseFactorExposure
 from skfolio.moments.variance import EWVariance
+from skfolio.portfolio import Portfolio
 from skfolio.prior import CharacteristicsFactorModel
 
 from .conftest import make_panel, passthrough_factor
@@ -95,6 +97,51 @@ def test_currency_factors_are_stored_as_direct_factors():
     np.testing.assert_allclose(fm.factor_returns[:, 0], local_factor_returns[1:])
     np.testing.assert_allclose(
         fm.factor_returns[:, 1:], currency_returns.iloc[1:].to_numpy()
+    )
+
+
+@pytest.mark.parametrize("zone", ["America/New_York", "Asia/Tokyo"])
+def test_timezone_aware_currency_and_realized_attribution(tmp_path, zone):
+    panel, X, _, currency_returns, currency_factor = _make_currency_data()
+    baseline_model = _make_model(currency_factor).fit(
+        X, characteristics=panel, currency_excess_returns=currency_returns
+    )
+    baseline_portfolio = Portfolio(X=X, weights=np.full(X.shape[1], 1 / X.shape[1]))
+    expected = baseline_portfolio.realized_attribution(
+        baseline_model.factor_model_, compute_uncertainty=False
+    )
+    expected_rolling = baseline_portfolio.rolling_realized_attribution(
+        baseline_model.factor_model_, window_size=20, step=10, compute_uncertainty=False
+    )
+
+    dates = pd.date_range("2024-02-01", periods=len(X), tz=zone)
+    X.index = dates
+    currency_returns.index = dates
+    panel = AssetPanel(
+        observations=dates, asset_names=panel.asset_names, fields=panel.fields
+    )
+    panel.save(tmp_path / "panel")
+    model = _make_model(currency_factor).fit(
+        X,
+        characteristics=AssetPanel.load(tmp_path / "panel", mmap_mode="r"),
+        currency_excess_returns=currency_returns,
+    )
+    assert pd.DatetimeIndex(model.factor_model_.observations).equals(dates[1:])
+    np.testing.assert_allclose(
+        model.factor_model_.factor_returns, baseline_model.factor_model_.factor_returns
+    )
+    portfolio = Portfolio(X=X, weights=baseline_portfolio.weights)
+    result = portfolio.realized_attribution(
+        model.factor_model_, compute_uncertainty=False
+    )
+    rolling = portfolio.rolling_realized_attribution(
+        model.factor_model_, window_size=20, step=10, compute_uncertainty=False
+    )
+    np.testing.assert_allclose(result.total.vol, expected.total.vol)
+    np.testing.assert_allclose(result.total.mu, expected.total.mu)
+    np.testing.assert_allclose(rolling.total.vol, expected_rolling.total.vol)
+    assert pd.DatetimeIndex(rolling.observations).equals(
+        dates[expected_rolling.observations]
     )
 
 

@@ -2,6 +2,56 @@
 
 <!-- version list -->
 
+## v1.14.0 (2026-11-19)
+
+### Documentation
+
+- Clarify hierarchical allocation terminology ([#511](https://github.com/skfolio/skfolio/pull/511),
+  [`ba8e394`](https://github.com/skfolio/skfolio/commit/ba8e39401040afdb70fa3f4e20f73d184ae1ef49))
+
+### Features
+
+- **model_selection**: Support named estimator collections in online_predict
+  ([#467](https://github.com/skfolio/skfolio/pull/467),
+  [`9366d48`](https://github.com/skfolio/skfolio/commit/9366d4832429ed13c41936eda316a6ae1bee5b8a))
+
+
+## v1.13.0 (2026-11-17)
+
+### Bug Fixes
+
+- **containers**: Preserve timezones in observation dates
+  ([#492](https://github.com/skfolio/skfolio/pull/492),
+  [`8c76976`](https://github.com/skfolio/skfolio/commit/8c769762e5db6acb81057fc747e961ba539f919e))
+
+### Features
+
+- **distance**: Add graph distances and point-in-time graph containers
+  ([#489](https://github.com/skfolio/skfolio/pull/489),
+  [`28b8efc`](https://github.com/skfolio/skfolio/commit/28b8efcab125f8fab35d9166e45e238b82f502cf))
+
+- **portfolio**: Add graph dependency exposure ([#490](https://github.com/skfolio/skfolio/pull/490),
+  [`ac9720c`](https://github.com/skfolio/skfolio/commit/ac9720c17d9de675760f48b1917f44ad4376b83f))
+
+
+## v1.12.17 (2026-11-16)
+
+### Bug Fixes
+
+- **descriptor**: Correct EW betas, shrinkage, macro sensitivity and residual volatility for late
+  listings and missing returns ([#507](https://github.com/skfolio/skfolio/pull/507),
+  [`25d861b`](https://github.com/skfolio/skfolio/commit/25d861b9d1b7c5016a58cb3826571627b6399be3))
+
+### Additional Release Information
+
+- **descriptor**: The eps parameter in the affected EW descriptors is deprecated and ignored. It
+  will be removed in version 2.0.
+
+- The affected EW descriptors now reset their history when active_mask=False and return NaN when the
+  required sensitivity cannot be estimated. Residual volatility starts accumulating residuals from
+  the tenth observation used to estimate beta.
+
+
 ## v1.12.16 (2026-11-14)
 
 ### Bug Fixes

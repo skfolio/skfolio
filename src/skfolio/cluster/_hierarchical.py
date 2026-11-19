@@ -135,7 +135,7 @@ class HierarchicalClustering(skb.ClusterMixin, skb.BaseEstimator):
         Labels of each asset.
 
     linkage_matrix_ : ndarray of shape (n_assets - 1, 4)
-        Linkage matrix computed from the distance matrix of the `distance_estimator`.
+        Linkage matrix computed from the distance matrix supplied to `fit`.
 
     condensed_distance_ : ndarray of shape (\\binom{n_assets}{2}, )
         The 1-D condensed distance matrix.
@@ -169,7 +169,7 @@ class HierarchicalClustering(skb.ClusterMixin, skb.BaseEstimator):
         self.linkage_method = linkage_method
 
     def fit(self, X: ArrayLike, y: None = None) -> HierarchicalClustering:
-        """Fit the Hierarchical Equal Risk Contribution estimator.
+        """Fit the Hierarchical Clustering estimator.
 
         Parameters
         ----------

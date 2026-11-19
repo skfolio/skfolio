@@ -34,7 +34,7 @@ class EWResidualVolatility(_BaseEWResidualVolatility):
     :math:`\lambda_\beta = \exp(-\ln(2)/\text{beta\_half\_life})` and the residual
     variance uses decay :math:`\lambda_v = \exp(-\ln(2)/\text{half\_life})`. The
     zero-initialized residual variance accumulator is bias-corrected at output
-    time using each asset's valid observation count :math:`n_i(t)`.
+    time using :math:`n_i(t)`, the number of residuals included for asset :math:`i`.
 
     The market return :math:`r_m(t)` is computed as the cap-weighted average of returns
     in the estimation universe.
@@ -52,16 +52,16 @@ class EWResidualVolatility(_BaseEWResidualVolatility):
         EWMA half-life in observations for the beta estimator.
 
     min_periods : int, optional
-        Minimum number of valid returns required for each asset. Until an asset
-        reaches this count, its output is NaN. This warm-up period avoids exposing
-        early EWMA values before the residual volatility estimate has sufficiently
-        converged from its zero initialization. If `None`, defaults to
+        Minimum number of residuals required for each asset. Until an asset reaches this
+        count, its output is NaN. Residuals are included from the tenth observation used
+        to estimate beta, provided beta can be computed. If `None`, defaults to
         :math:`\lceil\max(\text{half\_life}, \text{beta\_half\_life})\rceil`, with a
-        minimum of 1.
+        minimum of 1. With default parameters and no missing returns, the first output
+        is possible at observation 69.
 
-    eps : float, default=1e-12
-        Small constant for numerical stability in :math:`1 / \text{Var}(r_m)` when
-        computing beta.
+    eps : float, optional
+        Deprecated and ignored. It will be removed in version 2.0.
+        Supplying a positive value emits a `FutureWarning`.
 
     Attributes
     ----------
@@ -72,20 +72,24 @@ class EWResidualVolatility(_BaseEWResidualVolatility):
         Asset names seen during fitting.
 
     residual_volatility_ : ndarray of shape (n_assets,)
-        Last computed EWMA residual volatility. Contains NaN for inactive assets and
-        assets that have not reached `min_periods` valid returns.
+        Last computed EWMA residual volatility. Contains NaN where
+        `X.active_mask=False`, beta cannot be computed or fewer than `min_periods`
+        residuals have been included.
 
     Notes
     -----
-    NaNs are treated as missing observations. Active assets with missing returns
-    keep their previous asset-specific EWMA state; inactive assets output NaN and
-    restart their warm-up period when they become active again. Non-missing returns
-    must be finite.
+    NaNs are treated as missing observations. With `X.active_mask=True`, missing returns
+    leave previous estimates unchanged. Setting `X.active_mask=False` resets the
+    estimates and sets output to NaN. Non-missing returns must be finite.
 
-    Market returns are computed from the estimation universe (`estimation_mask` of
-    :class:`~skfolio.containers.AssetPanel`). If no estimable asset has both finite
-    returns and finite `market_cap` at an observation, the market return is undefined
-    and a `ValueError` is raised.
+    Beta is fitted with an intercept using the same observations for asset and market
+    returns. Residuals use the updated beta without subtracting the intercept. Too
+    little variation in market returns to compute beta produces NaN without updating the
+    residual estimate.
+
+    Market returns are the `X["market_cap"]`-weighted average of `X["returns"]` where
+    `X.estimation_mask=True` and both fields are finite. A `ValueError` is raised if
+    these assets have no positive total market capitalization at any observation.
 
     References
     ----------
@@ -112,7 +116,7 @@ class EWResidualVolatility(_BaseEWResidualVolatility):
         half_life: float = 40.0,
         beta_half_life: float = 60.0,
         min_periods: int | None = None,
-        eps: float = 1e-12,
+        eps: float | None = None,
     ) -> None:
         super().__init__(
             half_life=half_life,
