@@ -14,6 +14,34 @@ from skfolio.descriptor import (
 from tests.test_descriptor._ew_reference import residual_path
 
 
+@pytest.mark.parametrize(
+    "descriptor_cls", [EWResidualVolatility, EWResidualDownsideVolatility]
+)
+def test_squared_residual_overflow_raises(descriptor_cls):
+    """Finite returns with overflowing squared residuals raise an explicit error."""
+    n_observations = 12
+    panel = AssetPanel(
+        fields={
+            "returns": np.column_stack(
+                (
+                    np.linspace(-0.01, 0.01, n_observations),
+                    np.full(n_observations, -1e160),
+                )
+            ),
+            "market_cap": np.tile([1.0, 0.0], (n_observations, 1)),
+        },
+        observations=np.arange(n_observations),
+        asset_names=np.array(["market", "asset"]),
+    )
+    with (
+        np.errstate(over="ignore"),
+        pytest.raises(ValueError, match="Non-finite EW residual moments"),
+    ):
+        descriptor_cls(half_life=5, beta_half_life=5, min_periods=1).fit_transform(
+            panel
+        )
+
+
 class TestEWResidualVolatility:
     """Tests for EWResidualVolatility descriptor."""
 

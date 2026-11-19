@@ -1,4 +1,4 @@
-"""Shared regression state and return aggregation for streaming descriptors."""
+"""Shared averaging and regression helpers for streaming descriptors."""
 
 # Copyright (c) 2023-2026
 # Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
@@ -568,6 +568,89 @@ class _EWMoments:
         np.copyto(self.last_returns, returns, where=valid_mask)
         np.copyto(self.observation_weight_sum, weight_sum, where=valid_mask)
         self.n_observations += valid_mask
+
+
+class _EWMean:
+    """Exponentially weighted averages computed separately for each asset.
+
+    Computes averages of quantities such as turnover, trading volume or squared returns,
+    giving more influence to recent observations.
+
+    It applies bias correction separately for each asset to prevent zero initialization
+    from pulling averages toward zero for assets with short histories or when
+    `AssetPanel.active_mask` differs across assets, as with late listings or assets that
+    become active again.
+
+    Parameters
+    ----------
+    n_assets : int
+        Number of assets whose averages are tracked.
+
+    decay : float
+        Factor in [0, 1) applied to earlier observation weights when a new observation
+        is added for an asset. Smaller values give more influence to recent
+        observations.
+    """
+
+    def __init__(self, *, n_assets: int, decay: float) -> None:
+        self.decay = decay
+        self.n_observations = np.zeros(n_assets, dtype=int)
+        self.weighted_sum = np.zeros(n_assets)
+
+    def reset(self, inactive_mask: BoolArray) -> None:
+        """Clear the estimation history for the selected assets.
+
+        Parameters
+        ----------
+        inactive_mask : ndarray of bool of shape (n_assets,)
+            Boolean mask selecting assets whose weighted sums and observation counts
+            are set to zero.
+        """
+        self.weighted_sum[inactive_mask] = 0
+        self.n_observations[inactive_mask] = 0
+
+    def update(self, values: FloatArray, valid_mask: BoolArray) -> None:
+        """Add one observation for the selected assets.
+
+        Parameters
+        ----------
+        values : ndarray of shape (n_assets,)
+            Input values for one observation. Values selected by `valid_mask` must be
+            finite.
+
+        valid_mask : ndarray of bool of shape (n_assets,)
+            Boolean mask selecting assets to update. Other assets retain their
+            statistics and observation counts without decay.
+        """
+        np.copyto(
+            self.weighted_sum,
+            self.decay * self.weighted_sum + (1 - self.decay) * values,
+            where=valid_mask,
+        )
+        self.n_observations += valid_mask
+
+    def mean(self, min_periods: int = 1) -> FloatArray:
+        """Return the mean for each asset after normalizing observation weights.
+
+        Parameters
+        ----------
+        min_periods : int, default=1
+            Minimum number of observations required per asset. Must be at least one.
+
+        Returns
+        -------
+        mean : ndarray of shape (n_assets,)
+            Exponentially weighted means, with NaN for assets below `min_periods`.
+        """
+        result = np.full(self.weighted_sum.shape, np.nan)
+        weight_sum = 1 - self.decay**self.n_observations
+        np.divide(
+            self.weighted_sum,
+            weight_sum,
+            out=result,
+            where=self.n_observations >= min_periods,
+        )
+        return result
 
 
 # TODO remove deprecated eps parameter and warning helper in v2.0

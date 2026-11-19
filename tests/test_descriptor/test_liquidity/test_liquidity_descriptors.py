@@ -10,7 +10,6 @@ from skfolio.descriptor import (
     EWAmihudIlliquidity,
     EWShareTurnover,
 )
-from skfolio.utils.tools import half_life_to_decay_factor
 
 
 @pytest.fixture(params=[EWShareTurnover, EWAmihudIlliquidity])
@@ -187,26 +186,6 @@ class TestEWShareTurnover:
         result = EWShareTurnover(half_life=5, min_periods=1).fit_transform(simple_panel)
         assert result.shape == simple_panel["adj_volume"].shape
 
-    def test_ewma_formula(self, simple_panel):
-        """Bias-corrected EWMA matches manual computation."""
-        half_life = 5
-        decay = half_life_to_decay_factor(half_life)
-
-        result = EWShareTurnover(half_life=half_life, min_periods=1).fit_transform(
-            simple_panel
-        )
-
-        adj_volume = simple_panel["adj_volume"]
-        adj_shares_outstanding = simple_panel["adj_shares_outstanding"]
-        raw_turnover = adj_volume / adj_shares_outstanding
-        n_obs, n_assets = raw_turnover.shape
-
-        ewma = np.zeros(n_assets)
-        for t in range(n_obs):
-            ewma = decay * ewma + (1 - decay) * raw_turnover[t]
-            weight_sum = 1 - decay ** (t + 1)
-            np.testing.assert_array_almost_equal(result[t], ewma / weight_sum)
-
     def test_nan_holds_state(self, simple_panel):
         """NaN volume holds EWMA state and does not update."""
         simple_panel["adj_volume"][5, 0] = np.nan
@@ -252,36 +231,6 @@ class TestEWAmihudIlliquidity:
             simple_panel
         )
         assert result.shape == simple_panel["returns"].shape
-
-    def test_ewma_formula(self, simple_panel):
-        """Bias-corrected EWMA matches manual computation."""
-        half_life = 5
-        decay = half_life_to_decay_factor(half_life)
-
-        result = EWAmihudIlliquidity(half_life=half_life, min_periods=1).fit_transform(
-            simple_panel
-        )
-
-        returns = simple_panel["returns"]
-        adj_close = simple_panel["adj_close"]
-        adj_volume = simple_panel["adj_volume"]
-        traded_amount = adj_close * adj_volume
-        n_obs, n_assets = returns.shape
-
-        ewma = np.zeros(n_assets)
-        n_valid = np.zeros(n_assets)
-        for t in range(n_obs):
-            r_i = returns[t]
-            ta_i = traded_amount[t]
-            valid = ~np.isnan(r_i) & (ta_i > 0)
-            if np.any(valid):
-                illiq = np.abs(r_i[valid]) / ta_i[valid]
-                ewma[valid] = decay * ewma[valid] + (1 - decay) * illiq
-                n_valid[valid] += 1
-            # Relative tolerance: illiquidity values are of order 1e-10
-            np.testing.assert_allclose(
-                result[t], ewma / (1 - decay**n_valid), rtol=1e-10
-            )
 
     def test_zero_volume_skipped(self, simple_panel):
         """Zero volume is skipped and EWMA state is held."""

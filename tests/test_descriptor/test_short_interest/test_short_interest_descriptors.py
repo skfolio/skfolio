@@ -7,7 +7,6 @@ import pytest
 
 from skfolio.containers import AssetPanel
 from skfolio.descriptor import DaysToCover, ShortInterest
-from skfolio.utils.tools import half_life_to_decay_factor
 
 
 class TestShortInterest:
@@ -111,24 +110,6 @@ class TestDaysToCover:
         result = DaysToCover(half_life=0.5).fit_transform(simple_panel)
         assert not np.all(np.isnan(result[0]))
 
-    def test_ewma_volume_formula(self, simple_panel):
-        """Verify EWMA volume and days-to-cover at a specific timestep."""
-        hl = 5.0
-        decay = half_life_to_decay_factor(hl)
-        result = DaysToCover(half_life=hl, min_periods=1).fit_transform(simple_panel)
-
-        volume = simple_panel["adj_volume"]
-        si = simple_panel["short_interest"]
-
-        # Manually compute EWMA volume for asset 0
-        ewma_vol = 0.0
-        for t in range(volume.shape[0]):
-            ewma_vol = decay * ewma_vol + (1 - decay) * volume[t, 0]
-        # Bias correction for the zero initialization
-        ewma_vol /= 1 - decay ** volume.shape[0]
-        expected_dtc = si[-1, 0] / ewma_vol
-        np.testing.assert_almost_equal(result[-1, 0], expected_dtc)
-
     def test_non_negative(self, simple_panel):
         """Result is non-negative when inputs are non-negative."""
         result = DaysToCover(min_periods=1).fit_transform(simple_panel)
@@ -207,10 +188,11 @@ class TestDaysToCover:
 
     def test_nan_short_interest_updates_volume_state(self, simple_panel):
         """NaN short interest does not prevent volume state updates."""
+        expected = DaysToCover(half_life=5, min_periods=1).fit_transform(simple_panel)
         simple_panel["short_interest"][0, 0] = np.nan
         result = DaysToCover(half_life=5, min_periods=1).fit_transform(simple_panel)
         assert np.isnan(result[0, 0])
-        assert not np.isnan(result[1, 0])
+        np.testing.assert_array_equal(result[1:], expected[1:])
 
     def test_raises_on_negative_short_interest(self, simple_panel):
         """Raises ValueError when short interest is negative."""

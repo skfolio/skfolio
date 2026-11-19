@@ -12,6 +12,7 @@ import numpy as np
 
 from skfolio.containers import AssetPanel
 from skfolio.descriptor._base import BaseDescriptor
+from skfolio.descriptor._utils import _EWMean
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import safe_divide
 from skfolio.utils.tools import (
@@ -46,8 +47,8 @@ class EWShareTurnover(BaseDescriptor):
         \]
 
     where :math:`\lambda = \exp(-\ln(2) / \text{half\_life})` is the EWMA decay factor,
-    :math:`S(0) = 0` and :math:`n(t)` is the asset's number of valid observations up to
-    :math:`t`.
+    :math:`S(0) = 0` and :math:`n(t)` is the asset's number of valid observations since
+    fitting started or the asset became active again.
 
     Share turnover measures trading intensity as the fraction of shares outstanding that
     changes hands over each observation period. Lower turnover indicates weaker trading
@@ -72,9 +73,8 @@ class EWShareTurnover(BaseDescriptor):
     min_periods : int, optional
         Minimum number of valid turnover observations required for each asset. Until an
         asset reaches this count, its output is NaN. This warm-up period avoids
-        exposing turnover estimates based on too few observations. If `None`,
-        defaults to
-        :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
+        exposing turnover estimates based on too few observations. If `None`, defaults
+        to :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
 
     Attributes
     ----------
@@ -89,11 +89,8 @@ class EWShareTurnover(BaseDescriptor):
 
     Notes
     -----
-    The EWMA accumulator is initialized to zero and bias-corrected at output time
-    using each asset's valid-observation count :math:`n(t)`. Without this correction
-    the output is scaled by :math:`1 - \lambda^{n(t)}`, which is 0.5 after one
-    half-life, so assets with a short history (e.g. late listings) would not be
-    comparable with assets observed since the start.
+    Observation weights are normalized for each asset so that starting the EWMA at zero
+    does not understate turnover for assets with short histories.
 
     `adj_shares_outstanding` is common shares outstanding. Both `adj_volume` and
     `adj_shares_outstanding` must use the same split-adjustment basis.
@@ -102,12 +99,11 @@ class EWShareTurnover(BaseDescriptor):
     finite and non-negative. Non-missing `adj_shares_outstanding` values must be finite
     and strictly positive.
 
-    The EWMA state is updated only for valid observations. NaN in `adj_volume` or
-    `adj_shares_outstanding` holds the EWMA state and does not increment the
-    valid-observation count. Zero `adj_volume` is valid and produces zero turnover.
-
-    The `active_mask` property of the :class:`~skfolio.containers.AssetPanel`
-    distinguishes holidays from delistings.
+    With `X.active_mask=True`, NaN in `adj_volume` or `adj_shares_outstanding` leaves
+    the estimate unchanged without decay and does not count toward `min_periods`. Zero
+    `adj_volume` contributes zero turnover. Setting `X.active_mask=False` clears the
+    asset's history and sets output to NaN. Estimation restarts when the asset becomes
+    active again.
 
     References
     ----------
@@ -216,22 +212,13 @@ class EWShareTurnover(BaseDescriptor):
         result = np.empty((n_observations, n_assets), dtype=float)
 
         for t in range(n_observations):
-            valid = np.isfinite(raw_turnover[t])
-            if np.any(valid):
-                self._n_valid[valid] += 1
-                self._ewma[valid] = (
-                    self._decay * self._ewma[valid]
-                    + (1 - self._decay) * raw_turnover[t][valid]
-                )
-
-            ready = self._n_valid >= self._min_periods
-            result[t] = np.nan
-            # Bias correction for the zero initialization
-            weight_sum = 1.0 - self._decay ** self._n_valid[ready]
-            result[t, ready] = self._ewma[ready] / weight_sum
-
-        # Mask for inactive assets
-        result = np.where(X.active_mask, result, np.nan)
+            active_mask = X.active_mask[t]
+            self._mean.reset(inactive_mask=~active_mask)
+            self._mean.update(
+                values=raw_turnover[t],
+                valid_mask=active_mask & np.isfinite(raw_turnover[t]),
+            )
+            result[t] = self._mean.mean(min_periods=self._min_periods)
 
         self.turnover_ = result[-1].copy() if n_observations > 1 else result[-1]
 
@@ -250,14 +237,11 @@ class EWShareTurnover(BaseDescriptor):
 
     def _initialize(self) -> None:
         """Initialize state."""
-        n_assets = self.n_assets_
-
-        self._decay = half_life_to_decay_factor(self.half_life)
-
         if self.min_periods is None:
             self._min_periods = max(1, int(np.ceil(self.half_life)))
         else:
             self._min_periods = int(self.min_periods)
 
-        self._ewma = np.zeros(n_assets, dtype=float)
-        self._n_valid = np.zeros(n_assets, dtype=int)
+        self._mean = _EWMean(
+            n_assets=self.n_assets_, decay=half_life_to_decay_factor(self.half_life)
+        )
