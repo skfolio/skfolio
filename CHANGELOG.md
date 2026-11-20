@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.14.4 (2026-11-20)
+
+### Bug Fixes
+
+- **attribution**: Zero inactive static-exposure contributions
+  ([#510](https://github.com/skfolio/skfolio/pull/510),
+  [`00c953e`](https://github.com/skfolio/skfolio/commit/00c953e7ef9970d1caf89ab80e79502c62075305))
+
+
 ## v1.14.3 (2026-11-20)
 
 ### Bug Fixes
