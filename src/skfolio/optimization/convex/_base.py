@@ -2872,7 +2872,7 @@ def _solve(
             " scale. For more details, set `solver_params=dict(verbose=True)`",
             stacklevel=2,
         )
-    return weights, problem_values  # ty: ignore[invalid-return-type]
+    return weights, problem_values  # ty: ignore[invalid-explicit-return]
 
 
 def _cvx_worst_loss(
