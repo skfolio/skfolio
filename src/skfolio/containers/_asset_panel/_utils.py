@@ -223,7 +223,7 @@ def _positions_from_labels(labels: AnyArray, selected: Any) -> slice | IntArray:
         if isinstance(loc, slice):
             return loc
         if isinstance(loc, np.ndarray):
-            return np.flatnonzero(loc) if loc.dtype == np.bool_ else loc  # ty: ignore[invalid-return-type]
+            return np.flatnonzero(loc) if loc.dtype == np.bool_ else loc  # ty: ignore[invalid-explicit-return]
         return slice(int(loc), int(loc) + 1)
 
     positions = []

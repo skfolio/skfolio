@@ -367,7 +367,7 @@ def _select_graph_observations(
             f"{missing[:5].tolist()}{'...' if len(missing) > 5 else ''}."
         )
 
-    return graphs[positions]  # ty: ignore[invalid-return-type]  # array selectors return GraphSeries
+    return graphs[positions]  # ty: ignore[invalid-explicit-return]  # array selectors return GraphSeries
 
 
 def _get_weights_per_observation(

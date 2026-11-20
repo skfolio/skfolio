@@ -343,7 +343,7 @@ def _select_theta_and_rotation_mle(
         raise RuntimeError("Optimization failed for all rotations")
 
     best = min(results, key=lambda d: d["neg_log_likelihood"])
-    return best["theta"], best["rotation"]  # ty: ignore[invalid-return-type]
+    return best["theta"], best["rotation"]  # ty: ignore[invalid-explicit-return]
 
 
 def _apply_copula_rotation(X: FloatArray, rotation: CopulaRotation) -> FloatArray:

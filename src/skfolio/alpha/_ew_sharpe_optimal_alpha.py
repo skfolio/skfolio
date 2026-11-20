@@ -466,7 +466,7 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
             Historical alpha forecasts for the input panel.
         """
         self._reset()
-        return self._fit(X, y, method="fit", transform=True, **fit_params)  # ty: ignore[invalid-return-type]
+        return self._fit(X, y, method="fit", transform=True, **fit_params)  # ty: ignore[invalid-explicit-return]
 
     def partial_fit(
         self, X: AssetPanel, y: None = None, **fit_params: Any
@@ -520,7 +520,7 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         alphas : ndarray of shape (n_observations, n_assets)
             Historical alpha forecasts for the new observations.
         """
-        return self._fit(X, y, method="partial_fit", transform=True, **fit_params)  # ty: ignore[invalid-return-type]
+        return self._fit(X, y, method="partial_fit", transform=True, **fit_params)  # ty: ignore[invalid-explicit-return]
 
     def _fit(
         self,
