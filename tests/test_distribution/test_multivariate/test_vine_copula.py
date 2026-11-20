@@ -755,6 +755,8 @@ def test_clear_cache(X, max_depth):
 
 
 def test_memory_fit(X):
+    # Use enough rows for return arrays to dominate fixed Python overhead.
+    X = np.tile(X, (4, 1))
     n_observations, n_assets = X.shape
     col = n_observations * 8
 
@@ -768,20 +770,22 @@ def test_memory_fit(X):
     _model().fit(X)
     gc.collect()
 
-    if not tracemalloc.is_tracing():
+    already_tracing = tracemalloc.is_tracing()
+    if not already_tracing:
         tracemalloc.start()
-    tracemalloc.clear_traces()
-    tracemalloc.reset_peak()
-    start = tracemalloc.get_traced_memory()
-    _model().fit(X)
-    end = tracemalloc.get_traced_memory()
-    current = end[0] - start[0]
-    peak = end[1] - start[1]
+    try:
+        tracemalloc.clear_traces()
+        baseline = tracemalloc.get_traced_memory()[0]
+        tracemalloc.reset_peak()
+        _model().fit(X)
+        current, peak = tracemalloc.get_traced_memory()
+    finally:
+        if not already_tracing:
+            tracemalloc.stop()
 
-    assert current < col * n_assets * 1.5
+    assert current - baseline < col * n_assets * 1.5
     expected_peak = col * 2 * (2 * n_assets - 1)
-    assert peak < expected_peak * 1.5
-    tracemalloc.stop()
+    assert peak - baseline < expected_peak * 1.5
 
 
 def test_memory_sample(X):
@@ -795,22 +799,24 @@ def test_memory_sample(X):
     )
     model.fit(X)
 
-    if not tracemalloc.is_tracing():
+    already_tracing = tracemalloc.is_tracing()
+    if not already_tracing:
         tracemalloc.start()
-    tracemalloc.clear_traces()
-    tracemalloc.reset_peak()
-    start = tracemalloc.get_traced_memory()
-    _ = model.sample(n_samples)
-    end = tracemalloc.get_traced_memory()
-    current = end[0] - start[0]
-    peak = end[1] - start[1]
+    try:
+        tracemalloc.clear_traces()
+        baseline = tracemalloc.get_traced_memory()[0]
+        tracemalloc.reset_peak()
+        _ = model.sample(n_samples)
+        current, peak = tracemalloc.get_traced_memory()
+    finally:
+        if not already_tracing:
+            tracemalloc.stop()
 
     expected_current = col * n_assets
     expected_peak_without_optim = col * 2 * (n_assets * (n_assets + 1) / 2)
 
-    assert current < expected_current * 1.5
-    assert peak < expected_peak_without_optim * 0.5
-    tracemalloc.stop()
+    assert current - baseline < expected_current * 1.5
+    assert peak - baseline < expected_peak_without_optim * 0.5
 
 
 @pytest.mark.parametrize(
