@@ -296,6 +296,13 @@ composed of multiple test `Portfolio`, each corresponding to a train/test fold.
     ptf3 = Portfolio(X=X.iloc[2:], weights=[0.4, 0.6])
     portfolio = MultiPeriodPortfolio(portfolios=[ptf1, ptf2, ptf3])
 
+To compare target allocations across the holding periods, label each composition
+bar with the first and last observations of its test portfolio:
+
+.. code-block:: python
+
+    portfolio.plot_composition(display_periods=True)
+
 Sample weights control each observation's contribution to measures such as mean
 and variance. By default, they are inherited from the children, with periods
 weighted by their observation counts. Set `sample_weight` on the parent to
