@@ -2,6 +2,65 @@
 
 <!-- version list -->
 
+## v1.14.3 (2026-11-20)
+
+### Bug Fixes
+
+- **descriptor**: Reset EW momentum history when assets become inactive
+  ([#512](https://github.com/skfolio/skfolio/pull/512),
+  [`1bba989`](https://github.com/skfolio/skfolio/commit/1bba989282e999a58bcf483a5f718e3576226409))
+
+
+## v1.14.2 (2026-11-19)
+
+### Bug Fixes
+
+- **descriptor**: Bias-correct the EWMA of liquidity and short-interest descriptors
+  ([#508](https://github.com/skfolio/skfolio/pull/508),
+  [`9e2c29d`](https://github.com/skfolio/skfolio/commit/9e2c29db3b56442756722ed8de2df17ca0c014fe))
+
+
+## v1.14.1 (2026-11-19)
+
+### Bug Fixes
+
+- **model-selection**: Train online search through trailing observations
+  ([#509](https://github.com/skfolio/skfolio/pull/509),
+  [`ab9d191`](https://github.com/skfolio/skfolio/commit/ab9d1913c7ca53d3d8d6f350ce576097c9d283d5))
+
+
+## v1.14.0 (2026-11-19)
+
+### Documentation
+
+- Clarify hierarchical allocation terminology ([#511](https://github.com/skfolio/skfolio/pull/511),
+  [`ba8e394`](https://github.com/skfolio/skfolio/commit/ba8e39401040afdb70fa3f4e20f73d184ae1ef49))
+
+### Features
+
+- **model_selection**: Support named estimator collections in online_predict
+  ([#467](https://github.com/skfolio/skfolio/pull/467),
+  [`9366d48`](https://github.com/skfolio/skfolio/commit/9366d4832429ed13c41936eda316a6ae1bee5b8a))
+
+
+## v1.13.0 (2026-11-17)
+
+### Bug Fixes
+
+- **containers**: Preserve timezones in observation dates
+  ([#492](https://github.com/skfolio/skfolio/pull/492),
+  [`8c76976`](https://github.com/skfolio/skfolio/commit/8c769762e5db6acb81057fc747e961ba539f919e))
+
+### Features
+
+- **distance**: Add graph distances and point-in-time graph containers
+  ([#489](https://github.com/skfolio/skfolio/pull/489),
+  [`28b8efc`](https://github.com/skfolio/skfolio/commit/28b8efcab125f8fab35d9166e45e238b82f502cf))
+
+- **portfolio**: Add graph dependency exposure ([#490](https://github.com/skfolio/skfolio/pull/490),
+  [`ac9720c`](https://github.com/skfolio/skfolio/commit/ac9720c17d9de675760f48b1917f44ad4376b83f))
+
+
 ## v1.12.17 (2026-11-16)
 
 ### Bug Fixes

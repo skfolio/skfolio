@@ -13,6 +13,7 @@ import cvxpy as cp
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+import scipy.sparse as sps
 
 if TYPE_CHECKING:
     from skfolio.measures import (
@@ -28,6 +29,7 @@ __all__ = [
     "AnyArray",
     "ArrayLike",
     "BoolArray",
+    "CSRArray",
     "CSTransformer",
     "ConstraintFunction",
     "CvxMeasure",
@@ -47,6 +49,7 @@ __all__ = [
     "Result",
     "RiskResult",
     "Scoring",
+    "SparseArray",
     "StrArray",
     "Tags",
     "Target",
@@ -60,6 +63,10 @@ IntArray: TypeAlias = npt.NDArray[np.integer]
 ObjArray: TypeAlias = npt.NDArray[np.object_]
 StrArray: TypeAlias = npt.NDArray[np.str_]
 AnyArray: TypeAlias = npt.NDArray[Any]
+
+# Scipy
+SparseArray: TypeAlias = sps.sparray
+CSRArray: TypeAlias = sps.csr_array
 
 # Skfolio
 Measure: TypeAlias = Union[

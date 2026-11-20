@@ -124,6 +124,16 @@ Classes
     portfolio.FailedPortfolio
     portfolio.MultiPeriodPortfolio
 
+Functions
+---------
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: function.rst
+
+    portfolio.dependency_exposure
+
 
 .. _population_ref:
 
@@ -166,6 +176,8 @@ Classes
 
     containers.AssetPanel
     containers.AssetPanelView
+    containers.Graph
+    containers.GraphSeries
 
 Field Base Class
 ----------------
@@ -748,6 +760,7 @@ Classes
     distance.SpearmanDistance
     distance.CovarianceDistance
     distance.DistanceCorrelation
+    distance.GraphDistance
     distance.MutualInformation
 
 .. _seriation_ref:

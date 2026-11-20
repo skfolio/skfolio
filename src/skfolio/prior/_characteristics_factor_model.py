@@ -2108,8 +2108,8 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         if self._history is None:
             raise AttributeError("History has not been initialized.")
         if isinstance(next(iter(self._history.values())), _ArrayBuffer):
-            return {k: v.array for k, v in self._history.items()}  # ty: ignore[invalid-return-type, missing-union-attribute]
-        return self._history  # ty: ignore[invalid-return-type]
+            return {k: v.array for k, v in self._history.items()}  # ty: ignore[invalid-explicit-return, missing-union-attribute]
+        return self._history  # ty: ignore[invalid-explicit-return]
 
     def _get_dependency_layers(self) -> list[list[str]]:
         """Return factors grouped by dependency layer for ordered fitting when the

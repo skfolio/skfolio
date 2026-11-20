@@ -7,6 +7,7 @@
 from skfolio.distance._base import BaseDistance
 from skfolio.distance._covariance_distance import CovarianceDistance
 from skfolio.distance._distance_correlation import DistanceCorrelation
+from skfolio.distance._graph_distance import GraphDistance
 from skfolio.distance._kendall_distance import KendallDistance
 from skfolio.distance._mutual_information import MutualInformation
 from skfolio.distance._pearson_distance import PearsonDistance
@@ -17,6 +18,7 @@ __all__ = [
     "BaseDistance",
     "CovarianceDistance",
     "DistanceCorrelation",
+    "GraphDistance",
     "KendallDistance",
     "MutualInformation",
     "NBinsMethod",

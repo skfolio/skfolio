@@ -187,7 +187,7 @@ class FactorModel:
         where constrained families are full-rank.
     """
 
-    observations: StrArray  # (n_observations,)
+    observations: AnyArray  # (n_observations,)
     asset_names: StrArray  # (n_assets,)
     factor_names: StrArray  # (n_factors,)
     factor_families: StrArray | None  # (n_factors,)
@@ -2971,7 +2971,7 @@ class FactorModel:
                 weights=regression_weights,
                 axis=1,
             )
-        return ic, start_t  # ty: ignore[invalid-return-type]
+        return ic, start_t  # ty: ignore[invalid-explicit-return]
 
     def _exposure_stability(
         self,
@@ -3003,7 +3003,7 @@ class FactorModel:
         )
         if weights is not None:
             weights = weights[:-step]
-        return cs_pearson_correlation(  # ty: ignore[invalid-return-type]
+        return cs_pearson_correlation(  # ty: ignore[invalid-explicit-return]
             exposures[:-step], exposures[step:], weights=weights, axis=1
         )
 
@@ -3189,7 +3189,7 @@ class _GramDiagnostics(NamedTuple):
 class _RegressionData(NamedTuple):
     """Lag-aligned data used by cross-sectional regression diagnostics."""
 
-    observations: StrArray
+    observations: AnyArray
     exposures: FloatArray
     factor_returns: FloatArray
     idio_returns: FloatArray

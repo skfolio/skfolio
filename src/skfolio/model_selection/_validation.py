@@ -36,7 +36,7 @@ from skfolio.portfolio._base import (
     _PORTFOLIO_MEASURE_PARAMS,
     _normalize_annualization_factor_alias,
 )
-from skfolio.typing import ArrayLike, IntArray
+from skfolio.typing import ArrayLike, FloatArray, IntArray
 from skfolio.utils.tools import fit_and_predict, safe_split
 
 if TYPE_CHECKING:
@@ -60,7 +60,7 @@ def cross_val_predict(
     method: str = "predict",
     verbose: int = 0,
     params: dict | None = None,
-    pre_dispatch: str = "2*n_jobs",
+    pre_dispatch: int | str = "2*n_jobs",
     column_indices: IntArray | None = None,
     portfolio_params: dict | None = None,
     entry_rebalancing_params: dict | None = None,
@@ -84,7 +84,7 @@ def cross_val_predict(
     :class:`~skfolio.portfolio.MultiPeriodPortfolio` objects (each test produces a
     collection of paths rather than a single path).
 
-    When a list of `(name, estimator)` pairs is provided, all estimators are
+    When a collection of `(name, estimator)` pairs is provided, all estimators are
     evaluated on the same splits and their portfolios are returned together in a
     :class:`~skfolio.population.Population`.
 
@@ -97,8 +97,8 @@ def cross_val_predict(
     ----------
     estimator : BaseEstimator | Pipeline | sequence of (str, estimator)
         Portfolio optimization estimator or pipeline whose last step is an optimization
-        estimator. To evaluate several estimators, pass a sequence of `(name, estimator)`
-        pairs with unique string names.
+        estimator. To evaluate several estimators, pass a collection of
+        `(name, estimator)` pairs with unique string names.
 
     X : array-like of shape (n_observations, n_assets)
         Price returns of the assets.
@@ -119,8 +119,8 @@ def cross_val_predict(
     n_jobs : int, optional
         The number of jobs to run in parallel.
         `None` means 1 unless in a `joblib.parallel_backend` context. -1 means
-        using all processors. Named estimators share one worker pool. Folds that
-        depend on previous holdings run sequentially within each path.
+        using all processors. Estimators in a collection share one worker pool.
+        Folds that depend on previous holdings run sequentially within each path.
 
     method : str
         Invokes the passed method name of the passed estimator.
@@ -132,21 +132,9 @@ def cross_val_predict(
         Parameters to pass to the underlying estimator's `fit` and the CV splitter.
 
     pre_dispatch : int or str, default='2*n_jobs'
-        Controls the number of jobs that get dispatched during parallel
-        execution. Reducing this number can be useful to avoid an
-        explosion of memory consumption when more jobs get dispatched
-        than CPUs can process. This parameter can be:
-
-            * None, in which case all the jobs are immediately
-              created and spawned. Use this for lightweight and
-              fast-running jobs, to avoid delays due to on-demand
-              spawning of the jobs
-
-            * An int, giving the exact number of total jobs that are
-              spawned
-
-            * A str, giving an expression as a function of n_jobs,
-              as in '2*n_jobs'
+        Number of task batches dispatched ahead of execution. Use an integer,
+        an expression such as `'2*n_jobs'`, or `'all'` to dispatch all tasks.
+        Lower values can reduce memory usage.
 
     column_indices : ndarray, optional
         Indices of the `X` columns to cross-validate on.
@@ -176,8 +164,9 @@ def cross_val_predict(
         `name`, `tag`, `sample_weight` and `check_observations_order` apply to the
         returned `MultiPeriodPortfolio` only.
 
-        For named estimators, these settings apply to every estimator. `name` and
-        `tag` are set from the estimator names and cannot be overridden here.
+        For a collection of `(name, estimator)` pairs, these settings apply to every
+        estimator. `name` and `tag` are set from the names in the collection and cannot
+        be overridden here.
 
     entry_rebalancing_params : dict, optional
         Optimization estimator parameters applied only while constructing the first
@@ -193,15 +182,16 @@ def cross_val_predict(
         :class:`~skfolio.model_selection.WalkForward`,
         :class:`~sklearn.model_selection.TimeSeriesSplit` and
         :class:`~skfolio.model_selection.MultipleRandomizedCV`.
-        For named estimators, these settings apply to every estimator.
+        For a collection of `(name, estimator)` pairs, these settings apply to every
+        estimator.
 
     Returns
     -------
     predictions : MultiPeriodPortfolio | Population
         A `MultiPeriodPortfolio` for single-path CV, or a `Population` for multi-path CV.
-        Named estimators always return a `Population`, with one `MultiPeriodPortfolio`
-        per estimator and path, ordered by estimator then path. Estimator names set
-        `name` and `tag`.
+        A collection of `(name, estimator)` pairs always returns a `Population`, with
+        one `MultiPeriodPortfolio` per estimator and path, ordered by estimator then
+        path. Estimator names set `name` and `tag`.
 
     Notes
     -----
@@ -229,7 +219,7 @@ def cross_val_predict(
     >>> cv = WalkForward(train_size=252, test_size=63)
     >>> mpp = cross_val_predict(InverseVolatility(), X, cv=cv)  # MultiPeriodPortfolio
 
-    To compare estimators on the same splits, pass a list of named estimators:
+    To compare estimators on the same splits, pass a list of `(name, estimator)` pairs:
 
     >>> estimators = [
     ...     ("equal_weighted", EqualWeighted()),
@@ -239,20 +229,9 @@ def cross_val_predict(
     >>> [mpp.name for mpp in population]
     ['equal_weighted', 'inverse_volatility']
     """
-    is_collection = isinstance(estimator, Sequence) and not isinstance(
-        estimator, str | bytes | bytearray
+    named_estimators, is_collection = _validate_estimator_input(
+        estimator, portfolio_params=portfolio_params, caller="cross_val_predict"
     )
-    named_estimators = (
-        _validate_named_estimators(estimator) if is_collection else [(None, estimator)]
-    )
-    if is_collection:
-        conflicting_params = sorted({"name", "tag"} & set(portfolio_params or {}))
-        if conflicting_params:
-            raise ValueError(
-                f"{conflicting_params} cannot be set in `portfolio_params` when "
-                "`cross_val_predict` receives named estimators: their names determine "
-                "the portfolio names and tags."
-            )
 
     evaluations = []
     for name, est in named_estimators:
@@ -267,8 +246,9 @@ def cross_val_predict(
                 f"estimators{description}. For non-portfolio optimization estimators, "
                 "use `sklearn.model_selection.cross_val_predict`."
             )
+        _validate_entry_rebalancing_params(est, entry_rebalancing_params)
         est, evaluation_params, explicit_measure_params = (
-            _resolve_evaluation_portfolio_params(est, portfolio_params)  # ty: ignore[invalid-argument-type]
+            _resolve_evaluation_portfolio_params(est, portfolio_params)
         )
         if is_collection:
             evaluation_params.update(name=name, tag=name)
@@ -462,20 +442,35 @@ def cross_val_predict(
     return Population(population)
 
 
-def _validate_named_estimators(
-    estimators: Sequence,
-) -> list[tuple[str, skb.BaseEstimator | Pipeline]]:
-    """Validate a collection of estimators with unique string names."""
-    if not estimators:
+def _validate_estimator_input(
+    estimator: _EstimatorT | Sequence[tuple[str, _EstimatorT]],
+    *,
+    portfolio_params: dict | None,
+    caller: str,
+) -> tuple[list[tuple[str | None, _EstimatorT]], bool]:
+    """Normalize single or named estimator input and validate collection settings.
+
+    Return `(name, estimator)` pairs and whether the input was a collection.
+    A single estimator has name `None`. Collection names must be unique strings
+    and cannot be overridden by `name` or `tag` in `portfolio_params`.
+    Estimator types are checked by the caller.
+    """
+    if not isinstance(estimator, Sequence) or isinstance(
+        estimator, str | bytes | bytearray
+    ):
+        return [(None, estimator)], False  # ty: ignore[invalid-explicit-return]
+
+    if not estimator:
         raise ValueError("Received an empty collection of estimators.")
-    named_estimators = []
+
+    named_estimators: list[tuple[str | None, _EstimatorT]] = []
     names = set()
-    for item in estimators:
+    for item in estimator:
         if not isinstance(item, tuple | list) or len(item) != 2:
             raise TypeError(
                 f"Each element must be a `(name, estimator)` pair, got {item!r}."
             )
-        name, estimator = item
+        name, est = item
         if not isinstance(name, str):
             raise TypeError(f"Estimator names must be strings, got {name!r}.")
         if not name:
@@ -485,8 +480,17 @@ def _validate_named_estimators(
                 f"Estimator names must be unique, got duplicated names: {[name]}."
             )
         names.add(name)
-        named_estimators.append((name, estimator))
-    return named_estimators
+        named_estimators.append((name, est))
+
+    conflicting_params = sorted({"name", "tag"} & set(portfolio_params or {}))
+    if conflicting_params:
+        raise ValueError(
+            f"{conflicting_params} cannot be set in `portfolio_params` when "
+            f"`{caller}` receives a collection of `(name, estimator)` pairs: "
+            "the names determine the portfolio names and tags."
+        )
+
+    return named_estimators, True
 
 
 def _routing_enabled() -> bool:
@@ -619,9 +623,14 @@ def _route_params(
     return routed_params
 
 
-def _has_asset_names(X: ArrayLike) -> bool:
-    """Return whether the estimator's actual input carries string asset names."""
-    return hasattr(X, "columns") and all(isinstance(name, str) for name in X.columns)  # ty: ignore[not-iterable]
+def _get_ending_weights(portfolio: Portfolio) -> FloatArray | dict[str, float]:
+    """Return ending weights as a dictionary for named assets, otherwise as an array."""
+    if hasattr(portfolio.X, "columns") and all(
+        isinstance(name, str)
+        for name in portfolio.X.columns  # ty: ignore[not-iterable]
+    ):
+        return portfolio.ending_weights_dict
+    return portfolio.ending_weights
 
 
 def _propagate_previous_weights(portfolios: list[Portfolio]) -> list[Portfolio]:
@@ -650,11 +659,7 @@ def _propagate_previous_weights(portfolios: list[Portfolio]) -> list[Portfolio]:
                 if not same_weights:
                     params["previous_weights"] = previous_weights
                     portfolio = type(portfolio)(**params)
-            previous_weights = (
-                portfolio.ending_weights_dict
-                if _has_asset_names(X=portfolio.X)
-                else portfolio.ending_weights
-            )
+            previous_weights = _get_ending_weights(portfolio)
         result.append(portfolio)
     return result
 
@@ -829,7 +834,7 @@ def _apply_entry_rebalancing_params(
     estimator: skb.BaseEstimator | Pipeline,
     entry_rebalancing_params: dict | None,
 ) -> dict | None:
-    """Apply temporary parameters to the final optimization estimator.
+    """Apply entry rebalancing parameters and return the original values.
 
     Parameters
     ----------
@@ -842,8 +847,8 @@ def _apply_entry_rebalancing_params(
 
     Returns
     -------
-    previous_params : dict | None
-        Original parameter values to restore after the first optimization, or `None`
+    original_params : dict | None
+        Original parameter values to restore after the first portfolio, or `None`
         when no temporary parameters were provided.
     """
     if entry_rebalancing_params is None:
@@ -852,9 +857,9 @@ def _apply_entry_rebalancing_params(
     _validate_entry_rebalancing_params(estimator, entry_rebalancing_params)
     last_step = _get_last_step(estimator)
     valid_params = last_step.get_params(deep=True)
-    previous_params = {name: valid_params[name] for name in entry_rebalancing_params}
+    original_params = {name: valid_params[name] for name in entry_rebalancing_params}
     last_step.set_params(**entry_rebalancing_params)
-    return previous_params
+    return original_params
 
 
 def _validate_entry_rebalancing_params(
@@ -945,9 +950,5 @@ def _run_path(
             )
         predictions.append(ptf)
         if not isinstance(ptf, FailedPortfolio) and ptf.n_observations:
-            prev_weights = (
-                ptf.ending_weights_dict
-                if _has_asset_names(X=ptf.X)
-                else ptf.ending_weights
-            )
+            prev_weights = _get_ending_weights(ptf)
     return predictions

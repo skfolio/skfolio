@@ -527,21 +527,23 @@ Hierarchical Risk Parity
 The :class:`HierarchicalRiskParity` (HRP) is a portfolio optimization method developed
 by Marcos Lopez de Prado.
 
-This algorithm uses a distance matrix to compute hierarchical clusters using the
-Hierarchical Tree Clustering algorithm then employs seriation to rearrange the assets
-in the dendrogram, minimizing the distance between leaves.
+By default, this algorithm uses a distance matrix to compute hierarchical clusters
+using the Hierarchical Tree Clustering algorithm. It then employs seriation to
+rearrange the assets in the dendrogram, minimizing the distance between adjacent
+leaves. It also supports :class:`~skfolio.seriation.SpectralSeriation`, which orders
+assets directly from the distance matrix without building a clustering tree.
 
-The final step is the recursive bisection where each cluster is split between two
-sub-clusters by starting with the topmost cluster and traversing in a top-down
-manner. For each sub-cluster, we compute the total cluster risk of an inverse-risk
-allocation. A weighting factor is then computed from these two sub-cluster risks,
-which is used to update the cluster weight.
+The final step is the recursive bisection of the ordered asset list, where each
+cluster is split into two sub-clusters in a top-down manner. For each sub-cluster,
+we compute the total cluster risk of an inverse-risk allocation. A weighting factor
+is then computed from these two sub-cluster risks, which is used to update the
+cluster weight.
 
 .. note ::
 
     The original paper uses the variance as the risk measure and the single-linkage
     method for the Hierarchical Tree Clustering algorithm. Here we generalize it to
-    multiple risk measures and linkage methods.
+    multiple risk measures, linkage methods and seriation methods.
     The default linkage method is set to the Ward
     variance minimization algorithm, which is more stable and has better properties
     than the single-linkage method.
@@ -552,8 +554,8 @@ as well as weight constraints.
 
 It also supports all :ref:`distance estimators <distance>` through the
 `distance_estimator` parameter. It fits a distance model for the
-estimation of the codependence and the distance matrix used to compute the linkage
-matrix:
+estimation of the codependence and the distance matrix used by the seriation
+estimator:
 
     * :class:`~skfolio.distance.PearsonDistance`
     * :class:`~skfolio.distance.KendallDistance`
@@ -561,6 +563,7 @@ matrix:
     * :class:`~skfolio.distance.CovarianceDistance`
     * :class:`~skfolio.distance.DistanceCorrelation`
     * :class:`~skfolio.distance.MutualInformation`
+    * :class:`~skfolio.distance.GraphDistance`
 
 **Example:**
 
@@ -719,7 +722,7 @@ The final step is the top-down recursive division of the dendrogram, where the a
 weights are updated using a naive risk parity within clusters.
 
 It differs from the Hierarchical Risk Parity by exploiting the dendrogram shape
-during the top-down recursive division instead of bisecting it.
+during the top-down recursive division instead of bisecting the ordered asset list.
 
 .. note ::
 
@@ -742,6 +745,7 @@ matrix:
     * :class:`~skfolio.distance.CovarianceDistance`
     * :class:`~skfolio.distance.DistanceCorrelation`
     * :class:`~skfolio.distance.MutualInformation`
+    * :class:`~skfolio.distance.GraphDistance`
 
 **Example:**
 
@@ -846,6 +850,39 @@ The `cv` parameter can also be a combinatorial cross-validation, such as
 out-of-sample outputs are a collection of multiple paths instead of one single path.
 The selected out-of-sample path among this collection of paths is chosen according to
 the `quantile` and `quantile_measure` parameters.
+
+.. _graph_based_allocation:
+
+Allocation with Graph Distances
+*******************************
+
+:class:`~skfolio.distance.GraphDistance` measures similarity between assets'
+dependencies. This supports diversification across underlying vulnerabilities,
+including risks that have not materialized historically and are not captured by
+return correlations.
+
+Return-based distances reflect the dependence observed over the estimation period.
+A graph also describes exposures to events that may be rare or absent in that
+history, such as a prolonged supplier outage.
+
+For example, suppose three car manufacturers source batteries from Supplier A and two
+from Supplier B. Their returns may be correlated because they respond to the same
+automotive demand. A production outage at Supplier A disrupts the first three
+manufacturers. Graph-based clustering groups the manufacturers by supplier, allowing
+allocation across groups to diversify exposure to supply disruptions.
+
+**HRP** uses graph distance to order the manufacturers by dependency similarity. It
+then splits that order into halves and allocates between the resulting groups
+according to risks estimated from their returns. With Supplier A's customers first,
+the initial split places two of them in one group and the remaining three
+manufacturers in the other. **HERC** preserves the selected supplier-based groups and
+allocates between them according to their risks. **NCO** builds a portfolio for each
+group, then allocates between those portfolios. Equal allocation at this stage gives
+each group 50%, regardless of its number of manufacturers. **Schur** uses HRP's
+grouping approach and also accounts for covariance between groups.
+
+See :ref:`graph_distances` for graph construction and an HRP example.
+
 
 Stacking Optimization
 *********************

@@ -61,11 +61,13 @@ class SchurComplementary(_BaseSeriatedOptimization):
     smoothly interpolates from the heuristic divide-and-conquer allocation of HRP
     (`gamma = 0`) to the MVP solution (`gamma -> 1`).
 
-    The algorithm begins by computing a distance matrix and performing hierarchical
-    clustering, then applies seriation to reorder assets in the dendrogram so that
-    adjacent leaves have minimal distance.
+    By default, the algorithm begins by computing a distance matrix and performing
+    hierarchical clustering, then applies seriation to reorder assets in the dendrogram
+    so that adjacent leaves have minimal distance. It also supports
+    :class:`~skfolio.seriation.SpectralSeriation`, which orders assets directly from the
+    distance matrix without building a clustering tree.
 
-    Next, it uses recursive bisection: starting with the top-level cluster, each cluster
+    Next, it uses recursive bisection: starting with the ordered asset list, each cluster
     is split into two sub-clusters in a top-down traversal.
 
     For each sub-cluster, an augmented covariance matrix is built based on the Schur
@@ -247,7 +249,8 @@ class SchurComplementary(_BaseSeriatedOptimization):
 
     seriation_estimator_ : BaseSeriation
         Fitted ordering estimator. Its `ordering_` contains positions in the
-        full input schema. Hierarchical linkage diagnostics are available through
+        full input schema. When using :class:`~skfolio.seriation.HierarchicalSeriation`,
+        hierarchical linkage diagnostics are available through
         `seriation_estimator_.hierarchical_clustering_estimator_`.
 
     hierarchical_clustering_estimator_ : HierarchicalClustering or None
@@ -416,9 +419,10 @@ class SchurComplementary(_BaseSeriatedOptimization):
 
         **fit_params : dict
             Parameters passed to the underlying estimators. Requires
-            `enable_metadata_routing=True`. Panels must contain the same observations
-            as `X`. For distances fitted on prior return scenarios, sample weights come
-            from the prior and other arrays must match those scenarios.
+            `enable_metadata_routing=True`. Panels and graph series must contain the
+            same observations as `X`. For distances fitted on prior return scenarios,
+            sample weights come from the prior and other arrays must match those
+            scenarios.
 
         Returns
         -------
@@ -451,11 +455,11 @@ class SchurComplementary(_BaseSeriatedOptimization):
 
         **fit_params : dict
             Parameters passed to the underlying estimators. Requires
-            `enable_metadata_routing=True`. Panels must contain the new observations
-            in `X`.
+            `enable_metadata_routing=True`. Panels and graph series must contain the
+            new observations in `X`.
             With `distance_from_prior=True`, the distance estimator accepts only sample
-            weights, `AssetPanel` and `AssetPanelView` metadata. Sample weights come
-            from the prior. Distances fitted on the prior's covariance do
+            weights, `AssetPanel`, `AssetPanelView` and `GraphSeries` metadata. Sample
+            weights come from the prior. Distances fitted on the prior's covariance do
             not accept additional fitting parameters.
 
         Returns
@@ -770,7 +774,7 @@ def _compute_weights(
         Regularization factor.
 
     sorted_assets : ndarray of shape (n_assets,)
-        Asset indices in dendrogram order.
+        Asset indices in the order produced by seriation.
 
     covariance : ndarray of shape (n_assets, n_assets)
         Asset covariance matrix.

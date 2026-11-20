@@ -1312,6 +1312,25 @@ def test_collection_applies_entry_rebalancing_params_to_each_estimator(X_small):
         _assert_same_multi_period_portfolio(mpp, expected)
 
 
+def test_collection_invalid_entry_params_raise_before_any_fit(X_small, monkeypatch):
+    """Validate shared entry parameters for every estimator before evaluation."""
+
+    def unexpected_fit(*args, **kwargs):
+        pytest.fail("An estimator was fitted before entry parameters were validated.")
+
+    monkeypatch.setattr(PreviousWeightsAwareOptimization, "fit", unexpected_fit)
+    with pytest.raises(ValueError, match=r"EqualWeighted.*scale"):
+        cross_val_predict(
+            [
+                ("valid", PreviousWeightsAwareOptimization()),
+                ("invalid", EqualWeighted()),
+            ],
+            X_small,
+            cv=WalkForward(train_size=60, test_size=30),
+            entry_rebalancing_params={"scale": 2.0},
+        )
+
+
 def test_collection_entry_rebalancing_params_reject_non_sequential_cv(X_small):
     with pytest.raises(ValueError, match="only supported with sequential CV"):
         cross_val_predict(

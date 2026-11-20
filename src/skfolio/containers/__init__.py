@@ -9,8 +9,9 @@ from skfolio.containers._asset_panel import (
     Field3D,
     FieldCategorical,
     InactivePolicy,
-    concat,
 )
+from skfolio.containers._concat import concat
+from skfolio.containers._graph import Graph, GraphSeries
 
 __all__ = [
     "MISSING_CATEGORY_CODE",
@@ -20,6 +21,8 @@ __all__ = [
     "Field2D",
     "Field3D",
     "FieldCategorical",
+    "Graph",
+    "GraphSeries",
     "InactivePolicy",
     "concat",
 ]

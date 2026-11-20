@@ -214,7 +214,7 @@ class BaseAlphaDescriptorComposition(BaseDescriptorComposition, ABC):
             third_axis_labels=list(self.named_descriptors_),  # ty: ignore[invalid-argument-type]
             inactive_policy=InactivePolicy.IGNORE,
         )
-        return panel  # ty: ignore[invalid-return-type]
+        return panel  # ty: ignore[invalid-explicit-return]
 
     def _prepend_buffer(self, current: AssetPanel) -> AssetPanel:
         """Prepend pending rows to the current compact training panel."""

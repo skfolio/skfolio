@@ -12,6 +12,7 @@ import numpy as np
 
 from skfolio.containers import AssetPanel
 from skfolio.descriptor._base import BaseDescriptor
+from skfolio.descriptor._utils import _EWMean
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import safe_divide
 from skfolio.utils.tools import (
@@ -35,15 +36,19 @@ class DaysToCover(BaseDescriptor):
 
         \[
         \begin{aligned}
-        \text{EWMA\_volume}(t)
-            &= \lambda \cdot \text{EWMA\_volume}(t-1)
+        S(t)
+            &= \lambda \cdot S(t-1)
                + (1 - \lambda) \cdot \text{adj\_volume}(t) \\[0.75em]
+        \text{EWMA\_volume}(t)
+            &= \frac{S(t)}{1 - \lambda^{n(t)}} \\[0.75em]
         \text{days\_to\_cover}(t)
             &= \frac{\text{short\_interest}(t)}{\text{EWMA\_volume}(t)}
         \end{aligned}
         \]
 
-    where :math:`\lambda = \exp(-\ln(2) / \text{half\_life})` is the EWMA decay factor.
+    where :math:`\lambda = \exp(-\ln(2) / \text{half\_life})` is the EWMA decay factor,
+    :math:`S(0) = 0` and :math:`n(t)` is the asset's number of valid positive-volume
+    observations since fitting started or the asset became active again.
 
     Days to cover measures how many trading days it would take short sellers to buy back
     their positions at the current trading rate. High values indicate crowded short
@@ -66,8 +71,7 @@ class DaysToCover(BaseDescriptor):
     min_periods : int, optional
         Minimum number of valid positive-volume observations required for each asset.
         Until an asset reaches this count, its output is NaN. This warm-up period avoids
-        exposing early EWMA values before the volume estimate has sufficiently converged
-        from its zero initialization. If `None`, defaults to
+        exposing volume estimates based on too few observations. If `None`, defaults to
         :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
 
     Attributes
@@ -83,19 +87,21 @@ class DaysToCover(BaseDescriptor):
 
     Notes
     -----
+    Observation weights are normalized for each asset so that starting the volume EWMA
+    at zero does not understate average volume and overstate days to cover for assets
+    with short histories.
+
     `short_interest` is the number of shares held short. Non-missing values must be
     finite and non-negative.
 
     `adj_volume` is split-adjusted trading volume. Non-missing values must be finite and
     non-negative.
 
-    The EWMA state is updated only for positive-volume observations. NaN or zero
-    `adj_volume` holds the EWMA state and does not increment the valid-observation
-    count. NaN `short_interest` propagates to the output but does not prevent the volume
-    state from updating.
-
-    The `active_mask` property of the :class:`~skfolio.containers.AssetPanel`
-    distinguishes holidays from delistings.
+    With `X.active_mask=True`, NaN or zero `adj_volume` leaves the average volume
+    unchanged without decay and does not count toward `min_periods`. Missing
+    `short_interest` propagates to the output but does not prevent volume updates.
+    Setting `X.active_mask=False` clears the asset's history and sets output to NaN.
+    Estimation restarts when the asset becomes active again.
 
     References
     ----------
@@ -206,24 +212,19 @@ class DaysToCover(BaseDescriptor):
         result = np.empty((n_observations, n_assets), dtype=float)
 
         for t in range(n_observations):
-            valid_volume = np.isfinite(adj_volume[t]) & (adj_volume[t] > 0)
-
-            if np.any(valid_volume):
-                self._n_valid[valid_volume] += 1
-                self._ewma_volume[valid_volume] = (
-                    self._decay * self._ewma_volume[valid_volume]
-                    + (1 - self._decay) * adj_volume[t][valid_volume]
-                )
-
-            days_to_cover = safe_divide(
-                short_interest[t], self._ewma_volume, fill_value=np.nan
+            active_mask = X.active_mask[t]
+            self._mean.reset(inactive_mask=~active_mask)
+            self._mean.update(
+                values=adj_volume[t],
+                valid_mask=active_mask
+                & np.isfinite(adj_volume[t])
+                & (adj_volume[t] > 0),
             )
-            result[t] = np.where(
-                self._n_valid >= self._min_periods, days_to_cover, np.nan
+            result[t] = safe_divide(
+                short_interest[t],
+                self._mean.mean(min_periods=self._min_periods),
+                fill_value=np.nan,
             )
-
-        # Mask for inactive assets
-        result = np.where(X.active_mask, result, np.nan)
 
         self.days_to_cover_ = result[-1].copy() if n_observations > 1 else result[-1]
         return result
@@ -241,14 +242,11 @@ class DaysToCover(BaseDescriptor):
 
     def _initialize(self) -> None:
         """Initialize states."""
-        n_assets = self.n_assets_
-
-        self._decay = half_life_to_decay_factor(self.half_life)
-
         if self.min_periods is None:
             self._min_periods = max(1, int(np.ceil(self.half_life)))
         else:
             self._min_periods = int(self.min_periods)
 
-        self._ewma_volume = np.zeros(n_assets, dtype=float)
-        self._n_valid = np.zeros(n_assets, dtype=int)
+        self._mean = _EWMean(
+            n_assets=self.n_assets_, decay=half_life_to_decay_factor(self.half_life)
+        )

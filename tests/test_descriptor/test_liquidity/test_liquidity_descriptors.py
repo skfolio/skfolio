@@ -5,16 +5,62 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from skfolio.containers import AssetPanel
 from skfolio.descriptor import (
     EWAmihudIlliquidity,
     EWShareTurnover,
 )
-from skfolio.utils.tools import half_life_to_decay_factor
 
 
 @pytest.fixture(params=[EWShareTurnover, EWAmihudIlliquidity])
 def descriptor_cls(request):
     return request.param
+
+
+def _constant_panel(n_observations: int = 40, listing: int = 15) -> AssetPanel:
+    """Panel with constant inputs where asset 0 is listed at `listing`."""
+    n_assets = 2
+    active_mask = np.ones((n_observations, n_assets), dtype=bool)
+    active_mask[:listing, 0] = False
+
+    def field(value: float) -> np.ndarray:
+        values = np.full((n_observations, n_assets), value)
+        values[~active_mask] = np.nan
+        return values
+
+    return AssetPanel(
+        fields={
+            "returns": field(0.01),
+            "adj_close": field(50.0),
+            "adj_volume": field(1e6),
+            "adj_shares_outstanding": field(1e8),
+        },
+        observations=np.arange(n_observations),
+        asset_names=np.array(["late", "full"]),
+        active_mask=active_mask,
+    )
+
+
+def test_constant_input_gives_constant_output(descriptor_cls):
+    """With constant inputs, the output equals the raw value from the first output."""
+    panel = _constant_panel()
+    result = descriptor_cls(half_life=10).fit_transform(panel)
+    expected = 1e6 / 1e8 if descriptor_cls is EWShareTurnover else 0.01 / (50.0 * 1e6)
+    valid = ~np.isnan(result)
+    assert valid[9:, 1].all()
+    np.testing.assert_allclose(result[valid], expected, rtol=1e-12)
+
+
+def test_late_listed_asset_matches_full_history_asset(descriptor_cls):
+    """A late-listed asset is comparable with an asset observed since the start."""
+    listing = 15
+    panel = _constant_panel(listing=listing)
+    result = descriptor_cls(half_life=10).fit_transform(panel)
+    first_output = listing + 10 - 1
+    assert np.all(np.isnan(result[:first_output, 0]))
+    np.testing.assert_allclose(
+        result[first_output:, 0], result[first_output:, 1], rtol=1e-12
+    )
 
 
 def test_early_observations_are_nan(simple_panel, descriptor_cls):
@@ -140,25 +186,6 @@ class TestEWShareTurnover:
         result = EWShareTurnover(half_life=5, min_periods=1).fit_transform(simple_panel)
         assert result.shape == simple_panel["adj_volume"].shape
 
-    def test_ewma_formula(self, simple_panel):
-        """EWMA matches manual computation."""
-        half_life = 5
-        decay = half_life_to_decay_factor(half_life)
-
-        result = EWShareTurnover(half_life=half_life, min_periods=1).fit_transform(
-            simple_panel
-        )
-
-        adj_volume = simple_panel["adj_volume"]
-        adj_shares_outstanding = simple_panel["adj_shares_outstanding"]
-        raw_turnover = adj_volume / adj_shares_outstanding
-        n_obs, n_assets = raw_turnover.shape
-
-        ewma = np.zeros(n_assets)
-        for t in range(n_obs):
-            ewma = decay * ewma + (1 - decay) * raw_turnover[t]
-            np.testing.assert_array_almost_equal(result[t], ewma)
-
     def test_nan_holds_state(self, simple_panel):
         """NaN volume holds EWMA state and does not update."""
         simple_panel["adj_volume"][5, 0] = np.nan
@@ -204,31 +231,6 @@ class TestEWAmihudIlliquidity:
             simple_panel
         )
         assert result.shape == simple_panel["returns"].shape
-
-    def test_ewma_formula(self, simple_panel):
-        """EWMA matches manual computation."""
-        half_life = 5
-        decay = half_life_to_decay_factor(half_life)
-
-        result = EWAmihudIlliquidity(half_life=half_life, min_periods=1).fit_transform(
-            simple_panel
-        )
-
-        returns = simple_panel["returns"]
-        adj_close = simple_panel["adj_close"]
-        adj_volume = simple_panel["adj_volume"]
-        traded_amount = adj_close * adj_volume
-        n_obs, n_assets = returns.shape
-
-        ewma = np.zeros(n_assets)
-        for t in range(n_obs):
-            r_i = returns[t]
-            ta_i = traded_amount[t]
-            valid = ~np.isnan(r_i) & (ta_i > 0)
-            if np.any(valid):
-                illiq = np.abs(r_i[valid]) / ta_i[valid]
-                ewma[valid] = decay * ewma[valid] + (1 - decay) * illiq
-            np.testing.assert_array_almost_equal(result[t], ewma)
 
     def test_zero_volume_skipped(self, simple_panel):
         """Zero volume is skipped and EWMA state is held."""
