@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.14.3 (2026-11-20)
+
+### Bug Fixes
+
+- **descriptor**: Reset EW momentum history when assets become inactive
+  ([#512](https://github.com/skfolio/skfolio/pull/512),
+  [`1bba989`](https://github.com/skfolio/skfolio/commit/1bba989282e999a58bcf483a5f718e3576226409))
+
+
 ## v1.14.2 (2026-11-19)
 
 ### Bug Fixes
