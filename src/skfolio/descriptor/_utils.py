@@ -576,10 +576,10 @@ class _EWMean:
     Computes averages of quantities such as turnover, trading volume or squared returns,
     giving more influence to recent observations.
 
-    It applies bias correction separately for each asset to prevent zero initialization
-    from pulling averages toward zero for assets with short histories or when
-    `AssetPanel.active_mask` differs across assets, as with late listings or assets that
-    become active again.
+    By default, it applies bias correction separately for each asset to prevent zero
+    initialization from pulling averages toward zero. This matters at the start of
+    fitting and when assets have different histories, as with late listings or assets
+    that become active again. The `mean` method can also return the uncorrected EWMA.
 
     Parameters
     ----------
@@ -629,26 +629,35 @@ class _EWMean:
         )
         self.n_observations += valid_mask
 
-    def mean(self, min_periods: int = 1) -> FloatArray:
-        """Return the mean for each asset after normalizing observation weights.
+    def mean(self, min_periods: int = 1, *, bias_correction: bool = True) -> FloatArray:
+        """Return the EWMA for each asset, with optional bias correction.
 
         Parameters
         ----------
         min_periods : int, default=1
             Minimum number of observations required per asset. Must be at least one.
 
+        bias_correction : bool, default=True
+            If True, divide by the sum of observation weights to remove the bias from
+            zero initialization. If False, return the uncorrected EWMA, retaining its
+            shrinkage toward zero for short histories.
+
         Returns
         -------
         mean : ndarray of shape (n_assets,)
-            Exponentially weighted means, with NaN for assets below `min_periods`.
+            EWMA values, with NaN for assets below `min_periods`.
         """
+        ready = self.n_observations >= min_periods
+        if not bias_correction:
+            return np.where(ready, self.weighted_sum, np.nan)
+
         result = np.full(self.weighted_sum.shape, np.nan)
         weight_sum = 1 - self.decay**self.n_observations
         np.divide(
             self.weighted_sum,
             weight_sum,
             out=result,
-            where=self.n_observations >= min_periods,
+            where=ready,
         )
         return result
 

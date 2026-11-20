@@ -12,6 +12,7 @@ import numpy as np
 
 from skfolio.containers import AssetPanel
 from skfolio.descriptor._base import BaseDescriptor
+from skfolio.descriptor._utils import _EWMean
 from skfolio.typing import FloatArray
 from skfolio.utils.tools import (
     _validate_non_negative_integer,
@@ -28,7 +29,7 @@ class EWMomentum(BaseDescriptor):
     r"""Exponentially weighted momentum descriptor.
 
     Computes an EWMA of log returns with an optional skip period to exclude the most
-    recent observations:
+    recent observations.
 
     The skip period separates medium-term momentum from short-term reversal. The classic
     "12-1" momentum signal uses a skip of approximately one month [1]_.
@@ -52,12 +53,12 @@ class EWMomentum(BaseDescriptor):
         \end{aligned}
         \]
 
-    where :math:`\lambda = \exp(-\ln(2) / \text{half\_life})` is the EWMA decay factor.
-    At observation :math:`t`, the EWMA input is the log return from :math:`t - \text{skip}`.
-    Therefore, :math:`\text{half\_life}` is measured on the delayed input series. An
+    where :math:`\lambda = \exp(-\ln(2) / \text{half\_life})` is the EWMA decay factor
+    and :math:`S(0) = 0`. At observation :math:`t`, the EWMA adds the log return from
+    :math:`t - \text{skip}`. Only non-missing returns count toward the half-life. An
     EWMA with this half-life is comparable to a fixed window of about
-    :math:`2 \cdot \text{half\_life} / \ln 2` delayed observations, with the most recent
-    :math:`\text{skip}` observations excluded.
+    :math:`2 \cdot \text{half\_life} / \ln 2` observations, excluding the most recent
+    :math:`\text{skip}` observations.
 
     Parameters
     ----------
@@ -70,22 +71,21 @@ class EWMomentum(BaseDescriptor):
         for other frequencies (e.g., `half_life=6` for monthly data).
 
     skip : int, default=21
-        Number of most recent observations to exclude before the EWMA window starts.
-        Used to separate medium-term momentum from short-term reversal. The default
-        assumes daily data and skips approximately one month. Set to `0` for short-term
-        momentum.
+        Number of most recent observations excluded from the EWMA, including those with
+        missing returns. The default assumes daily data and skips about one month to
+        separate medium-term momentum from short-term reversal. Set to `0` to include
+        the current return.
 
     min_periods : int, optional
-        Minimum number of valid delayed returns required for each asset. Until an asset
-        reaches this count, its output is NaN. This warm-up period avoids exposing early
-        EWMA values before the estimate has sufficiently converged from its zero
-        initialization. If `None`, defaults to :math:`\lceil\text{half\_life}\rceil`,
-        with a minimum of 1.
+        Minimum number of non-missing returns included in the EWMA for each asset, after
+        excluding the most recent `skip` observations. Until an asset reaches this
+        count, its output is NaN. The count restarts when the asset becomes active
+        again. If `None`, defaults to :math:`\lceil\text{half\_life}\rceil`, with a
+        minimum of 1.
 
     exponentiate : bool, default=False
         If True, output is :math:`\exp(S(t)) - 1` (return units). If False, output is
-        :math:`S(t)` (EWMA of log returns; log space). Cross-sectional ranking is
-        unchanged.
+        :math:`S(t)` (EWMA of log returns). Cross-sectional ranking is unchanged.
 
     Attributes
     ----------
@@ -98,15 +98,35 @@ class EWMomentum(BaseDescriptor):
     momentum_ : ndarray of shape (n_assets,)
         Last exponentially weighted momentum value for each asset.
 
+    decay_ : float
+        Exponential decay factor computed from `half_life`.
+
+    min_periods_ : int
+        Minimum number of non-missing returns required per asset, resolved from
+        `min_periods` and `half_life` during fitting.
+
     Notes
     -----
-    The EWMA is initialized to zero (no bias correction).
+    The EWMA starts at zero and is not bias-corrected. After :math:`n` returns have
+    contributed, :math:`S(t)` equals their normalized exponentially weighted average
+    multiplied by :math:`1 - \lambda^n`. This factor is 50% after one half-life and 75%
+    after two.
+
+    This scaling provides useful shrinkage toward zero for momentum signals based on
+    short, potentially noisy return histories. It applies at the start of fitting, for
+    late listings and after an asset becomes active again. In risk factor models, it
+    can improve risk forecasts by reducing the influence of estimation noise. Bias
+    correction would remove this shrinkage.
 
     NaNs are allowed as missing observations. Non-missing `returns` values must be
-    finite and greater than `-1`, so :math:`\log(1 + r)` is finite. The EWMA state is
-    updated only for finite delayed log returns, and each asset's valid-observation
-    count controls when its output starts. The `active_mask` property of the input
-    :class:`~skfolio.containers.AssetPanel` distinguishes holidays from delistings.
+    finite and greater than `-1`, so :math:`\log(1 + r)` is finite. If the return at
+    :math:`t - \text{skip}` is missing, the EWMA and observation count remain unchanged,
+    without decay. When `skip > 0`, a missing current return does not prevent an update
+    using the earlier return.
+
+    Setting `X.active_mask=False` clears the asset's history and sets its output to NaN.
+    After the asset becomes active again, only returns from that point onward are used.
+    The most recent `skip` observations remain excluded.
 
     See Also
     --------
@@ -132,9 +152,9 @@ class EWMomentum(BaseDescriptor):
     >>> descriptor = EWMomentum(half_life=10, skip=0)
     >>> short_term_momentum = descriptor.fit_transform(X)
     >>>
-    >>> # Log-space output
-    >>> descriptor = EWMomentum(exponentiate=False)
-    >>> momentum_log = descriptor.fit_transform(X)
+    >>> # Output in return units
+    >>> descriptor = EWMomentum(exponentiate=True)
+    >>> momentum_returns = descriptor.fit_transform(X)
     """
 
     momentum_: FloatArray
@@ -225,43 +245,42 @@ class EWMomentum(BaseDescriptor):
                 "log returns."
             )
 
-        # Pre-compute finite log returns for the batch
+        # Compute log returns once for all observations.
         log_returns = np.log1p(returns)
 
         result = np.empty((n_observations, n_assets), dtype=float)
 
         for t in range(n_observations):
-            # Delay buffer: read oldest then overwrite with newest
+            active_mask = X.active_mask[t]
+            inactive_mask = ~active_mask
+            self._mean.reset(inactive_mask=inactive_mask)
+
             if self.skip > 0:
+                # Clear pending returns only when an asset becomes inactive.
+                newly_inactive = self._previous_active_mask & inactive_mask
+                if np.any(newly_inactive):
+                    self._skip_buffer[:, newly_inactive] = np.nan
+                self._previous_active_mask[:] = active_mask
+
+                # Read returns from t - skip before storing the current returns.
                 idx = self._skip_write_idx
-                delayed_log_ret = self._skip_buffer[idx].copy()
-                self._skip_buffer[idx] = log_returns[t]
+                delayed_log_returns = self._skip_buffer[idx].copy()
+                self._skip_buffer[idx] = np.where(active_mask, log_returns[t], np.nan)
                 self._skip_write_idx = (idx + 1) % self.skip
             else:
-                delayed_log_ret = log_returns[t]
+                delayed_log_returns = log_returns[t]
 
-            self._n_seen += 1
+            self._mean.update(
+                values=delayed_log_returns,
+                valid_mask=active_mask & np.isfinite(delayed_log_returns),
+            )
+            # Retain zero initialization's shrinkage for assets with short histories.
+            result[t] = self._mean.mean(
+                min_periods=self.min_periods_, bias_correction=False
+            )
 
-            # Only update EWMA once skip buffer has been filled
-            if self._n_seen > self.skip:
-                valid = np.isfinite(delayed_log_ret)
-                if np.any(valid):
-                    self._n_valid[valid] += 1
-                    self._ewma[valid] = (
-                        self.decay_ * self._ewma[valid]
-                        + (1 - self.decay_) * delayed_log_ret[valid]
-                    )
-
-            if self.exponentiate:
-                momentum = np.expm1(self._ewma)
-            else:
-                momentum = self._ewma
-
-            ready = self._n_valid >= self.min_periods_
-            result[t] = np.where(ready, momentum, np.nan)
-
-        # Mask for inactive assets
-        result = np.where(X.active_mask, result, np.nan)
+        if self.exponentiate:
+            np.expm1(result, out=result)
 
         self.momentum_ = result[-1].copy() if n_observations > 1 else result[-1]
         return result
@@ -279,25 +298,21 @@ class EWMomentum(BaseDescriptor):
             _validate_positive_integer(self.min_periods, "min_periods")
 
     def _initialize(self) -> None:
-        """Initialize EWMA state and delay buffer."""
+        """Initialize EWMA state and storage for returns excluded by skip."""
         n_assets = self.n_assets_
 
         self.decay_ = half_life_to_decay_factor(self.half_life)
 
-        # Minimum valid delayed returns before output
+        # Minimum non-missing returns included in the EWMA before output.
         if self.min_periods is None:
             self.min_periods_ = max(1, int(np.ceil(self.half_life)))
         else:
             self.min_periods_ = int(self.min_periods)
 
-        # EWMA accumulator (one per asset, initialized to zero)
-        self._ewma = np.zeros(n_assets, dtype=float)
-        self._n_valid = np.zeros(n_assets, dtype=int)
+        self._mean = _EWMean(n_assets=n_assets, decay=self.decay_)
 
-        # Delay ring buffer for skip (filled with NaN for warm-up)
+        # Store the most recent skip observations until they can enter the EWMA.
         if self.skip > 0:
             self._skip_buffer = np.full((self.skip, n_assets), np.nan, dtype=float)
             self._skip_write_idx = 0
-
-        # Counter of total observations processed
-        self._n_seen = 0
+            self._previous_active_mask = np.zeros(n_assets, dtype=bool)

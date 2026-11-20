@@ -2,11 +2,59 @@
 
 from __future__ import annotations
 
+from itertools import pairwise
+
 import numpy as np
 import pytest
 
+from skfolio.containers import AssetPanel, Field2D, InactivePolicy
 from skfolio.descriptor import EWMomentum
-from skfolio.utils.tools import half_life_to_decay_factor
+
+
+@pytest.fixture(params=[InactivePolicy.MISSING, InactivePolicy.IGNORE])
+def momentum_panel(request):
+    """Returns with missing observations, late listings and reactivated assets."""
+    rng = np.random.default_rng(42)
+    shape = (73, 5)
+    returns = rng.normal(0, 0.02, shape)
+    returns[rng.random(shape) < 0.15] = np.nan
+    returns[:, 4] = np.nan
+    active_mask = np.ones(shape, dtype=bool)
+    active_mask[:13, 1] = False
+    active_mask[24:27, 2] = False
+    active_mask[50, 2] = False
+    active_mask[39:42, 3] = False
+    if request.param == InactivePolicy.MISSING:
+        returns[~active_mask] = np.nan
+    return AssetPanel(
+        fields={"returns": Field2D(returns, inactive_policy=request.param)},
+        observations=np.arange(shape[0]),
+        asset_names=np.array([f"asset_{asset}" for asset in range(shape[1])]),
+        active_mask=active_mask,
+    )
+
+
+def _weighted_history(panel, *, half_life, skip, min_periods, exponentiate):
+    """Sum full log-return histories using unnormalized exponential weights."""
+    returns = panel["returns"]
+    result = np.full(returns.shape, np.nan)
+    for asset in range(panel.n_assets):
+        last_inactive = -1
+        history = []
+        for t in range(panel.n_observations):
+            if not panel.active_mask[t, asset]:
+                last_inactive = t
+                history.clear()
+                continue
+            source = t - skip
+            if source > last_inactive and np.isfinite(returns[source, asset]):
+                history.append(np.log1p(returns[source, asset]))
+            if len(history) >= min_periods:
+                ages = np.arange(len(history) - 1, -1, -1)
+                weights = (1 - 2.0 ** (-1 / half_life)) * 2.0 ** (-ages / half_life)
+                momentum = np.dot(history, weights)
+                result[t, asset] = np.expm1(momentum) if exponentiate else momentum
+    return result
 
 
 class TestEWMomentum:
@@ -25,7 +73,7 @@ class TestEWMomentum:
             half_life=5, skip=skip, min_periods=min_periods
         ).fit_transform(simple_panel)
         # First skip + min_periods - 1 rows should be NaN
-        # (skip to fill delay buffer, then min_periods EWMA updates)
+        # (skip observations excluded, then min_periods EWMA updates)
         assert np.all(np.isnan(result[: skip + min_periods - 1]))
         # Row at skip + min_periods - 1 should be valid
         assert not np.all(np.isnan(result[skip + min_periods - 1]))
@@ -63,140 +111,122 @@ class TestEWMomentum:
         # Row at min_periods - 1 should be valid
         assert not np.all(np.isnan(result[min_periods - 1]))
 
-    def test_ewma_formula_no_skip(self, simple_panel):
-        """EWMA values match manual computation (skip=0)."""
-        half_life = 5
-        decay = half_life_to_decay_factor(half_life)
-        min_periods = 1
-
-        result = EWMomentum(
-            half_life=half_life, skip=0, min_periods=min_periods
-        ).fit_transform(simple_panel)
-
-        returns = simple_panel["returns"]
-        log_returns = np.log1p(returns)
-
-        # Manually compute EWMA for first asset
-        ewma = 0.0
-        for t in range(returns.shape[0]):
-            ewma = decay * ewma + (1 - decay) * log_returns[t, 0]
-            np.testing.assert_almost_equal(result[t, 0], ewma)
-
-    def test_ewma_formula_with_skip(self, simple_panel):
-        """EWMA values match manual computation (skip>0)."""
-        half_life = 5
-        skip = 3
-        decay = half_life_to_decay_factor(half_life)
-        min_periods = 1
-
-        result = EWMomentum(
-            half_life=half_life, skip=skip, min_periods=min_periods
-        ).fit_transform(simple_panel)
-
-        returns = simple_panel["returns"]
-        log_returns = np.log1p(returns)
-
-        # Manually compute EWMA for first asset with delay
-        ewma = 0.0
-        for t in range(returns.shape[0]):
-            if t < skip:
-                assert np.isnan(result[t, 0])
-            else:
-                delayed = log_returns[t - skip, 0]
-                ewma = decay * ewma + (1 - decay) * delayed
-                np.testing.assert_almost_equal(result[t, 0], ewma)
-
-    def test_ewma_formula_with_skip_matches_reference_loop(self, simple_panel):
-        """EWMA with skip matches an explicit reference loop for all assets."""
-        half_life = 5
-        skip = 3
-        min_periods = 2
-        decay = half_life_to_decay_factor(half_life)
-
-        returns = simple_panel["returns"]
-        returns[4, 0] = np.nan
-        returns[6, 1] = np.nan
-        active_mask = simple_panel.active_mask.copy()
-        active_mask[9, 2] = False
-        simple_panel.active_mask = active_mask
-
-        result = EWMomentum(
+    @pytest.mark.parametrize("half_life", [1e-6, 0.5, 7.3, 63])
+    @pytest.mark.parametrize("skip", [0, 1, 3, 21, 80])
+    @pytest.mark.parametrize("min_periods", [1, 4])
+    @pytest.mark.parametrize("exponentiate", [False, True])
+    def test_matches_weighted_history(
+        self, momentum_panel, half_life, skip, min_periods, exponentiate
+    ):
+        """Momentum excludes recent returns and returns from before an inactivity reset."""
+        params = dict(
             half_life=half_life,
             skip=skip,
             min_periods=min_periods,
-            exponentiate=True,
+            exponentiate=exponentiate,
+        )
+        result = EWMomentum(**params).fit_transform(momentum_panel)
+        expected = _weighted_history(momentum_panel, **params)
+        np.testing.assert_allclose(result, expected, rtol=1e-12, atol=1e-16)
+
+    @pytest.mark.parametrize("skip", [0, 3])
+    @pytest.mark.parametrize("exponentiate", [False, True])
+    @pytest.mark.parametrize("daily_return", [-0.01, 0.01])
+    def test_zero_initialization_shrinks_short_histories(
+        self, simple_panel, skip, exponentiate, daily_return
+    ):
+        """Equal constant returns give smaller momentum magnitudes for newer assets."""
+        simple_panel["returns"][:] = daily_return
+        active_mask = simple_panel.active_mask.copy()
+        active_mask[:10, 1] = False
+        simple_panel.active_mask = active_mask
+        simple_panel["returns"][:10, 1] = np.nan
+
+        result = EWMomentum(
+            half_life=5, skip=skip, min_periods=5, exponentiate=exponentiate
         ).fit_transform(simple_panel)
 
-        n_observations, n_assets = returns.shape
-        ewma = np.zeros(n_assets, dtype=float)
-        n_valid = np.zeros(n_assets, dtype=int)
-        expected = np.full((n_observations, n_assets), np.nan, dtype=float)
+        first_output = 10 + skip + 5 - 1
+        assert np.isnan(result[:first_output, 1]).all()
+        n_observations = (
+            np.arange(first_output, simple_panel.n_observations)[:, None]
+            - np.array([0, 10])
+            - skip
+            + 1
+        )
+        expected = np.log1p(daily_return) * (1 - 2.0 ** (-n_observations / 5))
+        if exponentiate:
+            expected = np.expm1(expected)
+        np.testing.assert_allclose(result[first_output:, :2], expected, rtol=1e-14)
+        assert np.all(
+            np.abs(result[first_output:, 1]) < np.abs(result[first_output:, 0])
+        )
 
-        for t in range(n_observations):
-            source_t = t - skip
-            if source_t >= 0:
-                delayed = np.log1p(returns[source_t])
-                valid = np.isfinite(delayed)
-                if np.any(valid):
-                    n_valid[valid] += 1
-                    ewma[valid] = decay * ewma[valid] + (1 - decay) * delayed[valid]
+    @pytest.mark.parametrize("skip", [0, 1, 3, 21])
+    @pytest.mark.parametrize("exponentiate", [False, True])
+    def test_partial_fit_matches_fit_across_resets(
+        self, momentum_panel, skip, exponentiate
+    ):
+        """Calls shorter than skip preserve the excluded observations and resets."""
+        params = dict(
+            half_life=7.3, skip=skip, min_periods=4, exponentiate=exponentiate
+        )
+        expected = EWMomentum(**params).fit_transform(momentum_panel)
+        descriptor = EWMomentum(**params)
+        stops = [
+            0,
+            1,
+            13,
+            17,
+            24,
+            25,
+            27,
+            39,
+            40,
+            42,
+            51,
+            momentum_panel.n_observations,
+        ]
+        result = np.concatenate(
+            [
+                descriptor.partial_fit_transform(momentum_panel[start:stop])
+                for start, stop in pairwise(stops)
+            ]
+        )
+        np.testing.assert_array_equal(result, expected)
+        np.testing.assert_array_equal(descriptor.momentum_, expected[-1])
 
-            ready = n_valid >= min_periods
-            expected[t] = np.where(ready, np.expm1(ewma), np.nan)
+    @pytest.mark.parametrize("skip", [0, 1, 4])
+    def test_reactivation_discards_history_and_pending_returns(
+        self, simple_panel, skip
+    ):
+        """One inactive row clears the EWMA and returns stored for later inclusion."""
+        simple_panel["returns"][:] = 0.01
+        active_mask = simple_panel.active_mask.copy()
+        active_mask[8, 0] = False
+        simple_panel.active_mask = active_mask
+        simple_panel["returns"][8, 0] = np.nan
+        simple_panel["returns"][9:, 0] = 0.0
+        params = dict(half_life=5, skip=skip, min_periods=2)
+        result = EWMomentum(**params).fit_transform(simple_panel)
+        fresh = EWMomentum(**params).fit_transform(simple_panel[9:])
 
-        expected = np.where(active_mask, expected, np.nan)
-        np.testing.assert_allclose(result, expected, equal_nan=True)
+        np.testing.assert_array_equal(result[9:, 0], fresh[:, 0])
+        first_output = 9 + skip + 2 - 1
+        assert np.isnan(result[8:first_output, 0]).all()
+        np.testing.assert_array_equal(result[first_output:, 0], 0.0)
 
-    def test_partial_fit_matches_fit(self, simple_panel):
-        """partial_fit_transform in one shot matches fit_transform."""
-        descriptor = EWMomentum(half_life=5, skip=2, min_periods=3)
-        full = descriptor.fit_transform(simple_panel)
+    def test_missing_returns_preserve_delay_and_ewma(self, simple_panel):
+        """An earlier return can update momentum when the current return is missing."""
+        simple_panel["returns"][:, 0] = np.nan
+        simple_panel["returns"][:2, 0] = [0.01, 0.03]
+        result = EWMomentum(half_life=1, skip=2, min_periods=2).fit_transform(
+            simple_panel
+        )
 
-        descriptor2 = EWMomentum(half_life=5, skip=2, min_periods=3)
-        partial = descriptor2.partial_fit_transform(simple_panel)
-
-        np.testing.assert_array_equal(full, partial)
-
-    def test_partial_fit_chunked(self, simple_panel):
-        """Chunked partial_fit_transform matches fit_transform."""
-        half_life = 5
-        skip = 2
-        min_periods = 3
-
-        full = EWMomentum(
-            half_life=half_life, skip=skip, min_periods=min_periods
-        ).fit_transform(simple_panel)
-
-        descriptor = EWMomentum(half_life=half_life, skip=skip, min_periods=min_periods)
-        chunk1 = simple_panel[:7]
-        chunk2 = simple_panel[7:13]
-        chunk3 = simple_panel[13:]
-
-        r1 = descriptor.partial_fit_transform(chunk1)
-        r2 = descriptor.partial_fit_transform(chunk2)
-        r3 = descriptor.partial_fit_transform(chunk3)
-
-        combined = np.concatenate([r1, r2, r3], axis=0)
-        np.testing.assert_array_almost_equal(combined, full)
-
-    def test_partial_fit_small_chunks(self, simple_panel):
-        """Chunks smaller than skip still produce correct results."""
-        half_life = 5
-        skip = 4
-        min_periods = 2
-
-        full = EWMomentum(
-            half_life=half_life, skip=skip, min_periods=min_periods
-        ).fit_transform(simple_panel)
-
-        descriptor = EWMomentum(half_life=half_life, skip=skip, min_periods=min_periods)
-        chunks = []
-        for start in range(0, 20, 2):
-            view = simple_panel[start : start + 2]
-            chunks.append(descriptor.partial_fit_transform(view))
-
-        combined = np.concatenate(chunks, axis=0)
-        np.testing.assert_array_almost_equal(combined, full)
+        assert np.isnan(result[:3, 0]).all()
+        expected = np.dot(np.log1p([0.01, 0.03]), [0.25, 0.5])
+        np.testing.assert_allclose(result[3:, 0], expected, rtol=1e-14)
 
     def test_fit_transform_resets_state(self, simple_panel):
         """fit_transform resets state from a previous run."""
@@ -211,39 +241,6 @@ class TestEWMomentum:
             simple_panel
         )
         np.testing.assert_array_equal(result, expected)
-
-    def test_nan_return_holds_ewma(self, simple_panel):
-        """NaN return holds EWMA state for that asset."""
-        simple_panel["returns"][5, 0] = np.nan
-        result = EWMomentum(half_life=5, skip=0, min_periods=1).fit_transform(
-            simple_panel
-        )
-        # EWMA should be held: result at t=5 equals result at t=4 for asset 0
-        np.testing.assert_almost_equal(result[5, 0], result[4, 0])
-
-    def test_nan_return_does_not_increment_valid_count(self, simple_panel):
-        """NaN returns hold state and do not count toward min_periods."""
-        simple_panel["returns"][1, 0] = np.nan
-        result = EWMomentum(half_life=5, skip=0, min_periods=2).fit_transform(
-            simple_panel
-        )
-
-        assert np.isnan(result[1, 0])
-        assert not np.isnan(result[2, 0])
-
-    def test_late_listing_needs_asset_min_periods(self, simple_panel):
-        """Late-listed assets need min_periods valid delayed returns before output."""
-        active_mask = simple_panel.active_mask.copy()
-        active_mask[:5, 0] = False
-        simple_panel.active_mask = active_mask
-        simple_panel["returns"][:5, 0] = np.nan
-
-        result = EWMomentum(half_life=5, skip=0, min_periods=3).fit_transform(
-            simple_panel
-        )
-
-        assert np.all(np.isnan(result[:7, 0]))
-        assert not np.isnan(result[7, 0])
 
     def test_raises_on_infinite_returns(self, simple_panel):
         """Raises ValueError when returns contain infinity."""
