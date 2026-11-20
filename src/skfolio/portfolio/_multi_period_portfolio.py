@@ -931,6 +931,37 @@ class MultiPeriodPortfolio(BasePortfolio):
         self._set_portfolios([portfolio], append=True)
         self.clear()
 
+    def plot_composition(self, *, display_periods: bool = False) -> go.Figure:
+        """Plot the target asset weights of each portfolio.
+
+        Parameters
+        ----------
+        display_periods : bool, default=False
+            Label each bar with its first and last observations instead of its
+            portfolio name. A single observation is shown once. Portfolios
+            with missing bounds or no observations keep their names.
+
+        Returns
+        -------
+        plot : Figure
+            Returns the plot Figure object.
+        """
+        fig = super().plot_composition()
+        if display_periods:
+            names = deduplicate_names(p.name for p in self)
+            labels = {}
+            for name, portfolio in zip(names, self, strict=True):
+                if not portfolio.n_observations:
+                    continue
+                bounds = pd.Index(portfolio.observations[[0, -1]], tupleize_cols=False)
+                if not bounds.hasnans:
+                    start, end = bounds.astype(str)
+                    labels[name] = start if start == end else f"{start} - {end}"
+            fig.update_xaxes(
+                type="category", labelalias=labels, title_text="Holding period"
+            )
+        return fig
+
     def plot_weights_per_observation(self) -> go.Figure:
         """Plot portfolio weights per observation as a stacked-area chart.
 
