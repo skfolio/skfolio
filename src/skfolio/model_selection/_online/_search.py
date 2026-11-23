@@ -355,7 +355,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         return self
 
     def _store_results(self, results: list[dict]) -> None:
-        """Populate `cv_results_` and best-candidate attributes."""
+        """Replace `cv_results_` and best-candidate attributes for the current fit."""
         all_params = [res["params"] for res in results]
         fit_times = np.asarray([res["fit_time"] for res in results], dtype=np.float64)
 
@@ -386,6 +386,11 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
             cv_results["predictions"] = predictions
 
         self.cv_results_ = cv_results
+
+        # The current refit/scoring mode may not publish every best_* attribute.
+        for name in ("best_index_", "best_params_", "best_score_", "best_estimator_"):
+            if hasattr(self, name):
+                delattr(self, name)
 
         if self.refit or not self.multimetric_:
             refit_metric = self._get_refit_metric_name()
