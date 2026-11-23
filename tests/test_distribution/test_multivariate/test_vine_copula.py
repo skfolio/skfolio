@@ -1256,6 +1256,37 @@ def test_vine_sample(X, max_depth, expected):
     np.testing.assert_array_almost_equal(sample, expected, 5)
 
 
+def test_vine_sample_asymmetric_edge_margins():
+    X = np.random.default_rng(0).uniform(size=(100, 4))
+    model = VineCopula(
+        fit_marginals=False,
+        copula_candidates=[GaussianCopula()],
+        central_assets=[0],
+        random_state=42,
+    ).fit(X)
+    independence = IndependentCopula().fit(X[:, :2])
+    edges = [edge for tree in model.trees_ for edge in tree.edges]
+    for edge in edges:
+        edge.copula = independence
+    independent = model.sample(n_samples=16)
+    rotated = ClaytonCopula().fit(X[:, :2])
+    rotated.theta_ = 2.0
+    rotated.rotation_ = CopulaRotation.R90
+
+    # With only one dependent edge, its forward conditional CDF must recover
+    # the independent draws for the simulated margin at every tree level.
+    for edge in edges:
+        edge.copula = rotated
+        i, j = edge.cond_sets.conditioned
+        draws = model.sample(n_samples=16)
+        first_margin = np.allclose(draws[:, i], independent[:, i])
+        draws[:, j if first_margin else i] = rotated.partial_derivative(
+            draws[:, [i, j]], first_margin=first_margin
+        )
+        np.testing.assert_allclose(draws, independent)
+        edge.copula = independence
+
+
 def test_vine_sample_truncated_consistency(X):
     ref_model = VineCopula(max_depth=10, random_state=42)
     ref_model.fit(np.array(X)[:, :5])
