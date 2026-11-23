@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.14.6 (2026-11-23)
+
+### Bug Fixes
+
+- **prior**: Skip zero-probability experts in logarithmic OpinionPooling
+  ([#519](https://github.com/skfolio/skfolio/pull/519),
+  [`d38b9cf`](https://github.com/skfolio/skfolio/commit/d38b9cf869b7e97a35022660d28084a5741b69e6))
+
+
 ## v1.14.5 (2026-11-23)
 
 ### Bug Fixes
