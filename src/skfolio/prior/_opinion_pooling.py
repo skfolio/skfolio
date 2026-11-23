@@ -454,9 +454,10 @@ class OpinionPooling(BasePrior, BaseComposition):
         if self.is_linear_pooling:
             sample_weight = opinion_probabilities @ sample_weights
         else:
+            active = opinion_probabilities > 0
             # let exact 0 in sample weights flow through
             with np.errstate(divide="ignore"):
-                u = opinion_probabilities @ np.log(sample_weights)
+                u = opinion_probabilities[active] @ np.log(sample_weights[active])
                 sample_weight = np.exp(u - sp.logsumexp(u))
 
         self.opinion_probabilities_ = opinion_probabilities

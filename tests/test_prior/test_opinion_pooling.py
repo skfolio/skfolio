@@ -8,9 +8,11 @@ from skfolio import RiskMeasure
 from skfolio.distribution import Gaussian, GaussianCopula, VineCopula
 from skfolio.optimization import MeanRisk
 from skfolio.prior import (
+    BasePrior,
     EmpiricalPrior,
     EntropyPooling,
     OpinionPooling,
+    ReturnDistribution,
     SyntheticData,
     TimeSeriesFactorModel,
 )
@@ -214,6 +216,45 @@ def test_factor_synthetic_data(X, factors):
     sw = model.return_distribution_.sample_weight
     assert np.all(sw >= 0)
     np.testing.assert_almost_equal(np.sum(sw), 1, 8)
+
+
+class _FixedSampleWeightPrior(BasePrior):
+    def __init__(self, sample_weight=None):
+        self.sample_weight = sample_weight
+
+    def fit(self, X, y=None):
+        arr = X.to_numpy() if hasattr(X, "to_numpy") else np.asarray(X)
+        sw = np.asarray(self.sample_weight, dtype=float)
+        mu = np.average(arr, axis=0, weights=sw)
+        cov = np.cov(arr, rowvar=False, aweights=sw)
+        self.return_distribution_ = ReturnDistribution(
+            mu=mu, covariance=cov, returns=arr, sample_weight=sw
+        )
+        return self
+
+
+@pytest.mark.parametrize("divergence_penalty", [0.0, 0.5])
+def test_logarithmic_pooling_zero_opinion_probability_with_zero_sample_weights(
+    X, divergence_penalty
+):
+    n_obs = len(X)
+    sw_active = np.full(n_obs, 1.0 / n_obs)
+    sw_inactive = np.zeros(n_obs)
+    sw_inactive[: n_obs // 2] = 1.0 / (n_obs // 2)
+
+    model = OpinionPooling(
+        estimators=[
+            ("active", _FixedSampleWeightPrior(sw_active)),
+            ("inactive", _FixedSampleWeightPrior(sw_inactive)),
+        ],
+        opinion_probabilities=[1.0, 0.0],
+        is_linear_pooling=False,
+        divergence_penalty=divergence_penalty,
+    )
+    model.fit(X)
+    sw = model.return_distribution_.sample_weight
+    assert np.all(np.isfinite(sw))
+    np.testing.assert_allclose(sw, sw_active)
 
 
 def test_optimization(X):
