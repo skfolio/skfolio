@@ -39,6 +39,8 @@ def test_validate_opinion_probabilities_defaults(X):
         ([1.0, 1.0], "must sum to at most 1"),
         ([0.6, 0.400011], "must sum to at most 1"),
         ([-0.1, 0.1], "must be between 0 and 1"),
+        ([np.nan, 0.5], "must be between 0 and 1"),
+        ([np.inf, 0.0], "must be between 0 and 1"),
         ([0.6], "does not match number of estimators"),
     ],
 )
@@ -233,12 +235,21 @@ class _FixedSampleWeightPrior(BasePrior):
         return self
 
 
-@pytest.mark.parametrize("divergence_penalty", [0.0, 0.5])
+@pytest.mark.parametrize(
+    "opinion_probabilities,divergence_penalty",
+    [
+        ([1.0, 0.0], 0.0),
+        ([1.0, 0.0], 0.5),
+        ([0.7, 0.3], 5000.0),
+        ([0.7, 0.3], 20_000.0),
+    ],
+)
 def test_logarithmic_pooling_zero_opinion_probability_with_zero_sample_weights(
-    X, divergence_penalty
+    X, opinion_probabilities, divergence_penalty
 ):
     n_obs = len(X)
-    sw_active = np.full(n_obs, 1.0 / n_obs)
+    sw_active = np.arange(n_obs, dtype=float)
+    sw_active /= sw_active.sum()
     sw_inactive = np.zeros(n_obs)
     sw_inactive[: n_obs // 2] = 1.0 / (n_obs // 2)
 
@@ -247,13 +258,16 @@ def test_logarithmic_pooling_zero_opinion_probability_with_zero_sample_weights(
             ("active", _FixedSampleWeightPrior(sw_active)),
             ("inactive", _FixedSampleWeightPrior(sw_inactive)),
         ],
-        opinion_probabilities=[1.0, 0.0],
+        opinion_probabilities=opinion_probabilities,
         is_linear_pooling=False,
         divergence_penalty=divergence_penalty,
     )
     model.fit(X)
     sw = model.return_distribution_.sample_weight
     assert np.all(np.isfinite(sw))
+    np.testing.assert_allclose(model.opinion_probabilities_, [1.0, 0.0])
+    assert model.opinion_probabilities_[1] == 0.0
+    assert sw[0] == 0.0
     np.testing.assert_allclose(sw, sw_active)
 
 
