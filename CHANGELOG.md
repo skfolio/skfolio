@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.14.5 (2026-11-23)
+
+### Bug Fixes
+
+- **distribution**: Preserve asymmetric margins when sampling a vine
+  ([#520](https://github.com/skfolio/skfolio/pull/520),
+  [`d6e36b1`](https://github.com/skfolio/skfolio/commit/d6e36b1436b0513f1be786cbbbe00e990496b3e5))
+
+- **optimization**: Pass homogenization factor to RiskBudgeting risk functions
+  ([#516](https://github.com/skfolio/skfolio/pull/516),
+  [`4ed8786`](https://github.com/skfolio/skfolio/commit/4ed8786e4f81a1b869524bdfc035707c383fb7b5))
+
+
 ## v1.14.4 (2026-11-20)
 
 ### Bug Fixes
