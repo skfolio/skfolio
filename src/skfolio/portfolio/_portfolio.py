@@ -73,6 +73,9 @@ class Portfolio(BasePortfolio):
     `compounded` changes how that series is accumulated. See
     :ref:`backtesting_and_evaluation`.
 
+    For successful portfolios, addition and subtraction require matching asset and
+    observation labels in the same order. Weights, names and tags may differ.
+
     Parameters
     ----------
     X : array-like of shape (n_observations, n_assets)
@@ -744,6 +747,16 @@ class Portfolio(BasePortfolio):
                 named.get(asset, 0) != other_named.get(asset, 0)
                 for asset in excluded_assets
             ):
+                raise ValueError(
+                    f"Cannot combine two Portfolios with different `{name}`"
+                )
+
+        # Compare label values without rejecting matching missing labels or
+        # equivalent timestamps represented in different time zones.
+        for name in ("assets", "observations"):
+            left = pd.Index(getattr(self, name), dtype=object)
+            right = pd.Index(getattr(other, name), dtype=object)
+            if not left.equals(right):
                 raise ValueError(
                     f"Cannot combine two Portfolios with different `{name}`"
                 )

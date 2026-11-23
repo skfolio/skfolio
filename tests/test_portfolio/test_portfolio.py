@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gc
 import math
+import operator
 import pickle
 import timeit
 import tracemalloc
@@ -1967,6 +1968,99 @@ class TestPortfolioComparison:
         assert (portfolio >= other) is (
             portfolio == other or portfolio.dominates(other)
         )
+
+
+class TestPortfolioArithmeticIdentities:
+    @pytest.mark.parametrize("operation", [operator.add, operator.sub])
+    @pytest.mark.parametrize(
+        "mismatch",
+        ["reversed_assets", "renamed_assets", "shifted_dates", "reversed_dates"],
+    )
+    def test_rejects_different_identities(self, operation, mismatch):
+        """Equal returns must not hide different holdings or dated observations."""
+        left_X = pd.DataFrame(
+            [[0.01, 0.01], [0.02, 0.02], [0.03, 0.03]],
+            columns=["A", "B"],
+            index=pd.date_range("2024-01-01", periods=3),
+        )
+        right_X = left_X.copy()
+        if mismatch == "reversed_assets":
+            right_X.columns = ["B", "A"]
+        elif mismatch == "renamed_assets":
+            right_X.columns = ["C", "D"]
+        elif mismatch == "shifted_dates":
+            right_X.index += pd.Timedelta(days=10)
+        else:
+            right_X.index = right_X.index[::-1]
+        left = Portfolio(left_X, weights=[1.0, 0.0])
+        right = Portfolio(right_X, weights=[1.0, 0.0])
+        left_before, right_before = left_X.copy(), right_X.copy()
+        # Otherwise the existing numerical X comparison could reject the fixture.
+        np.testing.assert_array_equal(left_X.to_numpy(), right_X.to_numpy())
+        field = "assets" if "assets" in mismatch else "observations"
+        with pytest.raises(ValueError, match=f"different `{field}`"):
+            operation(left, right)
+        pd.testing.assert_frame_equal(left_X, left_before)
+        pd.testing.assert_frame_equal(right_X, right_before)
+        np.testing.assert_array_equal(left.weights, [1.0, 0.0])
+        np.testing.assert_array_equal(right.weights, [1.0, 0.0])
+
+    @pytest.mark.parametrize("operation", [operator.add, operator.sub])
+    @pytest.mark.parametrize(
+        "representation",
+        [
+            "frame",
+            "array",
+            "mixed_defaults",
+            "nullable",
+            "nan_asset",
+            "nat_date",
+            "axis_names",
+            "timezones",
+            "tuple_assets",
+        ],
+    )
+    def test_preserves_matching_identities(self, operation, representation):
+        """Retain native label equality and independent portfolio returns."""
+        X = pd.DataFrame(
+            [[0.01, 0.03], [0.02, -0.01], [0.04, 0.02]],
+            columns=["A", "B"],
+            index=pd.date_range("2024-01-01", periods=3),
+        )
+        if representation == "array":
+            X = X.to_numpy()
+        elif representation == "mixed_defaults":
+            X.columns = ["x0", "x1"]
+            X.index = pd.RangeIndex(3)
+        elif representation == "nullable":
+            X = X.astype("Float64")
+        elif representation == "nan_asset":
+            X.columns = [np.nan, "B"]
+        elif representation == "nat_date":
+            X.index = [pd.Timestamp("2024-01-01"), pd.NaT, pd.Timestamp("2024-01-03")]
+        elif representation == "timezones":
+            X.index = X.index.tz_localize("UTC")
+        elif representation == "tuple_assets":
+            X.columns = pd.MultiIndex.from_tuples([("sector", "A"), ("sector", "B")])
+        other_X = X.copy()
+        if representation == "mixed_defaults":
+            other_X = X.to_numpy()
+        elif representation == "axis_names":
+            other_X.index.name = "other dates"
+            other_X.columns.name = "other assets"
+        elif representation == "timezones":
+            other_X.index = other_X.index.tz_convert("America/New_York")
+        left = Portfolio(X, weights=[0.25, 0.75], name="left")
+        right = Portfolio(other_X, weights=[0.75, 0.25], name="right")
+        result = operation(left, right)
+        expected = (
+            [0.04, 0.01, 0.06] if operation is operator.add else [0.01, -0.015, -0.01]
+        )
+        np.testing.assert_allclose(result.returns, expected, atol=1e-15)
+        assert result.mean == pytest.approx(np.mean(expected), abs=1e-15)
+        pd.testing.assert_index_equal(pd.Index(result.assets), pd.Index(left.assets))
+        np.testing.assert_array_equal(result.observations, left.observations)
+        assert result.name == "left"
 
 
 class TestPortfolioArithmeticErrors:
