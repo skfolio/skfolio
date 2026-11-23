@@ -1072,6 +1072,24 @@ class EntropyPooling(BasePrior):
         a = np.hstack(a)
         b = np.hstack(b)
 
+        correlation_data = None
+        if self.correlation_views is not None and len(self.correlation_views):
+            # Correlation views couple fixed moments with small cross-moments.
+            # Center their residuals without changing the normalization multiplier,
+            # objective, or bounds. Keep the existing evaluation when no correlation
+            # view is supplied, including inside the CVaR root problem.
+            log_prior = np.full(n_observations, -np.inf)
+            np.log(
+                self._prior_sample_weight,
+                out=log_prior,
+                where=self._prior_sample_weight > 0,
+            )
+            correlation_data = (
+                a[:, 1:] - b[None, 1:],
+                log_prior,
+                np.log(np.finfo(float).max),
+            )
+
         def func(x: FloatArray) -> tuple[float, FloatArray]:
             """Computes the Fenchel dual of the entropic-pooling problem in its
             unnormalized form.
@@ -1088,6 +1106,36 @@ class EntropyPooling(BasePrior):
             grad : ndarray of shape  (n_constraints,)
                Gradient of the dual objective.
             """
+            if correlation_data is not None:
+                centered, log_prior, max_log_mass = correlation_data
+                logits = log_prior - centered @ x[1:]
+                maximum = np.max(logits)
+                factors = np.exp(logits - maximum)
+                total = factors.sum()
+                probabilities = factors / total
+                log_normalizer = maximum + np.log(total)
+                shift = b[0] * x[0] + 1 + x[1:] @ b[1:] - log_normalizer
+                # Reject unrepresentable mass before exponential/gradient arithmetic.
+                if -shift > max_log_mass:
+                    raise SolverError(
+                        "Dual problem with Solver 'TNC' failed: correlation-view "
+                        "evaluation exceeds the floating-point range. Consider "
+                        "changing solver_params or using solver='CLARABEL'."
+                    )
+                mass_delta = np.expm1(-shift)
+                # exp(-shift) + shift - 1 retains its small quadratic term.
+                obj = (mass_delta + shift) + log_normalizer
+                residual = -(centered.T @ probabilities)
+                # Keep the centered residual near unit mass, but use uncentered moments
+                # in the mass correction: large centered products can overflow
+                # before cancellation even when the complete gradient is finite.
+                moments = a[:, 1:].T @ probabilities
+                grad = np.r_[
+                    -b[0] * mass_delta,
+                    residual - mass_delta * moments,
+                ]
+                return obj, grad
+
             z = self._prior_sample_weight * np.exp(-a @ x - 1)
             obj = z.sum() + x @ b
             grad = b - a.T @ z

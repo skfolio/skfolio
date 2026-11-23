@@ -1232,9 +1232,10 @@ class TestOnlinePredictNamedEstimators:
             np.testing.assert_array_equal(mpp.observations, expected.observations)
             np.testing.assert_allclose(mpp.returns, expected.returns)
             for p, p_expected in zip(mpp.portfolios, expected.portfolios, strict=True):
-                np.testing.assert_allclose(p.weights, p_expected.weights)
+                # Solver rounding near zero needs an absolute comparison floor.
+                np.testing.assert_allclose(p.weights, p_expected.weights, atol=1e-12)
                 np.testing.assert_allclose(
-                    p.previous_weights, p_expected.previous_weights
+                    p.previous_weights, p_expected.previous_weights, atol=1e-12
                 )
                 assert p.tag == p_expected.tag
         assert estimators[0][1].portfolio_params == {

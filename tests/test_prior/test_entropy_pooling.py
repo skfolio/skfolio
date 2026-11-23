@@ -4,6 +4,7 @@ import operator
 import types
 
 import numpy as np
+import pandas as pd
 import pytest
 import scipy.optimize as sco
 import sklearn.utils.metadata_routing as skm
@@ -13,9 +14,12 @@ import skfolio.prior._entropy_pooling as ep_module
 from skfolio.distribution import Gaussian, GaussianCopula, VineCopula
 from skfolio.exceptions import GroupNotFoundError, SolverError
 from skfolio.moments import ShrunkCovariance, ShrunkMu
+from skfolio.optimization import MeanRisk
 from skfolio.prior import (
+    BasePrior,
     EmpiricalPrior,
     EntropyPooling,
+    ReturnDistribution,
     SyntheticData,
     TimeSeriesFactorModel,
 )
@@ -542,6 +546,235 @@ def test_negative_correlation_views_prior(X, solver):
     corr_prior = np.corrcoef(x.T)
     corr = sm.correlation(x, sw)
     np.testing.assert_almost_equal(corr[0, 1], -0.5 * corr_prior[0, 1], 5)
+
+
+def test_correlation_dual_preserves_small_positive_cost(monkeypatch):
+    """The normalization penalty must survive cancellation near its minimum."""
+    X = pd.DataFrame(
+        [[0.01, 0.01], [0.01, -0.01], [-0.01, 0.01], [-0.01, -0.01]],
+        columns=["A", "B"],
+    )
+    minimize = sco.minimize
+    evaluated = []
+
+    def check_cost(fun, x0, **kwargs):
+        point = np.zeros_like(x0)
+        point[0] = (-1 + 1e-10) * np.sqrt(len(X))
+        shift = point[0] / np.sqrt(len(X)) + 1
+        cost, _ = fun(point)
+        # exp(-shift) + shift - 1 = shift**2 / 2 + O(shift**3).
+        # The omitted term is below 1e-30 at this point.
+        np.testing.assert_allclose(cost, shift**2 / 2, rtol=1e-4, atol=1e-24)
+        evaluated.append(True)
+        return minimize(fun, x0=x0, **kwargs)
+
+    monkeypatch.setattr(sco, "minimize", check_cost)
+    model = EntropyPooling(correlation_views=["(A, B) == 0"]).fit(X)
+    assert evaluated
+    np.testing.assert_allclose(
+        model.return_distribution_.sample_weight, [0.25] * 4, atol=1e-9, rtol=0
+    )
+
+
+def test_correlation_dual_rejects_unrepresentable_cost(monkeypatch):
+    """Keep finite large costs; report out-of-range trials as solver failures."""
+    X = pd.DataFrame(
+        [[0.01, 0.01], [0.01, -0.01], [-0.01, 0.01], [-0.01, -0.01]],
+        columns=["A", "B"],
+    )
+    minimize = sco.minimize
+    evaluated = []
+
+    def check_range(fun, x0, **kwargs):
+        point = np.zeros_like(x0)
+        limit = np.finfo(float).max
+        # At this normalization multiplier the mass is limit / e, still finite.
+        point[0] = -np.log(limit) * np.sqrt(len(X))
+        with np.errstate(over="raise", invalid="raise"):
+            cost, gradient = fun(point)
+            np.testing.assert_allclose(cost, limit / np.e, rtol=2e-13)
+            np.testing.assert_allclose(
+                gradient[0], (1 - limit / np.e) / np.sqrt(len(X)), rtol=2e-13
+            )
+            assert np.isfinite(gradient).all()
+            # Increasing log-mass by two puts it above the float64 range.
+            point[0] -= 2 * np.sqrt(len(X))
+            with pytest.raises(SolverError, match="floating-point range"):
+                fun(point)
+        evaluated.append(True)
+        return minimize(fun, x0=x0, **kwargs)
+
+    monkeypatch.setattr(sco, "minimize", check_range)
+    model = EntropyPooling(correlation_views=["(A, B) == 0"]).fit(X)
+    assert evaluated
+    np.testing.assert_allclose(
+        model.return_distribution_.sample_weight, [0.25] * 4, atol=1e-9, rtol=0
+    )
+
+
+def test_correlation_dual_preserves_large_finite_gradient(monkeypatch):
+    """Large mass and a nonzero target must not overflow an intermediate product."""
+
+    class FixedPrior(BasePrior):
+        def __init__(self, sample_weight):
+            self.sample_weight = sample_weight
+
+        def fit(self, X, y=None):
+            values = np.asarray(X)
+            self.return_distribution_ = ReturnDistribution(
+                mu=np.average(values, axis=0, weights=self.sample_weight),
+                covariance=np.cov(values, rowvar=False, aweights=self.sample_weight),
+                returns=values,
+                sample_weight=self.sample_weight,
+            )
+            return self
+
+    X = pd.DataFrame(
+        [[0.03, 0.01], [-0.01, 0.02], [-0.01, -0.02], [-0.01, 0.0]],
+        columns=["A", "B"],
+    )
+    before = X.copy(deep=True)
+    prior = np.array([0.01, 0.33, 0.33, 0.33])
+    prior.setflags(write=False)
+    minimize = sco.minimize
+    evaluated = []
+
+    def check_gradient(fun, x0, **kwargs):
+        if not evaluated:
+            # This earlier, mean-only stage retains the normalization multiplier.
+            assert len(x0) == 2
+            point = np.array([-1398.3889291021148, 40.0])
+            with np.errstate(over="raise", invalid="raise"):
+                cost, gradient = fun(point)
+            # A 90-digit evaluation of sum(q*exp(-A*x-1)) + b*x and its
+            # complete gradient gives these finite values at 95% of max mass.
+            np.testing.assert_allclose(cost, 1.707808478119181e308, rtol=2e-12)
+            np.testing.assert_allclose(
+                gradient,
+                [-8.539042390595905e307, 4.930018422832171e307],
+                rtol=2e-12,
+            )
+            evaluated.append(True)
+        return minimize(fun, x0=x0, **kwargs)
+
+    monkeypatch.setattr(sco, "minimize", check_gradient)
+    model = EntropyPooling(
+        prior_estimator=FixedPrior(prior),
+        mean_views=["A == 0.029"],
+        correlation_views=["(A, B) >= -1"],
+    ).fit(X)
+    assert evaluated
+    # The correlation inequality is nonbinding. The attainable mean fixes the
+    # first probability, and KL preserves equal weights on the other three rows.
+    expected = np.array([0.975, 1 / 120, 1 / 120, 1 / 120])
+    mean = np.array([0.029, 0.00975])
+    centered = np.asarray(X) - mean
+    covariance = (centered.T * expected) @ centered / (1 - expected @ expected)
+    np.testing.assert_allclose(
+        model.return_distribution_.sample_weight, expected, atol=3e-6, rtol=0
+    )
+    np.testing.assert_allclose(model.return_distribution_.mu, mean, atol=5e-8, rtol=0)
+    np.testing.assert_allclose(
+        model.return_distribution_.covariance, covariance, atol=5e-9, rtol=0
+    )
+    pd.testing.assert_frame_equal(X, before)
+    np.testing.assert_array_equal(prior, [0.01, 0.33, 0.33, 0.33])
+    assert not prior.flags.writeable
+
+
+@pytest.mark.parametrize("correlation", [-0.1, 0.3])
+@pytest.mark.parametrize("return_scale", [1.0, 1.0 + 1e-15])
+@pytest.mark.parametrize("custom_solver_params", [False, True])
+def test_correlation_projection_and_optimizer(
+    correlation, return_scale, custom_solver_params
+):
+    """A symmetric KL projection has literal probabilities and optimal holdings."""
+    X = (
+        pd.DataFrame(
+            [[0.01, 0.01], [0.01, -0.01], [-0.01, 0.01], [-0.01, -0.01]],
+            columns=["A", "B"],
+        )
+        * return_scale
+    )
+    before = X.copy(deep=True)
+    solver_params = None
+    if custom_solver_params:
+        # Normalization, covariance, two means and two variances: six multipliers.
+        solver_params = {
+            "maxfun": 5000,
+            "ftol": 1e-11,
+            "xtol": 1e-8,
+            "gtol": 1e-8,
+            "stepmx": 1,
+            "scale": np.ones(6),
+            "offset": np.zeros(6),
+        }
+    model = EntropyPooling(
+        correlation_views=[f"(A, B) == {correlation}"], solver_params=solver_params
+    ).fit(X)
+    # Symmetry fixes the two diagonal and two off-diagonal probabilities.
+    expected = (
+        np.array([1 + correlation, 1 - correlation, 1 - correlation, 1 + correlation])
+        / 4
+    )
+    probabilities = model.return_distribution_.sample_weight
+    np.testing.assert_almost_equal(
+        sm.correlation(np.asarray(X), probabilities)[0, 1], correlation, 5
+    )
+    # The native five-decimal correlation bound gives a probability bound / 4.
+    np.testing.assert_allclose(probabilities, expected, atol=1.5e-5 / 4, rtol=0)
+    np.testing.assert_almost_equal(
+        model.relative_entropy_, np.sum(expected * np.log(4 * expected)), 5
+    )
+    covariance = (
+        (0.01 * return_scale) ** 2
+        * np.array([[1.0, correlation], [correlation, 1.0]])
+        / (1 - expected @ expected)
+    )
+    # Propagate that bound through rho / (0.75 - 0.25 * rho**2).
+    np.testing.assert_allclose(
+        model.return_distribution_.covariance,
+        covariance,
+        atol=5e-5 * (0.01 * return_scale) ** 2,
+        rtol=0,
+    )
+    optimizer = MeanRisk(prior_estimator=model).fit(X)
+    np.testing.assert_allclose(optimizer.weights_, [0.5, 0.5], atol=1e-6, rtol=0)
+    np.testing.assert_allclose(
+        optimizer.predict(X).returns,
+        np.array([0.01, 0.0, 0.0, -0.01]) * return_scale,
+        atol=2e-8,
+        rtol=0,
+    )
+    pd.testing.assert_frame_equal(X, before)
+    assert model.solver_params is solver_params
+    if custom_solver_params:
+        np.testing.assert_array_equal(solver_params["scale"], np.ones(6))
+        np.testing.assert_array_equal(solver_params["offset"], np.zeros(6))
+
+
+def test_correlation_dual_preserves_zero_prior_support():
+    """The correlation evaluator also serves earlier, mean-only fitting stages."""
+    model = EntropyPooling(correlation_views=["(A, B) == 0"])
+    model._returns = np.array([[-0.01, -0.01], [0.0, 0.0], [0.01, 0.01]])
+    prior = np.array([0.25, 0.0, 0.75])
+    prior.setflags(write=False)
+    model._prior_sample_weight = prior
+    coefficients = np.array([[-1.0], [0.0], [1.0]]) / np.sqrt(2)
+    model._constraints = {
+        "equality": [coefficients, np.zeros(1)],
+        "inequality": None,
+        "fixed_equality": None,
+        "cvar_equality": None,
+    }
+    probabilities = model._solve_dual()
+    np.testing.assert_allclose(probabilities, [0.5, 0.0, 0.5], atol=2e-7, rtol=0)
+    assert probabilities[1] == 0
+    np.testing.assert_array_equal(prior, [0.25, 0.0, 0.75])
+    assert not prior.flags.writeable
+    np.testing.assert_array_equal(
+        coefficients, np.array([[-1.0], [0.0], [1.0]]) / np.sqrt(2)
+    )
 
 
 def test_correlation_views_prior_estimator(X, solver):
@@ -1361,6 +1594,17 @@ def test_conflicting_views_dual_solver_error(X):
     model = EntropyPooling(solver="TNC", mean_views=["AAPL == 0.01", "AAPL == 0.02"])
     with pytest.raises(SolverError, match="Dual problem with Solver 'TNC' failed"):
         model.fit(X)
+
+
+@pytest.mark.filterwarnings("error::RuntimeWarning")
+def test_conflicting_correlation_views_dual_solver_error(X):
+    model = EntropyPooling(
+        correlation_views=["(RRC, WMT) == -0.1", "(RRC, WMT) == 0.3"]
+    )
+    before = X.copy(deep=True)
+    with pytest.raises(SolverError, match="Dual problem with Solver 'TNC' failed"):
+        model.fit(X)
+    pd.testing.assert_frame_equal(X, before)
 
 
 def test_conflicting_views_primal_solver_error(X):
