@@ -1186,7 +1186,11 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
 
         # Reconstruct _cov from raw (uncorrected) state for internal bookkeeping.
         # This is used only for symmetrization; output uses _bias_correct_covariance.
-        active = self._is_active & (self._var > 0)
+        active = (
+            self._is_active
+            & (self._var > _NUMERICAL_THRESHOLD)
+            & (np.diag(self._corr_state) > _NUMERICAL_THRESHOLD)
+        )
         if np.any(active):
             active_idx = np.where(active)[0]
             ix = np.ix_(active_idx, active_idx)
@@ -1194,15 +1198,23 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
             std_active = np.sqrt(self._var[active_idx])
             corr_raw = self._corr_state[ix]
 
-            diag_vals = np.diag(corr_raw)
-            if np.all(diag_vals > _NUMERICAL_THRESHOLD):
-                diag_sqrt = np.sqrt(np.clip(diag_vals, _NUMERICAL_THRESHOLD, None))
-                inv_diag_sqrt = 1.0 / diag_sqrt
-                corr = corr_raw * (inv_diag_sqrt[:, None] * inv_diag_sqrt[None, :])
-                corr = np.clip(corr, -1.0, 1.0)
-                corr = 0.5 * (corr + corr.T)
-                np.fill_diagonal(corr, 1.0)
-                self._cov[ix] = corr_to_cov(corr, std_active)
+            diag_sqrt = np.sqrt(np.diag(corr_raw))
+            inv_diag_sqrt = 1.0 / diag_sqrt
+            corr = corr_raw * (inv_diag_sqrt[:, None] * inv_diag_sqrt[None, :])
+            corr = np.clip(corr, -1.0, 1.0)
+            corr = 0.5 * (corr + corr.T)
+            np.fill_diagonal(corr, 1.0)
+            self._cov[ix] = corr_to_cov(corr, std_active)
+
+        # Keep active sub-threshold assets uncorrelated with their tracked diagonal
+        # variance so one zero/tiny-variance asset neither freezes _cov nor leaks
+        # stale off-diagonal covariances.
+        sub_threshold = self._is_active & ~active
+        if np.any(sub_threshold):
+            self._cov[sub_threshold, :] = 0.0
+            self._cov[:, sub_threshold] = 0.0
+            sub_idx = np.where(sub_threshold)[0]
+            self._cov[sub_idx, sub_idx] = self._var[sub_idx]
 
     def _compute_hac_outer(self, ret: FloatArray) -> FloatArray:
         """Compute HAC-adjusted outer product using Newey-West (Bartlett kernel).

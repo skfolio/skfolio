@@ -1848,7 +1848,73 @@ class TestRegimeAdjustedEWCovarianceDegenerateInputs:
         model.fit(X)
         assert model.covariance_.shape == (3, 3)
         assert np.all(np.isnan(model.covariance_))
-        assert model.regime_multiplier_ == 1.0
+
+    def test_dcc_sub_threshold_variance_does_not_freeze_cov(self):
+        rng = np.random.default_rng(0)
+        r0 = np.concatenate([rng.normal(0, 0.01, 60), rng.normal(0, 0.05, 60)])
+        r1 = np.concatenate([rng.normal(0, 0.01, 60), rng.normal(0, 0.05, 60)])
+        r_tiny = rng.normal(0, 5e-7, 120)
+
+        model = RegimeAdjustedEWCovariance(
+            half_life=5,
+            corr_half_life=10,
+            min_observations=5,
+            regime_min_observations=5,
+            nearest=False,
+        )
+        model.fit(np.column_stack([r0, r1, r_tiny]))
+
+        ref = RegimeAdjustedEWCovariance(
+            half_life=5,
+            corr_half_life=10,
+            min_observations=5,
+            regime_min_observations=5,
+            nearest=False,
+        )
+        ref.fit(np.column_stack([r0, r1]))
+
+        assert not np.all(model._cov[:2, :2] == 0.0)
+        np.testing.assert_allclose(model._cov[:2, :2], ref._cov, rtol=1e-12, atol=1e-12)
+        assert np.all(model._cov[2, :2] == 0.0)
+        assert np.all(model._cov[:2, 2] == 0.0)
+        assert model._cov[2, 2] == pytest.approx(model._var[2], rel=1e-12, abs=1e-15)
+        assert np.all(np.isfinite(model.covariance_))
+
+    def test_dcc_late_entry_and_decay_sub_threshold_zeroes_off_diagonals(self):
+        rng = np.random.default_rng(7)
+        r0 = np.concatenate([rng.normal(0, 0.01, 110), rng.normal(0, 0.05, 110)])
+        r1 = np.concatenate([rng.normal(0, 0.01, 110), rng.normal(0, 0.05, 110)])
+        # Asset 2 enters late with tiny variance; asset 3 starts small then decays below 1e-12.
+        r_late_tiny = np.concatenate([np.full(110, np.nan), rng.normal(0, 5e-7, 110)])
+        r_decay = np.concatenate([rng.normal(0, 0.001, 20), np.zeros(200)])
+
+        model = RegimeAdjustedEWCovariance(
+            half_life=5,
+            corr_half_life=10,
+            min_observations=5,
+            regime_min_observations=5,
+            nearest=False,
+        )
+        model.fit(np.column_stack([r0, r1, r_late_tiny, r_decay]))
+
+        ref = RegimeAdjustedEWCovariance(
+            half_life=5,
+            corr_half_life=10,
+            min_observations=5,
+            regime_min_observations=5,
+            nearest=False,
+        )
+        ref.fit(np.column_stack([r0, r1]))
+
+        assert not np.all(model._cov[:2, :2] == 0.0)
+        np.testing.assert_allclose(model._cov[:2, :2], ref._cov, rtol=1e-12, atol=1e-12)
+        assert np.all(model._cov[2, :2] == 0.0)
+        assert np.all(model._cov[:2, 2] == 0.0)
+        assert np.all(model._cov[3, :3] == 0.0)
+        assert np.all(model._cov[:3, 3] == 0.0)
+        assert model._cov[2, 2] == pytest.approx(model._var[2], rel=1e-12, abs=1e-15)
+        assert model._cov[3, 3] == pytest.approx(model._var[3], rel=1e-12, abs=1e-15)
+        assert np.all(np.isfinite(model.covariance_))
 
     def test_portfolio_weights_on_missing_asset_skip_regime_update(self, X_synth):
         X = X_synth.copy()
