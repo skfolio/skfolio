@@ -1823,8 +1823,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         self,
         return_distribution: ReturnDistribution,
         w: cp.Variable,
-        min_acceptable_return: skt.Target,
-        factor: skt.Factor,
+        min_acceptable_return: skt.Target | None = None,
     ) -> skt.RiskResult:
         """Expression and Constraints of the First Lower Partial Moment risk measure.
 
@@ -1839,10 +1838,6 @@ class ConvexOptimization(BaseOptimization, ABC):
         min_acceptable_return : float | ndarray of shape (n_assets,)
             The minimum acceptable return used to distinguish "downside" and "upside"
             returns for the computation of lower partial moments.
-
-        factor : cvxpy Variable | cvxpy Constant
-            Additional variable used for the optimization of some objective function
-            like the ratio maximization.
 
         Returns
         -------
@@ -1864,9 +1859,8 @@ class ConvexOptimization(BaseOptimization, ABC):
             risk = cp.sum(cp.multiply(return_distribution.sample_weight, v))
 
         constraints = [
-            self.risk_free_rate * factor * self._scale_constraints
-            - ptf_min_acceptable_return * self._scale_constraints
-            <= v * self._scale_constraints
+            ptf_min_acceptable_return * self._scale_constraints
+            >= -v * self._scale_constraints
         ]
         return risk, constraints
 
