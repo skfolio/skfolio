@@ -22,7 +22,7 @@ jobs:
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.gh_pages_deployment.outputs.page_url }}
+      url: ${{ steps.gh_pages_deployment_retry.outputs.page_url || steps.gh_pages_deployment.outputs.page_url }}
     concurrency: pages
     env:
       UV_PYTHON_DOWNLOADS: never
@@ -61,6 +61,18 @@ jobs:
         with:
           path: docs/_build
 
+      # GitHub can briefly omit a freshly uploaded artifact from its listing.
+      # https://github.com/actions/deploy-pages/issues/451
       - name: Deploy Sphinx Docs to GitHub Pages
         id: gh_pages_deployment
+        continue-on-error: true
+        uses: actions/deploy-pages@v5
+
+      - name: Wait before retrying deployment
+        if: steps.gh_pages_deployment.outcome == 'failure'
+        run: sleep 60
+
+      - name: Retry Sphinx Docs deployment to GitHub Pages
+        id: gh_pages_deployment_retry
+        if: steps.gh_pages_deployment.outcome == 'failure'
         uses: actions/deploy-pages@v5
