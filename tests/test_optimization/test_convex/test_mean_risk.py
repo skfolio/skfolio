@@ -22,6 +22,7 @@ from skfolio.optimization import (
     EqualWeighted,
     MeanRisk,
     ObjectiveFunction,
+    RiskBudgeting,
 )
 from skfolio.optimization.convex._mean_risk import _optimal_homogenization_factor
 from skfolio.prior import (
@@ -3283,3 +3284,69 @@ def test_covariance_uncertainty_variance_limit_maximize_ratio(X):
     ).fit(X)
     assert robust.weights_ @ cov @ robust.weights_ <= limit * (1 + 1e-3)
     np.testing.assert_allclose(robust.weights_, reference.weights_, atol=2e-3)
+
+
+def test_first_lower_partial_moment_ignores_risk_free_rate(X):
+    X = X.iloc[-250:, :5]
+    mar = 0.0
+    rf = 0.002
+
+    ref = MeanRisk(
+        risk_measure=RiskMeasure.FIRST_LOWER_PARTIAL_MOMENT,
+        min_acceptable_return=mar,
+        risk_free_rate=0.0,
+        portfolio_params=dict(min_acceptable_return=mar),
+    ).fit(X)
+    with_rf = MeanRisk(
+        risk_measure=RiskMeasure.FIRST_LOWER_PARTIAL_MOMENT,
+        min_acceptable_return=mar,
+        risk_free_rate=rf,
+        portfolio_params=dict(min_acceptable_return=mar),
+    ).fit(X)
+
+    np.testing.assert_allclose(with_rf.weights_, ref.weights_, atol=1e-6)
+    ptf = with_rf.predict(X)
+    assert with_rf.problem_values_["risk"] == pytest.approx(
+        ptf.first_lower_partial_moment, rel=1e-5
+    )
+
+    rb_ref = RiskBudgeting(
+        risk_measure=RiskMeasure.FIRST_LOWER_PARTIAL_MOMENT,
+        min_acceptable_return=mar,
+        risk_free_rate=0.0,
+    ).fit(X)
+    rb_rf = RiskBudgeting(
+        risk_measure=RiskMeasure.FIRST_LOWER_PARTIAL_MOMENT,
+        min_acceptable_return=mar,
+        risk_free_rate=rf,
+    ).fit(X)
+    np.testing.assert_allclose(rb_rf.weights_, rb_ref.weights_, atol=1e-6)
+
+    max_flpm = 0.007
+    constrained_ref = MeanRisk(
+        objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+        max_first_lower_partial_moment=max_flpm,
+        min_acceptable_return=mar,
+        risk_free_rate=0.0,
+    ).fit(X)
+    constrained_rf = MeanRisk(
+        objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+        max_first_lower_partial_moment=max_flpm,
+        min_acceptable_return=mar,
+        risk_free_rate=rf,
+    ).fit(X)
+    np.testing.assert_allclose(
+        constrained_rf.weights_, constrained_ref.weights_, atol=1e-6
+    )
+
+    ratio_model = MeanRisk(
+        objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
+        risk_measure=RiskMeasure.FIRST_LOWER_PARTIAL_MOMENT,
+        min_acceptable_return=mar,
+        risk_free_rate=0.0005,
+        portfolio_params=dict(min_acceptable_return=mar),
+    ).fit(X)
+    ratio_ptf = ratio_model.predict(X)
+    assert ratio_model.problem_values_["risk"] == pytest.approx(
+        ratio_ptf.first_lower_partial_moment, rel=1e-5
+    )
