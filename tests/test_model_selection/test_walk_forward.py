@@ -22,6 +22,29 @@ def assert_split_equal(split, res):
         assert np.array_equal(test, res[i][1])
 
 
+@pytest.mark.parametrize(
+    "freq,freq_offset", [("h", pd.DateOffset(day=1)), ("30min", pd.DateOffset(hour=1))]
+)
+@pytest.mark.parametrize("previous", [False, True])
+def test_walk_forward_rejects_offsets_that_reorder_anchors(freq, freq_offset, previous):
+    """Replacing date components must not move later anchors before earlier ones."""
+    index = pd.date_range("2024-01-01", periods=72, freq="h")
+    X = pd.DataFrame({"x": np.zeros(len(index))}, index=index)
+    cv = WalkForward(
+        test_size=1, train_size=2, freq=freq, freq_offset=freq_offset, previous=previous
+    )
+
+    with pytest.raises(
+        ValueError, match=r"freq_offset.*chronological order"
+    ) as split_error:
+        next(cv.split(X))
+    with pytest.raises(
+        ValueError, match=r"freq_offset.*chronological order"
+    ) as count_error:
+        cv.get_n_splits(X)
+    assert str(split_error.value) == str(count_error.value)
+
+
 def assert_split_equal_dates(index, split, res):
     for i, (train, test) in enumerate(split):
         assert index[train[0]].date() == res[i][0][0]
