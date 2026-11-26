@@ -96,6 +96,17 @@ def test_child_node_get_var_none():
     assert child.get_var(False) == 1
 
 
+def test_edge_mixing_root_and_child_nodes_raises():
+    values = np.array([0.1, 0.2, 0.3])
+    a, b, c = (RootNode(ref=i, central=False, pseudo_values=values) for i in range(3))
+    child = ChildNode(ref=Edge(a, b))
+    mixed = Edge(child, c)
+    with pytest.raises(TypeError, match="two root nodes or two child nodes"):
+        _ = mixed.cond_sets
+    with pytest.raises(TypeError, match="two root nodes or two child nodes"):
+        mixed.get_X()
+
+
 def test_edge_shared_node_is_left_wrong_order():
     a, b, c = (RootNode(ref=i, central=False) for i in range(3))
     edge1 = Edge(a, b)

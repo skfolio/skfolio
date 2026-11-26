@@ -10,9 +10,11 @@ import pandas as pd
 import pytest
 from sklearn import clone, config_context
 from sklearn.model_selection import GridSearchCV, KFold
+from sklearn.utils.metadata_routing import process_routing
 from sklearn.utils.validation import validate_data
 
 from skfolio.cluster import HierarchicalClustering, LinkageMethod
+from skfolio.distance import PearsonDistance
 from skfolio.measures import RiskMeasure
 from skfolio.optimization import BaseOptimization
 from skfolio.optimization.cluster.hierarchical._base import BaseHierarchicalOptimization
@@ -226,3 +228,40 @@ def test_positional_parameters(estimator, args, expected):
     params = clone(estimator(*args)).get_params()
     for name, value in expected.items():
         assert params[name] == value
+
+
+class RoutedHierarchicalOptimization(BaseHierarchicalOptimization):
+    def __init__(
+        self,
+        prior_estimator=None,
+        distance_estimator=None,
+        hierarchical_clustering_estimator=None,
+    ):
+        super().__init__(
+            prior_estimator=prior_estimator,
+            distance_estimator=distance_estimator,
+            hierarchical_clustering_estimator=hierarchical_clustering_estimator,
+        )
+
+    def fit(self, X, y=None, **fit_params):
+        return self
+
+
+def test_legacy_base_routes_fit_metadata_to_children():
+    groups = np.array([0, 0, 1, 1])
+    with config_context(enable_metadata_routing=True):
+        model = RoutedHierarchicalOptimization(
+            prior_estimator=EmpiricalPrior(),
+            distance_estimator=PearsonDistance(),
+            hierarchical_clustering_estimator=RecordingClustering().set_fit_request(
+                groups=True
+            ),
+        )
+        router = model.get_metadata_routing()
+        routed = process_routing(model, "fit", groups=groups)
+    assert router.consumes("fit", ["groups"]) == {"groups"}
+    np.testing.assert_array_equal(
+        routed.hierarchical_clustering_estimator.fit["groups"], groups
+    )
+    assert routed.prior_estimator.fit == {}
+    assert routed.distance_estimator.fit == {}

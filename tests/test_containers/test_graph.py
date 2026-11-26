@@ -737,3 +737,13 @@ def test_series_concat():
     for items in [[left, panel], [panel, left]]:
         with pytest.raises(TypeError, match="GraphSeries"):
             concat(items)
+
+
+def test_graph_series_items_pairs_observations_with_graphs():
+    """`items` yields observation labels with their graph or None, in order."""
+    graph = Graph(np.array([[0.0, 1.0], [1.0, 0.0]]), nodes=["A", "B"])
+    series = GraphSeries([graph, None], observations=["first", "second"])
+    items = list(series.items())
+    assert [observation for observation, _ in items] == ["first", "second"]
+    assert items[0][1] is series[0]
+    assert items[1][1] is None

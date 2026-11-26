@@ -349,6 +349,29 @@ def test_currency_returns_required_with_currency_factor():
         model.fit(X, characteristics=panel)
 
 
+class UnnamedCurrencyFactor(StaticCurrencyFactor, stateless=True):
+    """Currency exposures from an estimator that does not set `factor_names_`."""
+
+    def fit_transform(self, X, y=None, **fit_params):
+        exposures = super().fit_transform(X, y, **fit_params)
+        del self.factor_names_
+        return exposures
+
+
+def test_currency_factor_must_set_factor_names():
+    panel, X, _local_factor_returns, currency_returns, currency_factor = (
+        _make_currency_data()
+    )
+    model = _make_model(
+        UnnamedCurrencyFactor(
+            currency_factor.currency_names, currency_factor.currency_codes
+        )
+    )
+
+    with pytest.raises(ValueError, match="must be a multi-factor exposure estimator"):
+        model.fit(X, characteristics=panel, currency_excess_returns=currency_returns)
+
+
 def test_currency_returns_rejected_without_currency_factor():
     panel, X, _local_factor_returns, currency_returns, _currency_factor = (
         _make_currency_data()

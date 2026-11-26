@@ -1470,6 +1470,13 @@ def test_correlation(returns, sample_weight, expected):
     )
 
 
+def test_correlation_with_zero_sample_weight_is_nan():
+    returns = np.array([[0.01, 0.02], [-0.01, 0.03], [0.02, -0.01]])
+    result = skm.correlation(returns, sample_weight=np.zeros(3))
+    assert result.shape == (2, 2)
+    assert np.isnan(result).all()
+
+
 def _synthetic_sharpe_returns():
     """Approximate the moments in Bailey and Lopez de Prado (2014), section 3.
 

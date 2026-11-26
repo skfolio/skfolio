@@ -301,6 +301,21 @@ class TestNeutralizationAndReset:
         with pytest.raises(ValueError, match=_EXPOSURES):
             model.fit(alpha_deterministic_panel)
 
+    def test_neutralize_against_requires_3d_exposures(self, alpha_deterministic_panel):
+        """Neutralization rejects an exposures field without a factor axis."""
+        panel = alpha_deterministic_panel.copy(deep=True)
+        panel[_EXPOSURES] = np.ones((panel.n_observations, panel.n_assets))
+        model = FixedWeightedAlpha(
+            descriptors=[("signal", Passthrough("signal"))],
+            forecast_scale=0.01,
+            neutralize_against=["market"],
+            outlier_transformer="passthrough",
+            scoring_transformer="passthrough",
+        )
+
+        with pytest.raises(TypeError, match="must be a Field3D to neutralize scores"):
+            model.fit(panel)
+
     def test_neutralize_against_market_removes_cross_sectional_mean(
         self, alpha_deterministic_panel
     ):

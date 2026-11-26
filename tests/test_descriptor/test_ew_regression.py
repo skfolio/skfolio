@@ -17,7 +17,7 @@ from skfolio.descriptor import (
     EWResidualVolatility,
     Passthrough,
 )
-from skfolio.descriptor._utils import _EWRegression
+from skfolio.descriptor._utils import _EWRegression, _ReturnAverager
 from skfolio.factor_exposure import FixedWeightedFactor
 from skfolio.utils.tools import half_life_to_decay_factor
 from tests.test_descriptor._ew_reference import (
@@ -677,3 +677,14 @@ def test_residual_numerical_rejection_freezes_history_then_recovers():
             half_life=40, beta_half_life=4, min_periods=3
         ).fit_transform(panel)[:, 1],
     )
+
+
+def test_return_averaging_overflow_is_explicit():
+    """Averaging finite returns whose difference overflows raises a clear error."""
+    averager = _ReturnAverager(n_assets=1, n_variables=1, aggregation_period=3)
+    assert averager.update(np.array([[1e308]]), np.array([True])) is None
+    with (
+        np.errstate(over="ignore"),
+        pytest.raises(ValueError, match="Non-finite aggregated returns"),
+    ):
+        averager.update(np.array([[-1e308]]), np.array([True]))
