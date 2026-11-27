@@ -329,4 +329,4 @@ population.summary()
 
 # %%
 # Finally, we plot the composition of the regularized multi-period portfolio:
-pred_reg.plot_composition()
+pred_reg.plot_composition(use_period_labels=True)
