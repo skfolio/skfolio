@@ -61,6 +61,7 @@ from skfolio.measures import (
     RiskMeasure,
 )
 from skfolio.typing import FloatArray, IntArray
+from skfolio.utils.figure import format_period
 from skfolio.utils.sorting import dominate
 from skfolio.utils.tools import (
     _validate_positive_integer,
@@ -1290,8 +1291,15 @@ class BasePortfolio:
         )
         return fig
 
-    def plot_composition(self) -> go.Figure:
+    def plot_composition(self, *, use_period_labels: bool = False) -> go.Figure:
         """Plot the Portfolio composition.
+
+        Parameters
+        ----------
+        use_period_labels : bool, default=False
+            If this is set to True, each bar is labeled with the first and last
+            observations of its portfolio instead of its name. Portfolios with no
+            observations keep their names.
 
         Returns
         -------
@@ -1306,10 +1314,16 @@ class BasePortfolio:
             yaxis_title="Weight",
             legend_title_text="Assets",
         )
+        if use_period_labels and (labels := self._period_labels()):
+            fig.update_xaxes(type="category", labelalias=labels, title_text="Period")
         return fig
 
     def plot_contribution(
-        self, measure: skt.Measure, spacing: float | None = None
+        self,
+        measure: skt.Measure,
+        spacing: float | None = None,
+        *,
+        use_period_labels: bool = False,
     ) -> go.Figure:
         r"""Plot the contribution of each asset to a given measure.
 
@@ -1322,6 +1336,11 @@ class BasePortfolio:
             Spacing "h" of the finite difference:
             :math:`contribution(w_i) = w_i \frac{measure(w_i + h) - measure(w_i - h)}{2h}`.
             If `None`, uses `1e-5`.
+
+        use_period_labels : bool, default=False
+            If this is set to True, each bar is labeled with the first and last
+            observations of its portfolio instead of its name. Portfolios with no
+            observations keep their names.
 
         Returns
         -------
@@ -1343,7 +1362,15 @@ class BasePortfolio:
             yaxis=yaxis,
             legend_title_text="Assets",
         )
+        if use_period_labels and (labels := self._period_labels()):
+            fig.update_xaxes(type="category", labelalias=labels, title_text="Period")
         return fig
+
+    def _period_labels(self) -> dict[str, str]:
+        """Map portfolio bar categories to their period labels."""
+        if not self.n_observations:
+            return {}
+        return {self.name: format_period(self.observations)}
 
     def _get_measure_func(
         self, measure: skt.Measure, *, exclude_args: tuple[str, ...] = ()

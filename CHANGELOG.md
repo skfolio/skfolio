@@ -2,6 +2,26 @@
 
 <!-- version list -->
 
+## v1.15.0 (2026-11-27)
+
+### Continuous Integration
+
+- Retry failed documentation deployments ([#529](https://github.com/skfolio/skfolio/pull/529),
+  [`6f676ff`](https://github.com/skfolio/skfolio/commit/6f676fff50b287943ef8458ecee3398acc3f7cf3))
+
+### Features
+
+- **portfolio**: Label composition bars with holding periods
+  ([#514](https://github.com/skfolio/skfolio/pull/514),
+  [`2a94bc8`](https://github.com/skfolio/skfolio/commit/2a94bc8e299a67600714fa8393926c72dbf01faf))
+
+### Testing
+
+- **model_selection**: Allow solver rounding near zero
+  ([#522](https://github.com/skfolio/skfolio/pull/522),
+  [`27fe0be`](https://github.com/skfolio/skfolio/commit/27fe0be4a9f20f8a9aa2fa42f7fe38c436e41a04))
+
+
 ## v1.14.6 (2026-11-23)
 
 ### Bug Fixes
