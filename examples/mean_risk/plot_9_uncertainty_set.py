@@ -229,4 +229,4 @@ population.summary()
 
 # %%
 # Finally, let's plot the composition of the regularized multi-period portfolio:
-pred_uncertainty.plot_composition()
+pred_uncertainty.plot_composition(use_period_labels=True)
