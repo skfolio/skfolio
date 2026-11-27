@@ -73,9 +73,6 @@ class Portfolio(BasePortfolio):
     `compounded` changes how that series is accumulated. See
     :ref:`backtesting_and_evaluation`.
 
-    For successful portfolios, addition and subtraction require matching asset and
-    observation labels in the same order. Weights, names and tags may differ.
-
     Parameters
     ----------
     X : array-like of shape (n_observations, n_assets)
@@ -730,7 +727,12 @@ class Portfolio(BasePortfolio):
 
     def _check_compatible_parameters(self, other: Portfolio) -> None:
         """Check that portfolios differ only in weights, name or tag."""
-        assets = set(self.assets)
+        for name in ("assets", "observations"):
+            if not _labels_equal(getattr(self, name), getattr(other, name)):
+                raise ValueError(
+                    f"Cannot combine two Portfolios with different `{name}`"
+                )
+
         for name in args_names(self.__init__):
             if name in ("weights", "name", "tag"):
                 continue
@@ -738,28 +740,21 @@ class Portfolio(BasePortfolio):
                 raise ValueError(
                     f"Cannot combine two Portfolios with different `{name}`"
                 )
-        # Aligned arrays do not include positions and rates outside X.
-        for name in (_PREVIOUS_WEIGHTS, _TRANSACTION_COSTS):
-            named = self._original_named_inputs.get(name, {})
-            other_named = other._original_named_inputs.get(name, {})
-            excluded_assets = (named.keys() | other_named.keys()) - assets
-            if any(
-                named.get(asset, 0) != other_named.get(asset, 0)
-                for asset in excluded_assets
-            ):
-                raise ValueError(
-                    f"Cannot combine two Portfolios with different `{name}`"
-                )
 
-        # Compare label values without rejecting matching missing labels or
-        # equivalent timestamps represented in different time zones.
-        for name in ("assets", "observations"):
-            left = pd.Index(getattr(self, name), dtype=object)
-            right = pd.Index(getattr(other, name), dtype=object)
-            if not left.equals(right):
-                raise ValueError(
-                    f"Cannot combine two Portfolios with different `{name}`"
-                )
+        if self._original_named_inputs or other._original_named_inputs:
+            # Aligned arrays do not include positions and rates outside X.
+            assets = set(self.assets)
+            for name in (_PREVIOUS_WEIGHTS, _TRANSACTION_COSTS):
+                named = self._original_named_inputs.get(name, {})
+                other_named = other._original_named_inputs.get(name, {})
+                excluded_assets = (named.keys() | other_named.keys()) - assets
+                if any(
+                    named.get(asset, 0) != other_named.get(asset, 0)
+                    for asset in excluded_assets
+                ):
+                    raise ValueError(
+                        f"Cannot combine two Portfolios with different `{name}`"
+                    )
 
     def __neg__(self) -> Portfolio:
         if self._is_failed_portfolio:
@@ -1546,6 +1541,20 @@ class Portfolio(BasePortfolio):
             compute_asset_factor_contribs=compute_asset_factor_contribs,
             compute_uncertainty=compute_uncertainty,
         )
+
+
+def _labels_equal(left: AnyArray, right: AnyArray) -> bool:
+    """Return whether two 1D label arrays match in value and order."""
+    if left is right:
+        return True
+    try:
+        if np.array_equal(left, right):
+            return True
+    except TypeError:
+        pass
+    # Fall back to pandas object Index equality for matching missing labels
+    # (NaN, None, pd.NA, NaT).
+    return bool(pd.Index(left, dtype=object).equals(pd.Index(right, dtype=object)))
 
 
 def _to_numpy_returns(X: ArrayLike) -> FloatArray:

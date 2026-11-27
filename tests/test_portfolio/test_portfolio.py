@@ -2041,6 +2041,7 @@ class TestPortfolioArithmeticIdentities:
             "mixed_defaults",
             "nullable",
             "nan_asset",
+            "pd_na_asset",
             "nat_date",
             "axis_names",
             "timezones",
@@ -2063,6 +2064,8 @@ class TestPortfolioArithmeticIdentities:
             X = X.astype("Float64")
         elif representation == "nan_asset":
             X.columns = [np.nan, "B"]
+        elif representation == "pd_na_asset":
+            X.columns = pd.Index([pd.NA, "B"], dtype=object)
         elif representation == "nat_date":
             X.index = [pd.Timestamp("2024-01-01"), pd.NaT, pd.Timestamp("2024-01-03")]
         elif representation == "timezones":
@@ -2088,6 +2091,29 @@ class TestPortfolioArithmeticIdentities:
         pd.testing.assert_index_equal(pd.Index(result.assets), pd.Index(left.assets))
         np.testing.assert_array_equal(result.observations, left.observations)
         assert result.name == "left"
+
+    @pytest.mark.parametrize("operation", [operator.add, operator.sub])
+    @pytest.mark.parametrize("mismatch", ["reversed_assets", "renamed_assets"])
+    def test_rejects_different_assets_with_dict_previous_weights(
+        self, operation, mismatch
+    ):
+        """Report mismatched assets before comparing named previous_weights."""
+        left_X = pd.DataFrame(
+            [[0.01, 0.01], [0.02, 0.02]],
+            columns=["A", "B"],
+            index=pd.date_range("2024-01-01", periods=2),
+        )
+        right_X = left_X.copy()
+        if mismatch == "reversed_assets":
+            right_X.columns = ["B", "A"]
+            right_prev = {"A": 0.5}
+        else:
+            right_X.columns = ["C", "D"]
+            right_prev = {"C": 0.5}
+        left = Portfolio(left_X, weights=[1.0, 0.0], previous_weights={"A": 0.5})
+        right = Portfolio(right_X, weights=[1.0, 0.0], previous_weights=right_prev)
+        with pytest.raises(ValueError, match="different `assets`"):
+            operation(left, right)
 
 
 class TestPortfolioArithmeticErrors:
