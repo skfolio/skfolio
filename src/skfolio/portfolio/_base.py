@@ -61,6 +61,7 @@ from skfolio.measures import (
     RiskMeasure,
 )
 from skfolio.typing import FloatArray, IntArray
+from skfolio.utils.figure import format_period
 from skfolio.utils.sorting import dominate
 from skfolio.utils.tools import (
     _validate_positive_integer,
@@ -1296,9 +1297,9 @@ class BasePortfolio:
         Parameters
         ----------
         use_period_labels : bool, default=False
-            If this is set to True, each bar is labeled with its portfolio's start and
-            end observations instead of its name. Portfolios with no observations or a
-            missing start or end observation keep their names.
+            If this is set to True, each bar is labeled with the first and last
+            observations of its portfolio instead of its name. Portfolios with no
+            observations keep their names.
 
         Returns
         -------
@@ -1313,12 +1314,8 @@ class BasePortfolio:
             yaxis_title="Weight",
             legend_title_text="Assets",
         )
-        if use_period_labels:
-            labels = self._period_labels()
-            if labels:
-                fig.update_xaxes(
-                    type="category", labelalias=labels, title_text="Period"
-                )
+        if use_period_labels and (labels := self._period_labels()):
+            fig.update_xaxes(type="category", labelalias=labels, title_text="Period")
         return fig
 
     def plot_contribution(
@@ -1341,9 +1338,9 @@ class BasePortfolio:
             If `None`, uses `1e-5`.
 
         use_period_labels : bool, default=False
-            If this is set to True, each bar is labeled with its portfolio's start and
-            end observations instead of its name. Portfolios with no observations or a
-            missing start or end observation keep their names.
+            If this is set to True, each bar is labeled with the first and last
+            observations of its portfolio instead of its name. Portfolios with no
+            observations keep their names.
 
         Returns
         -------
@@ -1365,28 +1362,15 @@ class BasePortfolio:
             yaxis=yaxis,
             legend_title_text="Assets",
         )
-        if use_period_labels:
-            labels = self._period_labels()
-            if labels:
-                fig.update_xaxes(
-                    type="category", labelalias=labels, title_text="Period"
-                )
+        if use_period_labels and (labels := self._period_labels()):
+            fig.update_xaxes(type="category", labelalias=labels, title_text="Period")
         return fig
-
-    def _format_period_label(self) -> str | None:
-        """Return the formatted start and end observations for this portfolio, or None."""
-        if not self.n_observations:
-            return None
-        bounds = pd.Index(self.observations[[0, -1]], tupleize_cols=False)
-        if bounds.hasnans:
-            return None
-        start, end = bounds.astype(str)
-        return start if start == end else f"{start} - {end}"
 
     def _period_labels(self) -> dict[str, str]:
         """Map portfolio bar categories to their period labels."""
-        label = self._format_period_label()
-        return {} if label is None else {self.name: label}
+        if not self.n_observations:
+            return {}
+        return {self.name: format_period(self.observations)}
 
     def _get_measure_func(
         self, measure: skt.Measure, *, exclude_args: tuple[str, ...] = ()

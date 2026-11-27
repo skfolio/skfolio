@@ -818,7 +818,7 @@ def test_weights_per_observation(portfolio):
             pd.date_range("2024-01-02 12:00", periods=2, freq="h", tz="Europe/Paris"),
             "2024-01-02 12:00:00+01:00 - 2024-01-02 13:00:00+01:00",
         ),
-        (pd.DatetimeIndex(["2024-01-02", pd.NaT]), None),
+        (pd.Index([]), None),
     ],
 )
 def test_plot_composition_period_bounds(index, label):

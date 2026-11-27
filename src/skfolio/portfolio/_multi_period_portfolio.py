@@ -32,6 +32,7 @@ from skfolio.portfolio._utils import (
     dependency_exposure,
 )
 from skfolio.typing import ArrayLike, FloatArray
+from skfolio.utils.figure import format_period
 from skfolio.utils.tools import args_names, deduplicate_names
 
 if TYPE_CHECKING:
@@ -584,14 +585,13 @@ class MultiPeriodPortfolio(BasePortfolio):
 
     def _period_labels(self) -> dict[str, str]:
         """Map each deduplicated child portfolio name to its period label."""
-        labels = {}
-        for name, portfolio in zip(
-            deduplicate_names(p.name for p in self), self, strict=True
-        ):
-            label = portfolio._format_period_label()
-            if label is not None:
-                labels[name] = label
-        return labels
+        return {
+            name: format_period(portfolio.observations)
+            for name, portfolio in zip(
+                deduplicate_names(p.name for p in self), self, strict=True
+            )
+            if portfolio.n_observations
+        }
 
     # Custom attribute setter and getter
     @BasePortfolio.sample_weight.getter
