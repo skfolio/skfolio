@@ -828,6 +828,7 @@ def test_plot_composition_period_bounds(index, label):
         assert fig.layout.xaxis.labelalias is None
         assert fig.layout.xaxis.title.text == "Portfolio"
     else:
+        assert fig.layout.xaxis.type == "category"
         assert fig.layout.xaxis.labelalias == {"Test": label}
         assert fig.layout.xaxis.title.text == "Period"
 

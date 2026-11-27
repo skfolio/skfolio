@@ -1290,8 +1290,15 @@ class BasePortfolio:
         )
         return fig
 
-    def plot_composition(self) -> go.Figure:
+    def plot_composition(self, *, use_period_labels: bool = False) -> go.Figure:
         """Plot the Portfolio composition.
+
+        Parameters
+        ----------
+        use_period_labels : bool, default=False
+            If this is set to True, each bar is labeled with its portfolio's start and
+            end observations instead of its name. Portfolios with no observations or a
+            missing start or end observation keep their names.
 
         Returns
         -------
@@ -1306,10 +1313,20 @@ class BasePortfolio:
             yaxis_title="Weight",
             legend_title_text="Assets",
         )
+        if use_period_labels:
+            labels = self._period_labels()
+            if labels:
+                fig.update_xaxes(
+                    type="category", labelalias=labels, title_text="Period"
+                )
         return fig
 
     def plot_contribution(
-        self, measure: skt.Measure, spacing: float | None = None
+        self,
+        measure: skt.Measure,
+        spacing: float | None = None,
+        *,
+        use_period_labels: bool = False,
     ) -> go.Figure:
         r"""Plot the contribution of each asset to a given measure.
 
@@ -1322,6 +1339,11 @@ class BasePortfolio:
             Spacing "h" of the finite difference:
             :math:`contribution(w_i) = w_i \frac{measure(w_i + h) - measure(w_i - h)}{2h}`.
             If `None`, uses `1e-5`.
+
+        use_period_labels : bool, default=False
+            If this is set to True, each bar is labeled with its portfolio's start and
+            end observations instead of its name. Portfolios with no observations or a
+            missing start or end observation keep their names.
 
         Returns
         -------
@@ -1343,7 +1365,28 @@ class BasePortfolio:
             yaxis=yaxis,
             legend_title_text="Assets",
         )
+        if use_period_labels:
+            labels = self._period_labels()
+            if labels:
+                fig.update_xaxes(
+                    type="category", labelalias=labels, title_text="Period"
+                )
         return fig
+
+    def _format_period_label(self) -> str | None:
+        """Return the formatted start and end observations for this portfolio, or None."""
+        if not self.n_observations:
+            return None
+        bounds = pd.Index(self.observations[[0, -1]], tupleize_cols=False)
+        if bounds.hasnans:
+            return None
+        start, end = bounds.astype(str)
+        return start if start == end else f"{start} - {end}"
+
+    def _period_labels(self) -> dict[str, str]:
+        """Map portfolio bar categories to their period labels."""
+        label = self._format_period_label()
+        return {} if label is None else {self.name: label}
 
     def _get_measure_func(
         self, measure: skt.Measure, *, exclude_args: tuple[str, ...] = ()

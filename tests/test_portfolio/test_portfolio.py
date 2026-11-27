@@ -364,6 +364,33 @@ def test_portfolio_composition(name, weights, expected_assets, expected_weights)
     pd.testing.assert_frame_equal(portfolio.composition, expected)
 
 
+def test_portfolio_plot_period_labels():
+    X = pd.DataFrame(
+        [[0.01, -0.02], [0.02, 0.01]],
+        index=pd.date_range("2024-01-02", periods=2),
+        columns=["A", "B"],
+    )
+    ptf = Portfolio(X=X, weights=[0.6, 0.4])
+    for fig in (
+        ptf.plot_composition(use_period_labels=True),
+        ptf.plot_contribution(
+            measure=RiskMeasure.STANDARD_DEVIATION, use_period_labels=True
+        ),
+    ):
+        assert fig.layout.xaxis.type == "category"
+        assert fig.layout.xaxis.title.text == "Period"
+        assert fig.layout.xaxis.labelalias == {ptf.name: "2024-01-02 - 2024-01-03"}
+
+    single = Portfolio(X=X.iloc[:1], weights=[0.6, 0.4], name="OneDay")
+    fig_single = single.plot_composition(use_period_labels=True)
+    assert fig_single.layout.xaxis.labelalias == {"OneDay": "2024-01-02"}
+
+    empty = Portfolio(X=X.iloc[:0], weights=[0.6, 0.4], name="Empty")
+    fig_empty = empty.plot_composition(use_period_labels=True)
+    assert fig_empty.layout.xaxis.labelalias is None
+    assert fig_empty.layout.xaxis.title.text == "Portfolio"
+
+
 def test_portfolio_magic_methods(X, weights):
     n_assets = X.shape[1]
     ptf_1 = Portfolio(X=X, weights=rand_weights(n=n_assets))
