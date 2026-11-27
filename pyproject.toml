@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skfolio"
-version = "1.14.3"
+version = "1.14.6"
 maintainers = [
     { name = "Hugo Delatte", email = "hugo.delatte@skfoliolabs.com" },
     { name = "Matteo Manzi", email = "matteomanzi09@gmail.com" },
@@ -86,7 +86,7 @@ dev = [
     "pytest-xdist",
     "pytest-cov",
     "ruff",
-    "ty==0.0.101",
+    "ty==0.0.109",
     "pre-commit>=4.4.0",
 ]
 docs = [

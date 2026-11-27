@@ -694,10 +694,7 @@ class RiskBudgeting(ConvexOptimization):
             elif arg_name == "w":
                 args[arg_name] = w
             elif arg_name == "factor":
-                if self.risk_measure in [RiskMeasure.FIRST_LOWER_PARTIAL_MOMENT]:
-                    args[arg_name] = factor
-                else:
-                    args[arg_name] = cp.Constant(1)
+                args[arg_name] = factor
             else:
                 args[arg_name] = getattr(self, arg_name)
         risk, constraints_i = risk_func(**args)

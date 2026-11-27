@@ -159,6 +159,99 @@ class TestAttributionUncertaintyPresence:
 class TestAttributionUncertaintyMath:
     """Mathematical correctness of uncertainty computation."""
 
+    @pytest.mark.parametrize("dynamic_weights", [False, True])
+    @pytest.mark.parametrize("rolling", [False, True])
+    def test_static_inactive_uncertainty(self, dynamic_weights, rolling):
+        factors = np.array([0.01, 0.02, -0.01, 0.03, -0.02, 0.01])[:, None]
+        exposures = np.array([[1.0], [2.0]])
+        idio = np.zeros((6, 2))
+        idio[1, 0] = np.nan
+        variances = np.full((6, 2), 0.0001)
+        variances[4, 1] = np.nan
+        regression_weights = np.tile([1.0, 2.0], (6, 1))
+        weights = np.array([0.5, 0.5])
+        if dynamic_weights:
+            weights = np.linspace(0.8, 1.2, 6)[:, None] * weights
+        snapshots = [
+            x.copy() for x in (exposures, idio, variances, regression_weights, weights)
+        ]
+        daily_weights = np.broadcast_to(weights, idio.shape)
+        portfolio_exposure = np.zeros(6)
+        factor_variance = np.zeros(6)
+        for t in range(6):
+            gram = middle = 0.0
+            for i in range(2):
+                if np.isfinite(idio[t, i]):
+                    portfolio_exposure[t] += daily_weights[t, i] * exposures[i, 0]
+                    if np.isfinite(variances[t, i]):
+                        q = regression_weights[t, i]
+                        gram += q * exposures[i, 0] ** 2
+                        middle += q**2 * variances[t, i] * exposures[i, 0] ** 2
+            factor_variance[t] = middle / gram**2
+        observed = portfolio_exposure * factors[:, 0]
+        args = dict(
+            asset_names=["A", "B"],
+            factor_names=["F"],
+            factor_families=["Style"],
+            factor_returns=factors,
+            exposures=exposures,
+            weights=weights,
+            idio_returns=idio,
+            portfolio_returns=observed,
+            idio_variances=variances,
+            regression_weights=regression_weights,
+            compute_uncertainty=True,
+            annualization_factor=12,
+        )
+        with np.errstate(all="raise"):
+            if rolling:
+                result = rolling_realized_factor_attribution(
+                    **args, observations=np.arange(6), window_size=3, step=1
+                )
+            else:
+                result = realized_factor_attribution(**args)
+        windows = [slice(i, i + 3) for i in range(4)] if rolling else [slice(0, 6)]
+        # Independent scalar sandwich variance, propagated through the actual
+        # active portfolio exposure. Missing variance excludes estimation only.
+        expected = np.array(
+            [
+                12
+                / len(portfolio_exposure[s])
+                * np.sqrt(np.sum(portfolio_exposure[s] ** 2 * factor_variance[s]))
+                for s in windows
+            ]
+        )
+        np.testing.assert_allclose(
+            result.systematic.mu_uncertainty,
+            expected if rolling else expected[0],
+            rtol=1e-12,
+            atol=1e-15,
+        )
+        np.testing.assert_allclose(
+            result.idio.mu_uncertainty,
+            result.systematic.mu_uncertainty,
+            rtol=1e-12,
+            atol=1e-15,
+        )
+        np.testing.assert_allclose(
+            result.factors.mu_contrib_uncertainty,
+            expected[:, None] if rolling else expected,
+            rtol=1e-12,
+            atol=1e-15,
+        )
+        np.testing.assert_allclose(
+            result.families.mu_contrib_uncertainty,
+            result.factors.mu_contrib_uncertainty,
+            rtol=1e-12,
+            atol=1e-15,
+        )
+        for actual, before in zip(
+            (exposures, idio, variances, regression_weights, weights),
+            snapshots,
+            strict=True,
+        ):
+            np.testing.assert_array_equal(actual, before)
+
     def test_systematic_and_idio_se_are_equal(self, static_uncertainty_model):
         """Systematic and idio SE are equal (perfect negative correlation)."""
         result = realized_factor_attribution(

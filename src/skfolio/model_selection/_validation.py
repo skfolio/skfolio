@@ -458,7 +458,7 @@ def _validate_estimator_input(
     if not isinstance(estimator, Sequence) or isinstance(
         estimator, str | bytes | bytearray
     ):
-        return [(None, estimator)], False  # ty: ignore[invalid-return-type]
+        return [(None, estimator)], False  # ty: ignore[invalid-explicit-return]
 
     if not estimator:
         raise ValueError("Received an empty collection of estimators.")

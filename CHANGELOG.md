@@ -2,6 +2,37 @@
 
 <!-- version list -->
 
+## v1.14.6 (2026-11-23)
+
+### Bug Fixes
+
+- **prior**: Skip zero-probability experts in logarithmic OpinionPooling
+  ([#519](https://github.com/skfolio/skfolio/pull/519),
+  [`d38b9cf`](https://github.com/skfolio/skfolio/commit/d38b9cf869b7e97a35022660d28084a5741b69e6))
+
+
+## v1.14.5 (2026-11-23)
+
+### Bug Fixes
+
+- **distribution**: Preserve asymmetric margins when sampling a vine
+  ([#520](https://github.com/skfolio/skfolio/pull/520),
+  [`d6e36b1`](https://github.com/skfolio/skfolio/commit/d6e36b1436b0513f1be786cbbbe00e990496b3e5))
+
+- **optimization**: Pass homogenization factor to RiskBudgeting risk functions
+  ([#516](https://github.com/skfolio/skfolio/pull/516),
+  [`4ed8786`](https://github.com/skfolio/skfolio/commit/4ed8786e4f81a1b869524bdfc035707c383fb7b5))
+
+
+## v1.14.4 (2026-11-20)
+
+### Bug Fixes
+
+- **attribution**: Zero inactive static-exposure contributions
+  ([#510](https://github.com/skfolio/skfolio/pull/510),
+  [`00c953e`](https://github.com/skfolio/skfolio/commit/00c953e7ef9970d1caf89ab80e79502c62075305))
+
+
 ## v1.14.3 (2026-11-20)
 
 ### Bug Fixes

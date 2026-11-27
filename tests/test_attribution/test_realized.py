@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from skfolio import Portfolio
 from skfolio.attribution import (
     Attribution,
     Component,
@@ -439,6 +440,207 @@ class TestNaNHandling:
             + result.unattributed.vol_contrib
         )
         np.testing.assert_almost_equal(total_vol_contrib, result.total.vol, decimal=10)
+
+    @pytest.mark.parametrize("dynamic_weights", [False, True])
+    @pytest.mark.parametrize("compute_assets", [False, True])
+    @pytest.mark.parametrize("zero_weight", [False, True])
+    def test_static_inactive_contributions(
+        self, dynamic_weights, compute_assets, zero_weight
+    ):
+        # Mix a date-local absence with an asset-wide absence. Checking only the
+        # total would miss errors absorbed by the unattributed component.
+        factors = np.array(
+            [
+                [0.01, 0.02],
+                [0.02, -0.01],
+                [-0.01, 0.03],
+                [0.03, 0.01],
+                [-0.02, 0.02],
+                [0.01, -0.02],
+                [0.04, 0.01],
+                [-0.01, -0.03],
+            ]
+        )
+        exposures = np.array([[1.0, 0.5], [2.0, -0.25], [np.nan, 1.0]])
+        idio = np.full((8, 3), 0.001)
+        idio[1, 0] = np.nan
+        weights = np.array([0.0 if zero_weight else 0.6, -0.2, 0.1])
+        if dynamic_weights:
+            weights = (
+                np.array([1.0, 0.8, 1.1, 0.9, 1.2, 0.7, 1.05, 0.95])[:, None] * weights
+            )
+        snapshots = [x.copy() for x in (factors, exposures, idio, weights)]
+        daily_weights = np.broadcast_to(weights, idio.shape)
+        asset_factor_returns = np.zeros((8, 3, 2))
+        asset_idio_returns = np.zeros_like(idio)
+        active_exposures = np.zeros_like(asset_factor_returns)
+        for t in range(8):
+            for i in range(3):
+                if np.isfinite(idio[t, i]) and np.isfinite(exposures[i]).all():
+                    active_exposures[t, i] = exposures[i]
+                    asset_factor_returns[t, i] = exposures[i] * factors[t]
+                    asset_idio_returns[t, i] = idio[t, i]
+        systematic_returns = asset_factor_returns.sum(axis=2)
+        asset_returns = systematic_returns + asset_idio_returns
+        factor_pnl = (daily_weights[:, :, None] * asset_factor_returns).sum(axis=1)
+        idio_pnl = (daily_weights * asset_idio_returns).sum(axis=1)
+        fees = 0.0003 * daily_weights.sum(axis=1)
+        observed = (daily_weights * asset_returns).sum(axis=1) - fees
+        if not dynamic_weights:
+            portfolio = Portfolio(
+                factors @ exposures.T + idio, weights, management_fees=0.0003
+            )
+            np.testing.assert_allclose(portfolio.returns, observed, atol=1e-15)
+            observed = portfolio.returns
+
+        args = dict(
+            asset_names=["A", "B", "C"],
+            factor_names=["F", "G"],
+            factor_families=["Style", "Style"],
+            weights=weights,
+            factor_returns=factors,
+            portfolio_returns=observed,
+            idio_returns=idio,
+            annualization_factor=1,
+            compute_asset_breakdowns=compute_assets,
+        )
+        with np.errstate(all="raise"):
+            # A positive lag still does not trim originally static loadings.
+            result = realized_factor_attribution(
+                exposures=exposures, exposure_lag=2, **args
+            )
+            broadcast = realized_factor_attribution(
+                exposures=np.broadcast_to(exposures, (8, 3, 2)), exposure_lag=0, **args
+            )
+        vol = np.std(observed, ddof=1)
+
+        def vol_contrib(pnl):
+            return np.array(
+                [
+                    np.cov(column, observed, ddof=1)[0, 1] / vol
+                    for column in np.asarray(pnl).T
+                ]
+            )
+
+        np.testing.assert_allclose(
+            result.factors.mu_contrib, factor_pnl.mean(axis=0), rtol=1e-12, atol=1e-15
+        )
+        np.testing.assert_allclose(
+            result.factors.vol_contrib, vol_contrib(factor_pnl), rtol=1e-12, atol=1e-15
+        )
+        np.testing.assert_allclose(
+            result.factors.exposure,
+            (daily_weights[:, :, None] * active_exposures).sum(axis=1).mean(axis=0),
+            atol=1e-15,
+        )
+        np.testing.assert_allclose(
+            result.systematic.mu_contrib, factor_pnl.sum(axis=1).mean(), atol=1e-15
+        )
+        np.testing.assert_allclose(result.idio.mu_contrib, idio_pnl.mean(), atol=1e-15)
+        np.testing.assert_allclose(
+            result.unattributed.mu_contrib, -fees.mean(), atol=1e-15
+        )
+        np.testing.assert_allclose(
+            result.families.mu_contrib, [factor_pnl.sum(axis=1).mean()], atol=1e-15
+        )
+        np.testing.assert_allclose(
+            result.factors.mu_contrib, broadcast.factors.mu_contrib, atol=1e-15
+        )
+        if compute_assets:
+            np.testing.assert_allclose(
+                result.assets.mu, asset_returns.mean(axis=0), atol=1e-15
+            )
+            np.testing.assert_allclose(
+                result.assets.vol, asset_returns.std(axis=0, ddof=1), atol=1e-15
+            )
+            np.testing.assert_allclose(
+                result.assets.systematic_vol_contrib,
+                vol_contrib(daily_weights * systematic_returns),
+                atol=1e-15,
+            )
+            np.testing.assert_allclose(
+                result.assets.idio_mu_contrib,
+                (daily_weights * asset_idio_returns).mean(axis=0),
+                atol=1e-15,
+            )
+            np.testing.assert_allclose(
+                result.asset_by_factor_contrib.mu_contrib,
+                (daily_weights[:, :, None] * asset_factor_returns).mean(axis=0),
+                atol=1e-15,
+            )
+        else:
+            assert result.assets is None
+        for actual, before in zip(
+            (factors, exposures, idio, weights), snapshots, strict=True
+        ):
+            np.testing.assert_array_equal(actual, before)
+
+    @pytest.mark.parametrize("dynamic_weights", [False, True])
+    def test_rolling_static_inactive_contributions(self, dynamic_weights):
+        factors = np.array([0.01, 0.02, -0.01, 0.03, -0.02, 0.01, 0.04, -0.03])[:, None]
+        exposures = np.array([[1.0], [2.0]])
+        idio = np.full((8, 2), 0.001)
+        idio[1, 0] = idio[6, 1] = np.nan
+        weights = np.array([0.6, -0.2])
+        if dynamic_weights:
+            weights = np.linspace(0.8, 1.2, 8)[:, None] * weights
+        daily_weights = np.broadcast_to(weights, idio.shape)
+        asset_returns = np.zeros_like(idio)
+        factor_pnl = np.zeros(8)
+        idio_pnl = np.zeros(8)
+        for t in range(8):
+            for i in range(2):
+                if np.isfinite(idio[t, i]):
+                    asset_returns[t, i] = exposures[i, 0] * factors[t, 0] + idio[t, i]
+                    factor_pnl[t] += (
+                        daily_weights[t, i] * exposures[i, 0] * factors[t, 0]
+                    )
+                    idio_pnl[t] += daily_weights[t, i] * idio[t, i]
+        observed = (daily_weights * asset_returns).sum(axis=1) - 0.0002
+        args = dict(
+            observations=np.arange(8),
+            asset_names=["A", "B"],
+            factor_names=["F"],
+            factor_returns=factors,
+            exposures=exposures,
+            idio_returns=idio,
+            weights=weights,
+            portfolio_returns=observed,
+            window_size=3,
+            step=2,
+            annualization_factor=1,
+            exposure_lag=3,
+            compute_asset_factor_contribs=True,
+        )
+        with np.errstate(all="raise"):
+            result = rolling_realized_factor_attribution(**args)
+        np.testing.assert_array_equal(result.observations, [2, 4, 6])
+        for j, start in enumerate([0, 2, 4]):
+            window = slice(start, start + 3)
+            np.testing.assert_allclose(
+                result.systematic.mu_contrib[j], factor_pnl[window].mean(), atol=1e-15
+            )
+            np.testing.assert_allclose(
+                result.idio.mu_contrib[j], idio_pnl[window].mean(), atol=1e-15
+            )
+            np.testing.assert_allclose(
+                result.unattributed.mu_contrib[j], -0.0002, atol=1e-15
+            )
+            np.testing.assert_allclose(
+                result.assets.mu[j], asset_returns[window].mean(axis=0), atol=1e-15
+            )
+        prefix = {
+            key: value[:6]
+            if isinstance(value, np.ndarray) and value.shape[0] == 8
+            else value
+            for key, value in args.items()
+        }
+        truncated = rolling_realized_factor_attribution(**prefix)
+        np.testing.assert_allclose(
+            truncated.systematic.mu_contrib,
+            result.systematic.mu_contrib[:2],
+            atol=1e-15,
+        )
 
     # --- Zero-fill of exposures / idio_returns (time-varying) ---
 

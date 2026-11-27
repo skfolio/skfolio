@@ -2971,7 +2971,7 @@ class FactorModel:
                 weights=regression_weights,
                 axis=1,
             )
-        return ic, start_t  # ty: ignore[invalid-return-type]
+        return ic, start_t  # ty: ignore[invalid-explicit-return]
 
     def _exposure_stability(
         self,
@@ -3003,7 +3003,7 @@ class FactorModel:
         )
         if weights is not None:
             weights = weights[:-step]
-        return cs_pearson_correlation(  # ty: ignore[invalid-return-type]
+        return cs_pearson_correlation(  # ty: ignore[invalid-explicit-return]
             exposures[:-step], exposures[step:], weights=weights, axis=1
         )
 
