@@ -582,6 +582,22 @@ class MultiPeriodPortfolio(BasePortfolio):
         self.observations = observations
         self._loaded = True
 
+    def _apply_period_labels(self, fig: go.Figure) -> go.Figure:
+        """Replace portfolio bar labels with each child's observation bounds."""
+        labels = {}
+        for name, portfolio in zip(
+            deduplicate_names(p.name for p in self), self, strict=True
+        ):
+            if not portfolio.n_observations:
+                continue
+            bounds = pd.Index(portfolio.observations[[0, -1]], tupleize_cols=False)
+            if not bounds.hasnans:
+                start, end = bounds.astype(str)
+                labels[name] = start if start == end else f"{start} - {end}"
+        if labels:
+            fig.update_xaxes(type="category", labelalias=labels, title_text="Period")
+        return fig
+
     # Custom attribute setter and getter
     @BasePortfolio.sample_weight.getter
     def sample_weight(self) -> FloatArray | None:
@@ -931,15 +947,16 @@ class MultiPeriodPortfolio(BasePortfolio):
         self._set_portfolios([portfolio], append=True)
         self.clear()
 
-    def plot_composition(self, *, display_periods: bool = False) -> go.Figure:
+    def plot_composition(self, *, use_period_labels: bool = False) -> go.Figure:
         """Plot the target asset weights of each portfolio.
 
         Parameters
         ----------
-        display_periods : bool, default=False
-            Label each bar with its first and last observations instead of its
-            portfolio name. A single observation is shown once. Portfolios
-            with missing bounds or no observations keep their names.
+        use_period_labels : bool, default=False
+            If this is set to True, each bar is labeled with the first and last
+            observations of its portfolio instead of its name. A single observation is
+            shown once. Portfolios with missing bounds or no observations keep their
+            names.
 
         Returns
         -------
@@ -947,19 +964,43 @@ class MultiPeriodPortfolio(BasePortfolio):
             Returns the plot Figure object.
         """
         fig = super().plot_composition()
-        if display_periods:
-            names = deduplicate_names(p.name for p in self)
-            labels = {}
-            for name, portfolio in zip(names, self, strict=True):
-                if not portfolio.n_observations:
-                    continue
-                bounds = pd.Index(portfolio.observations[[0, -1]], tupleize_cols=False)
-                if not bounds.hasnans:
-                    start, end = bounds.astype(str)
-                    labels[name] = start if start == end else f"{start} - {end}"
-            fig.update_xaxes(
-                type="category", labelalias=labels, title_text="Holding period"
-            )
+        if use_period_labels:
+            return self._apply_period_labels(fig)
+        return fig
+
+    def plot_contribution(
+        self,
+        measure: skt.Measure,
+        spacing: float | None = None,
+        *,
+        use_period_labels: bool = False,
+    ) -> go.Figure:
+        r"""Plot the contribution of each asset to a given measure for each portfolio.
+
+        Parameters
+        ----------
+        measure : Measure
+            The measure used for the contribution computation.
+
+        spacing : float, optional
+            Spacing "h" of the finite difference:
+            :math:`contribution(w_i) = w_i \frac{measure(w_i + h) - measure(w_i - h)}{2h}`.
+            If `None`, uses `1e-5`.
+
+        use_period_labels : bool, default=False
+            If this is set to True, each bar is labeled with the first and last
+            observations of its portfolio instead of its name. A single observation is
+            shown once. Portfolios with missing bounds or no observations keep their
+            names.
+
+        Returns
+        -------
+        plot : Figure
+            The plotly Figure of assets contribution to the measure.
+        """
+        fig = super().plot_contribution(measure=measure, spacing=spacing)
+        if use_period_labels:
+            return self._apply_period_labels(fig)
         return fig
 
     def plot_weights_per_observation(self) -> go.Figure:
