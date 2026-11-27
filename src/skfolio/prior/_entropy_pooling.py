@@ -37,6 +37,12 @@ from skfolio.typing import ArrayLike, BoolArray, FloatArray, StrArray
 from skfolio.utils.equations import equations_to_matrix
 from skfolio.utils.tools import check_estimator, default_asset_names, input_to_array
 
+# Status code of scipy's TNC for "Linear search failed".
+_TNC_LINE_SEARCH_FAILED = 4
+# Maximum absolute projected gradient of the EP dual at which a failed TNC line
+# search is accepted. The dual gradient is the constraint residual.
+_TNC_STATIONARY_GTOL = 1e-8
+
 
 class EntropyPooling(BasePrior):
     r"""Entropy Pooling estimator.
@@ -1117,7 +1123,7 @@ class EntropyPooling(BasePrior):
             method="TNC",
             options=solver_params,
         )
-        if not sol.success:
+        if not sol.success and not _is_tnc_dual_stationary(sol, bounds):
             raise SolverError(
                 "Dual problem with Solver 'TNC' failed. This typically occurs when the "
                 "specified views conflict or are overly extreme. Consider using a "
@@ -1306,6 +1312,40 @@ class EntropyPooling(BasePrior):
                 name="fixed_equality",
             )
             self._is_fixed_variance |= fix
+
+
+def _is_tnc_dual_stationary(
+    sol: sco.OptimizeResult, bounds: list[tuple[float | None, float | None]]
+) -> bool:
+    """Return True if TNC stopped on a failed line search at a stationary point.
+
+    TNC reports a failed line search when no step can decrease the objective. This
+    also happens when the current point is already optimal to machine precision, in
+    which case the solution is valid. The gradient is projected on the bounds: a
+    component pushing against an active bound does not prevent optimality.
+
+    Parameters
+    ----------
+    sol : OptimizeResult
+        Result returned by `scipy.optimize.minimize` with `method="TNC"`.
+
+    bounds : list of tuple
+        Bounds passed to the solver, `None` meaning unbounded.
+
+    Returns
+    -------
+    value : bool
+        True if the solver stopped on a failed line search and the projected
+        gradient is below `_TNC_STATIONARY_GTOL`.
+    """
+    if sol.status != _TNC_LINE_SEARCH_FAILED:
+        return False
+    lower = np.array([-np.inf if lo is None else lo for lo, _ in bounds])
+    upper = np.array([np.inf if up is None else up for _, up in bounds])
+    grad = np.asarray(sol.jac, dtype=float).copy()
+    grad[(sol.x <= lower) & (grad > 0)] = 0.0
+    grad[(sol.x >= upper) & (grad < 0)] = 0.0
+    return bool(np.max(np.abs(grad)) <= _TNC_STATIONARY_GTOL)
 
 
 def _extract_prior_assets(views: Iterable[str], assets: Iterable[str]) -> set[str]:
