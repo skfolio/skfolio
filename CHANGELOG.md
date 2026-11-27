@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.15.1 (2026-11-27)
+
+### Bug Fixes
+
+- **portfolio**: Reject mismatched arithmetic identities
+  ([#521](https://github.com/skfolio/skfolio/pull/521),
+  [`6c04295`](https://github.com/skfolio/skfolio/commit/6c0429540921ed457eabd5afd22c5c274404a018))
+
+
 ## v1.15.0 (2026-11-27)
 
 ### Continuous Integration
