@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.15.2 (2026-11-27)
+
+### Bug Fixes
+
+- **moments**: Fix near-zero variance handling in RegimeAdjustedEWCovariance
+  ([#527](https://github.com/skfolio/skfolio/pull/527),
+  [`f2387b8`](https://github.com/skfolio/skfolio/commit/f2387b882a5ea70a55829cba234367b3f5c99dde))
+
+
 ## v1.15.1 (2026-11-27)
 
 ### Bug Fixes
