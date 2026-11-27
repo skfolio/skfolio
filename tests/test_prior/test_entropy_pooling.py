@@ -1374,8 +1374,9 @@ def test_conflicting_views_primal_solver_error(X):
         model.fit(X)
 
 
-def test_tnc_line_search_failure_at_optimum(X, monkeypatch):
-    """A failed TNC line search at the optimum is not a solver failure."""
+@pytest.mark.parametrize("gradient", [0.0, 1e-3])
+def test_tnc_line_search_failure(X, monkeypatch, gradient):
+    """A failed TNC line search is accepted only at a stationary point."""
     views = ["(RRC, WMT) == -0.1"]
     expected = EntropyPooling(solver="TNC", correlation_views=views).fit(X)
 
@@ -1385,6 +1386,7 @@ def test_tnc_line_search_failure_at_optimum(X, monkeypatch):
             sol.status = ep_module._TNC_LINE_SEARCH_FAILED
             sol.success = False
             sol.message = "Linear search failed"
+            sol.jac = np.full_like(sol.jac, gradient)
         return sol
 
     monkeypatch.setattr(
@@ -1392,11 +1394,16 @@ def test_tnc_line_search_failure_at_optimum(X, monkeypatch):
         "sco",
         types.SimpleNamespace(minimize=line_search_failed, root_scalar=sco.root_scalar),
     )
-    model = EntropyPooling(solver="TNC", correlation_views=views).fit(X)
-    np.testing.assert_allclose(
-        model.return_distribution_.sample_weight,
-        expected.return_distribution_.sample_weight,
-    )
+    model = EntropyPooling(solver="TNC", correlation_views=views)
+    if gradient == 0.0:
+        model.fit(X)
+        np.testing.assert_allclose(
+            model.return_distribution_.sample_weight,
+            expected.return_distribution_.sample_weight,
+        )
+    else:
+        with pytest.raises(SolverError, match="Linear search failed"):
+            model.fit(X)
 
 
 @pytest.mark.parametrize(
