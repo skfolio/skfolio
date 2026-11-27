@@ -509,6 +509,33 @@ def test_mpp_binary_arithmetic_preserves_left_identity(
 
 
 @pytest.mark.parametrize("operation", [operator.add, operator.sub])
+@pytest.mark.parametrize("axis", ["assets", "observations"])
+def test_mpp_binary_arithmetic_rejects_later_child_identity(operation, axis):
+    """Check every child, including when earlier periods are compatible."""
+    X = pd.DataFrame(
+        [[0.01, 0.01], [0.02, 0.02], [0.03, 0.03], [0.04, 0.04]],
+        columns=["A", "B"],
+        index=pd.date_range("2024-01-01", periods=4),
+    )
+    right_X = X.iloc[2:].copy()
+    if axis == "assets":
+        right_X.columns = ["B", "A"]
+    else:
+        right_X.index += pd.Timedelta(days=10)
+    first = Portfolio(X.iloc[:2], weights=[1.0, 0.0])
+    left_last = Portfolio(X.iloc[2:], weights=[1.0, 0.0])
+    right_last = Portfolio(right_X, weights=[1.0, 0.0])
+    left = MultiPeriodPortfolio([first, left_last])
+    right = MultiPeriodPortfolio([first.copy(), right_last])
+    with pytest.raises(ValueError, match=f"different `{axis}`"):
+        operation(left, right)
+    np.testing.assert_allclose(left.returns, [0.01, 0.02, 0.03, 0.04])
+    np.testing.assert_allclose(right.returns, [0.01, 0.02, 0.03, 0.04])
+    np.testing.assert_array_equal(left_last.weights, [1.0, 0.0])
+    np.testing.assert_array_equal(right_last.weights, [1.0, 0.0])
+
+
+@pytest.mark.parametrize("operation", [operator.add, operator.sub])
 @pytest.mark.parametrize(
     ("parameter", "other_value"),
     [
