@@ -29,6 +29,7 @@ from skfolio.utils.stats import (
 from skfolio.utils.tools import AutoEnum, _validate_mask, half_life_to_decay_factor
 
 _NUMERICAL_THRESHOLD = 1e-12
+_BIAS_CORRECTION_FLOOR = 1e-15
 
 
 class RegimeAdjustmentTarget(AutoEnum):
@@ -168,11 +169,18 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
 
     When `active_mask` is not provided, trailing NaN returns are ambiguous: they could
     correspond either to holidays, in which case covariance is frozen, or to inactive
-    periods, in which case covariance is set to NaN.
+    periods, in which case covariance is set to NaN. Encode pre-listing and inactive
+    periods as NaN with `active_mask=False`, as zero returns count as valid
+    observations.
 
     The `min_observations` parameter controls a warm-up period: an asset's
     covariance entries remain NaN in the output until it has accumulated enough valid
     observations for a reliable estimate.
+
+    Assets with EWMA variance at or below :math:`10^{-12}` are excluded from the STVU
+    statistic and, when `corr_half_life` differs from `half_life`, have zero
+    off-diagonal covariances. Active assets with final variance below :math:`10^{-15}`
+    raise :class:`~skfolio.exceptions.NonPositiveVarianceError`.
 
     **Late-listing bias correction:**
 
@@ -835,11 +843,12 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
             self._corr_decay = self._decay
 
         # Zero-seeded accumulators
-        self._cov = np.zeros((n_assets, n_assets))
         if self._separate_var_corr:
             self._var = np.zeros(n_assets)
             self._corr_state = np.zeros((n_assets, n_assets))
             self._pair_obs_count = np.zeros((n_assets, n_assets), dtype=np.uint32)
+        else:
+            self._cov = np.zeros((n_assets, n_assets))
 
         if self.assume_centered:
             self.location_ = np.zeros(n_assets)
@@ -863,17 +872,22 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
             self._return_buffer = None
 
     def _bias_correct_covariance(self) -> FloatArray:
-        """Return a bias-corrected output covariance.
+        """Return the bias-corrected output covariance matrix.
 
-        For the direct path, applies the congruence transform to the raw
-        accumulator. For the separate var/corr path, bias-corrects variance
-        and correlation independently, then reconstructs covariance.
+        Applies the congruence transform to `_cov` when using a single half-life,
+        or bias-corrects `_var` and `_corr_state` independently when `corr_half_life`
+        differs from `half_life`.
         """
         if not self._separate_var_corr:
             covariance = self._cov.copy()
             bc = np.where(
                 self._obs_count > 0,
-                1.0 / np.sqrt(np.maximum(1.0 - self._decay**self._obs_count, 1e-15)),
+                1.0
+                / np.sqrt(
+                    np.maximum(
+                        1.0 - self._decay**self._obs_count, _BIAS_CORRECTION_FLOOR
+                    )
+                ),
                 1.0,
             )
             covariance *= np.outer(bc, bc)
@@ -884,7 +898,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
                 covariance[:, inactive] = np.nan
             return covariance
 
-        # Separate var/corr path: bias-correct each independently
+        # Separate variance and correlation half-lives: bias-correct independently
         n_assets = self.n_features_in_
         covariance = np.full((n_assets, n_assets), np.nan)
 
@@ -892,62 +906,64 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
         if not np.any(active):
             return covariance
 
-        active_idx = np.where(active)[0]
+        active_idx = np.flatnonzero(active)
 
         # Bias-correct variance
-        var_bc = self._var[active_idx].copy()
-        var_bc_factor = 1.0 / np.maximum(
-            1.0 - self._decay ** self._obs_count[active_idx], 1e-15
+        var_bc = self._var[active_idx] / np.maximum(
+            1.0 - self._decay ** self._obs_count[active_idx], _BIAS_CORRECTION_FLOOR
         )
-        var_bc *= var_bc_factor
-        std_bc = np.sqrt(np.maximum(var_bc, _NUMERICAL_THRESHOLD))
 
         # Bias-correct correlation state using pairwise co-observation counts.
         ix = np.ix_(active_idx, active_idx)
-        corr_raw = self._corr_state[ix].copy()
         corr_counts = self._pair_obs_count[ix]
-        corr_bc = 1.0 / np.maximum(1.0 - self._corr_decay**corr_counts, 1e-15)
-        corr_raw *= corr_bc
+        corr_bc = np.where(
+            corr_counts > 0,
+            1.0
+            / np.maximum(1.0 - self._corr_decay**corr_counts, _BIAS_CORRECTION_FLOOR),
+            0.0,
+        )
+        corr_raw = self._corr_state[ix] * corr_bc
 
-        # Normalize to proper correlation matrix
-        diag_sqrt = np.sqrt(np.clip(np.diag(corr_raw), _NUMERICAL_THRESHOLD, None))
-        inv_diag_sqrt = 1.0 / diag_sqrt
-        corr = corr_raw * (inv_diag_sqrt[:, None] * inv_diag_sqrt[None, :])
-        corr = np.clip(corr, -1.0, 1.0)
-        corr = 0.5 * (corr + corr.T)
-        np.fill_diagonal(corr, 1.0)
-
-        covariance[ix] = corr_to_cov(corr, std_bc)
+        covariance[ix] = _reconstruct_dcc_covariance(corr_raw, var_bc)
         return covariance
 
     def _get_bias_corrected_cov_for_regime(self, regime_idx: IntArray) -> FloatArray:
-        """Return a bias-corrected covariance submatrix for STVU computation.
+        """Return a bias-corrected covariance submatrix for STVU calibration.
 
-        This helper is used only for STVU calibration, not for the final
-        `covariance_` output.
-
-        It applies exact per-asset variance bias correction to the internally
-        maintained `_cov` matrix. In the DCC path, the normalized correlation
-        already embedded in `_cov` is reused without pairwise pair-count
-        correction. This keeps STVU fast; exact pairwise correction is still
-        applied in :meth:`_bias_correct_covariance` for the final output.
-
-        For synchronous data, this is exact because the scalar correlation bias
-        cancels during normalization. For asynchronous data, off-diagonal
-        correlations are mildly shrunk towards zero for uneven pair histories,
-        affecting only transient STVU calibration.
+        Applies per-asset variance bias correction to `_cov` when using a single
+        half-life, or reconstructs the submatrix on demand from `_var` and
+        `_corr_state` without pairwise correlation bias correction (exact for
+        synchronous data; full pairwise correction is applied at output time).
 
         Parameters
         ----------
-        regime_idx : ndarray
+        regime_idx : ndarray of shape (n_regime_assets,)
             Indices of regime-eligible assets.
+
+        Returns
+        -------
+        covariance : ndarray of shape (n_regime_assets, n_regime_assets)
+            Bias-corrected covariance submatrix for the selected assets.
         """
-        cov_raw = self._cov[np.ix_(regime_idx, regime_idx)].copy()
-        bc = 1.0 / np.sqrt(
-            np.maximum(1.0 - self._decay ** self._obs_count[regime_idx], 1e-15)
+        decay_correction = np.maximum(
+            1.0 - self._decay ** self._obs_count[regime_idx], _BIAS_CORRECTION_FLOOR
         )
-        cov_raw *= np.outer(bc, bc)
-        return cov_raw
+        if not self._separate_var_corr:
+            bc = 1.0 / np.sqrt(decay_correction)
+            cov_raw = (
+                self._cov
+                if regime_idx.size == self.n_features_in_
+                else self._cov[np.ix_(regime_idx, regime_idx)]
+            )
+            return cov_raw * np.outer(bc, bc)
+
+        var_bc = self._var[regime_idx] / decay_correction
+        corr_raw = (
+            self._corr_state
+            if regime_idx.size == self.n_features_in_
+            else self._corr_state[np.ix_(regime_idx, regime_idx)]
+        )
+        return _reconstruct_dcc_covariance(corr_raw, var_bc)
 
     def _process_return_row(
         self,
@@ -996,11 +1012,10 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
         # Compute outer product (with HAC correction if enabled)
         outer_product = self._compute_hac_outer(ret)
 
-        pair_valid = np.outer(valid, valid)
-
         if self._separate_var_corr:
-            self._update_var_corr(outer_product, valid, pair_valid)
+            self._update_var_corr(outer_product, valid)
         else:
+            pair_valid = np.outer(valid, valid)
             self._cov = np.where(
                 pair_valid,
                 self._decay * self._cov + (1.0 - self._decay) * outer_product,
@@ -1017,8 +1032,6 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
         # Track active/inactive transitions
         newly_inactive = self._is_active & ~active_row
         if np.any(newly_inactive):
-            self._cov[newly_inactive, :] = 0.0
-            self._cov[:, newly_inactive] = 0.0
             self._obs_count[newly_inactive] = 0
             if self._separate_var_corr:
                 self._var[newly_inactive] = 0.0
@@ -1026,6 +1039,9 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
                 self._corr_state[:, newly_inactive] = 0.0
                 self._pair_obs_count[newly_inactive, :] = 0
                 self._pair_obs_count[:, newly_inactive] = 0
+            else:
+                self._cov[newly_inactive, :] = 0.0
+                self._cov[:, newly_inactive] = 0.0
             if not self.assume_centered:
                 self.location_[newly_inactive] = np.nan
         self._is_active[:] = active_row
@@ -1050,7 +1066,12 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
         estimation_row : ndarray of shape (n_assets,) or None
             Boolean mask restricting which assets contribute to STVU.
         """
-        ready = self._is_active & (self._obs_count >= self._min_observations)
+        raw_var = self._var if self._separate_var_corr else np.diag(self._cov)
+        ready = (
+            self._is_active
+            & (self._obs_count >= self._min_observations)
+            & (raw_var > _NUMERICAL_THRESHOLD)
+        )
         regime_valid = valid & ready
         if estimation_row is not None:
             regime_valid &= estimation_row
@@ -1060,7 +1081,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
         if n_active < min_active:
             return
 
-        active_idx = np.where(regime_valid)[0]
+        active_idx = np.flatnonzero(regime_valid)
         ret_active = ret[active_idx]
 
         # Use bias-corrected covariance for calibrated STVU
@@ -1147,7 +1168,6 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
         self,
         outer_product: FloatArray,
         valid: BoolArray,
-        pair_valid: BoolArray,
     ) -> None:
         """Pairwise update of separate variance and correlation (DCC-style).
 
@@ -1158,9 +1178,6 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
 
         valid : ndarray of shape (n_assets,)
             Boolean mask of assets with valid returns and active status.
-
-        pair_valid : ndarray of shape (n_assets, n_assets)
-            Outer product of valid mask.
         """
         # Update variance (zero-seeded)
         hac_var = np.maximum(np.diag(outer_product), 0.0)
@@ -1170,39 +1187,31 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
             self._var,
         )
 
-        # Standardize outer product for correlation update
-        has_positive_var = valid & (self._var > _NUMERICAL_THRESHOLD)
-        guarded_var = np.where(has_positive_var, self._var, 1.0)
-        inv_std = np.where(has_positive_var, 1.0 / np.sqrt(guarded_var), 0.0)
-        outer_std = outer_product * (inv_std[:, None] * inv_std[None, :])
+        if not np.any(valid):
+            return
+
+        # Standardize outer product. Zero out assets with variance <= threshold
+        # so they still decay uniformly, preserving PSD on complete data without HAC.
+        has_var = valid & (self._var > _NUMERICAL_THRESHOLD)
+        inv_std = np.zeros_like(self._var)
+        inv_std[has_var] = 1.0 / np.sqrt(self._var[has_var])
+        outer_std = outer_product * inv_std
+        outer_std *= inv_std[:, None]
 
         # Update correlation state (zero-seeded)
-        self._corr_state = np.where(
-            pair_valid,
-            self._corr_decay * self._corr_state + (1.0 - self._corr_decay) * outer_std,
-            self._corr_state,
-        )
-        self._pair_obs_count[pair_valid] += 1
-
-        # Reconstruct _cov from raw (uncorrected) state for internal bookkeeping.
-        # This is used only for symmetrization; output uses _bias_correct_covariance.
-        active = self._is_active & (self._var > 0)
-        if np.any(active):
-            active_idx = np.where(active)[0]
-            ix = np.ix_(active_idx, active_idx)
-
-            std_active = np.sqrt(self._var[active_idx])
-            corr_raw = self._corr_state[ix]
-
-            diag_vals = np.diag(corr_raw)
-            if np.all(diag_vals > _NUMERICAL_THRESHOLD):
-                diag_sqrt = np.sqrt(np.clip(diag_vals, _NUMERICAL_THRESHOLD, None))
-                inv_diag_sqrt = 1.0 / diag_sqrt
-                corr = corr_raw * (inv_diag_sqrt[:, None] * inv_diag_sqrt[None, :])
-                corr = np.clip(corr, -1.0, 1.0)
-                corr = 0.5 * (corr + corr.T)
-                np.fill_diagonal(corr, 1.0)
-                self._cov[ix] = corr_to_cov(corr, std_active)
+        if np.all(valid):
+            self._corr_state *= self._corr_decay
+            self._corr_state += (1.0 - self._corr_decay) * outer_std
+            self._pair_obs_count += 1
+        else:
+            pair_valid = np.outer(valid, valid)
+            self._corr_state = np.where(
+                pair_valid,
+                self._corr_decay * self._corr_state
+                + (1.0 - self._corr_decay) * outer_std,
+                self._corr_state,
+            )
+            self._pair_obs_count[pair_valid] += 1
 
     def _compute_hac_outer(self, ret: FloatArray) -> FloatArray:
         """Compute HAC-adjusted outer product using Newey-West (Bartlett kernel).
@@ -1242,3 +1251,42 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         return tags
+
+
+def _reconstruct_dcc_covariance(
+    corr_state: FloatArray, variance: FloatArray
+) -> FloatArray:
+    """Reconstruct a covariance matrix from a DCC correlation state and variances.
+
+    Assets with `variance` or `corr_state` diagonal at or below
+    `_NUMERICAL_THRESHOLD` have their off-diagonal covariances set to zero.
+
+    Parameters
+    ----------
+    corr_state : ndarray of shape (n_assets, n_assets)
+        Raw or bias-corrected DCC correlation accumulator.
+
+    variance : ndarray of shape (n_assets,)
+        Per-asset variances.
+
+    Returns
+    -------
+    covariance : ndarray of shape (n_assets, n_assets)
+        Reconstructed covariance matrix.
+    """
+    variance = np.maximum(variance, 0.0)
+    diag_corr = np.diag(corr_state)
+    valid = (variance > _NUMERICAL_THRESHOLD) & (diag_corr > _NUMERICAL_THRESHOLD)
+
+    inv_diag_sqrt = np.zeros_like(diag_corr)
+    inv_diag_sqrt[valid] = 1.0 / np.sqrt(diag_corr[valid])
+
+    corr = corr_state * inv_diag_sqrt
+    corr *= inv_diag_sqrt[:, None]
+    np.clip(corr, -1.0, 1.0, out=corr)
+    corr = 0.5 * (corr + corr.T)
+    np.fill_diagonal(corr, 1.0)
+
+    cov = corr_to_cov(corr, np.sqrt(variance))
+    np.fill_diagonal(cov, variance)
+    return cov
