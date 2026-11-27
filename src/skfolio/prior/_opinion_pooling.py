@@ -12,7 +12,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import scipy.special as scs
-import scipy.special as sp
 import sklearn as sk
 import sklearn.utils as sku
 import sklearn.utils.metadata_routing as skm
@@ -454,10 +453,11 @@ class OpinionPooling(BasePrior, BaseComposition):
         if self.is_linear_pooling:
             sample_weight = opinion_probabilities @ sample_weights
         else:
+            active = opinion_probabilities != 0
             # let exact 0 in sample weights flow through
             with np.errstate(divide="ignore"):
-                u = opinion_probabilities @ np.log(sample_weights)
-                sample_weight = np.exp(u - sp.logsumexp(u))
+                u = opinion_probabilities[active] @ np.log(sample_weights[active])
+                sample_weight = np.exp(u - scs.logsumexp(u))
 
         self.opinion_probabilities_ = opinion_probabilities
         self.return_distribution_ = ReturnDistribution(
@@ -482,7 +482,11 @@ class OpinionPooling(BasePrior, BaseComposition):
                 f"does not match number of estimators ({n_opinions})."
             )
 
-        if np.any(opinion_probabilities < 0) or np.any(opinion_probabilities > 1):
+        if (
+            not np.all(np.isfinite(opinion_probabilities))
+            or np.any(opinion_probabilities < 0)
+            or np.any(opinion_probabilities > 1)
+        ):
             raise ValueError(
                 "The entries of `opinion_probabilities` must be between 0 and 1"
             )
@@ -504,9 +508,13 @@ class OpinionPooling(BasePrior, BaseComposition):
         if self.divergence_penalty == 0:
             return opinion_probabilities
 
-        consensus = opinion_probabilities @ sample_weights
-        divergences = np.sum(scs.rel_entr(sample_weights, consensus), axis=1)
-        opinion_probabilities = opinion_probabilities * np.exp(
-            -self.divergence_penalty * divergences
+        active = opinion_probabilities != 0
+        consensus = opinion_probabilities[active] @ sample_weights[active]
+        divergences = np.sum(scs.rel_entr(sample_weights[active], consensus), axis=1)
+        log_probs = (
+            np.log(opinion_probabilities[active])
+            - self.divergence_penalty * divergences
         )
-        return opinion_probabilities / opinion_probabilities.sum()
+        robust_probabilities = np.zeros_like(opinion_probabilities)
+        robust_probabilities[active] = np.exp(log_probs - scs.logsumexp(log_probs))
+        return robust_probabilities

@@ -2,6 +2,48 @@
 
 <!-- version list -->
 
+## v1.15.0 (2026-11-27)
+
+### Continuous Integration
+
+- Retry failed documentation deployments ([#529](https://github.com/skfolio/skfolio/pull/529),
+  [`6f676ff`](https://github.com/skfolio/skfolio/commit/6f676fff50b287943ef8458ecee3398acc3f7cf3))
+
+### Features
+
+- **portfolio**: Label composition bars with holding periods
+  ([#514](https://github.com/skfolio/skfolio/pull/514),
+  [`2a94bc8`](https://github.com/skfolio/skfolio/commit/2a94bc8e299a67600714fa8393926c72dbf01faf))
+
+### Testing
+
+- **model_selection**: Allow solver rounding near zero
+  ([#522](https://github.com/skfolio/skfolio/pull/522),
+  [`27fe0be`](https://github.com/skfolio/skfolio/commit/27fe0be4a9f20f8a9aa2fa42f7fe38c436e41a04))
+
+
+## v1.14.6 (2026-11-23)
+
+### Bug Fixes
+
+- **prior**: Skip zero-probability experts in logarithmic OpinionPooling
+  ([#519](https://github.com/skfolio/skfolio/pull/519),
+  [`d38b9cf`](https://github.com/skfolio/skfolio/commit/d38b9cf869b7e97a35022660d28084a5741b69e6))
+
+
+## v1.14.5 (2026-11-23)
+
+### Bug Fixes
+
+- **distribution**: Preserve asymmetric margins when sampling a vine
+  ([#520](https://github.com/skfolio/skfolio/pull/520),
+  [`d6e36b1`](https://github.com/skfolio/skfolio/commit/d6e36b1436b0513f1be786cbbbe00e990496b3e5))
+
+- **optimization**: Pass homogenization factor to RiskBudgeting risk functions
+  ([#516](https://github.com/skfolio/skfolio/pull/516),
+  [`4ed8786`](https://github.com/skfolio/skfolio/commit/4ed8786e4f81a1b869524bdfc035707c383fb7b5))
+
+
 ## v1.14.4 (2026-11-20)
 
 ### Bug Fixes

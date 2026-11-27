@@ -28,6 +28,12 @@ def format_plot_labels(names: Iterable[str]) -> list[str]:
     return [format_plot_label(name) for name in names]
 
 
+def format_period(observations: np.ndarray) -> str:
+    """Format the first and last observations as a period label."""
+    start, end = pd.Index(observations[[0, -1]], tupleize_cols=False).astype(str)
+    return start if start == end else f"{start} - {end}"
+
+
 def plot_kde_distributions(
     X: pd.DataFrame,
     sample_weight: FloatArray | None = None,

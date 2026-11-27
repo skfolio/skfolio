@@ -837,6 +837,85 @@ def test_weights_per_observation(portfolio):
     assert portfolio.plot_weights_per_observation()
 
 
+@pytest.mark.parametrize(
+    ("index", "label"),
+    [
+        (pd.Index([2, 5]), "2 - 5"),
+        (
+            pd.date_range("2024-01-02 12:00", periods=2, freq="h", tz="Europe/Paris"),
+            "2024-01-02 12:00:00+01:00 - 2024-01-02 13:00:00+01:00",
+        ),
+        (pd.Index([]), None),
+    ],
+)
+def test_plot_composition_period_bounds(index, label):
+    child = Portfolio(pd.DataFrame({"A": 0.0}, index=index), weights=[1], name="Test")
+    fig = MultiPeriodPortfolio([child]).plot_composition(use_period_labels=True)
+    if label is None:
+        assert fig.layout.xaxis.labelalias is None
+        assert fig.layout.xaxis.title.text == "Portfolio"
+    else:
+        assert fig.layout.xaxis.type == "category"
+        assert fig.layout.xaxis.labelalias == {"Test": label}
+        assert fig.layout.xaxis.title.text == "Period"
+
+
+def test_plot_composition_periods():
+    X = pd.DataFrame(
+        0.0, index=pd.date_range("2024-01-02", periods=4), columns=["A", "B"]
+    )
+    children = [
+        Portfolio(X.iloc[:2], weights=[0.8, 0.2], name="Strategy"),
+        Portfolio(X.iloc[2:3], weights=[0.3, 0.7], name="Strategy"),
+        Portfolio(X.iloc[:2], weights=[0.5, 0.5], name="Strategy"),
+        Portfolio(X.iloc[:0], weights=[0.2, 0.8], name="Empty"),
+    ]
+    result = MultiPeriodPortfolio(children)
+    names = result.composition.columns.tolist()
+    before = result.plot_composition()
+    fig = result.plot_composition(use_period_labels=True)
+    assert before.layout.xaxis.labelalias is None
+    assert before.layout.xaxis.title.text == "Portfolio"
+    assert fig.layout.xaxis.title.text == "Period"
+    assert fig.layout.xaxis.labelalias == {
+        names[0]: "2024-01-02 - 2024-01-03",
+        names[1]: "2024-01-04",
+        names[2]: "2024-01-02 - 2024-01-03",
+    }
+    for trace, original in zip(fig.data, before.data, strict=True):
+        assert list(trace.x) == list(original.x) == names
+        np.testing.assert_array_equal(trace.y, original.y)
+    assert [child.name for child in result] == ["Strategy"] * 3 + ["Empty"]
+
+
+def test_plot_contribution_periods():
+    X = pd.DataFrame(
+        [[0.01, -0.02], [0.02, 0.01], [-0.01, 0.03], [0.03, -0.01]],
+        index=pd.date_range("2024-01-02", periods=4),
+        columns=["A", "B"],
+    )
+    children = [
+        Portfolio(X.iloc[:2], weights=[0.8, 0.2], name="Strategy"),
+        Portfolio(X.iloc[2:4], weights=[0.3, 0.7], name="Strategy"),
+    ]
+    result = MultiPeriodPortfolio(children)
+    names = result.composition.columns.tolist()
+    before = result.plot_contribution(measure=RiskMeasure.STANDARD_DEVIATION)
+    fig = result.plot_contribution(
+        measure=RiskMeasure.STANDARD_DEVIATION, use_period_labels=True
+    )
+    assert before.layout.xaxis.labelalias is None
+    assert before.layout.xaxis.title.text == "Portfolio"
+    assert fig.layout.xaxis.title.text == "Period"
+    assert fig.layout.xaxis.labelalias == {
+        names[0]: "2024-01-02 - 2024-01-03",
+        names[1]: "2024-01-04 - 2024-01-05",
+    }
+    for trace, original in zip(fig.data, before.data, strict=True):
+        assert list(trace.x) == list(original.x) == names
+        np.testing.assert_array_equal(trace.y, original.y)
+
+
 @pytest.mark.parametrize("weight_drift", [False, True])
 def test_weights_per_observation_preserves_failed_observations(weight_drift):
     X = pd.DataFrame(

@@ -288,6 +288,46 @@ def test_risk_budgeting_negative_weight_constraints(X_small):
         model.fit(X_small)
 
 
+@pytest.mark.filterwarnings("ignore:Solution may be inaccurate")
+@pytest.mark.parametrize(
+    "rm",
+    [
+        RiskMeasure.CVAR,
+        RiskMeasure.WORST_REALIZATION,
+        RiskMeasure.CDAR,
+        RiskMeasure.MAX_DRAWDOWN,
+        RiskMeasure.AVERAGE_DRAWDOWN,
+        RiskMeasure.EDAR,
+        RiskMeasure.ULCER_INDEX,
+    ],
+)
+def test_risk_budgeting_transaction_costs_factor(X_small, rm, precisions):
+    base_model = RiskBudgeting(risk_measure=rm).fit(X_small)
+    # Holding the zero-cost optimum incurs zero transaction cost, so adding
+    # transaction_costs with previous_weights=base_model.weights_ must not
+    # distort weights via an unscaled (cp.Constant(1)) previous_weights term.
+    tc_model = RiskBudgeting(
+        risk_measure=rm,
+        transaction_costs=0.01,
+        previous_weights=base_model.weights_,
+    ).fit(X_small)
+    np.testing.assert_allclose(tc_model.weights_, base_model.weights_, atol=1e-6)
+
+    # With non-optimal previous_weights, reported risk matches realized portfolio.
+    n_assets = X_small.shape[1]
+    w_prev = np.full(n_assets, 0.5 / (n_assets - 1))
+    w_prev[0] = 0.5
+    model_tc = RiskBudgeting(
+        risk_measure=rm,
+        transaction_costs=0.01,
+        previous_weights=w_prev,
+    )
+    ptf_tc = model_tc.fit_predict(X_small)
+    np.testing.assert_almost_equal(
+        getattr(ptf_tc, rm.value), model_tc.problem_values_["risk"], precisions[rm]
+    )
+
+
 @pytest.fixture(scope="module")
 def X_full():
     """The full price history, unsliced.
