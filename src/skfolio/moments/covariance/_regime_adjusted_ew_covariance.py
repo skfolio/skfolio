@@ -1190,9 +1190,8 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
         if not np.any(valid):
             return
 
-        # Standardize outer product for correlation update; sub-threshold assets
-        # contribute zero standardized returns while decaying uniformly with
-        # valid assets, preserving PSD for fully observed updates without HAC.
+        # Standardize outer product. Zero out assets with variance <= threshold
+        # so they still decay uniformly, preserving PSD on complete data without HAC.
         has_var = valid & (self._var > _NUMERICAL_THRESHOLD)
         inv_std = np.zeros_like(self._var)
         inv_std[has_var] = 1.0 / np.sqrt(self._var[has_var])
