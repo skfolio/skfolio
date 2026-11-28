@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from sklearn import config_context
+from sklearn.base import clone
 from sklearn.exceptions import NotFittedError, UnsetMetadataPassedError
 from sklearn.pipeline import make_pipeline
 
@@ -1014,6 +1015,158 @@ def test_rank_scores_empty():
 
 def test_check_refit_for_multimetric_false_is_accepted():
     assert _check_refit_for_multimetric(False, {"a": None, "b": None}) is None
+
+
+class TestOnlineSearchReuse:
+    @pytest.mark.parametrize("search_cls", [OnlineGridSearch, OnlineRandomizedSearch])
+    @pytest.mark.parametrize(
+        "mode",
+        [
+            "single_false",
+            "multi_false",
+            "single_callable",
+            "multi_callable",
+            "multi_named",
+            "enabled",
+        ],
+    )
+    def test_current_fit_attributes(self, search_cls, mode):
+        """Reused searches expose the documented current-mode attributes only."""
+        X = np.random.default_rng(931).normal(0, 0.02, (24, 3))
+        current = 0.5 * X + 0.005
+        search = _single_candidate_search(
+            search_cls,
+            EWMu(half_life=3),
+            scoring=_mean_squared_error,
+            warmup_size=8,
+            test_size=4,
+        ).fit(X)
+        previous = search.best_estimator_
+        previous_mu = previous.mu_.copy()
+        config = {"refit": True}
+        if "multi" in mode:
+            config["scoring"] = {"a": _mean_squared_error, "b": _mean_squared_error}
+        if mode.endswith("false"):
+            config["refit"] = False
+        elif mode.endswith("callable"):
+            config["refit"] = lambda results: 0
+        elif mode == "multi_named":
+            config["refit"] = "a"
+        fresh = clone(search).set_params(**config).fit(current)
+        search.set_params(**config).fit(current)
+        expected = {
+            "best_index_": mode != "multi_false",
+            "best_params_": mode != "multi_false",
+            "best_score_": mode
+            not in ("multi_false", "single_callable", "multi_callable"),
+            "best_estimator_": not mode.endswith("false"),
+        }
+        for name, present in expected.items():
+            assert hasattr(fresh, name) == present
+            assert hasattr(search, name) == present
+        assert search.cv_results_.keys() == fresh.cv_results_.keys()
+        for key, value in fresh.cv_results_.items():
+            if key != "fit_time":  # Wall-clock durations are not fitted results.
+                np.testing.assert_equal(search.cv_results_[key], value)
+        if expected["best_index_"]:
+            assert search.best_index_ == 0
+            assert search.best_params_ == {}
+        if expected["best_score_"]:
+            key = "mean_score_a" if "multi" in mode else "mean_score"
+            assert search.best_score_ == pytest.approx(fresh.cv_results_[key][0])
+        if expected["best_estimator_"]:
+            # Independent normalized geometric sums, not the estimator recurrence.
+            decay = 0.5 ** (1 / 3)
+            weights = np.array([decay ** (23 - i) for i in range(24)])
+            np.testing.assert_allclose(
+                search.best_estimator_.mu_,
+                weights @ current / weights.sum(),
+                rtol=1e-12,
+                atol=1e-15,
+            )
+            assert search.best_estimator_ is not previous
+        np.testing.assert_array_equal(previous.mu_, previous_mu)
+
+    @pytest.mark.parametrize("search_cls", [OnlineGridSearch, OnlineRandomizedSearch])
+    @pytest.mark.parametrize("multimetric", [False, True])
+    def test_selected_failed_candidate_removes_old_model(self, search_cls, multimetric):
+        """A completed warning path must not expose an earlier successful model."""
+        X = np.random.default_rng(931).normal(0, 0.02, (24, 3))
+        search = _single_candidate_search(
+            search_cls,
+            EWMu(half_life=3),
+            scoring=_mean_squared_error,
+            warmup_size=8,
+            test_size=4,
+        ).fit(X)
+        params = {"half_life": [3, -1]}
+        config = (
+            {"param_grid": params}
+            if search_cls is OnlineGridSearch
+            else {"param_distributions": params, "n_iter": 2}
+        )
+        config.update(
+            error_score=np.nan,
+            refit=lambda results: next(
+                i for i, p in enumerate(results["params"]) if p["half_life"] == -1
+            ),
+        )
+        if multimetric:
+            config["scoring"] = {"a": _mean_squared_error, "b": _mean_squared_error}
+        with pytest.warns(UserWarning) as observed:
+            search.set_params(**config).fit(0.5 * X + 0.005)
+        assert any(
+            "`best_estimator_` is not available" in str(w.message) for w in observed
+        )
+        assert search.best_params_ == {"half_life": -1}
+        assert search.cv_results_["params"][search.best_index_] == {"half_life": -1}
+        assert not hasattr(search, "best_score_")
+        assert not hasattr(search, "best_estimator_")
+
+    @pytest.mark.parametrize("search_cls", [OnlineGridSearch, OnlineRandomizedSearch])
+    def test_disabled_refit_cannot_delegate_to_previous_optimizer(self, search_cls):
+        """Public prediction and score cannot use a previously selected allocation."""
+        X = pd.DataFrame(
+            np.random.default_rng(931).normal(0, 0.02, (24, 3)),
+            index=pd.bdate_range("2024-01-01", periods=24),
+            columns=["A", "B", "C"],
+        )
+        current = 0.5 * X + 0.005
+        estimator = _make_online_estimator().set_params(
+            prior_estimator__mu_estimator__half_life=3,
+            prior_estimator__covariance_estimator__half_life=3,
+        )
+        search = _single_candidate_search(
+            search_cls,
+            estimator,
+            scoring=PerfMeasure.MEAN,
+            warmup_size=8,
+            test_size=4,
+            return_predictions=True,
+        ).fit(X)
+        previous = search.best_estimator_
+        previous_weights = previous.weights_.copy()
+        expected_returns = current.to_numpy() @ previous_weights
+        np.testing.assert_allclose(search.predict(current).returns, expected_returns)
+        search.set_params(refit=False).fit(current)
+        for method in (search.predict, search.score):
+            with pytest.raises(NotFittedError):
+                method(current)
+        fresh = clone(search).fit(current)
+        prediction = search.cv_results_["predictions"][0]
+        np.testing.assert_allclose(
+            prediction.returns, fresh.cv_results_["predictions"][0].returns
+        )
+        np.testing.assert_array_equal(prediction.observations, current.index[8:])
+        assert search.best_score_ == pytest.approx(np.mean(prediction.returns))
+        search.set_params(refit=True).fit(current)
+        assert search.best_estimator_ is not previous
+        np.testing.assert_allclose(
+            search.predict(current).returns,
+            current.to_numpy() @ search.best_estimator_.weights_,
+        )
+        np.testing.assert_array_equal(previous.weights_, previous_weights)
+        np.testing.assert_allclose(previous.predict(current).returns, expected_returns)
 
 
 class TestOnlineGridSearchRefitEdgeCases:
