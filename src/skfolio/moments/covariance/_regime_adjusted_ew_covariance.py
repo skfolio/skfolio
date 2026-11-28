@@ -165,7 +165,8 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
     * **Active with NaN return (holiday)**: Freeze; covariance entries involving this
       asset are kept unchanged.
     * **Inactive** (`active_mask=False`): Covariance entries involving this asset are
-      set to NaN.
+      set to NaN and its prior history (including lagged returns when `hac_lags` is set)
+      is cleared.
 
     When `active_mask` is not provided, trailing NaN returns are ambiguous: they could
     correspond either to holidays, in which case covariance is frozen, or to inactive
@@ -184,9 +185,9 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
 
     **Late-listing bias correction:**
 
-    The EWMA recursion is initialized at zero for every asset. This guarantees that
-    the internal covariance state remains positive semi-definite at every step, but
-    introduces a transient downward scale bias: after :math:`n_i` observations, the
+    The EWMA recursion is initialized at zero for every asset. On complete data without
+    HAC, this keeps the internal covariance state positive semi-definite at every step,
+    but introduces a transient downward scale bias: after :math:`n_i` observations, the
     raw EWMA for asset :math:`i` is damped by a factor :math:`(1 - \lambda^{n_i})`.
     At output time, a per-asset correction removes this bias:
 
@@ -195,16 +196,15 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
         \hat{\Sigma}_{ij} = \frac{S_{ij}}{\sqrt{(1 - \lambda^{n_i})(1 - \lambda^{n_j})}}
 
     where :math:`S` is the raw internal EWMA. This is a congruence transform
-    :math:`D S D` with :math:`D = \text{diag}(1 / \sqrt{1 - \lambda^{n_i}})`,
-    which preserves positive semi-definiteness while restoring the correct variance
-    scale.
+    :math:`D S D` with :math:`D = \text{diag}(1 / \sqrt{1 - \lambda^{n_i}})`, which
+    preserves positive semi-definiteness whenever :math:`S` is positive semi-definite.
 
-    When `corr_half_life` is provided, the same bias correction is applied independently
-    to the variance state (using :math:`\lambda`) and the correlation state (using
-    :math:`\lambda_c`), then the covariance is reconstructed from the corrected
-    components. The correlation bias correction uses pairwise co-observation counts
-    rather than per-asset counts, so asynchronous late listings, holidays, and
-    delistings are corrected at the pair level.
+    When `corr_half_life` differs from `half_life`, returns are standardized by their
+    bias-corrected EWMA volatility before updating the correlation estimate, and
+    variances and correlations are bias-corrected independently at output time using
+    per-asset and pairwise co-observation counts. Because pairwise corrections can break
+    positive definiteness when assets have asynchronous histories, keep `nearest=True`
+    to project the output covariance to the nearest positive definite matrix.
 
     **Estimation universe for STVU:**
 
@@ -1012,6 +1012,11 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
         # Compute outer product (with HAC correction if enabled)
         outer_product = self._compute_hac_outer(ret)
 
+        # Count the current observation after STVU (which uses pre-update counts)
+        # and before the variance/correlation update (which uses the post-update
+        # count to bias-correct variance during correlation standardization).
+        self._obs_count[valid] += 1
+
         if self._separate_var_corr:
             self._update_var_corr(outer_product, valid)
         else:
@@ -1021,7 +1026,6 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
                 self._decay * self._cov + (1.0 - self._decay) * outer_product,
                 self._cov,
             )
-        self._obs_count[valid] += 1
 
         # Store returns in HAC buffer
         if self._return_buffer is not None:
@@ -1044,6 +1048,9 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
                 self._cov[:, newly_inactive] = 0.0
             if not self.assume_centered:
                 self.location_[newly_inactive] = np.nan
+            if self._return_buffer is not None:
+                for past_ret in self._return_buffer:
+                    past_ret[newly_inactive] = np.nan
         self._is_active[:] = active_row
 
     def _update_regime(
@@ -1190,11 +1197,17 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
         if not np.any(valid):
             return
 
-        # Standardize outer product. Zero out assets with variance <= threshold
-        # so they still decay uniformly, preserving PSD on complete data without HAC.
+        # Standardize outer product using bias-corrected variance. Zero out
+        # assets with variance <= threshold so they still decay uniformly,
+        # preserving PSD on complete data without HAC.
         has_var = valid & (self._var > _NUMERICAL_THRESHOLD)
         inv_std = np.zeros_like(self._var)
-        inv_std[has_var] = 1.0 / np.sqrt(self._var[has_var])
+        if np.any(has_var):
+            bias_correction = np.maximum(
+                1.0 - self._decay ** self._obs_count[has_var],
+                _BIAS_CORRECTION_FLOOR,
+            )
+            inv_std[has_var] = np.sqrt(bias_correction / self._var[has_var])
         outer_std = outer_product * inv_std
         outer_std *= inv_std[:, None]
 

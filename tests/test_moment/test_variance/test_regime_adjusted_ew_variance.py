@@ -315,6 +315,49 @@ class TestRegimeAdjustedEWVarianceHAC:
         model.partial_fit([[0.02]])
         np.testing.assert_allclose(model.variance_, [0.02**2], rtol=1e-12, atol=0)
 
+    @pytest.mark.parametrize("assume_centered", [True, False])
+    def test_hac_reactivation_clears_buffered_history(self, assume_centered):
+        """Relisting within hac_lags matches a fresh listing without leaking old returns."""
+        X = np.array([[0.01, 0.02], [0.03, 0.04], [99.0, 0.02], [0.05, 0.03]])
+        relisting = np.ones_like(X, dtype=bool)
+        relisting[2, 0] = False
+        fresh_listing = relisting.copy()
+        fresh_listing[:3, 0] = False
+        est_mask = np.zeros_like(X, dtype=bool)
+
+        kwargs = dict(
+            half_life=20,
+            hac_lags=3,
+            min_observations=1,
+            assume_centered=assume_centered,
+        )
+        model_relist = RegimeAdjustedEWVariance(**kwargs).fit(
+            X, active_mask=relisting, estimation_mask=est_mask
+        )
+        model_fresh = RegimeAdjustedEWVariance(**kwargs).fit(
+            X, active_mask=fresh_listing, estimation_mask=est_mask
+        )
+
+        np.testing.assert_allclose(
+            model_relist.variance_, model_fresh.variance_, rtol=1e-13, atol=1e-15
+        )
+        np.testing.assert_allclose(
+            model_relist._var, model_fresh._var, rtol=1e-13, atol=1e-15
+        )
+        np.testing.assert_allclose(
+            model_relist.location_, model_fresh.location_, rtol=1e-13, atol=1e-15
+        )
+
+        # Streaming across inactivity and reactivation matches batch fit
+        inc = RegimeAdjustedEWVariance(**kwargs)
+        for sl in (slice(0, 2), slice(2, 3), slice(3, 4)):
+            inc.partial_fit(
+                X[sl], active_mask=relisting[sl], estimation_mask=est_mask[sl]
+            )
+        np.testing.assert_allclose(
+            inc.variance_, model_relist.variance_, rtol=1e-13, atol=1e-15
+        )
+
     def test_hac_basic(self, X):
         """Test basic HAC (Newey-West) functionality."""
         model = RegimeAdjustedEWVariance(half_life=23, hac_lags=5)
