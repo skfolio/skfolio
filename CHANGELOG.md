@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.15.3 (2026-11-28)
+
+### Bug Fixes
+
+- **moments**: Bias-correct DCC startup standardization
+  ([#540](https://github.com/skfolio/skfolio/pull/540),
+  [`b48903b`](https://github.com/skfolio/skfolio/commit/b48903babda3f6934db1d5ca9ab86b799a1a6901))
+
+
 ## v1.15.2 (2026-11-27)
 
 ### Bug Fixes
