@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 import warnings
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -195,9 +195,10 @@ def _positions_from_unique_labels(labels: AnyArray, selected: Any) -> slice | In
     if isinstance(selected, slice):
         return index.slice_indexer(selected.start, selected.stop, selected.step)
     if pd.api.types.is_scalar(selected):
-        loc = index.get_loc(selected)
-        # Exact lookups on unique asset labels return an integer position.
-        return slice(int(loc), int(loc) + 1)  # ty: ignore[invalid-argument-type]
+        # Exact lookups on unique asset labels return an integer position. The
+        # uniqueness is a runtime guarantee that the pandas stubs cannot express.
+        pos = int(cast(int, index.get_loc(selected)))
+        return slice(pos, pos + 1)
 
     positions = []
     missing = []
@@ -207,7 +208,7 @@ def _positions_from_unique_labels(labels: AnyArray, selected: Any) -> slice | In
         except KeyError:
             missing.append(label)
             continue
-        positions.append(int(loc))  # ty: ignore[invalid-argument-type]
+        positions.append(int(cast(int, loc)))
     if missing:
         raise KeyError(f"Labels not found: {missing}")
     return np.asarray(positions, dtype=np.intp)
@@ -223,7 +224,9 @@ def _positions_from_labels(labels: AnyArray, selected: Any) -> slice | IntArray:
         if isinstance(loc, slice):
             return loc
         if isinstance(loc, np.ndarray):
-            return np.flatnonzero(loc) if loc.dtype == np.bool_ else loc  # ty: ignore[invalid-explicit-return]
+            # Duplicated labels yield a boolean mask; return integer positions.
+            mask = loc.dtype == np.bool_
+            return np.flatnonzero(loc) if mask else np.asarray(loc, dtype=np.intp)
         return slice(int(loc), int(loc) + 1)
 
     positions = []
