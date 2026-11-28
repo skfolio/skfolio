@@ -774,6 +774,18 @@ class TestAlphaForecastEvaluation:
         np.testing.assert_allclose(fig.data[0].y, expected_values, equal_nan=True)
         assert fig.layout.yaxis.range == (-1.0, 1.0)
 
+    def test_factor_correlation_plot_rejects_empty_factor_selection(self):
+        """An empty explicit factor list leaves nothing to plot."""
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            _factor_correlation_panel(),
+            holding_period=1,
+            signal_lag=1,
+        )
+
+        with pytest.raises(ValueError, match="No factor correlation diagnostics"):
+            evaluation.plot_factor_correlation(factors=[])
+
     def test_perfect_forecast_calibration_slope(self):
         """A forecast already in target units has a calibration slope near one."""
         evaluation = alpha_forecast_evaluation(
@@ -1318,6 +1330,12 @@ class TestHacInference:
     def test_nan_with_degenerate_series(self, value):
         """Constant and entirely missing series have no inference results."""
         assert all(np.isnan(x) for x in _mean_inference(np.full(50, value)).values())
+
+    def test_nan_when_standard_error_underflows(self):
+        """A varying series whose standard error underflows to zero has no inference."""
+        tiny = np.nextafter(0.0, 1.0)
+        stats = _mean_inference(np.tile([0.0, tiny], 25))
+        assert all(np.isnan(x) for x in stats.values())
 
     def test_nan_with_fewer_than_20_valid_observations(self):
         """Short histories retain descriptive statistics but have no inference."""

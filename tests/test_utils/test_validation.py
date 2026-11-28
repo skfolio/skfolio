@@ -11,6 +11,7 @@ from sklearn.base import BaseEstimator
 from skfolio.containers import AssetPanel, Field3D
 from skfolio.pre_selection import DropCorrelated
 from skfolio.utils.validation import (
+    _asset_positions,
     _validate_pairwise_matrix,
     validate_asset_panel,
     validate_cross_sectional_data,
@@ -542,3 +543,39 @@ class TestValidatePairwiseMatrix:
         X = np.array([[0.0, value], [np.nan, np.nan]])
         with pytest.raises(ValueError, match="infinity"):
             _validate_pairwise_matrix(X)
+
+
+class TestAssetPositions:
+    """Tests for `_asset_positions`."""
+
+    def test_positions_and_missing_assets(self):
+        """Return coverage positions, with -1 for missing assets when allowed."""
+        coverage = np.array(["A", "B", "C"])
+        np.testing.assert_array_equal(
+            _asset_positions(
+                names=np.array(["C", "A"]), coverage=coverage, source="source"
+            ),
+            [2, 0],
+        )
+        np.testing.assert_array_equal(
+            _asset_positions(
+                names=np.array(["D", "B"]),
+                coverage=coverage,
+                source="source",
+                allow_missing=True,
+            ),
+            [-1, 1],
+        )
+        with pytest.raises(ValueError, match=r"Assets \['D'\] are missing from source"):
+            _asset_positions(
+                names=np.array(["D", "B"]), coverage=coverage, source="source"
+            )
+
+    def test_duplicate_names_are_rejected(self):
+        """Reject requested asset names that are not unique."""
+        with pytest.raises(ValueError, match="Requested asset names must be unique"):
+            _asset_positions(
+                names=np.array(["A", "A"]),
+                coverage=np.array(["A", "B"]),
+                source="source",
+            )

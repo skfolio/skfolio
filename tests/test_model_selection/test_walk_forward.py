@@ -1407,3 +1407,25 @@ def test_walk_forward_negative_offset_keeps_last_rebalancing_date(reduce_test):
         expected.append((dt.date(2024, 1, 26), dt.date(2024, 1, 28)))
     assert test_windows == expected
     assert cv.get_n_splits(X) == len(expected)
+
+
+def test_freq_offset_with_non_monotonic_anchors():
+    """A replacing offset can reorder anchors; windows still stay within the data.
+
+    Snapping half-hourly anchors to hour 1 maps 00:30 to 01:30 but 01:00 to 01:00,
+    so the shifted anchors are not monotonic. Anchors after the last observation
+    must still be dropped, leaving only full test windows inside the index.
+    """
+    index = pd.date_range("2024-01-01", periods=24 * 10, freq="h")
+    X = pd.DataFrame(np.zeros((len(index), 1)), index=index)
+    cv = WalkForward(
+        test_size=24, train_size=48, freq="30min", freq_offset=pd.DateOffset(hour=1)
+    )
+    with pytest.warns(pd.errors.PerformanceWarning):
+        splits = list(cv.split(X))
+    assert splits
+    for train, test in splits:
+        assert len(train) > 0
+        assert len(test) == 24
+        assert train[-1] < test[0]
+        assert test[-1] < len(index)

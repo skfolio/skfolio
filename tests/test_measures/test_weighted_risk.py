@@ -282,6 +282,31 @@ def test_weighted_evar_independent_minimization(losses, weights, beta):
     )
 
 
+def test_weighted_evar_returns_maximum_loss_at_large_inverse_temperature():
+    # The maximum loss holds slightly less than the tail mass, and a loss just below
+    # it holds most of the rest, so the objective keeps decreasing past the search's
+    # initial upper bound. It is then within 1e-12 of the maximum loss.
+    probability = 0.05 * (1 - 1e-5)
+    losses = np.array([1.0, 1.0 - 1e-8, 0.0])
+    weights = np.array([probability, 0.5, 0.5 - probability])
+    beta = 0.95
+    log_weights = np.log(weights) - logsumexp(np.log(weights))
+
+    def objective(log_temperature):
+        temperature = np.exp(log_temperature)
+        return temperature * (
+            logsumexp(log_weights + losses / temperature) - np.log1p(-beta)
+        )
+
+    reference = minimize_scalar(
+        objective, bounds=(-30, 10), method="bounded", options={"xatol": 1e-13}
+    )
+    assert reference.success
+    actual = mt.evar(-losses, beta=beta, sample_weight=weights)
+    assert actual == 1.0
+    np.testing.assert_allclose(actual, reference.fun, rtol=0, atol=1e-12)
+
+
 def test_weighted_evar_support_and_endpoints():
     returns = np.array([-0.9, -0.2, -0.2, 0.1])
     weights = np.array([0.0, 0.02, 0.03, 0.95])

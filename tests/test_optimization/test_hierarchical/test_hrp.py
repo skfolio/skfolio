@@ -14,6 +14,7 @@ from skfolio.optimization import (
     SchurComplementary,
 )
 from skfolio.prior import EmpiricalPrior, EntropyPooling, TimeSeriesFactorModel
+from skfolio.seriation import HierarchicalSeriation
 from skfolio.typing import FloatArray
 
 
@@ -585,3 +586,22 @@ def test_hierarchical_finite_weight_bounds(small_X, optimizer, bound):
     model = optimizer(**{bound: np.nan})
     with pytest.raises(ValueError, match="Weight bounds must be finite"):
         model.fit(small_X)
+
+
+def test_hrp_rejects_clusters_with_zero_total_risk():
+    """Offsetting assets give each bisected cluster zero risk, so no split exists."""
+
+    class FixedSeriation(HierarchicalSeriation):
+        def fit(self, X, y=None, **fit_params):
+            self.ordering_ = np.arange(X.shape[0])
+            return self
+
+    rng = np.random.default_rng(0)
+    a, b = rng.normal(0, 0.01, 60), rng.normal(0, 0.02, 60)
+    returns = np.column_stack([a, -a, b, -b])
+    model = HierarchicalRiskParity(
+        risk_measure=RiskMeasure.MEAN_ABSOLUTE_DEVIATION,
+        seriation_estimator=FixedSeriation(),
+    )
+    with pytest.raises(OptimizationError, match="zero total or nonfinite risk"):
+        model.fit(returns)

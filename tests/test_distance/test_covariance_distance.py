@@ -29,6 +29,14 @@ class TestCovarianceDistance:
         assert distance.absolute is False
         assert distance.power == 1
 
+    def test_unknown_covariance_string_is_rejected(self, X):
+        distance = CovarianceDistance(covariance_estimator="empirical")
+        with pytest.raises(
+            ValueError,
+            match="covariance_estimator must be 'precomputed' or a covariance estimator",
+        ):
+            distance.fit(X)
+
     def test_metadata_routing_errors(self, X, implied_vol):
         distance = CovarianceDistance(covariance_estimator=ImpliedCovariance())
 

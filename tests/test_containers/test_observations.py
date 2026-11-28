@@ -312,3 +312,12 @@ def test_saved_timezone_requires_datetime_values(make_container, tmp_path):
         ValueError, match="timezone requires a string and datetime values"
     ):
         type(container).load(tmp_path / "saved")
+
+
+def test_naive_object_dates_are_encoded_without_timezone():
+    """Timezone-naive dates held in an object array are saved as plain datetimes."""
+    dates = pd.date_range("2024-01-01", periods=2)
+    values, zone_name = _encode_observations(observations=dates.to_numpy(dtype=object))
+    assert zone_name is None
+    assert np.issubdtype(values.dtype, np.datetime64)
+    np.testing.assert_array_equal(values, dates.to_numpy())
