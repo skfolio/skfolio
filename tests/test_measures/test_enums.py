@@ -44,3 +44,10 @@ def test_measure_enum_membership_by_value():
     """Measure enums expose value-based membership checks."""
     assert RiskMeasure.has("variance")
     assert not RiskMeasure.has("not_a_measure")
+
+
+def test_perf_measure_classification():
+    """Performance measures are classified as performance, not risk or ratio."""
+    assert PerfMeasure.MEAN.is_perf
+    assert not PerfMeasure.MEAN.is_risk
+    assert not PerfMeasure.MEAN.is_ratio

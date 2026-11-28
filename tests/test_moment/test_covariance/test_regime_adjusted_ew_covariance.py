@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
 
+from skfolio.exceptions import NonPositiveVarianceError
 from skfolio.moments import (
     EWCovariance,
     EmpiricalCovariance,
@@ -1850,6 +1853,257 @@ class TestRegimeAdjustedEWCovarianceDegenerateInputs:
         assert np.all(np.isnan(model.covariance_))
         assert model.regime_multiplier_ == 1.0
 
+    @pytest.mark.parametrize(
+        "regime_target",
+        [
+            RegimeAdjustmentTarget.PORTFOLIO,
+            RegimeAdjustmentTarget.DIAGONAL,
+            RegimeAdjustmentTarget.MAHALANOBIS,
+        ],
+    )
+    @pytest.mark.parametrize("corr_half_life", [None, 10])
+    @pytest.mark.parametrize("nearest", [False, True])
+    def test_sub_threshold_variance_excluded_from_regime_and_uncorrelated(
+        self, regime_target, corr_half_life, nearest
+    ):
+        rng = np.random.default_rng(0)
+        r0 = np.concatenate([rng.normal(0, 0.01, 60), rng.normal(0, 0.05, 60)])
+        r1 = np.concatenate([rng.normal(0, 0.01, 60), rng.normal(0, 0.05, 60)])
+        r_tiny = rng.normal(0, 5e-7, 120)
+
+        kwargs = dict(
+            half_life=5,
+            corr_half_life=corr_half_life,
+            min_observations=5,
+            regime_min_observations=5,
+            regime_target=regime_target,
+            nearest=nearest,
+        )
+        model = RegimeAdjustedEWCovariance(**kwargs).fit(
+            np.column_stack([r0, r1, r_tiny])
+        )
+        ref = RegimeAdjustedEWCovariance(**kwargs).fit(np.column_stack([r0, r1]))
+
+        assert model.regime_multiplier_ == pytest.approx(
+            ref.regime_multiplier_, rel=1e-12
+        )
+        np.testing.assert_allclose(
+            model.covariance_[:2, :2], ref.covariance_, rtol=1e-12, atol=1e-12
+        )
+        if corr_half_life is not None:
+            assert np.all(model.covariance_[2, :2] == 0.0)
+            assert np.all(model.covariance_[:2, 2] == 0.0)
+        assert 1e-15 < model.covariance_[2, 2] < 1e-11
+        assert np.all(np.isfinite(model.covariance_))
+        assert np.all(np.linalg.eigvalsh(model.covariance_) > 0.0)
+
+    def test_dcc_late_entry_and_decay_sub_threshold_zeroes_off_diagonals(self):
+        rng = np.random.default_rng(7)
+        r0 = np.concatenate([rng.normal(0, 0.01, 60), rng.normal(0, 0.05, 60)])
+        r1 = np.concatenate([rng.normal(0, 0.01, 60), rng.normal(0, 0.05, 60)])
+        # Asset 2 enters late with tiny variance; asset 3 starts small then decays
+        # into (1e-15, 1e-12].
+        r_late_tiny = np.concatenate([np.full(60, np.nan), rng.normal(0, 5e-7, 60)])
+        r_decay = np.concatenate([rng.normal(0, 0.001, 20), np.zeros(100)])
+
+        kwargs = dict(
+            half_life=5,
+            corr_half_life=10,
+            min_observations=5,
+            regime_min_observations=5,
+            nearest=False,
+        )
+        model = RegimeAdjustedEWCovariance(**kwargs).fit(
+            np.column_stack([r0, r1, r_late_tiny, r_decay])
+        )
+        ref = RegimeAdjustedEWCovariance(**kwargs).fit(np.column_stack([r0, r1]))
+
+        assert np.all(model.covariance_[2, :2] == 0.0)
+        assert np.all(model.covariance_[:2, 2] == 0.0)
+        assert np.all(model.covariance_[3, :3] == 0.0)
+        assert np.all(model.covariance_[:3, 3] == 0.0)
+        assert 1e-15 < model.covariance_[2, 2] < 1e-11
+        assert 1e-15 < model.covariance_[3, 3] < 1e-11
+        np.testing.assert_allclose(
+            model.covariance_[:2, :2] / model.regime_multiplier_**2,
+            ref.covariance_ / ref.regime_multiplier_**2,
+            rtol=1e-12,
+            atol=1e-12,
+        )
+
+    @pytest.mark.parametrize("corr_half_life", [None, 10])
+    def test_constant_zero_asset_raises_non_positive_variance(self, corr_half_life):
+        rng = np.random.default_rng(0)
+        X = np.column_stack([rng.normal(0, 0.01, (60, 2)), np.zeros(60)])
+        model = RegimeAdjustedEWCovariance(
+            half_life=5,
+            corr_half_life=corr_half_life,
+            min_observations=5,
+            regime_min_observations=5,
+        )
+        with pytest.raises(NonPositiveVarianceError):
+            model.fit(X)
+
+    @pytest.mark.parametrize(
+        "regime_target",
+        [
+            RegimeAdjustmentTarget.PORTFOLIO,
+            RegimeAdjustmentTarget.DIAGONAL,
+            RegimeAdjustmentTarget.MAHALANOBIS,
+        ],
+    )
+    @pytest.mark.parametrize("corr_half_life", [None, 10])
+    def test_inactive_zero_asset_does_not_bias_regime_multiplier(
+        self, regime_target, corr_half_life
+    ):
+        rng = np.random.default_rng(1)
+        X_healthy = rng.normal(0, 0.01, (80, 4))
+        # Constant zero asset active during first 70 steps, then delisted before output
+        X = np.column_stack([X_healthy, np.zeros(80)])
+        active_mask = np.ones((80, 5), dtype=bool)
+        active_mask[70:, 4] = False
+
+        kwargs = dict(
+            half_life=10,
+            corr_half_life=corr_half_life,
+            min_observations=5,
+            regime_min_observations=5,
+            regime_target=regime_target,
+            regime_multiplier_clip=None,
+        )
+        model = RegimeAdjustedEWCovariance(**kwargs).fit(X, active_mask=active_mask)
+        ref = RegimeAdjustedEWCovariance(**kwargs).fit(X_healthy)
+
+        assert model.regime_multiplier_ == pytest.approx(
+            ref.regime_multiplier_, rel=1e-12
+        )
+        np.testing.assert_allclose(
+            model.covariance_[:4, :4], ref.covariance_, rtol=1e-12, atol=1e-12
+        )
+        assert np.all(np.isnan(model.covariance_[4, :]))
+        assert np.all(np.isnan(model.covariance_[:, 4]))
+
+    @pytest.mark.parametrize(
+        "regime_target",
+        [
+            RegimeAdjustmentTarget.PORTFOLIO,
+            RegimeAdjustmentTarget.DIAGONAL,
+            RegimeAdjustmentTarget.MAHALANOBIS,
+        ],
+    )
+    def test_dcc_late_activation_with_min_observations_one_no_regime_spike(
+        self, regime_target
+    ):
+        rng = np.random.default_rng(42)
+        X = rng.normal(0, 0.01, (32, 3))
+        active_mask = np.ones((32, 3), dtype=bool)
+        active_mask[:30, 2] = False
+        X[:30, 2] = np.nan
+        X[30, 2] = 0.01
+        X[31, 2] = 0.01
+
+        est_mask = np.ones((32, 3), dtype=bool)
+        est_mask[:10, :] = False
+
+        model = RegimeAdjustedEWCovariance(
+            half_life=10,
+            corr_half_life=20,
+            min_observations=1,
+            regime_min_observations=1,
+            regime_target=regime_target,
+            regime_multiplier_clip=None,
+        )
+        model.fit(X, active_mask=active_mask, estimation_mask=est_mask)
+        assert 0.5 < model.regime_multiplier_ < 2.0
+        assert np.all(np.isfinite(model.covariance_))
+
+    def test_dcc_quiet_spell_recovery_preserves_psd(self):
+        rng = np.random.default_rng(0)
+        f1 = rng.normal(0, 0.01, 100)
+        X1 = np.column_stack(
+            [
+                f1 + rng.normal(0, 0.001, 100),
+                f1 + rng.normal(0, 0.001, 100),
+                f1 + rng.normal(0, 0.001, 100),
+            ]
+        )
+        # Asset 2 drops below 1e-12 while assets 0 and 1 flip to negative correlation
+        f2 = rng.normal(0, 0.01, 250)
+        X2 = np.column_stack(
+            [
+                f2 + rng.normal(0, 0.001, 250),
+                -f2 + rng.normal(0, 0.001, 250),
+                np.zeros(250),
+            ]
+        )
+        # Asset 2 recovers
+        f3 = rng.normal(0, 0.01, 5)
+        X3 = np.column_stack(
+            [
+                f3 + rng.normal(0, 0.001, 5),
+                -f3 + rng.normal(0, 0.001, 5),
+                rng.normal(0, 0.01, 5),
+            ]
+        )
+        X = np.vstack([X1, X2, X3])
+
+        model = RegimeAdjustedEWCovariance(
+            half_life=2,
+            corr_half_life=50,
+            min_observations=5,
+            regime_min_observations=5,
+            nearest=False,
+        )
+        model.fit(X)
+        assert np.all(np.linalg.eigvalsh(model.covariance_) > 0.0)
+        assert np.all(np.linalg.eigvalsh(model._corr_state) > 0.0)
+
+    def test_dcc_flat_spell_keeps_stvu_and_output_correlations_aligned(self):
+        rng = np.random.default_rng(12)
+        f = rng.normal(0, 0.01, 20)
+        r0 = np.concatenate([rng.normal(0, 0.01, 40), f + rng.normal(0, 0.002, 20)])
+        r1 = np.concatenate([np.zeros(40), f + rng.normal(0, 0.002, 20)])
+        X = np.column_stack([r0, r1])
+
+        model = RegimeAdjustedEWCovariance(
+            half_life=5,
+            corr_half_life=50,
+            min_observations=5,
+            regime_min_observations=5,
+            nearest=False,
+        )
+        model.fit(X)
+
+        # Pair counts stay equal on fully observed data so STVU and output match
+        assert np.all(model._pair_obs_count == X.shape[0])
+        cov_stvu = model._get_bias_corrected_cov_for_regime(np.array([0, 1]))
+        corr_stvu, _ = cov_to_corr(cov_stvu)
+        corr_out, _ = cov_to_corr(model.covariance_)
+        np.testing.assert_allclose(corr_stvu, corr_out, rtol=1e-12, atol=1e-12)
+
+    def test_dcc_degenerate_corr_diag_keeps_asset_uncorrelated(self):
+        rng = np.random.default_rng(5)
+        r_healthy = rng.normal(0, 0.01, (100, 2))
+        # Fast correlation decay drives corr_state diagonal below 1e-12 while
+        # slower variance decay keeps variance well above 1e-12.
+        r_quiet = np.concatenate([rng.normal(0, 0.05, 10), np.zeros(90)])
+        X = np.column_stack([r_healthy, r_quiet])
+
+        model = RegimeAdjustedEWCovariance(
+            half_life=20,
+            corr_half_life=2,
+            min_observations=5,
+            regime_min_observations=5,
+            nearest=False,
+        )
+        model.fit(X)
+        assert model._var[2] > 1e-12
+        assert model._corr_state[2, 2] <= 1e-12
+        assert np.all(model.covariance_[2, :2] == 0.0)
+        assert np.all(model.covariance_[:2, 2] == 0.0)
+        assert model.covariance_[2, 2] > 1e-12
+        assert np.all(np.isfinite(model.covariance_))
+
     def test_portfolio_weights_on_missing_asset_skip_regime_update(self, X_synth):
         X = X_synth.copy()
         X[100:105, 0] = np.nan
@@ -1862,3 +2116,323 @@ class TestRegimeAdjustedEWCovarianceDegenerateInputs:
         assert model.covariance_.shape == (5, 5)
         assert np.all(np.isfinite(model.covariance_))
         assert np.isfinite(model.regime_multiplier_)
+
+
+def _reference_dcc_startup_corrected(
+    X: np.ndarray,
+    half_life: float,
+    corr_half_life: float,
+    active_mask: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Direct normalized weighted-history reference for startup-corrected DCC."""
+    n_obs, n_assets = X.shape
+    decay = 2.0 ** (-1.0 / half_life)
+    corr_decay = 2.0 ** (-1.0 / corr_half_life)
+    if active_mask is None:
+        active_mask = np.ones_like(X, dtype=bool)
+
+    # Start index of each asset's current active segment (after last inactivity).
+    seg_start = np.zeros(n_assets, dtype=int)
+    for i in range(n_assets):
+        inactive_idx = np.flatnonzero(~active_mask[:, i])
+        if inactive_idx.size > 0:
+            seg_start[i] = int(inactive_idx[-1]) + 1
+
+    # Normalized exponentially weighted variances and standardized returns.
+    z = np.full((n_obs, n_assets), np.nan)
+    var_final = np.full(n_assets, np.nan)
+    for i in range(n_assets):
+        if seg_start[i] >= n_obs:
+            continue
+        obs_times = [t for t in range(seg_start[i], n_obs) if np.isfinite(X[t, i])]
+        if not obs_times:
+            continue
+        r_sq = X[obs_times, i] ** 2
+        v = 0.0
+        for k, t in enumerate(obs_times):
+            w = decay ** np.arange(k, -1, -1, dtype=float)
+            v = float(np.dot(w, r_sq[: k + 1]) / np.sum(w))
+            z[t, i] = X[t, i] / np.sqrt(v) if v > 0.0 else 0.0
+        var_final[i] = v
+
+    # Normalized exponentially weighted correlation accumulator per pair.
+    q = np.full((n_assets, n_assets), np.nan)
+    cov = np.full((n_assets, n_assets), np.nan)
+    for i in range(n_assets):
+        if not np.isfinite(var_final[i]):
+            continue
+        for j in range(n_assets):
+            if not np.isfinite(var_final[j]):
+                continue
+            start = max(seg_start[i], seg_start[j])
+            co_obs = [
+                t
+                for t in range(start, n_obs)
+                if np.isfinite(z[t, i]) and np.isfinite(z[t, j])
+            ]
+            if co_obs:
+                w_c = corr_decay ** np.arange(len(co_obs) - 1, -1, -1, dtype=float)
+                q[i, j] = float(np.dot(w_c, z[co_obs, i] * z[co_obs, j]) / np.sum(w_c))
+            else:
+                q[i, j] = 0.0
+
+    for i in range(n_assets):
+        if not np.isfinite(var_final[i]):
+            continue
+        for j in range(n_assets):
+            if not np.isfinite(var_final[j]):
+                continue
+            if i == j:
+                cov[i, i] = var_final[i]
+            elif q[i, i] > 0.0 and q[j, j] > 0.0:
+                corr_ij = np.clip(q[i, j] / np.sqrt(q[i, i] * q[j, j]), -1.0, 1.0)
+                cov[i, j] = corr_ij * np.sqrt(var_final[i] * var_final[j])
+            else:
+                cov[i, j] = 0.0
+
+    return var_final, q, cov
+
+
+class TestDCCStartupCorrectionAndHACReset:
+    """Tests for DCC startup variance normalization and HAC inactivity reset."""
+
+    def test_dcc_startup_matches_reference_complete_data(self):
+        rng = np.random.default_rng(10)
+        X = rng.normal(0, 0.01, (15, 3))
+        est_mask = np.zeros_like(X, dtype=bool)
+
+        model = RegimeAdjustedEWCovariance(
+            half_life=20,
+            corr_half_life=60,
+            min_observations=1,
+            nearest=False,
+        )
+        model.fit(X, estimation_mask=est_mask)
+        ref_var, ref_q, ref_cov = _reference_dcc_startup_corrected(
+            X, half_life=20, corr_half_life=60
+        )
+
+        var_bc = model._var / (1.0 - model._decay**model._obs_count)
+        q_bc = model._corr_state / (1.0 - model._corr_decay**model._pair_obs_count)
+        np.testing.assert_allclose(var_bc, ref_var, rtol=1e-13, atol=1e-15)
+        np.testing.assert_allclose(q_bc, ref_q, rtol=1e-13, atol=1e-15)
+        np.testing.assert_allclose(model.covariance_, ref_cov, rtol=1e-13, atol=1e-15)
+        assert np.all(np.linalg.eigvalsh(model._corr_state) >= -1e-12)
+        assert np.all(np.linalg.eigvalsh(model.covariance_) >= -1e-12)
+
+    def test_dcc_startup_first_observation_unit_standardized_return(self):
+        X = np.array([[0.02, -0.01, 0.03]])
+        model = RegimeAdjustedEWCovariance(
+            half_life=20,
+            corr_half_life=60,
+            min_observations=1,
+            nearest=False,
+        )
+        model.fit(X)
+        expected_diag = 1.0 - model._corr_decay
+        np.testing.assert_allclose(
+            np.diag(model._corr_state),
+            np.full(3, expected_diag),
+            rtol=1e-14,
+            atol=0.0,
+        )
+        signs = np.sign(X[0])
+        expected_corr_state = expected_diag * np.outer(signs, signs)
+        np.testing.assert_allclose(
+            model._corr_state, expected_corr_state, rtol=1e-14, atol=0.0
+        )
+
+    def test_dcc_startup_matches_reference_mixed_histories_and_streaming(self):
+        rng = np.random.default_rng(21)
+        X = rng.normal(0, 0.01, (20, 4))
+        active_mask = np.ones_like(X, dtype=bool)
+        # Asset 1: late entry
+        active_mask[:5, 1] = False
+        X[:5, 1] = np.nan
+        # Asset 2: holiday + valid zero return
+        X[7, 2] = np.nan
+        X[11, 2] = 0.0
+        # Asset 3: inactive mid-sample then reactivated
+        active_mask[8:11, 3] = False
+        X[8:11, 3] = np.nan
+
+        est_mask = np.zeros_like(X, dtype=bool)
+        kwargs = dict(
+            half_life=10,
+            corr_half_life=30,
+            min_observations=1,
+            nearest=False,
+        )
+        model = RegimeAdjustedEWCovariance(**kwargs).fit(
+            X, active_mask=active_mask, estimation_mask=est_mask
+        )
+        ref_var, ref_q, ref_cov = _reference_dcc_startup_corrected(
+            X, half_life=10, corr_half_life=30, active_mask=active_mask
+        )
+        var_bc = model._var / (1.0 - model._decay**model._obs_count)
+        q_bc = model._corr_state / (1.0 - model._corr_decay**model._pair_obs_count)
+        np.testing.assert_allclose(var_bc, ref_var, rtol=1e-13, atol=1e-15)
+        np.testing.assert_allclose(q_bc, ref_q, rtol=1e-13, atol=1e-15)
+        np.testing.assert_allclose(model.covariance_, ref_cov, rtol=1e-13, atol=1e-15)
+
+        # Streaming across listing, holiday, inactivity, and reactivation boundaries
+        for splits in ([4, 9, 13], [1, 5, 8, 11, 15]):
+            inc = RegimeAdjustedEWCovariance(**kwargs)
+            start = 0
+            for end in [*splits, X.shape[0]]:
+                inc.partial_fit(
+                    X[start:end],
+                    active_mask=active_mask[start:end],
+                    estimation_mask=est_mask[start:end],
+                )
+                start = end
+            np.testing.assert_allclose(
+                inc.covariance_, model.covariance_, rtol=1e-13, atol=1e-15
+            )
+
+    def test_dcc_startup_asynchronous_late_listing_repair_fixture(self):
+        rng = np.random.default_rng(74)
+        X = 0.01 * (
+            np.sqrt(0.9) * rng.normal(size=(660, 1))
+            + np.sqrt(0.1) * rng.normal(size=(660, 3))
+        )
+        X[:600, 2] = np.nan
+        est_mask = np.zeros_like(X, dtype=bool)
+
+        model_raw = RegimeAdjustedEWCovariance(
+            half_life=20, corr_half_life=60, nearest=False
+        ).fit(X, estimation_mask=est_mask)
+        _, _, ref_cov = _reference_dcc_startup_corrected(
+            X, half_life=20, corr_half_life=60
+        )
+        np.testing.assert_allclose(
+            model_raw.covariance_, ref_cov, rtol=1e-12, atol=1e-15
+        )
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            model_repaired = RegimeAdjustedEWCovariance(
+                half_life=20, corr_half_life=60, nearest=True
+            ).fit(X, estimation_mask=est_mask)
+
+        assert np.all(np.isfinite(model_repaired.covariance_))
+        assert np.all(np.linalg.eigvalsh(model_repaired.covariance_) > 0.0)
+        np.testing.assert_allclose(
+            np.diag(model_repaired.covariance_),
+            np.diag(model_raw.covariance_),
+            rtol=1e-12,
+            atol=1e-15,
+        )
+
+    @pytest.mark.parametrize("corr_half_life", [None, 60])
+    @pytest.mark.parametrize("assume_centered", [True, False])
+    def test_hac_reactivation_matches_fresh_listing(
+        self, corr_half_life, assume_centered
+    ):
+        X = np.array([[0.01, 0.02], [0.03, 0.04], [np.nan, 0.02], [0.05, 0.03]])
+        relisting = np.ones_like(X, dtype=bool)
+        relisting[2, 0] = False
+        fresh_listing = relisting.copy()
+        fresh_listing[:3, 0] = False
+        est_mask = np.zeros_like(X, dtype=bool)
+
+        kwargs = dict(
+            half_life=20,
+            corr_half_life=corr_half_life,
+            hac_lags=3,
+            min_observations=1,
+            assume_centered=assume_centered,
+            nearest=False,
+        )
+        model_relist = RegimeAdjustedEWCovariance(**kwargs).fit(
+            X, active_mask=relisting, estimation_mask=est_mask
+        )
+        model_fresh = RegimeAdjustedEWCovariance(**kwargs).fit(
+            X, active_mask=fresh_listing, estimation_mask=est_mask
+        )
+
+        np.testing.assert_allclose(
+            model_relist.covariance_, model_fresh.covariance_, rtol=1e-13, atol=1e-15
+        )
+        np.testing.assert_allclose(
+            model_relist.location_, model_fresh.location_, rtol=1e-13, atol=1e-15
+        )
+        if corr_half_life is None:
+            np.testing.assert_allclose(
+                model_relist._cov, model_fresh._cov, rtol=1e-13, atol=1e-15
+            )
+        else:
+            np.testing.assert_allclose(
+                model_relist._var, model_fresh._var, rtol=1e-13, atol=1e-15
+            )
+            np.testing.assert_allclose(
+                model_relist._corr_state,
+                model_fresh._corr_state,
+                rtol=1e-13,
+                atol=1e-15,
+            )
+
+        # Streaming across inactivity and reactivation boundaries matches batch
+        inc = RegimeAdjustedEWCovariance(**kwargs)
+        for sl in (slice(0, 2), slice(2, 3), slice(3, 4)):
+            inc.partial_fit(
+                X[sl], active_mask=relisting[sl], estimation_mask=est_mask[sl]
+            )
+        np.testing.assert_allclose(
+            inc.covariance_, model_relist.covariance_, rtol=1e-13, atol=1e-15
+        )
+
+    def test_hac_inactivity_buffer_reset_isolation_and_holiday_preservation(self):
+        # Inactive row contains a finite return that must be ignored and cleared
+        X = np.array([[0.01, 0.02], [0.03, 0.04], [99.0, 0.02]])
+        active_mask = np.array([[True, True], [True, True], [False, True]])
+        est_mask = np.zeros_like(X, dtype=bool)
+
+        model = RegimeAdjustedEWCovariance(
+            half_life=20,
+            hac_lags=3,
+            min_observations=1,
+            nearest=False,
+        ).fit(X, active_mask=active_mask, estimation_mask=est_mask)
+
+        assert model._return_buffer is not None
+        assert len(model._return_buffer) == 3
+        # Asset 0's buffered returns are all NaN; asset 1's full history is preserved
+        for past_ret, expected_a1 in zip(
+            model._return_buffer, [0.02, 0.04, 0.02], strict=True
+        ):
+            assert np.isnan(past_ret[0])
+            assert past_ret[1] == pytest.approx(expected_a1)
+
+        # Continuously active asset's estimate is unaffected before and after reset
+        X_active = np.array([[0.01, 0.02], [0.03, 0.04], [0.01, 0.02]])
+        model_active = RegimeAdjustedEWCovariance(
+            half_life=20,
+            hac_lags=3,
+            min_observations=1,
+            nearest=False,
+        ).fit(X_active, estimation_mask=est_mask)
+        assert model.covariance_[1, 1] == pytest.approx(
+            model_active.covariance_[1, 1], rel=1e-13, abs=1e-15
+        )
+        next_row = np.array([[0.05, 0.03]])
+        next_est = np.zeros_like(next_row, dtype=bool)
+        model.partial_fit(next_row, estimation_mask=next_est)
+        model_active.partial_fit(next_row, estimation_mask=next_est)
+        assert model.covariance_[1, 1] == pytest.approx(
+            model_active.covariance_[1, 1], rel=1e-13, abs=1e-15
+        )
+
+        # Active holiday does not clear prior buffered returns
+        X_hol = np.array([[0.01, 0.02], [0.03, 0.04], [np.nan, 0.02]])
+        model_hol = RegimeAdjustedEWCovariance(
+            half_life=20,
+            hac_lags=3,
+            min_observations=1,
+            nearest=False,
+        ).fit(X_hol, estimation_mask=est_mask)
+        assert model_hol._return_buffer is not None
+        buf_a0 = [row[0] for row in model_hol._return_buffer]
+        assert buf_a0[0] == pytest.approx(0.01)
+        assert buf_a0[1] == pytest.approx(0.03)
+        assert np.isnan(buf_a0[2])

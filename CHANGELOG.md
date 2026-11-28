@@ -2,6 +2,53 @@
 
 <!-- version list -->
 
+## v1.15.3 (2026-11-28)
+
+### Bug Fixes
+
+- **moments**: Bias-correct DCC startup standardization
+  ([#540](https://github.com/skfolio/skfolio/pull/540),
+  [`b48903b`](https://github.com/skfolio/skfolio/commit/b48903babda3f6934db1d5ca9ab86b799a1a6901))
+
+
+## v1.15.2 (2026-11-27)
+
+### Bug Fixes
+
+- **moments**: Fix near-zero variance handling in RegimeAdjustedEWCovariance
+  ([#527](https://github.com/skfolio/skfolio/pull/527),
+  [`f2387b8`](https://github.com/skfolio/skfolio/commit/f2387b882a5ea70a55829cba234367b3f5c99dde))
+
+
+## v1.15.1 (2026-11-27)
+
+### Bug Fixes
+
+- **portfolio**: Reject mismatched arithmetic identities
+  ([#521](https://github.com/skfolio/skfolio/pull/521),
+  [`6c04295`](https://github.com/skfolio/skfolio/commit/6c0429540921ed457eabd5afd22c5c274404a018))
+
+
+## v1.15.0 (2026-11-27)
+
+### Continuous Integration
+
+- Retry failed documentation deployments ([#529](https://github.com/skfolio/skfolio/pull/529),
+  [`6f676ff`](https://github.com/skfolio/skfolio/commit/6f676fff50b287943ef8458ecee3398acc3f7cf3))
+
+### Features
+
+- **portfolio**: Label composition bars with holding periods
+  ([#514](https://github.com/skfolio/skfolio/pull/514),
+  [`2a94bc8`](https://github.com/skfolio/skfolio/commit/2a94bc8e299a67600714fa8393926c72dbf01faf))
+
+### Testing
+
+- **model_selection**: Allow solver rounding near zero
+  ([#522](https://github.com/skfolio/skfolio/pull/522),
+  [`27fe0be`](https://github.com/skfolio/skfolio/commit/27fe0be4a9f20f8a9aa2fa42f7fe38c436e41a04))
+
+
 ## v1.14.6 (2026-11-23)
 
 ### Bug Fixes

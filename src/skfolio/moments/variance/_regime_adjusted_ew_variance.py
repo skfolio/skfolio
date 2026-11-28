@@ -59,7 +59,8 @@ class RegimeAdjustedEWVariance(BaseVariance):
     * **Active with valid return**: Normal EWMA update.
     * **Active with NaN return (holiday)**: Freeze; the previous variance is
       kept.
-    * **Inactive** (`active_mask=False`): Variance is set to NaN.
+    * **Inactive** (`active_mask=False`): Variance is set to NaN and the asset's
+      prior history (including lagged returns when `hac_lags` is set) is cleared.
 
     When `active_mask` is not provided, trailing NaN returns are treated as
     holidays and the variance is frozen. When an asset becomes active again
@@ -580,6 +581,9 @@ class RegimeAdjustedEWVariance(BaseVariance):
                 self._obs_count[newly_inactive] = 0
                 if not self.assume_centered:
                     self.location_[newly_inactive] = np.nan
+                if self._return_buffer is not None:
+                    for past_ret in self._return_buffer:
+                        past_ret[newly_inactive] = np.nan
             self._is_active[:] = active_row
         else:
             self._is_active[:] = True

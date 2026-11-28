@@ -1096,3 +1096,49 @@ def test_lower_bounds_follow_listing_and_online_fallback(optimizer, returns, fal
             np.testing.assert_array_equal(model.weights_, [0.5, 0.5, 0, 0])
             assert model.fallback_ == "previous_weights"
         assert len(model.prior_estimator_.return_distribution_.returns) == 30
+
+
+class FixedSeriation(HierarchicalSeriation):
+    """Seriation returning a preset ordering, to reach the allocation guards."""
+
+    def __init__(self, ordering=None):
+        super().__init__()
+        self.ordering = ordering
+
+    def fit(self, X, y=None, **fit_params):
+        self.ordering_ = np.asarray(self.ordering)
+        return self
+
+
+class ZeroVariancePrior(EmpiricalPrior):
+    def fit(self, X, y=None, **fit_params):
+        super().fit(X, y, **fit_params)
+        distribution = self.return_distribution_
+        covariance = distribution.covariance.copy()
+        covariance[1, 1] = 0.0
+        self.return_distribution_ = ReturnDistribution(
+            mu=distribution.mu, covariance=covariance, returns=distribution.returns
+        )
+        return self
+
+
+@pytest.mark.parametrize("ordering", [[0, 0, 1, 2], [0, 1, 2], [[0, 1], [2, 3]]])
+def test_invalid_seriation_ordering_is_rejected(optimizer, returns, ordering):
+    model = optimizer(seriation_estimator=FixedSeriation(ordering))
+    with pytest.raises(ValueError, match="every investable asset exactly once"):
+        model.fit(returns)
+
+
+def test_nonpositive_investable_variance_is_rejected(optimizer, returns):
+    model = optimizer(prior_estimator=ZeroVariancePrior())
+    with pytest.raises(ValueError, match="finite with positive variances"):
+        model.fit(returns)
+
+
+def test_allocation_outside_weight_bounds_is_rejected(optimizer, returns, monkeypatch):
+    model = optimizer(max_weights=0.3)
+    monkeypatch.setattr(
+        model, "_compute_weights", lambda *args: np.array([0.7, 0.1, 0.1, 0.1])
+    )
+    with pytest.raises(OptimizationError, match="could not satisfy the weight bounds"):
+        model.fit(returns)

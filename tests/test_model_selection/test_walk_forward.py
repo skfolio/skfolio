@@ -22,6 +22,29 @@ def assert_split_equal(split, res):
         assert np.array_equal(test, res[i][1])
 
 
+@pytest.mark.parametrize(
+    "freq,freq_offset", [("h", pd.DateOffset(day=1)), ("30min", pd.DateOffset(hour=1))]
+)
+@pytest.mark.parametrize("previous", [False, True])
+def test_walk_forward_rejects_offsets_that_reorder_anchors(freq, freq_offset, previous):
+    """Replacing date components must not move later anchors before earlier ones."""
+    index = pd.date_range("2024-01-01", periods=72, freq="h")
+    X = pd.DataFrame({"x": np.zeros(len(index))}, index=index)
+    cv = WalkForward(
+        test_size=1, train_size=2, freq=freq, freq_offset=freq_offset, previous=previous
+    )
+
+    with pytest.raises(
+        ValueError, match=r"freq_offset.*chronological order"
+    ) as split_error:
+        next(cv.split(X))
+    with pytest.raises(
+        ValueError, match=r"freq_offset.*chronological order"
+    ) as count_error:
+        cv.get_n_splits(X)
+    assert str(split_error.value) == str(count_error.value)
+
+
 def assert_split_equal_dates(index, split, res):
     for i, (train, test) in enumerate(split):
         assert index[train[0]].date() == res[i][0][0]
@@ -1407,3 +1430,25 @@ def test_walk_forward_negative_offset_keeps_last_rebalancing_date(reduce_test):
         expected.append((dt.date(2024, 1, 26), dt.date(2024, 1, 28)))
     assert test_windows == expected
     assert cv.get_n_splits(X) == len(expected)
+
+
+def test_freq_offset_with_non_monotonic_anchors():
+    """A replacing offset can reorder anchors; windows still stay within the data.
+
+    Snapping half-hourly anchors to hour 1 maps 00:30 to 01:30 but 01:00 to 01:00,
+    so the shifted anchors are not monotonic. Anchors after the last observation
+    must still be dropped, leaving only full test windows inside the index.
+    """
+    index = pd.date_range("2024-01-01", periods=24 * 10, freq="h")
+    X = pd.DataFrame(np.zeros((len(index), 1)), index=index)
+    cv = WalkForward(
+        test_size=24, train_size=48, freq="30min", freq_offset=pd.DateOffset(hour=1)
+    )
+    with pytest.warns(pd.errors.PerformanceWarning):
+        splits = list(cv.split(X))
+    assert splits
+    for train, test in splits:
+        assert len(train) > 0
+        assert len(test) == 24
+        assert train[-1] < test[0]
+        assert test[-1] < len(index)

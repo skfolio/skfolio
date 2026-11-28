@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from skfolio.containers import AssetPanel
 from skfolio.descriptor import EWDownsideBeta
 from tests.test_descriptor._ew_reference import downside_path
 
@@ -196,3 +197,21 @@ class TestEWDownsideBeta:
         valid_fast = result_fast[~np.isnan(result_fast)]
         valid_slow = result_slow[~np.isnan(result_slow)]
         assert np.var(valid_slow) < np.var(valid_fast)
+
+
+def test_downside_moment_overflow_is_explicit():
+    """Downside moments that overflow raise instead of propagating infinities."""
+    n_observations = 3
+    panel = AssetPanel(
+        fields={
+            "returns": np.full((n_observations, 2), -1e160),
+            "market_cap": np.tile([1.0, 0.0], (n_observations, 1)),
+        },
+        observations=np.arange(n_observations),
+        asset_names=np.array(["market", "asset"]),
+    )
+    with (
+        np.errstate(over="ignore"),
+        pytest.raises(ValueError, match="Non-finite EW downside moments"),
+    ):
+        EWDownsideBeta(half_life=5, min_periods=1).fit_transform(panel)

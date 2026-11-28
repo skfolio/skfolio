@@ -16,7 +16,7 @@ from skfolio.optimization.convex._base import (
     _gmd_sorting_network,
     _odd_even_merge_sort_comparators,
 )
-from skfolio.prior import EmpiricalPrior
+from skfolio.prior import EmpiricalPrior, ReturnDistribution
 
 
 def _make_returns(n_observations=40, n_assets=6, seed=11):
@@ -450,3 +450,27 @@ def test_truly_unbounded_problem_is_rejected(raise_on_failure):
             model.fit(returns)
         assert model.weights_ is None
     assert model.problem_.status in {cp.UNBOUNDED, cp.UNBOUNDED_INACCURATE}
+
+
+class _ConstantScenarioPrior(EmpiricalPrior):
+    """Prior whose return scenarios are all zero, so they never vary."""
+
+    def fit(self, X, y=None, **fit_params):
+        super().fit(X, y, **fit_params)
+        distribution = self.return_distribution_
+        self.return_distribution_ = ReturnDistribution(
+            mu=distribution.mu,
+            covariance=distribution.covariance,
+            returns=np.zeros_like(distribution.returns),
+        )
+        return self
+
+
+def test_constant_scenarios_have_zero_gmd():
+    # Centered scenarios are exactly zero, so the return scale falls back to one.
+    model = MeanRisk(
+        risk_measure=RiskMeasure.GINI_MEAN_DIFFERENCE,
+        prior_estimator=_ConstantScenarioPrior(),
+    ).fit(_make_returns())
+    np.testing.assert_allclose(model.weights_.sum(), 1.0, atol=1e-8)
+    assert model.problem_values_["risk"] == pytest.approx(0.0, abs=1e-12)
