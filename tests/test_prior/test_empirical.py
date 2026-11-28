@@ -79,6 +79,20 @@ def test_empirical_prior_log_normal(X):
     )
 
 
+def test_empirical_prior_log_normal_keeps_sub_estimator_moments(X):
+    model = EmpiricalPrior(is_log_normal=True, investment_horizon=252)
+    model.fit(X)
+    reference = EmpiricalPrior().fit(np.log1p(X))
+    np.testing.assert_allclose(
+        model.mu_estimator_.mu_, reference.mu_estimator_.mu_, rtol=1e-12
+    )
+    np.testing.assert_allclose(
+        model.covariance_estimator_.covariance_,
+        reference.covariance_estimator_.covariance_,
+        rtol=1e-12,
+    )
+
+
 def test_empirical_prior_log_normal_investment_horizon(X):
     model = EmpiricalPrior(is_log_normal=True, investment_horizon=252)
     model.fit(X)

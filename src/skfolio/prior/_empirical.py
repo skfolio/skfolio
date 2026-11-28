@@ -298,8 +298,9 @@ class EmpiricalPrior(BasePrior):
 
         # Transform log moments to linear if needed
         if self.is_log_normal:
-            mu *= self.investment_horizon  # ty: ignore[unsupported-operator]
-            covariance *= self.investment_horizon  # ty: ignore[unsupported-operator]
+            # Scale copies so that the fitted sub-estimators keep the log moments.
+            mu = mu * self.investment_horizon  # ty: ignore[unsupported-operator]
+            covariance = covariance * self.investment_horizon  # ty: ignore[unsupported-operator]
 
             # Convert to linear returns distribution
             mu = np.exp(mu + 0.5 * np.diag(covariance))
