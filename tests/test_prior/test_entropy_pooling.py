@@ -21,6 +21,7 @@ from skfolio.prior import (
 )
 from skfolio.prior._entropy_pooling import (
     _extract_prior_assets,
+    _is_tnc_dual_stationary,
     _parse_correlation_view,
     _replace_prior_views,
 )
@@ -1371,6 +1372,59 @@ def test_conflicting_views_primal_solver_error(X):
         SolverError, match="Primal problem with Solver 'CLARABEL' failed"
     ):
         model.fit(X)
+
+
+@pytest.mark.parametrize("gradient", [0.0, 1e-3])
+def test_tnc_line_search_failure(X, monkeypatch, gradient):
+    """A failed TNC line search is accepted only at a stationary point."""
+    views = ["(RRC, WMT) == -0.1"]
+    expected = EntropyPooling(solver="TNC", correlation_views=views).fit(X)
+
+    def line_search_failed(*args, **kwargs):
+        sol = sco.minimize(*args, **kwargs)
+        if kwargs.get("method") == "TNC":
+            sol.status = ep_module._TNC_LINE_SEARCH_FAILED
+            sol.success = False
+            sol.message = "Linear search failed"
+            sol.jac = np.full_like(sol.jac, gradient)
+        return sol
+
+    monkeypatch.setattr(
+        ep_module,
+        "sco",
+        types.SimpleNamespace(minimize=line_search_failed, root_scalar=sco.root_scalar),
+    )
+    model = EntropyPooling(solver="TNC", correlation_views=views)
+    if gradient == 0.0:
+        model.fit(X)
+        np.testing.assert_allclose(
+            model.return_distribution_.sample_weight,
+            expected.return_distribution_.sample_weight,
+        )
+    else:
+        with pytest.raises(SolverError, match="Linear search failed"):
+            model.fit(X)
+
+
+@pytest.mark.parametrize(
+    "status,x,jac,expected",
+    [
+        # Failed line search with a zero gradient: stationary.
+        (4, [0.5, 1.0], [1e-10, -1e-10], True),
+        # Failed line search away from the optimum.
+        (4, [0.5, 1.0], [1e-10, 1e-3], False),
+        # Gradient pushing against an active lower bound: stationary.
+        (4, [0.5, 0.0], [1e-10, 1e-3], True),
+        # Gradient pointing into the feasible set at the lower bound.
+        (4, [0.5, 0.0], [1e-10, -1e-3], False),
+        # Other failure statuses are never accepted.
+        (3, [0.5, 1.0], [0.0, 0.0], False),
+    ],
+)
+def test_is_tnc_dual_stationary(status, x, jac, expected):
+    sol = sco.OptimizeResult(status=status, x=np.array(x), jac=np.array(jac))
+    bounds = [(None, None), (0, None)]
+    assert _is_tnc_dual_stationary(sol, bounds) is expected
 
 
 def test_parse_correlation_view_prior_expression_errors():
